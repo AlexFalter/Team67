@@ -1,0 +1,23 @@
+{
+  "boundsLV95": [2682950, 1247650, 2684000, 1248350],
+  "originLV95": [2683475, 1248000, 400],
+  "landmarks": {
+    "Zurich HB": [2683188, 1248066, 410],
+    "ETH Zentrum": [2683785, 1247876, 452]
+  },
+  "asset": "maps/zurich/hb-eth.glb",
+  "sources": [
+    {
+      "name": "Buildings",
+      "catalog": "https://data.stadt-zuerich.ch/dataset/geo_bauten___kombinierte_darstellung_heute",
+      "service": "https://www.ogd.stadt-zuerich.ch/wfs/geoportal/Bauten___Kombinierte_Darstellung_heute",
+      "typeName": "kombi_lod1_2_heute_3d"
+    },
+    {
+      "name": "Terrain",
+      "catalog": "https://data.stadt-zuerich.ch/dataset/geo_digitales_terrainmodell__tin_",
+      "service": "https://www.ogd.stadt-zuerich.ch/wfs/geoportal/Digitales_Terrainmodell__TIN_",
+      "typeName": "lod0_gelaende"
+    }
+  ]
+}

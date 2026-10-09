@@ -1,21 +1,9 @@
-import { useEffect, useState } from "react";
-import { getMe, type User } from "./api";
-import AppHeader from "./components/AppHeader";
-import Todos from "./components/Todos";
+import { MapViewer } from './scene/MapViewer';
 
-const App = () => {
-  const [me, setMe] = useState<User | undefined>();
-
-  useEffect(() => {
-    getMe().then(setMe);
-  }, []);
-
-  return (
-    <>
-      <AppHeader me={me} />
-      <Todos me={me} />
-    </>
-  );
-};
-
-export default App;
+export default function App() {
+  return <main>
+    <header><h1>Zürich HB → ETH Zentrum</h1><p>Official city model · basic Three.js viewer</p></header>
+    <MapViewer />
+    <footer>Buildings & terrain: <a href="https://data.stadt-zuerich.ch/dataset/geo_bauten___kombinierte_darstellung_heute" target="_blank" rel="noreferrer">Stadt Zürich / Geomatik + Vermessung</a> · CC0</footer>
+  </main>;
+}
