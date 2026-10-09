@@ -1,0 +1,50 @@
+import { schema, t, type SchemaType } from "@colyseus/schema";
+export const Player = schema(
+  {
+    x: t.number().default(0),
+    y: t.number().default(0),
+    z: t.number().default(0),
+    rotY: t.number().default(0),
+    vx: t.number().default(0),
+    vy: t.number().default(0),
+    vz: t.number().default(0),
+    anim: t.uint8().default(0),
+    color: t.string().default("#ffffff"),
+    vehicleId: t.string().default(""),
+    seat: t.int8().default(-1),
+  },
+  "Player",
+);
+export type Player = SchemaType<typeof Player>;
+export const Vehicle = schema(
+  {
+    kind: t.uint8().default(0),
+    x: t.number().default(0),
+    y: t.number().default(0),
+    z: t.number().default(0),
+    rotY: t.number().default(0),
+    vx: t.number().default(0),
+    vz: t.number().default(0),
+    capacity: t.uint8().default(1),
+    driver: t.string().default(""),
+    departureAt: t.number().default(0),
+    traveling: t.boolean().default(false),
+    fromX: t.number().default(0),
+    fromZ: t.number().default(0),
+    toX: t.number().default(0),
+    toZ: t.number().default(0),
+    tripStartedAt: t.number().default(0),
+    arrivalAt: t.number().default(0),
+  },
+  "Vehicle",
+);
+export type Vehicle = SchemaType<typeof Vehicle>;
+export const RaceState = schema(
+  {
+    serverTime: t.number().default(0),
+    players: t.map(Player),
+    vehicles: t.map(Vehicle),
+  },
+  "RaceState",
+);
+export type RaceState = SchemaType<typeof RaceState>;

@@ -1,0 +1,19 @@
+{
+  "name": "@race/server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node --import tsx src/index.ts --production"
+  },
+  "dependencies": {
+    "@race/shared": "*",
+    "colyseus": "^0.18.9",
+    "@colyseus/schema": "^5.0.36",
+    "@colyseus/sdk": "^0.18.5",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0"
+  }
+}
