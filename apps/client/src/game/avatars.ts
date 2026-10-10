@@ -152,7 +152,7 @@ export class Avatars {
       this.knees[i].add(this.ankles[i]);
       this.ankles[i].position.y = -0.42;
       this.view.add(this.viewShoulders[i]);
-      this.viewShoulders[i].position.set(side * 0.3, -0.42, 0.12);
+      this.viewShoulders[i].position.set(side * 0.25, -0.3, 0.05);
       this.viewShoulders[i].add(this.viewElbows[i]);
       this.viewElbows[i].position.y = -0.27;
     }
@@ -182,9 +182,12 @@ export class Avatars {
       const sway = Math.sin(rig.phase) * Math.min(1, rig.speed / 8) * 0.06;
       for (let i = 0; i < 2; i++) {
         const right = i === 1;
-        this.viewShoulders[i].rotation.set(1.25 + (right ? punch * 0.35 + sway : -sway) - rig.air * 0.25, 0, (right ? -1 : 1) * (0.25 - (right ? punch * 0.2 : 0)));
-        this.viewElbows[i].rotation.set(right ? 0.9 * (1 - punch) : 0.9, 0, 0);
-        this.viewShoulders[i].position.z = right ? 0.05 - punch * 0.3 : 0.05;
+        // Camera space: arms hang from just below the eye, forearms up into the lower corners.
+        // A punch straightens the right arm and drives it forward toward the crosshair.
+        const p = right ? punch : 0;
+        this.viewShoulders[i].rotation.set(1.45 + (right ? sway : -sway) - rig.air * 0.2 + p * 0.12, 0, (right ? -1 : 1) * 0.15 * (1 - p));
+        this.viewElbows[i].rotation.set(0.65 * (1 - p), 0, 0);
+        this.viewShoulders[i].position.set((right ? 1 : -1) * (0.25 - p * 0.13), -0.3, 0.05 - p * 0.25);
       }
       this.view.updateMatrixWorld(true);
       for (let i = 0; i < 2; i++) {
