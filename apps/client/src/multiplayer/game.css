@@ -11,7 +11,7 @@
 #lobby .eyebrow { color: #91e5b9; letter-spacing: 2px; font-size: 11px; }
 #lobby label { display: block; margin: 24px 0 8px; }
 #lobby input, #lobby select { box-sizing: border-box; width: 100%; border: 1px solid #657b8d; border-radius: 8px; background: #142333; color: white; padding: 12px; font: 14px monospace; }
-#lobby input { text-transform: uppercase; }
+#room-code { text-transform: uppercase; }
 #lobby { overflow-y: auto; }
 #lobby form { padding: 20px 0; }
 #lobby h1 { font-size: 42px; margin-bottom: 12px; }
@@ -37,3 +37,21 @@ button:disabled { cursor: wait; opacity: 0.6; }
  .map-viewer > canvas { outline: none; touch-action: none; }
 
 .map-viewer:has(#lobby[hidden]):has(#pause[hidden]) .mode-toggle { display: none; }
+
+#room-screen { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; overflow: auto; background: #101c2cf2; color: #edf4fc; font-family: monospace; }
+.room-card { width: min(560px, calc(100% - 48px)); padding: 24px; }
+.room-card h1 { font: 600 36px system-ui, sans-serif; margin: 12px 0; }
+.room-card p { line-height: 1.7; color: #b9ccd9; }
+.room-card .eyebrow { color: #91e5b9; letter-spacing: 2px; }
+.room-card button { display: block; width: 100%; cursor: pointer; border: 1px solid #60768a; border-radius: 8px; background: #203449; color: #edf4fc; padding: 12px 18px; margin: 12px 0; font: inherit; }
+#room-ready, #room-restart { background: #91e5b9; color: #122633; border-color: #91e5b9; }
+#room-roster { list-style: none; padding: 0; max-height: 40vh; overflow: auto; }
+#room-roster li { padding: 12px 0; border-bottom: 1px solid #314954; overflow-wrap: anywhere; }
+#room-results { width: 100%; border-collapse: collapse; margin: 20px 0; }
+#room-results caption { text-align: left; margin-bottom: 12px; }
+#room-results :is(th, td) { text-align: left; padding: 12px 8px; border-bottom: 1px solid #314954; overflow-wrap: anywhere; }
+#room-results th { color: #91e5b9; }
+#round-timer { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); padding: 8px 14px; background: #142333dd; color: #edf4fc; border-radius: 8px; font: 14px monospace; pointer-events: none; }
+.map-viewer:has(#room-screen:not([hidden])) .mode-toggle { display: block; }
+
+#lobby, #room-screen { align-items: safe center; }

@@ -1,11 +1,12 @@
-import { roomCode } from "@race/shared";
-export interface Selection { mode: "create" | "join"; code: string; character: number }
+import { roomCode, playerName } from "@race/shared";
+export interface Selection { mode: "create" | "join"; code: string; character: number; name: string }
 
 export function lobby(connect: (selection: Selection) => Promise<void>) {
   const abort = new AbortController();
   const root = document.querySelector<HTMLElement>("#lobby")!;
   const form = root.querySelector<HTMLFormElement>("form")!;
-  const field = root.querySelector<HTMLInputElement>("input")!;
+  const field = root.querySelector<HTMLInputElement>("#room-code")!;
+  const name = root.querySelector<HTMLInputElement>("#player-name")!;
   const message = root.querySelector<HTMLElement>("[role=status]")!;
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -15,7 +16,7 @@ export function lobby(connect: (selection: Selection) => Promise<void>) {
     try {
       const generated = [...crypto.getRandomValues(new Uint8Array(3))].map(n => n.toString(16).padStart(2, "0")).join("");
       const code = roomCode(field.value || (mode === "create" ? generated : ""));
-      await connect({ mode, code, character: Number(form.querySelector<HTMLSelectElement>("select")!.value) });
+      await connect({ mode, code, name: playerName(name.value), character: Number(form.querySelector<HTMLSelectElement>("select")!.value) });
       if (!abort.signal.aborted) root.hidden = true;
     } catch (error) {
       if (abort.signal.aborted) return;

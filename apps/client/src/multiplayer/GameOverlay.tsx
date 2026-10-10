@@ -7,6 +7,8 @@ export function GameOverlay() {
         <p className="eyebrow">ZÜRICH MULTIPLAYER</p>
         <h1>Campus chase.</h1>
         <p>Create a room or join your friends by code.</p>
+        <label htmlFor="player-name">Your name</label>
+        <input id="player-name" autoComplete="nickname" maxLength={24} required placeholder="Your name" />
         <label htmlFor="character">Your character</label>
         <select id="character" defaultValue="0">
           <option value="0">CS Student — glasses &amp; backpack</option>
@@ -23,6 +25,23 @@ export function GameOverlay() {
         <p role="status" aria-live="polite"></p>
       </form>
     </section>
+    <section id="room-screen" hidden aria-label="Room" aria-live="polite">
+      <div className="room-card">
+        <p className="eyebrow" id="room-code-label"></p>
+        <h1 id="room-title">Lobby</h1>
+        <p id="room-message" role="status"></p>
+        <ul id="room-roster" aria-label="Players in this room"></ul>
+        <button id="room-ready" hidden>Ready</button>
+        <table id="room-results" hidden>
+          <caption>Round results</caption>
+          <thead><tr><th scope="col">Player</th><th scope="col">Hits landed</th><th scope="col">Hits received</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <button id="room-restart" hidden>Return room to lobby</button>
+        <button id="room-leave">Leave room</button>
+      </div>
+    </section>
+    <div id="round-timer" hidden aria-live="off"></div>
     <button id="play" hidden>Click to play<br /><small>Mouse / trackpad look · WASD run · Space jump · Esc menu</small></button>
     <div id="crosshair" hidden aria-hidden="true">+</div>
     <section id="pause" hidden aria-label="Game menu">
@@ -40,6 +59,7 @@ export function GameOverlay() {
           F5 / V change view · Esc menu</p>
         <p role="status"></p>
         <button id="leave">Leave room</button>
+        <button id="finish-round" hidden>End round for everyone</button>
       </div>
     </section>
   </>;

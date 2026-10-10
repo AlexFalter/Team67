@@ -4,7 +4,7 @@ import { connect, createServer, type Socket } from "node:net";
 import { Client } from "@colyseus/sdk";
 import * as C from "../packages/shared/src/index.ts";
 import { reportClient } from "./reportClient.ts";
-import { withServer, listen, until, delay, type WireState } from "./fixture.ts";
+import { startRound, withServer, listen, until, delay, type WireState } from "./fixture.ts";
 
 test("main reports keep feature movement immediate under 160ms latency", { timeout: 20000 }, async () => {
   await withServer(async (client, rooms, port) => {
@@ -25,12 +25,13 @@ test("main reports keep feature movement immediate under 160ms latency", { timeo
     let leave: (() => Promise<unknown>) | undefined;
     try {
       const proxyPort = await listen(proxy);
-      const room = await new Client(`ws://127.0.0.1:${proxyPort}`).create<WireState>("race");
+      const room = await new Client(`ws://127.0.0.1:${proxyPort}`).create<WireState>("race", { name: "Player" });
       rooms.push(room);
       let collisions = 0;
       room.onMessage("bump", () => collisions++);
       leave = () => room.leave();
       await until(() => !!room.state?.players?.get(room.sessionId), "initial state");
+      await startRound(room, [room]);
       const own = room.state.players.get(room.sessionId)!, initial = own.x;
       movingClient = reportClient(room); movingClient.input.z = -1; movingClient.input.sprint = true;
       const startZ = own.z;
@@ -56,11 +57,12 @@ test("main reports keep feature movement immediate under 160ms latency", { timeo
 
 test("clients share shoes, stationary look-directed punches, cooldown and recovery without bananas", { timeout: 15000 }, async () => {
   await withServer(async (client, rooms) => {
-    const a = await client.create<WireState>("race"), b = await client.joinById<WireState>(a.roomId); rooms.push(a, b);
+    const a = await client.create<WireState>("race", { name: "Player" }), b = await client.joinById<WireState>(a.roomId, { name: "Player" }); rooms.push(a, b);
     const hits: C.Impulse[] = [];
     rooms.forEach(room => { room.onMessage("bump", () => {}); room.onMessage("playerCorrection", () => {}); });
     b.onMessage<C.Impulse>("impulse", hit => hits.push(hit));
     await until(() => a.state?.players?.size === 2 && b.state?.players?.size === 2, "two players");
+    await startRound(a, [a, b]);
     assert.ok(!("peels" in a.state));
     a.send("toggleShoes"); await until(() => b.state.players.get(a.sessionId)!.shoes, "remote shoes");
     const own = a.state.players.get(a.sessionId)!, startX = own.x;
@@ -78,9 +80,10 @@ test("clients share shoes, stationary look-directed punches, cooldown and recove
 
 test("reported bike impact ejects its rider and replicates its fall; occupancy stays exclusive", { timeout: 15000 }, async () => {
   await withServer(async (client, rooms) => {
-    const a = await client.create<WireState>("race", { character: 2 }), b = await client.joinById<WireState>(a.roomId); rooms.push(a, b);
+    const a = await client.create<WireState>("race", { name: "Player", character: 2 }), b = await client.joinById<WireState>(a.roomId, { name: "Player" }); rooms.push(a, b);
     rooms.forEach(room => { room.onMessage("bump", () => {}); room.onMessage("vehicleResult", () => {}); });
     await until(() => a.state?.players?.size === 2 && b.state?.players?.size === 2, "players");
+    await startRound(a, [a, b]);
     const rider = reportClient(a), other = reportClient(b);
     try {
       rider.input.z = 1; await until(() => a.state.players.get(a.sessionId)!.z > 1.5, "boarding range");
@@ -99,8 +102,9 @@ test("reported bike impact ejects its rider and replicates its fall; occupancy s
 
 test("feature sprint momentum and jumping survive report networking", { timeout: 10000 }, async () => {
   await withServer(async (client, rooms) => {
-    const room = await client.create<WireState>("race"); rooms.push(room); room.onMessage("bump", () => {});
+    const room = await client.create<WireState>("race", { name: "Player" }); rooms.push(room); room.onMessage("bump", () => {});
     await until(() => !!room.state?.players?.get(room.sessionId), "initial state");
+    await startRound(room, [room]);
     const moving = reportClient(room), own = room.state.players.get(room.sessionId)!;
     try {
       moving.input.z = -1; moving.input.sprint = true;

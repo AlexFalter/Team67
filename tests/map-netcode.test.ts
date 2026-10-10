@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { reportClient } from "./reportClient.ts";
 import * as C from "../packages/shared/src/index.ts";
-import { withServer, until, delay } from "./fixture.ts";
+import { startRound, withServer, until, delay } from "./fixture.ts";
 import { ContactWorld } from "../apps/server/src/physics.ts";
 import { Vehicle } from "../apps/server/src/state.ts";
 
@@ -20,11 +20,12 @@ test("Rapier loose objects stay on Zürich terrain in original map coordinates",
 
 test("real Zurich reports preserve terrain, jumping, shoes and original coordinates", { timeout: 30000 }, async () => {
   await withServer(async (client, rooms) => {
-    const a = await client.create("race"); rooms.push(a);
-    const b = await client.joinById(a.roomId); rooms.push(b);
+    const a = await client.create("race", { name: "Player" }); rooms.push(a);
+    const b = await client.joinById(a.roomId, { name: "Player" }); rooms.push(b);
     a.onMessage("bump", () => {}); b.onMessage("bump", () => {});
     b.onMessage("playerCorrection", () => {}); b.onMessage("impulse", () => {});
     await until(() => a.state?.players?.size === 2 && b.state?.players?.size === 2, "map room");
+    await startRound(a, [a, b]);
     const own = a.state.players.get(a.sessionId)!;
     assert.ok(own.x < -100 && own.y > 0);
     const moving = reportClient(a, C.zurichWorld), start = { x: own.x, z: own.z };

@@ -50,11 +50,16 @@ export class GameControls {
     try { await this.canvas.requestPointerLock(); } catch { this.fallback(); }
   }
   pause() {
-    this.local.enabled = false; this.local.clear(); this.menu.hidden = false;
+    this.local.enabled = false; this.local.clear(); this.menu.hidden = !this.ready();
     if (document.pointerLockElement === this.canvas) document.exitPointerLock();
-    this.update(); document.querySelector<HTMLButtonElement>("#resume")!.focus();
+    this.update(); if (this.ready()) document.querySelector<HTMLButtonElement>("#resume")!.focus();
   }
   update(dt = 0) {
+    if (!this.ready()) {
+      this.local.enabled = false; this.local.clear(); this.menu.hidden = true;
+      this.edge = { x: 0, y: 0 };
+      if (document.pointerLockElement === this.canvas) document.exitPointerLock();
+    }
     if (this.local.enabled && !this.captured) this.view.look(this.edge.x * dt * 520, this.edge.y * dt * 520);
     this.play.hidden = !this.ready() || this.local.enabled || !this.menu.hidden;
     this.crosshair.hidden = !this.ready() || !this.local.enabled || this.view.perspective !== 0;

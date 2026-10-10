@@ -13,11 +13,11 @@ export async function listen(server: Server) {
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   return (server.address() as { port: number }).port;
 }
-export async function withServer(run: (client: Client, rooms: Room<any, WireState>[], port: number) => Promise<void>, world = "flat") {
+export async function withServer(run: (client: Client, rooms: Room<any, WireState>[], port: number) => Promise<void>, world = "flat", extraEnv: Record<string, string> = {}) {
   const socket = createServer(), port = await listen(socket);
   await new Promise<void>(resolve => socket.close(() => resolve()));
   const server = spawn(process.execPath, ["--import", "tsx", "apps/server/src/index.ts"],
-    { env: { ...process.env, PORT: String(port), GAME_WORLD: world }, stdio: ["ignore", "pipe", "pipe"] });
+    { env: { ...process.env, PORT: String(port), GAME_WORLD: world, ...extraEnv }, stdio: ["ignore", "pipe", "pipe"] });
   let logs = "";
   server.stdout.on("data", chunk => logs += chunk); server.stderr.on("data", chunk => logs += chunk);
   const rooms: Room<any, WireState>[] = [];
@@ -35,4 +35,9 @@ export async function withServer(run: (client: Client, rooms: Room<any, WireStat
     await Promise.allSettled(rooms.filter(r => r.connection?.isOpen).map(r => r.leave()));
     server.kill();
   }
+}
+
+export async function startRound(room: Room<any, WireState>, participants: Room<any, WireState>[]) {
+  for (const participant of participants) participant.send("ready", true);
+  await until(() => room.state.phase === "Running", "all players ready");
 }

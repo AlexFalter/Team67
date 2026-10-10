@@ -6,7 +6,7 @@ if (!Number.isInteger(count) || count < 1 || count > 40)
   throw new Error("Bot count must be an integer from 1 to 40.");
 const rooms: Room<object, C.WorldState>[] = [];
 const timers: ReturnType<typeof setInterval>[] = [];
-let stopping = false;
+let stopping = false, joinedAll = false;
 async function stop() {
   if (stopping) return;
   stopping = true;
@@ -19,7 +19,7 @@ try {
   for (let i = 0; i < count; i++) {
     const room = await new Client(
       process.env.COLYSEUS_URL || "ws://localhost:2567",
-    ).joinOrCreate<C.WorldState>("race");
+    ).joinOrCreate<C.WorldState>("race", { name: `Bot ${i + 1}` });
     room.reconnection.enabled = false;
     rooms.push(room);
     const body = C.createBody();
@@ -29,6 +29,8 @@ try {
       sprint = false;
     room.onStateChange((s) => {
       const p = s.players.get(room.sessionId);
+      if (s.phase === C.RoomPhase.Lobby) ready = false;
+      if (joinedAll && s.phase === C.RoomPhase.Lobby && !s.members.get(room.sessionId)?.ready) room.send("ready", true);
       if (p && !ready) {
         C.snapshot(p, body);
         ready = true;
@@ -47,7 +49,7 @@ try {
         current = performance.now(),
         dt = Math.min(0.05, (current - last) / 1000);
       last = current;
-      if (!ready) return;
+      if (!ready || room.state.phase !== C.RoomPhase.Running || !room.state.players.has(room.sessionId)) return;
       if (now >= decision) {
         decision = now + 700 + Math.random() * 1300;
         sprint = Math.random() < 0.35;
@@ -73,7 +75,7 @@ try {
       C.stepPlayer(body, input, dt, world);
     }, 1000 / 60);
     const send = setInterval(() => {
-      if (ready) room.send("move", C.packMove(body));
+      if (ready && room.state.phase === C.RoomPhase.Running && room.state.players.has(room.sessionId)) room.send("move", C.packMove(body));
     }, 1000 / C.CLIENT_SEND_RATE);
     timers.push(simulation, send);
     room.onLeave(() => {
@@ -81,6 +83,8 @@ try {
       clearInterval(send);
     });
   }
+  joinedAll = true;
+  for (const room of rooms) room.send("ready", true);
   console.log(`${count} bots connected. Ctrl+C to stop.`);
 } catch (error) {
   console.error(error);

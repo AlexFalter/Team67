@@ -32,6 +32,8 @@ Use `@race/shared` for constants, messages, capsule math, movement and world que
 
 Foot players and cart drivers own their movement. The server validates and stores reports and referees collisions; impulse messages change local velocity. Remote entities interpolate on the delayed server clock; never interpolate the local player. Bump effects queue on that same timeline.
 
+Room phase, names, readiness, membership, host and results are server-owned. Waiting members have no gameplay entity. Gate movement, controls, vehicle interaction and combat on Running plus active membership; results stay frozen until the host resets to Lobby.
+
 The server atomically grants vehicle occupancy and releases it on exit/disconnect. A client flag or rendered mesh cannot grant ownership. Shuttles are server scheduled; the first passenger starts the countdown, further passengers do not reset it, and an empty shuttle cancels it. Keep schema and shared types consistent before changing protocol behavior.
 
 ## Map and deployment

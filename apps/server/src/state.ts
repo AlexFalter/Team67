@@ -1,4 +1,16 @@
 import { schema, t, type SchemaType } from "@colyseus/schema";
+import { RoomPhase } from "@race/shared";
+export const RoomMember = schema({
+  name: t.string().default(""),
+  character: t.uint8().default(0),
+  ready: t.boolean().default(false),
+  spectator: t.boolean().default(false),
+}, "RoomMember");
+export const RoundResult = schema({
+  name: t.string().default(""),
+  hitsLanded: t.number().default(0),
+  hitsReceived: t.number().default(0),
+}, "RoundResult");
 export const Player = schema(
   {
     x: t.number().default(0),
@@ -52,6 +64,13 @@ export type Vehicle = SchemaType<typeof Vehicle>;
 export const RaceState = schema(
   {
     serverTime: t.number().default(0),
+    phase: t.string().default(RoomPhase.Lobby),
+    hostId: t.string().default(""),
+    startedAt: t.number().default(0),
+    endsAt: t.number().default(0),
+    finishedAt: t.number().default(0),
+    members: t.map(RoomMember),
+    results: t.map(RoundResult),
     players: t.map(Player),
     vehicles: t.map(Vehicle),
   },
