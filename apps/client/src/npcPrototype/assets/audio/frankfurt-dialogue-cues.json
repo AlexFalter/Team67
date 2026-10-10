@@ -1,0 +1,30 @@
+[
+  {
+    "start": 0.0,
+    "end": 1.632,
+    "file": "frankfurt-scooter.mp3",
+    "caption": "Komm nach Frankfurt, wir k\u00e4mpfen!",
+    "speaker": "FRONT RIDER"
+  },
+  {
+    "start": 1.882,
+    "end": 4.252,
+    "file": "frankfurt-tank-worth.mp3",
+    "caption": "Was f\u00fcr \u201ekomm nach Frankfurt\u201c? Du bist mir nicht mal den Tank wert.",
+    "speaker": "REAR RIDER"
+  },
+  {
+    "start": 4.502,
+    "end": 5.632,
+    "file": "frankfurt-tank.mp3",
+    "caption": "Ich bezahl dir den Tank.",
+    "speaker": "FRONT RIDER"
+  },
+  {
+    "start": 5.882,
+    "end": 9.212,
+    "file": "frankfurt-frauen.mp3",
+    "caption": "Ach, ich nehme kein Geld von Frauen. Ich zahle dich, ich zahle dich.",
+    "speaker": "REAR RIDER"
+  }
+]

@@ -5,13 +5,15 @@ ZH_DIR = globals().get('ZH_DIR') or os.path.dirname(bpy.data.filepath)  # apps/c
 - public/maps/zurich/zurich.glb : 'Ground' (walkable surface, one mesh) + everything else joined into
   TILE m tiles (buildings, landmarks, terrace, bridges, Polybahn, signs). Material names only (the
   game builds the pixel textures from the theme), UVMap = TEXCOORD_0, building 'Style' = TEXCOORD_1,
-  meshopt compression, no quantisation (~33 MB; fits in git without LFS).
+  meshopt compression, no quantisation (~33 MB; fits in git without LFS), cleaned by gltfpack -noq.
 - public/maps/zurich/trees.glb + trees.json : instanced tree models + one row per tree
   [x, y, z, height, crownRadius, model, colorIndex, yaw, brightness] (three.js coordinates).
-- assets-src/zurich/world-grid.json : 2 m ground / obstacle height grids for scripts/build-world.ts
-  (same encoding as packages/shared/src/zurich-world.json). The Polyterrasse counts as ground.
+- public/maps/zurich/props.glb + props.json : street prop models (build_props.py) + one row per placed
+  prop [x, y, z, yaw, scale, kind] (three.js coordinates).
+- assets-src/zurich/world-grid.json : 2 m walk grid for scripts/build-world.ts, from walk_grid.py
+  (prints a walkability report: holes, reachable area, key places).
 """
-import bmesh, json, math, struct, base64, hashlib, time
+import bmesh, json, math, struct, base64, hashlib, time, shutil, subprocess
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
@@ -78,7 +80,18 @@ def export(objs, path):
     return os.path.getsize(path) / 1e6
 
 MAP = os.path.join(PUBLIC, 'zurich.glb')
-size_map = export([ground] + tiles, MAP)
+raw = os.path.join(bpy.app.tempdir or ZH_DIR, 'zurich.raw.glb')
+export([ground] + tiles, raw)
+# gltfpack, lossless (-noq: no quantisation, -kv: keep UVs): drops the ~18 % zero-area triangles left by
+# triangulating polygons with in-line vertices and writes exact bounds (Blender's min/max are off by ~0.1 m).
+env = dict(os.environ, PATH=os.environ.get('PATH', '') + ':/opt/homebrew/bin:/usr/local/bin')
+try:
+    subprocess.run(['npx', '--yes', 'gltfpack@0.22.0', '-i', raw, '-o', MAP, '-cc', '-noq', '-kv', '-km', '-kn'],
+                   check=True, env=env, capture_output=True, timeout=900)
+except Exception as e:
+    print('WARNING: gltfpack failed, shipping the Blender GLB (loader recomputes bounds):', e); shutil.copyfile(raw, MAP)
+os.remove(raw)
+size_map = os.path.getsize(MAP) / 1e6
 tris = 0
 for o in [ground] + tiles:
     o.data.calc_loop_triangles(); tris += len(o.data.loop_triangles)
@@ -100,41 +113,26 @@ for o in bpy.data.collections['Trees'].objects:
                  o['kind'], int(o['color']), round(o.rotation_euler.z, 3), round(float(o.get('jitter', 1.0)), 3)])
 json.dump(rows, open(os.path.join(PUBLIC, 'trees.json'), 'w'), separators=(',', ':'))
 
-# --- world grids (three.js coords: X = x, Y = z, Z = -y)
-OE, ON = AREA['originLV95'][0], AREA['originLV95'][1]
-minE, minN, maxE, maxN = AREA['boundsLV95']
-minX, maxX, minZ, maxZ, step = minE - OE, maxE - OE, ON - maxN, ON - minN, 2
-width, depth = int(round((maxX - minX) / step)) + 1, int(round((maxZ - minZ) / step)) + 1
-def bvh_of(objs):
-    vs, ps = [], []
-    for o in objs:
-        me = o.data if o.name.endswith('_x') or o in tiles or o is ground else None
-        if me is None:
-            me = bpy.data.meshes.new_from_object(o.evaluated_get(dg)); me.transform(o.matrix_world); temp = True
-        else: temp = False
-        b = len(vs); vs += [v.co.copy() for v in me.vertices]; ps += [[b + i for i in p.vertices] for p in me.polygons]
-        if temp: bpy.data.meshes.remove(me)
-    return BVHTree.FromPolygons(vs, ps)
-walk_objs = [ground] + [bpy.data.objects[n] for n in WALKABLE_EXTRA if bpy.data.objects.get(n)]
-g_bvh = bvh_of(walk_objs)
-obst = [o for o in export_objects() if o.name not in WALKABLE_EXTRA]
-o_bvh = bvh_of(obst)
-down = Vector((0, 0, -1))
-ground_grid, roof_grid = [], []
-for zi in range(depth):
-    pz = minZ + zi * step; by = -pz
-    for xi in range(width):
-        px = minX + xi * step
-        h = g_bvh.ray_cast(Vector((px, by, 500.0)), down)
-        ground_grid.append(h[0].z if h[0] else None)
-        r = o_bvh.ray_cast(Vector((px, by, 500.0)), down)
-        roof_grid.append(r[0].z if r[0] else None)
-def encode(vals):
-    return base64.b64encode(b''.join(struct.pack('<H', 65535 if v is None else max(0, min(65534, round(v * 100)))) for v in vals)).decode()
-grid = {'minX': minX, 'maxX': maxX, 'minZ': minZ, 'maxZ': maxZ, 'step': step, 'width': width, 'depth': depth,
-        'ground': encode(ground_grid), 'roof': encode(roof_grid)}
-grid['sourceHash'] = hashlib.sha256(open(MAP, 'rb').read()).hexdigest()
-json.dump(grid, open(os.path.join(ZH_DIR, 'world-grid.json'), 'w'), separators=(',', ':'))
+# --- street props (build_props.py): models + placements, instanced in the game like the trees
+size_props, prop_rows = 0, []
+if bpy.data.collections.get('Props') and bpy.data.objects.get('PropModel_Lantern'):
+    pmodels = [o for o in bpy.data.collections['PropModels'].objects if o.type == 'MESH']
+    for m in pmodels: m.name = m.name + '_src'
+    pm = []
+    for m in pmodels:
+        c = bpy.data.objects.new(m.name.replace('_src', ''), m.data); tmp.objects.link(c); pm.append(c)
+    size_props = export(pm, os.path.join(PUBLIC, 'props.glb'))
+    for c in pm: bpy.data.objects.remove(c)
+    for m in pmodels: m.name = m.name.replace('_src', '')
+    for o in bpy.data.collections['Props'].objects:
+        if o.type != 'MESH' or not o.data.name.startswith('PropModel_'): continue
+        x, y, z = o.location
+        kind = o.data.name.split('.')[0].replace('PropModel_', '')
+        prop_rows.append([round(x, 2), round(z, 2), round(-y, 2), round(o.rotation_euler.z, 3), round(o.scale.z, 3), kind])
+    json.dump(prop_rows, open(os.path.join(PUBLIC, 'props.json'), 'w'), separators=(',', ':'))
+
+# --- gameplay walk grid (ground / walls, 2 m) -> world-grid.json; see walk_grid.py
+exec(open(os.path.join(ZH_DIR, 'blender', 'walk_grid.py')).read())  # defines width, depth, WALK_REPORT
 
 # --- cleanup
 for o in list(tmp.objects):
@@ -142,4 +140,4 @@ for o in list(tmp.objects):
     if me.users == 0: bpy.data.meshes.remove(me)
 bpy.data.collections.remove(tmp)
 print(f'zurich.glb {size_map:.1f} MB, {len(tiles)} tiles, {tris} tris; trees.glb {size_trees:.2f} MB, {len(rows)} trees; '
-      f'grid {width}x{depth}; {time.time() - t0:.0f} s')
+      f'{len(prop_rows)} props; grid {width}x{depth}; {time.time() - t0:.0f} s')

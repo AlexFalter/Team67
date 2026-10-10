@@ -52,24 +52,44 @@ function decode(encoded: string) {
     values[i] = binary.charCodeAt(i * 2) | (binary.charCodeAt(i * 2 + 1) << 8);
   return values;
 }
-const ground = decode(data.ground),
-  roof = decode(data.roof);
-function groundHeight(x: number, z: number) {
-  const gx = (x - data.minX) / data.step,
-    gz = (z - data.minZ) / data.step;
-  if (gx < 0 || gz < 0 || gx > data.width - 1 || gz > data.depth - 1)
+interface HeightGrid {
+  minX: number; minZ: number; step: number; width: number; depth: number;
+  ground: Uint16Array; roof: Uint16Array;
+}
+type EncodedGrid = Omit<HeightGrid, "ground" | "roof"> & { ground: string; roof: string };
+const grid = (g: EncodedGrid): HeightGrid => ({ ...g, ground: decode(g.ground), roof: decode(g.roof) });
+// The 2 m map grid plus 0.5 m detail patches (Polybahn stations) that override it where they cover a point.
+const coarse = grid(data as EncodedGrid);
+const patches = ((data as { patches?: EncodedGrid[] }).patches ?? []).map(grid);
+function covering(x: number, z: number, margin = 0) {
+  for (const p of patches)
+    if (x - margin >= p.minX && z - margin >= p.minZ &&
+      x + margin <= p.minX + (p.width - 1) * p.step && z + margin <= p.minZ + (p.depth - 1) * p.step) return p;
+  return coarse;
+}
+function gridHeight(g: HeightGrid, x: number, z: number) {
+  const gx = (x - g.minX) / g.step,
+    gz = (z - g.minZ) / g.step;
+  if (gx < 0 || gz < 0 || gx > g.width - 1 || gz > g.depth - 1)
     return undefined;
-  const ix = Math.min(data.width - 2, Math.floor(gx)),
-    iz = Math.min(data.depth - 2, Math.floor(gz)),
+  const ix = Math.min(g.width - 2, Math.floor(gx)),
+    iz = Math.min(g.depth - 2, Math.floor(gz)),
     fx = gx - ix,
     fz = gz - iz;
-  const a = ground[iz * data.width + ix],
-    b = ground[iz * data.width + ix + 1],
-    c = ground[(iz + 1) * data.width + ix],
-    d = ground[(iz + 1) * data.width + ix + 1];
+  const a = g.ground[iz * g.width + ix],
+    b = g.ground[iz * g.width + ix + 1],
+    c = g.ground[(iz + 1) * g.width + ix],
+    d = g.ground[(iz + 1) * g.width + ix + 1];
   if (a === 65535 || b === 65535 || c === 65535 || d === 65535)
     return undefined;
+  // Across a cliff (terrace or quay wall, > 1 m between corners) blending would sag the upper ground
+  // towards the lower one and sink players into the wall: use the nearest corner instead.
+  if (Math.max(a, b, c, d) - Math.min(a, b, c, d) > 100)
+    return (fz < 0.5 ? (fx < 0.5 ? a : b) : (fx < 0.5 ? c : d)) / 100;
   return ((a + (b - a) * fx) * (1 - fz) + (c + (d - c) * fx) * fz) / 100;
+}
+function groundHeight(x: number, z: number) {
+  return gridHeight(covering(x, z), x, z);
 }
 function blocked(
   x: number,
@@ -78,27 +98,25 @@ function blocked(
   radius: number,
   height: number,
 ) {
-  const minX = Math.max(0, Math.round((x - radius - data.minX) / data.step)),
-    maxX = Math.min(
-      data.width - 1,
-      Math.round((x + radius - data.minX) / data.step),
-    );
-  const minZ = Math.max(0, Math.round((z - radius - data.minZ) / data.step)),
-    maxZ = Math.min(
-      data.depth - 1,
-      Math.round((z + radius - data.minZ) / data.step),
-    );
+  const g = covering(x, z, radius);
+  // 2 m grid: any cell the capsule touches (conservative). Fine patches: cells whose centre is inside
+  // the capsule's square, so walls are at most half a cell (0.25 m) thicker than they look.
+  const lo = g === coarse ? Math.round : Math.ceil, hi = g === coarse ? Math.round : Math.floor;
+  const minX = Math.max(0, lo((x - radius - g.minX) / g.step)),
+    maxX = Math.min(g.width - 1, hi((x + radius - g.minX) / g.step));
+  const minZ = Math.max(0, lo((z - radius - g.minZ) / g.step)),
+    maxZ = Math.min(g.depth - 1, hi((z + radius - g.minZ) / g.step));
   for (let gz = minZ; gz <= maxZ; gz++)
     for (let gx = minX; gx <= maxX; gx++) {
-      const index = gz * data.width + gx,
-        g = ground[index],
-        r = roof[index];
+      const index = gz * g.width + gx,
+        ground = g.ground[index],
+        roof = g.roof[index];
       if (
-        r !== 65535 &&
-        g !== 65535 &&
-        r > g + 150 &&
-        y < r / 100 + 0.1 &&
-        y + height > g / 100
+        roof !== 65535 &&
+        ground !== 65535 &&
+        roof > ground + 150 &&
+        y < roof / 100 + 0.1 &&
+        y + height > ground / 100
       )
         return true;
     }

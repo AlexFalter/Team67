@@ -28,6 +28,8 @@ export class Network {
   onVehicleResult?: (result: VehicleResult) => void;
   onBikeUnlockResult?: (result: import("@race/shared").BikeUnlockResult) => void;
   onMateResult?: (result: import("@race/shared").MateResult) => void;
+  onNpcResult?: (result: import("@race/shared").NpcResult) => void;
+  npcPaused = false;
   now() {
     return Date.now() + this.offset;
   }
@@ -84,6 +86,7 @@ export class Network {
     );
     this.room.onMessage<import("@race/shared").BikeUnlockResult>("bikeUnlockResult", result => this.onBikeUnlockResult?.(result));
     this.room.onMessage<import("@race/shared").MateResult>("mateResult", result => this.onMateResult?.(result));
+    this.room.onMessage<import("@race/shared").NpcResult>("npcResult", result => this.onNpcResult?.(result));
     this.room.onMessage<Bump>("bump", (hit) => {
       this.collisions++;
       onBump(hit);
@@ -109,7 +112,7 @@ export class Network {
     this.timers.push(
       setInterval(() => this.sync(), 10000),
       setInterval(() => {
-        if (!this.canPlay) return;
+        if (!this.canPlay || this.npcPaused) return;
         if (body.vehicleId) {
           const move = this.vehicleMove?.();
           if (move) this.room.send("vehicleMove", move);
@@ -119,7 +122,7 @@ export class Network {
   }
   // Gameplay stays in the feature's shared step; main's transport sends reports.
   frame(dt: number, body: Body, controls: () => Input) {
-    if (!this.canPlay) return;
+    if (!this.canPlay || this.npcPaused) return;
     const cmd = controls();
     let remaining = Math.min(0.1, dt), first = true, impact = 0;
     // Cooldowns use main's synchronized clock, including after a background tab.
