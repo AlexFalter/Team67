@@ -1,0 +1,260 @@
+{
+  "features": {
+    "phone": {
+      "entry": "src/ui/phone/index.js",
+      "description": "Phone",
+      "legacyStyles": true,
+      "category": "ui"
+    },
+    "phone-camera": {
+      "entry": "src/shared/phone-camera/index.js",
+      "description": "Phone Camera",
+      "legacyStyles": true,
+      "category": "shared"
+    },
+    "publibike": {
+      "entry": "src/vehicles/publibike/index.js",
+      "description": "Publibike",
+      "legacyStyles": true,
+      "category": "vehicles"
+    },
+    "vehicle-passengers": {
+      "entry": "src/vehicles/passengers/index.js",
+      "description": "Vehicle Passengers",
+      "legacyStyles": false,
+      "category": "vehicles"
+    },
+    "rail": {
+      "entry": "src/vehicles/rail/index.js",
+      "description": "Rail",
+      "legacyStyles": true,
+      "category": "vehicles"
+    },
+    "shuttle": {
+      "entry": "src/vehicles/shuttle/index.js",
+      "description": "Shuttle",
+      "legacyStyles": true,
+      "category": "vehicles"
+    },
+    "interview": {
+      "entry": "src/npcs/interview/index.js",
+      "description": "Interview",
+      "legacyStyles": true,
+      "category": "npcs"
+    },
+    "mate": {
+      "entry": "src/interactions/mate/index.js",
+      "description": "Mate",
+      "legacyStyles": true,
+      "category": "interactions"
+    },
+    "inventory": {
+      "entry": "src/interactions/inventory/index.js",
+      "description": "Inventory",
+      "legacyStyles": true,
+      "category": "interactions"
+    },
+    "player": {
+      "entry": "src/player/index.js",
+      "description": "Player",
+      "legacyStyles": false,
+      "category": "player"
+    },
+    "karambit": {
+      "entry": "src/interactions/knife/index.js",
+      "description": "Karambit",
+      "legacyStyles": true,
+      "category": "interactions"
+    },
+    "ersti-bags": {
+      "entry": "src/interactions/bags/index.js",
+      "description": "Ersti Bags",
+      "legacyStyles": true,
+      "category": "interactions"
+    },
+    "photos": {
+      "entry": "src/interactions/photos/index.js",
+      "description": "Photos",
+      "legacyStyles": true,
+      "category": "interactions"
+    },
+    "einstein": {
+      "entry": "src/npcs/einstein/index.js",
+      "description": "Einstein",
+      "legacyStyles": true,
+      "category": "npcs"
+    },
+    "scooter-encounter": {
+      "entry": "src/npcs/scooter/index.js",
+      "description": "Scooter Encounter",
+      "legacyStyles": true,
+      "category": "npcs"
+    },
+    "polybahn-encounters": {
+      "entry": "src/npcs/polybahn/index.js",
+      "description": "Polybahn Encounters",
+      "legacyStyles": true,
+      "category": "npcs"
+    },
+    "finance": {
+      "entry": "src/npcs/finance/index.js",
+      "description": "Finance",
+      "legacyStyles": true,
+      "category": "npcs"
+    },
+    "private-property": {
+      "entry": "src/npcs/private-property/index.js",
+      "description": "Private Property",
+      "legacyStyles": true,
+      "category": "npcs"
+    },
+    "water": {
+      "entry": "src/world/water/index.js",
+      "description": "Water",
+      "legacyStyles": false,
+      "category": "world"
+    },
+    "world": {
+      "entry": "src/world/core/index.js",
+      "description": "World",
+      "legacyStyles": false,
+      "category": "world"
+    },
+    "map": {
+      "entry": "src/world/map/index.js",
+      "description": "Map",
+      "legacyStyles": true,
+      "category": "world"
+    },
+    "hud": {
+      "entry": "src/ui/hud/index.js",
+      "description": "Hud",
+      "legacyStyles": true,
+      "category": "ui"
+    },
+    "dialogue": {
+      "entry": "src/shared/dialogue/index.js",
+      "description": "Dialogue",
+      "legacyStyles": true,
+      "category": "shared"
+    },
+    "machine-ui": {
+      "entry": "src/interactions/machine-ui/index.js",
+      "description": "Machine Ui",
+      "legacyStyles": true,
+      "category": "interactions"
+    },
+    "vehicle-audio": {
+      "entry": "src/vehicles/audio/index.js",
+      "description": "Vehicle Audio",
+      "legacyStyles": false,
+      "category": "vehicles"
+    },
+    "tickets": {
+      "entry": "src/interactions/tickets/index.js",
+      "description": "Tickets",
+      "legacyStyles": true,
+      "category": "interactions"
+    },
+    "npcs": {
+      "entry": "src/npcs/index.js",
+      "description": "NPC conversations and encounters",
+      "legacyStyles": true,
+      "category": "npcs"
+    },
+    "vehicles": {
+      "entry": "src/vehicles/index.js",
+      "description": "Vehicle roster, seats, paths and audio",
+      "legacyStyles": true,
+      "category": "vehicles"
+    },
+    "interactions": {
+      "entry": "src/interactions/index.js",
+      "description": "World-object and item interactions",
+      "legacyStyles": true,
+      "category": "interactions"
+    },
+    "games": {
+      "entry": "src/games/index.js",
+      "description": "Mini-games, quiz events and scanning",
+      "legacyStyles": true,
+      "category": "games"
+    },
+    "bike-scan": {
+      "entry": "src/games/bike-scan/index.js",
+      "description": "PubliBike aiming, steady hold and stutter challenge",
+      "legacyStyles": true,
+      "category": "games"
+    },
+    "quizzes": {
+      "entry": "src/games/quizzes/index.js",
+      "description": "Moodle quiz rules, timed events and failure reaction",
+      "legacyStyles": true,
+      "category": "games"
+    },
+    "ui": {
+      "entry": "src/ui/index.js",
+      "description": "General phone, HUD and settings presentation",
+      "category": "ui",
+      "legacyStyles": true
+    },
+    "integration-core": {
+      "entry": "src/shared/runtime/index.js",
+      "description": "Browser-free gameplay state and host integration contracts",
+      "category": "shared",
+      "legacyStyles": false
+    },
+    "medals": {
+      "entry": "src/ui/medals/index.js",
+      "description": "Queued achievement medals, artwork and sound",
+      "legacyStyles": false,
+      "category": "ui"
+    },
+    "football": {
+      "entry": "src/npcs/football/index.js",
+      "description": "Tim Gio football TV stand and playable penalty goal",
+      "legacyStyles": false,
+      "category": "npcs"
+    },
+    "cat": {
+      "entry": "src/npcs/cat/index.js",
+      "description": "Bench cat and gentle mouse petting challenge",
+      "category": "npcs",
+      "legacyStyles": false
+    }
+  },
+  "assetOverrides": {
+    "src/vehicles/rail/transit-models.js": [
+      "public/models/tram.glb",
+      "public/models/polybahn.glb",
+      "public/models/eth-link.glb"
+    ],
+    "src/vehicles/audio/vehicle-audio.js": [
+      "public/audio/bus-engine.mp3",
+      "public/audio/car-engine.mp3",
+      "public/audio/rail-running.mp3",
+      "public/audio/vehicle-door.mp3",
+      "public/audio/footstep-left.mp3",
+      "public/audio/footstep-right.mp3",
+      "public/audio/collision-thud.mp3"
+    ],
+    "src/interactions/mate/mate-machine.js": [
+      "public/assets/tony-mate"
+    ],
+    "src/world/core/geo-world.js": [
+      "public/maps/zurich"
+    ],
+    "src/ui/medals/medal-art.js": [
+      "public/assets/medals/CREDITS.md"
+    ],
+    "src/npcs/cat/cat-sound.js": [
+      "public/audio/cat-meow.mp3",
+      "public/audio/cat-purr.mp3",
+      "public/audio/CREDITS.md",
+      "public/audio/cat-angry-yowl.mp3"
+    ],
+    "src/npcs/cat/cat-bench.js": [
+      "public/models/cat"
+    ]
+  }
+}
