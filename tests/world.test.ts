@@ -71,7 +71,7 @@ test("the whole HB–ETH shuttle route follows terrain and avoids sampled buildi
   assert.equal(point.z, world.stops[0].z);
 });
 
-test("map vehicle validation preserves elevation and the shuttle completes a round trip with safe exits", () => {
+test("predicted map vehicles preserve elevation and the shuttle completes a round trip with safe exits", () => {
   const state = new RaceState(),
     manager = new VehicleManager(state, world);
   const messages: C.VehicleResult[] = [];
@@ -83,11 +83,11 @@ test("map vehicle validation preserves elevation and the shuttle completes a rou
   state.players.set(client.sessionId, p);
   manager.enter(client, "cart-1", 100000);
   const cart = state.vehicles.get("cart-1")!;
-  const x = cart.x + 0.3,
-    z = cart.z;
-  manager.move(client, ["cart-1", x, z, Math.PI / 2, 6, 0], 100050);
-  assert.equal(cart.x, x);
-  assert.equal(cart.y, world.height(x, z));
+  const start = cart.x;
+  C.stepPlayer(p, { ...idle, x: 1 }, 1 / 60, world);
+  manager.syncDriver(client.sessionId);
+  assert.ok(cart.x > start);
+  assert.ok(Math.abs(cart.y - world.height(cart.x, cart.z)!) < 1e-9);
   assert.equal(p.y, cart.y + C.CART_SEAT_HEIGHT);
   manager.exit(client);
   assert.equal(p.y, world.height(p.x, p.z));

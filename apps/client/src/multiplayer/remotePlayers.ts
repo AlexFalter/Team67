@@ -2,12 +2,10 @@ import * as THREE from "three";
 import {
   type PlayerState,
   type WorldState,
-  capsuleContact,
-  createContact,
-  CAPSULE_RADIUS,
-  type Body,
   type VehicleState,
   seatPosition,
+  snapshot,
+  createBody,
 } from "@race/shared";
 import { avatar, pose, disposeAvatar } from "./avatar.ts";
 interface Snapshot extends PlayerState {
@@ -20,14 +18,13 @@ interface Remote {
 }
 export class RemotePlayers {
   players = new Map<string, Remote>();
-  private contact = createContact();
   constructor(private scene: THREE.Scene) {}
   patch(state: WorldState, localId: string) {
     for (const [id, p] of state.players) {
       if (id === localId) continue;
       let r = this.players.get(id);
       if (!r) {
-        r = { mesh: avatar(p.color), snapshots: [], rendered: { ...p } };
+        r = { mesh: avatar(p.color, p.character), snapshots: [], rendered: snapshot(p, createBody()) };
         this.players.set(id, r);
         this.scene.add(r.mesh);
       }
@@ -41,8 +38,18 @@ export class RemotePlayers {
         vz: p.vz,
         anim: p.anim,
         color: p.color,
+        character: p.character,
         vehicleId: p.vehicleId,
         seat: p.seat,
+        grounded: p.grounded,
+        groundTime: p.groundTime,
+        jumpUntil: p.jumpUntil,
+        knockdownUntil: p.knockdownUntil,
+        simTime: p.simTime,
+        vehicleKind: p.vehicleKind,
+        shoes: p.shoes,
+        attackReadyAt: p.attackReadyAt,
+        peelReadyAt: p.peelReadyAt,
         t: state.serverTime,
       };
       if (r.snapshots.at(-1)?.t === s.t)
@@ -60,6 +67,7 @@ export class RemotePlayers {
   render(
     t: number,
     vehicles?: ReadonlyMap<string, { rendered: VehicleState }>,
+    dt = 1 / 60,
   ) {
     for (const r of this.players.values()) {
       const ss = r.snapshots;
@@ -73,39 +81,29 @@ export class RemotePlayers {
       const f =
         a === b ? 0 : THREE.MathUtils.clamp((t - a.t) / (b.t - a.t), 0, 1);
       const p = r.rendered;
-      for (const key of ["x", "y", "z"] as const)
+      for (const key of ["x", "y", "z", "vx", "vy", "vz"] as const)
         p[key] = a[key] + (b[key] - a[key]) * f;
       p.rotY =
         a.rotY +
         Math.atan2(Math.sin(b.rotY - a.rotY), Math.cos(b.rotY - a.rotY)) * f;
       p.anim = f < 0.5 ? a.anim : b.anim;
+      p.shoes = (f < 1 ? a : b).shoes;
+      p.attackReadyAt = (f < 1 ? a : b).attackReadyAt;
+      p.simTime = a.simTime + (b.simTime - a.simTime) * f;
       const membership = f < 1 ? a : b;
       p.vehicleId = membership.vehicleId;
       p.seat = membership.seat;
+      p.vehicleKind = membership.vehicleKind;
+      p.grounded = membership.grounded;
+      p.knockdownUntil = membership.knockdownUntil;
       const vehicle = vehicles?.get(p.vehicleId);
       if (vehicle) {
         seatPosition(vehicle.rendered, p.seat, p);
         p.rotY = vehicle.rendered.rotY;
         p.anim = 0;
       }
-      pose(r.mesh, p);
+      pose(r.mesh, p, dt);
     }
   }
-  pushLocal(p: Body, dt: number) {
-    for (const r of this.players.values())
-      if (
-        !r.rendered.vehicleId &&
-        capsuleContact(p, r.rendered, this.contact)
-      ) {
-        const o = this.contact,
-          amount = (2 * CAPSULE_RADIUS - o.dist) * Math.min(1, 12 * dt);
-        p.x -= o.nx * amount;
-        p.z -= o.nz * amount;
-        if (o.ny < 0) p.y -= o.ny * amount;
-      }
-  }
-  dispose() {
-    for (const r of this.players.values()) disposeAvatar(r.mesh);
-    this.players.clear();
-  }
+  dispose() { for (const r of this.players.values()) disposeAvatar(r.mesh); this.players.clear(); }
 }

@@ -1,0 +1,39 @@
+[hidden] { display: none !important; }
+#lobby, #pause, #play { color: #edf4fc; font-family: monospace; }
+.map-viewer .mode-toggle { z-index: 11; }
+#lobby {
+  position: absolute; inset: 0; z-index: 10; display: grid; place-items: center;
+  background: radial-gradient(circle at 25% 10%, #314954, #101c2c 70%);
+}
+#lobby form { width: min(440px, calc(100% - 64px)); }
+#lobby h1 { font: 600 48px/1.05 system-ui, sans-serif; letter-spacing: -2px; margin: 16px 0 24px; }
+#lobby p { line-height: 1.7; color: #b9ccd9; }
+#lobby .eyebrow { color: #91e5b9; letter-spacing: 2px; font-size: 11px; }
+#lobby label { display: block; margin: 24px 0 8px; }
+#lobby input, #lobby select { box-sizing: border-box; width: 100%; border: 1px solid #657b8d; border-radius: 8px; background: #142333; color: white; padding: 12px; font: 14px monospace; }
+#lobby input { text-transform: uppercase; }
+#lobby { overflow-y: auto; }
+#lobby form { padding: 20px 0; }
+#lobby h1 { font-size: 42px; margin-bottom: 12px; }
+#lobby label { margin-top: 12px; }
+#character-preview { height: 155px; width: 100%; border-radius: 12px; background: #1d3343; }
+.buttons { display: flex; gap: 10px; margin-top: 12px; }
+ :is(#lobby, #pause) button, #play { cursor: pointer; border: 1px solid #60768a; border-radius: 8px; background: #203449; color: #edf4fc; padding: 12px 18px; font: inherit; }
+.buttons button { flex: 1; }
+.buttons button:first-child { background: #91e5b9; border-color: #91e5b9; color: #122633; }
+button:disabled { cursor: wait; opacity: 0.6; }
+#lobby .hint { font-size: 11px; }
+#lobby [role=status] { min-height: 24px; color: #ffd38a; }
+#play { position: absolute; z-index: 5; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 22px; background: #142333eb; line-height: 1.8; }
+#play small { color: #b9ccd9; }
+#crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; text-shadow: 0 1px 3px #000; pointer-events: none; }
+#pause { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; background: #0c1728bf; overflow: auto; }
+#pause > div { width: min(440px, calc(100% - 48px)); padding: 24px; background: #142333; border: 1px solid #60768a; border-radius: 12px; }
+#pause button { display: block; width: 100%; margin: 10px 0; }
+#pause label { display: block; margin: 16px 0 8px; }
+#pause p { line-height: 1.7; font-size: 12px; color: #b9ccd9; }
+#pause [role=status] { color: #ffd38a; }
+#sensitivity { width: 100%; }
+ .map-viewer > canvas { outline: none; touch-action: none; }
+
+.map-viewer:has(#lobby[hidden]):has(#pause[hidden]) .mode-toggle { display: none; }
