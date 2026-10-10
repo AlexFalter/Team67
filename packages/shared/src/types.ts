@@ -19,19 +19,11 @@ export interface PlayerState {
   vehicleKind: number;
   shoes: boolean;
   attackReadyAt: number;
-  peelReadyAt: number;
 }
 export interface WorldState {
   serverTime: number;
   players: Map<string, PlayerState>;
   vehicles: Map<string, VehicleState>;
-  peels: Map<string, PeelState>;
-}
-export interface PeelState {
-  x: number; y: number; z: number;
-  fromX: number; fromZ: number; toX: number; toZ: number;
-  bornAt: number; landingAt: number; armedAt: number; expiresAt: number;
-  owner: string;
 }
 export interface VehicleState {
   kind: number; // 0: cart, 1: shared shuttle, 2: bicycle, 3: NPC car
@@ -80,10 +72,19 @@ export interface Input {
   jump: boolean;
   toggleShoes?: boolean;
   hit?: boolean;
-  banana?: boolean;
-  throwBanana?: boolean;
   aim?: boolean;
   facing?: number;
 }
 export interface Body extends PlayerState {
+}
+
+// Main's compact client-owned movement reports, with feature gameplay metadata
+// kept in the existing player schema and server-refereed action messages.
+export type Move = [number, number, number, number, number, number, number, number];
+export type VehicleMove = [string, number, number, number, number, number];
+export interface Ping { clientTime: number }
+export interface Pong extends Ping { serverTime: number }
+export interface PlayerCorrection {
+  x: number; y: number; z: number; vx: number; vy: number; vz: number; grounded: boolean;
+  vehicleId: string; vehicleKind: number; seat: number;
 }

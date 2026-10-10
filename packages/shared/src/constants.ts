@@ -41,11 +41,14 @@ export const BIKE_SPEED = 12, BIKE_HIT_STRENGTH = 0.65;
 export const SHOE_SPEED_MULTIPLIER = 1.5, SHOE_JUMP_MULTIPLIER = 1.35;
 export const ATTACK_RANGE = 2.4, ATTACK_HALF_ANGLE = Math.PI / 4,
   ATTACK_COOLDOWN_MS = 1500, ATTACK_KNOCKDOWN_MS = 5000;
-export const PEEL_COOLDOWN_MS = 2500, PEEL_LIFETIME_MS = 20000,
-  PEEL_SLIP_MS = 2000, PEEL_RADIUS = 0.8;
 export const SHUTTLE_STOPS = [
   { x: -12, z: 9 },
   { x: 12, z: 9 },
 ];
 export const MAX_GROUND_STEP = 0.65;
 export const SPAWN_SPREAD = 8;
+
+export const CLIENT_SEND_RATE = 20, MAX_POSITION = 100, MAX_VERTICAL_SPEED = 50;
+// Include boosted running, airborne momentum, and collision impulses.
+export const MAX_HORIZONTAL_SPEED = 2 * SPRINT_SPEED * SHOE_SPEED_MULTIPLIER;
+export const VEHICLE_STALE_MS = 500;

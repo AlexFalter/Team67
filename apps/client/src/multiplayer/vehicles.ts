@@ -26,6 +26,8 @@ export class Vehicles {
     private net: Network,
     private controls: HTMLDivElement,
   ) {
+    net.vehicleMove = () => this.drivenId ? [this.drivenId, this.prediction.x, this.prediction.z,
+      this.prediction.rotY, this.prediction.vx, this.prediction.vz] : undefined;
     net.onVehicleResult = (result) => {
       this.message = result.message;
       this.messageUntil = Date.now() + 2000;
@@ -283,7 +285,7 @@ export class Vehicles {
       }
     }
     const riding = this.items.get(body.vehicleId)?.latest;
-    let prompt = `Mouse / trackpad look · WASD run · Shift sprint · Space jump · click/F hit · G throw · R shoes ${body.shoes ? "on" : "off"} · F5/V view · Esc menu`;
+    let prompt = `Mouse / trackpad look · WASD run · Shift sprint · Space jump · click/F hit · R shoes ${body.shoes ? "on" : "off"} · F5/V view · Esc menu`;
     if (riding)
       prompt =
         riding.kind !== 1
@@ -311,6 +313,7 @@ export class Vehicles {
   dispose() {
     this.drivenId = "";
     this.net.onVehicleResult = undefined;
+    this.net.vehicleMove = undefined;
     for (const v of this.items.values()) {
       v.mesh.traverse((object) => {
         if (object instanceof THREE.Mesh) {

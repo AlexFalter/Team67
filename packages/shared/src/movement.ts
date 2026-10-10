@@ -25,7 +25,6 @@ export function createBody(): Body {
     vehicleKind: -1,
     shoes: false,
     attackReadyAt: 0,
-    peelReadyAt: 0,
   };
 }
 export function respawn(p: Body, world: MovementWorld = flatWorld) {
@@ -98,8 +97,6 @@ export function stepPlayer(p: Body, input: Input, dt: number, world: MovementWor
   if (input.toggleShoes) p.shoes = !p.shoes;
   if (input.hit && !p.vehicleId && p.simTime >= p.knockdownUntil && p.simTime >= p.attackReadyAt)
     p.attackReadyAt = p.simTime + C.ATTACK_COOLDOWN_MS;
-  if (input.banana && !p.vehicleId && p.simTime >= p.knockdownUntil && p.grounded && p.simTime >= p.peelReadyAt)
-    p.peelReadyAt = p.simTime + C.PEEL_COOLDOWN_MS;
   if (p.vehicleId) {
     let impact = 0;
     if (p.vehicleKind === 0 || p.vehicleKind === 2) {
@@ -114,4 +111,8 @@ export function stepPlayer(p: Body, input: Input, dt: number, world: MovementWor
     return impact;
   }
   stepMovement(p, input, dt, p.simTime, world);
+}
+
+export function packMove(p: Body): import("./types.ts").Move {
+  return [p.x, p.y, p.z, p.rotY, p.vx, p.vy, p.vz, p.anim];
 }

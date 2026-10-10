@@ -3,6 +3,7 @@ import * as C from "@race/shared";
 import { Vehicle, type RaceState, type Player } from "./state.ts";
 
 export class VehicleManager {
+  private reports = new Map<string, number>();
   private trafficStart: number;
   private hitTimes = new Map<string, Map<string, number>>();
   private contact: C.VehicleContact = { nx: 0, nz: 0, closing: 0 };
@@ -69,6 +70,7 @@ export class VehicleManager {
     p.anim = 0;
     if (v.kind !== 1) {
       v.driver = client.sessionId;
+      this.reports.set(data as string, now);
       this.hitTimes.get(data as string)!.clear();
     } else if (v.departureAt === 0)
       v.departureAt = now + C.SHUTTLE_COUNTDOWN_MS;
@@ -121,6 +123,7 @@ export class VehicleManager {
       Object.assign(p, C.findGround(this.world, x, z) ?? this.world.spawn);
       p.grounded = true; p.groundTime = p.simTime;
       if (v.kind !== 1) {
+        this.reports.delete(id);
         v.driver = "";
         v.vx = v.vz = 0;
       }
@@ -140,6 +143,56 @@ export class VehicleManager {
   private result(client: Client, ok: boolean, message: string) {
     client.send("vehicleResult", { ok, message } satisfies C.VehicleResult);
   }
+  move(client: Client, data: unknown, now = Date.now()) {
+    if (
+      !Array.isArray(data) ||
+      data.length !== 6 ||
+      typeof data[0] !== "string" ||
+      !data.slice(1).every((n) => typeof n === "number" && Number.isFinite(n))
+    )
+      return;
+    const v = this.state.vehicles.get(data[0]),
+      p = this.state.players.get(client.sessionId);
+    if (
+      !v ||
+      (v.kind !== 0 && v.kind !== 2) ||
+      v.driver !== client.sessionId ||
+      p?.vehicleId !== data[0]
+    )
+      return;
+    const dt = Math.max(
+        0.001,
+        (now - (this.reports.get(data[0]) ?? now)) / 1000,
+      ),
+      bounds = this.world.bounds;
+    const y = this.world.height(data[1], data[2]);
+    if (
+      Math.hypot(data[1] - v.x, data[2] - v.z) > C.vehicleSpeed(v) * 2 * dt + 0.15 ||
+      data[1] < bounds.minX + C.vehicleRadius(v) ||
+      data[1] > bounds.maxX - C.vehicleRadius(v) ||
+      data[2] < bounds.minZ + C.vehicleRadius(v) ||
+      data[2] > bounds.maxZ - C.vehicleRadius(v) ||
+      y === undefined ||
+      this.world.blocked(
+        data[1],
+        y,
+        data[2],
+        C.vehicleRadius(v),
+        C.CART_HIT_HEIGHT,
+      ) ||
+      Math.hypot(data[4], data[5]) > C.vehicleSpeed(v) * 2
+    )
+      return;
+    v.x = data[1];
+    v.y = y;
+    v.z = data[2];
+    v.rotY = data[3] % (Math.PI * 2);
+    v.vx = data[4];
+    v.vz = data[5];
+    this.reports.set(data[0], now);
+    p.simTime = now;
+    this.attach(p, v);
+  }
   syncDriver(id: string) {
     const p = this.state.players.get(id), v = p && this.state.vehicles.get(p.vehicleId);
     if (!p || !v || v.driver !== id) return;
@@ -152,6 +205,7 @@ export class VehicleManager {
     p.vy = 0;
     p.vz = v.vz;
     p.anim = 0;
+    p.grounded = false;
   }
   crashBike(id: string, now: number, hit: Parameters<VehicleManager["tick"]>[1], speed?: number) {
     const v = this.state.vehicles.get(id);
@@ -185,6 +239,7 @@ export class VehicleManager {
     ) => void,
   ) {
     for (const [id, v] of this.state.vehicles) {
+      if (v.driver && now - (this.reports.get(id) ?? now) > C.VEHICLE_STALE_MS) v.vx = v.vz = 0;
       if (v.fallenUntil && now >= v.fallenUntil) v.fallenUntil = 0;
       if (v.kind === 1) {
         if (!v.traveling && v.departureAt > 0 && now >= v.departureAt) {

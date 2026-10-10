@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Predict } from "@colyseus/sdk";
+import { reportClient } from "./reportClient.ts";
 import * as C from "../packages/shared/src/index.ts";
 import { withServer, until, delay } from "./fixture.ts";
 import { ContactWorld } from "../apps/server/src/physics.ts";
@@ -18,40 +18,33 @@ test("Rapier loose objects stay on Zürich terrain in original map coordinates",
   } finally { physics.dispose(); }
 });
 
-test("real Zürich clients predict terrain movement, jump, shoes and peel landing without flattening the map", { timeout: 30000 }, async () => {
+test("real Zurich reports preserve terrain, jumping, shoes and original coordinates", { timeout: 30000 }, async () => {
   await withServer(async (client, rooms) => {
     const a = await client.create("race"); rooms.push(a);
     const b = await client.joinById(a.roomId); rooms.push(b);
     a.onMessage("bump", () => {}); b.onMessage("bump", () => {});
+    b.onMessage("playerCorrection", () => {}); b.onMessage("impulse", () => {});
     await until(() => a.state?.players?.size === 2 && b.state?.players?.size === 2, "map room");
     const own = a.state.players.get(a.sessionId)!;
     assert.ok(own.x < -100 && own.y > 0);
-    const predicted = Predict.get(a), input = a.input({ type: C.MoveInput });
-    const reconciler = predicted.reconciler(own, { input, step: (ctx, p, cmd) => C.stepPlayer(p, cmd, ctx.dt, C.zurichWorld), smoothMs: 80 });
-    const start = own.x;
-    let shoes = false, jumping = false;
+    const moving = reportClient(a, C.zurichWorld), start = { x: own.x, z: own.z };
+    // Spawn is randomized: choose a clear path instead of assuming east is free.
+    const directions = Array.from({ length: 16 }, (_, i) => ({ x: Math.sin(i * Math.PI / 8), z: Math.cos(i * Math.PI / 8) }));
+    const direction = directions.find(d => Array.from({ length: 24 }, (_, i) => (i + 1) / 4).every(distance => {
+      const x = start.x + d.x * distance, z = start.z + d.z * distance, y = C.zurichWorld.height(x, z);
+      return y !== undefined && !C.zurichWorld.blocked(x, y, z, C.CAPSULE_RADIUS, C.CAPSULE_HEIGHT) &&
+        [...a.state.vehicles.values()].every(v => Math.hypot(x - v.x, z - v.z) > C.vehicleRadius(v) + C.CAPSULE_RADIUS + 0.3);
+    }));
+    assert.ok(direction, "clear movement path near spawn");
     try {
-      for (let frame = 0; frame < 60; frame++) {
-        const ticks = predicted.tick(performance.now());
-        for (let i = 0; i < ticks; i++) {
-          Object.assign(input.data, C.IDLE_INPUT, { x: frame < 30 ? 1 : 0 });
-          input.data.toggleShoes = !shoes; shoes = true;
-          input.data.jump = frame >= 20 && !jumping; jumping ||= input.data.jump;
-          input.send();
-        }
-        assert.ok(Number.isFinite(reconciler.state.y));
-        await delay(17);
-      }
+      a.send("toggleShoes"); moving.body.shoes = true; moving.input.x = direction.x; moving.input.z = direction.z;
+      await delay(250); moving.input.jump = true;
+      await until(() => !own.grounded && own.vy > 0, "map takeoff");
+      await delay(150); moving.input.x = moving.input.z = 0;
       await until(() => own.grounded && own.shoes, "landed with shoes");
-      assert.ok(own.x > start + 1);
-      assert.ok(Math.abs(own.y - C.zurichWorld.height(own.x, own.z)!) < 0.03);
-      Object.assign(input.data, C.IDLE_INPUT, { banana: true, throwBanana: true });
-      input.send();
-      await until(() => b.state.peels.size > 0, "replicated peel");
-      await delay(650);
-      const peel = [...b.state.peels.values()][0];
-      assert.ok(Math.abs(peel.y - C.zurichWorld.height(peel.x, peel.z)!) < 0.03);
-      for (const v of b.state.vehicles.values()) assert.ok(v.x < -100 && Number.isFinite(v.y));
-    } finally { predicted.dispose(); }
+      assert.ok(Math.hypot(own.x - start.x, own.z - start.z) > 1, "terrain movement replicated");
+      assert.ok(Math.abs(own.y - C.zurichWorld.height(own.x, own.z)!) < 0.03, `map landing y=${own.y}, terrain=${C.zurichWorld.height(own.x, own.z)}`);
+      for (const v of b.state.vehicles.values()) assert.ok(v.x < -100 && Number.isFinite(v.y), `vehicle kind=${v.kind} x=${v.x} y=${v.y}`);
+    } finally { moving.stop(); }
   }, "zurich");
 });

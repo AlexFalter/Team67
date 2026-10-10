@@ -36,7 +36,7 @@ export function GameOverlay() {
         <input id="sensitivity" type="range" min="8" max="60" defaultValue="25" />
         <p>Mouse / trackpad: look · click to punch.<br />
           WASD run · Shift sprint · Space jump · E ride<br />
-          F hit · B drop / G throw peel · R shoes<br />
+          F hit · R shoes<br />
           F5 / V change view · Esc menu</p>
         <p role="status"></p>
         <button id="leave">Leave room</button>

@@ -10,8 +10,6 @@ export class LocalPlayer {
   private interaction = false;
   private shoes = false;
   private hit = false;
-  private banana = false;
-  private thrown = false;
   private input: Input = { x: 0, z: 0, sprint: false, jump: false };
   private abort = new AbortController();
   constructor() {
@@ -24,14 +22,13 @@ export class LocalPlayer {
       if (e.code === "KeyE" && !e.repeat) this.interaction = true;
       if (e.code === "KeyR" && !e.repeat) this.shoes = true;
       if (e.code === "KeyF" && !e.repeat) this.hit = true;
-      if (["KeyB", "KeyG"].includes(e.code) && !e.repeat) { this.banana = true; this.thrown = e.code === "KeyG"; }
       this.keys.add(e.code);
     }, { signal: this.abort.signal });
     window.addEventListener("keyup", (e) => this.keys.delete(e.code), { signal: this.abort.signal });
     window.addEventListener("blur", () => this.clear(), { signal: this.abort.signal });
   }
   clear() {
-    this.keys.clear(); this.jump = this.interaction = this.shoes = this.hit = this.banana = this.thrown = false;
+    this.keys.clear(); this.jump = this.interaction = this.shoes = this.hit = false;
   }
   dispose() { this.abort.abort(); this.enabled = false; this.clear(); }
   punch() { if (this.enabled) this.hit = true; }
@@ -47,11 +44,8 @@ export class LocalPlayer {
     this.shoes = false;
     this.input.hit = this.hit;
     this.hit = false;
-    this.input.banana = this.banana;
-    this.input.throwBanana = this.thrown;
     this.input.aim = this.enabled;
     this.input.facing = Math.atan2(-Math.sin(yaw), -Math.cos(yaw));
-    this.banana = false;
     return this.input;
   }
   takeInteraction() {

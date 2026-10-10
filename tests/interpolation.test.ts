@@ -12,7 +12,6 @@ test("remote interpolation follows the delayed timeline and shortest angle, hold
   const state: WorldState = {
     serverTime: 1000,
     vehicles: new Map(),
-    peels: new Map(),
     players: new Map([
       ["local", local],
       ["remote", remote],

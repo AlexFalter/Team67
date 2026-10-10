@@ -4,7 +4,6 @@ import { PerspectiveCamera, Vector3, Mesh, BoxGeometry, MeshBasicMaterial } from
 import * as C from "../packages/shared/src/index.ts";
 import { PlayerView } from "../apps/client/src/multiplayer/view.ts";
 import { keyboardMovement } from "../apps/client/src/multiplayer/localPlayer.ts";
-import { peelFlight } from "../apps/client/src/multiplayer/peels.ts";
 import { edgeTurn } from "../apps/client/src/multiplayer/gameControls.ts";
 
 test("first-person camera stays at eye height, looks freely and clamps vertical rotation", () => {
@@ -68,16 +67,10 @@ test("embedded-browser fallback turns at edges, not at the centre, and stays bou
   assert.deepEqual(edgeTurn(500, 400, 500, 400), { x: 1, y: 1 });
   assert.deepEqual(edgeTurn(0, 0, 500, 400), { x: -1, y: -1 });
 });
-test("looking changes hit/throw facing while stationary or strafing, without rotating movement", () => {
+test("looking changes hit facing while stationary or strafing, without rotating movement", () => {
   const p = C.createBody(), target = C.createBody(); target.x = 2;
   C.stepPlayer(p, { ...C.IDLE_INPUT, aim: true, facing: Math.PI / 2, hit: true }, 1 / 60);
   assert.ok(C.inHitCone(p, target)); assert.equal(p.x, 0);
   C.stepPlayer(p, { ...C.IDLE_INPUT, aim: true, facing: Math.PI / 2, z: -1 }, 1 / 60);
   assert.equal(p.rotY, Math.PI / 2); assert.ok(p.z < 0, "strafe does not change aim");
-});
-test("banana visuals evaluate the throw between network patches and stop at the landing", () => {
-  const p: C.PeelState = { x: 0, y: 0, z: 0, fromX: 0, fromZ: 0, toX: 4, toZ: 0, bornAt: 1000, landingAt: 1500, armedAt: 2000, expiresAt: 20000, owner: "player" };
-  assert.deepEqual(peelFlight(p, 1250), { x: 2, y: 1, z: 0 });
-  assert.ok(peelFlight(p, 1266).x > peelFlight(p, 1250).x, "trajectory advances with each rendered frame");
-  assert.deepEqual(peelFlight(p, 2000), { x: 4, y: 0, z: 0 });
 });

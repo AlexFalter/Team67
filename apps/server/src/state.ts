@@ -21,7 +21,6 @@ export const Player = schema(
     vehicleKind: t.int8().default(-1),
     shoes: t.boolean().default(false),
     attackReadyAt: t.number().default(0),
-    peelReadyAt: t.number().default(0),
   },
   "Player",
 );
@@ -50,18 +49,11 @@ export const Vehicle = schema(
   "Vehicle",
 );
 export type Vehicle = SchemaType<typeof Vehicle>;
-export const Peel = schema({
-  x: t.number().default(0), y: t.number().default(0), z: t.number().default(0),
-  fromX: t.number().default(0), fromZ: t.number().default(0), toX: t.number().default(0), toZ: t.number().default(0),
-  bornAt: t.number().default(0), landingAt: t.number().default(0), armedAt: t.number().default(0), expiresAt: t.number().default(0),
-  owner: t.string().default(""),
-}, "Peel");
 export const RaceState = schema(
   {
     serverTime: t.number().default(0),
     players: t.map(Player),
     vehicles: t.map(Vehicle),
-    peels: t.map(Peel),
   },
   "RaceState",
 );

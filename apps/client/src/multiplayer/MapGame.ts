@@ -6,7 +6,6 @@ import { RemotePlayers } from "./remotePlayers.ts";
 import { Vehicles } from "./vehicles.ts";
 import { Effects } from "./effects.ts";
 import { Hud } from "./hud.ts";
-import { Peels } from "./peels.ts";
 import { avatar, pose, disposeAvatar } from "./avatar.ts";
 import { PlayerView } from "./view.ts";
 import { GameControls } from "./gameControls.ts";
@@ -20,7 +19,6 @@ export class MapGame {
   private vehicles: Vehicles;
   private effects: Effects;
   private hud: Hud;
-  private peels: Peels;
   private view: PlayerView;
   private controls: GameControls;
   private closeLobby: () => void;
@@ -33,7 +31,6 @@ export class MapGame {
     this.vehicles = new Vehicles(scene, this.net, hints);
     this.effects = new Effects(scene);
     this.hud = new Hud(hud);
-    this.peels = new Peels(scene, zurichWorld);
     this.view = new PlayerView(camera, [map], zurichWorld);
     this.controls = new GameControls(canvas, this.local, this.view, () => this.net.initialized);
     Object.assign(this.local.body, zurichWorld.spawn);
@@ -55,7 +52,7 @@ export class MapGame {
   update(elapsed: number, now: number) {
     const dt = Math.min(0.1, elapsed), renderTime = this.net.now() - INTERP_DELAY_MS;
     if (this.net.initialized) {
-      this.net.frame(now, this.local.body, () => this.local.controls(this.view.yaw));
+      this.net.frame(dt, this.local.body, () => this.local.controls(this.view.yaw));
       if (this.local.takeInteraction()) this.vehicles.interact(this.local.body);
       if (this.local.body.vehicleId) this.vehicles.local(this.local.body, this.net.room.sessionId);
       else this.vehicles.stopDriving();
@@ -67,13 +64,12 @@ export class MapGame {
     }
     this.vehicles.render(renderTime, dt); this.remotes.render(renderTime, this.vehicles.items, dt);
     for (const [id, remote] of this.remotes.players) this.effects.trail(id, remote.rendered, now);
-    this.peels.render(this.net.room?.state, this.net.now());
     this.controls.update(dt); this.effects.update(renderTime, dt); this.hud.update(dt, this.net);
     this.vehicles.updateLabels(this.local.body, now);
   }
   dispose() {
     this.closeLobby(); this.controls.dispose(); this.local.dispose(); this.net.dispose();
-    this.effects.dispose(); this.vehicles.dispose(); this.remotes.dispose(); this.peels.dispose();
+    this.effects.dispose(); this.vehicles.dispose(); this.remotes.dispose();
     disposeAvatar(this.mesh); disposeAvatar(this.firstBody); this.canvas.removeAttribute("tabindex");
   }
 }

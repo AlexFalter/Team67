@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ATTACK_COOLDOWN_MS, PEEL_COOLDOWN_MS, type PlayerState } from "@race/shared";
+import { ATTACK_COOLDOWN_MS, type PlayerState } from "@race/shared";
 
 // Original articulated models: all outfits share geometry, joints and motion.
 export const CHARACTERS = ["CS Student", "Student Athlete", "Albert Einstein"];
@@ -110,7 +110,6 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0) 
   const sideways = (p.vx * Math.cos(p.rotY) - p.vz * Math.sin(p.rotY)) / Math.max(0.1, Math.hypot(p.vx, p.vz));
   const attack = Math.max(0, p.attackReadyAt - p.simTime - ATTACK_COOLDOWN_MS + 420) / 420;
   const punch = Math.sin(Math.min(1, attack) * Math.PI);
-  const throwing = Math.sin(Math.max(0, Math.min(1, (p.peelReadyAt - p.simTime - PEEL_COOLDOWN_MS + 420) / 420)) * Math.PI);
   mesh.position.set(p.x, p.y, p.z); mesh.rotation.set(0, p.rotY, 0);
   if (r.viewArms) r.viewArms.rotation.x = -pitch;
   r.torso.position.y = (riding ? 0.25 : 0.75) - r.fall * 0.47 - r.landing * 0.09 + Math.sin(r.phase * 2) * run * (1 - r.air) * 0.025;
@@ -121,7 +120,7 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0) 
     const gait = -swing * run * (1 - r.air) * (r.firstPerson ? 0.28 : 0.65);
     let upper = bike ? -0.95 : riding ? -0.8 : r.firstPerson ? (gait - 0.25 - run) * (1 - r.air) - r.air * 1.2 : gait - r.air * 0.65;
     let elbow = r.firstPerson ? -(0.25 + run * 1.05) * (1 - r.air) - r.air : -(0.25 + run * 0.75 + r.air * 0.45);
-    const action = i ? punch : throwing;
+    const action = i ? punch : 0;
     if (!down && !riding) { upper -= action * 1.5; elbow *= 1 - action; }
     arm.joint.rotation.x += (upper - arm.joint.rotation.x) * blend;
     arm.joint.rotation.z += ((i === 0 ? 1 : -1) * (-0.10 + r.fall * 0.55) - arm.joint.rotation.z) * blend;
