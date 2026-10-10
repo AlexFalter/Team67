@@ -8,7 +8,7 @@ export function mainNpcWorld(map, placements) {
  map.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh){let terrain=false;for(let p=o;p;p=p.parent)if(/^Ground(?:_|$)/i.test(p.name))terrain=true;(terrain?ground:buildings).push(o);}});
  const height=(x,z)=>C.zurichWorld.height(x,z);
  const blocked=(x,z)=>{const y=height(x,z);return y===undefined||C.zurichWorld.blocked(x,y,z,.25,C.CAPSULE_HEIGHT);};
- const world={data:{playableBounds:C.zurichWorld.bounds,encounterBounds:C.zurichWorld.bounds},
+ const world={data:{playableBounds:C.zurichWorld.bounds,encounterBounds:C.npcBounds(C.zurichWorld)},
   placements:{features:placements},height,ground:height,blocked,isWater:(x,z)=>height(x,z)===undefined,
   buildings,groundMesh:ground[0]??map,bodyBlocked:C.zurichWorld.blocked,bridgeAt:()=>false};
  const ray=new THREE.Raycaster(),up=new THREE.Vector3(0,1,0);

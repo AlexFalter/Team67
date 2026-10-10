@@ -77,6 +77,10 @@ export class VehicleManager {
         false,
         v.kind === 0 ? "This cart is occupied." : "The shuttle is full.",
       );
+    if (v.kind === C.POLYBAHN_KIND) {
+      const npc = this.state.npcs.get(client.sessionId);
+      if (npc) { npc.polybahnTicketed = npc.ticketCount > 0; if (npc.polybahnTicketed) npc.ticketCount--; }
+    }
     p.vehicleId = data as string;
     p.vehicleKind = v.kind;
     p.seat = seat;

@@ -29,6 +29,7 @@ export class Network {
   onBikeUnlockResult?: (result: import("@race/shared").BikeUnlockResult) => void;
   onMateResult?: (result: import("@race/shared").MateResult) => void;
   onNpcResult?: (result: import("@race/shared").NpcResult) => void;
+  onTicketResult?: (result: import('@race/shared').TicketResult) => void;
   npcPaused = false;
   now() {
     return Date.now() + this.offset;
@@ -87,6 +88,7 @@ export class Network {
     this.room.onMessage<import("@race/shared").BikeUnlockResult>("bikeUnlockResult", result => this.onBikeUnlockResult?.(result));
     this.room.onMessage<import("@race/shared").MateResult>("mateResult", result => this.onMateResult?.(result));
     this.room.onMessage<import("@race/shared").NpcResult>("npcResult", result => this.onNpcResult?.(result));
+    this.room.onMessage<import('@race/shared').TicketResult>('ticketResult', result => this.onTicketResult?.(result));
     this.room.onMessage<Bump>("bump", (hit) => {
       this.collisions++;
       onBump(hit);

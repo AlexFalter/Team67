@@ -8,6 +8,7 @@ import { RoundManager } from "./round.ts";
 import { PubliBikes } from "./publiBikes.ts";
 import { MateMachine } from "./mate.ts";
 import { NpcEncounters } from "./npcs.ts";
+import { TicketMachine } from './tickets.ts';
 // The prototype runs one server process. Reserve synchronously before async
 // physics initialization so two simultaneous creates cannot claim one code.
 const codes = new Set<string>();
@@ -41,6 +42,8 @@ export class Race extends Room<{ state: RaceState }> {
     this.publiBikes = this.createPubliBikes();
     this.mate = new MateMachine(this.state, this.world);
     this.npcs = this.createNpcs();
+    const tickets = new TicketMachine(this.state,this.world);
+    this.onMessage('ticket', (client, data: unknown) => tickets.command(client,data));
     const configuredDuration = Number(process.env.ROUND_DURATION_MS ?? C.ROUND_DURATION_MS);
     const duration = Number.isFinite(configuredDuration) && configuredDuration > 0 ? configuredDuration : C.ROUND_DURATION_MS;
     const introDuration = Number(process.env.BATTLE_BUS_INTRO_MS ?? C.BATTLE_BUS_DURATION_MS);
@@ -268,6 +271,6 @@ export class Race extends Room<{ state: RaceState }> {
       Object.assign(p, point, { vx: 0, vy: 0, vz: 0, grounded: true, anim: 0, simTime: Date.now() });
       this.lastMoves.set(id, p.simTime);
       this.clients.find(c => c.sessionId === id)?.send("playerCorrection", this.correction(p));
-    });
+    }, client => this.vehicles.exit(client));
   }
 }
