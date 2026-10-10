@@ -15,6 +15,7 @@ export class RoomFlow {
   private table = this.root.querySelector<HTMLTableElement>("#room-results")!;
   private timer = document.querySelector<HTMLElement>("#round-timer")!;
   private finish = document.querySelector<HTMLButtonElement>("#finish-round")!;
+  private countdownAnimation?: Animation;
   private signature = "";
   private abort = new AbortController();
   private prepared = false;
@@ -95,10 +96,24 @@ export class RoomFlow {
   update() {
     if (this.net.room?.state.phase === RoomPhase.Lobby && !this.prepared)
       this.message.textContent = this.preparationError || "Loading the battle bus before you can ready up…";
-    this.timer.hidden = !this.net.canPlay;
-    if (this.net.canPlay) {
-      const seconds = Math.max(0, Math.ceil((this.net.room.state.endsAt - this.net.now()) / 1000));
-      this.timer.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} remaining`;
+    const canPlay = this.net.canPlay;
+    this.timer.hidden = !canPlay;
+    const remaining = canPlay ? Math.max(0, this.net.room.state.endsAt - this.net.now()) : 0;
+    const finalCountdown = canPlay && remaining > 0 && remaining <= 10000;
+    this.timer.dataset.final = String(finalCountdown);
+    if (!finalCountdown) this.countdownAnimation?.cancel();
+    if (canPlay) {
+      const seconds = Math.ceil(remaining / 1000);
+      const text = finalCountdown ? String(seconds) : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} remaining`;
+      if (this.timer.textContent !== text) {
+        this.timer.textContent = text;
+        this.timer.setAttribute("aria-label", `${seconds} seconds remaining`);
+        if (finalCountdown && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          this.countdownAnimation?.cancel();
+          this.countdownAnimation = this.timer.animate([{ scale: "1.15", opacity: .65 }, { scale: "1", opacity: 1 }],
+            { duration: 240, easing: "ease-out" });
+        }
+      }
     }
     if (this.net.room && this.net.status.startsWith("Disconnected")) {
       this.root.hidden = false; this.title.textContent = "Disconnected";
@@ -106,5 +121,5 @@ export class RoomFlow {
       this.ready.hidden = this.restart.hidden = this.finish.hidden = true;
     }
   }
-  dispose() { this.abort.abort(); }
+  dispose() { this.abort.abort(); this.countdownAnimation?.cancel(); this.timer.hidden = true; }
 }
