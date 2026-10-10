@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Box3, Mesh, MeshStandardMaterial, PerspectiveCamera, Vector3 } from "three";
+import { Box3, Mesh, MeshStandardMaterial, PerspectiveCamera, Vector3, Raycaster } from "three";
 import { avatar, pose, disposeAvatar, CHARACTERS, gaitRate } from "../apps/client/src/multiplayer/avatar.ts";
+import { PlayerView } from "../apps/client/src/multiplayer/view.ts";
 import { createBody, ATTACK_COOLDOWN_MS } from "../packages/shared/src/index.ts";
 
 test("three original low-poly rigs animate locomotion, punches, falls and recovery without snapping", () => {
@@ -18,7 +19,11 @@ test("three original low-poly rigs animate locomotion, punches, falls and recove
     const leg = mesh.getObjectByName("left-leg")!, beforeJump = leg.rotation.x;
     pose(mesh, p); assert.ok(Math.abs(leg.rotation.x - beforeJump) < 0.25, "jump pose starts blended");
     for (let n = 0; n < 30; n++) pose(mesh, p);
-    assert.ok(Math.abs(leg.rotation.x + 0.35) < 0.01, "jump tucks legs");
+    assert.ok(leg.rotation.x < -0.15, "takeoff tucks legs");
+    const knee = mesh.getObjectByName("left-knee")!, tucked = knee.rotation.x;
+    p.vy = -8;
+    for (let n = 0; n < 30; n++) pose(mesh, p);
+    assert.ok(knee.rotation.x < tucked * 0.5, "falling extends legs in preparation for landing");
     p.grounded = true; p.anim = 0; pose(mesh, p);
     assert.ok(torso.position.y < 0.75, "landing compresses the rig");
     p.attackReadyAt = ATTACK_COOLDOWN_MS - 210;
@@ -47,8 +52,7 @@ test("first-person rigs reuse each outfit, hide the head, and show shoes when lo
     const shoe = mesh.getObjectByName("shoe")!; mesh.updateMatrixWorld(true);
     const projected = shoe.getWorldPosition(new Vector3()).project(camera);
     assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1 && projected.z < 1, "feet inside downward view");
-    p.shoes = true; pose(mesh, p);
-    assert.equal(((shoe as Mesh).material as MeshStandardMaterial).color.getHexString(), "86efad");
+    assert.equal(((shoe as Mesh).material as MeshStandardMaterial).color.getHexString(), "e8dfcb");
     disposeAvatar(mesh);
   }
 });
@@ -86,5 +90,61 @@ test("first-person elbows pump in opposition, track gaze, and blend to airborne/
   for (let n = 0; n < 15; n++) pose(mesh, p);
   assert.ok(right.rotation.x < -2, "punch reaches forward");
   assert.ok(gaitRate(11) / Math.PI < 4, "sprint stays below four alternating footfalls per second");
+  disposeAvatar(mesh);
+});
+
+test("original outfit meshes have chest, elbow, knee, wrist and ankle articulation; slide lowers into asymmetric legs", () => {
+  for (let character = 0; character < 3; character++) {
+    const mesh = avatar("#ffffff", character), p = createBody();
+    for (const name of ["chest", "left-elbow", "right-elbow", "left-knee", "right-knee", "left-wrist", "right-wrist", "left-ankle", "right-ankle"]) assert.ok(mesh.getObjectByName(name));
+    p.anim = 4; p.vz = 10;
+    for (let i = 0; i < 40; i++) pose(mesh, p);
+    assert.ok(mesh.getObjectByName("torso")!.position.y < 0.5);
+    assert.ok(mesh.getObjectByName("right-knee")!.rotation.x > 1.4);
+    assert.ok(mesh.getObjectByName("left-knee")!.rotation.x < 0.3);
+    disposeAvatar(mesh);
+  }
+});
+
+test("airborne legs alternate rather than freeze; first-person arms sway laterally", () => {
+  const mesh = avatar("#ffffff"), p = createBody(); p.grounded = false; p.vy = 4;
+  const angles = new Set<number>();
+  for (let i = 0; i < 60; i++) { pose(mesh, p); angles.add(mesh.getObjectByName("left-leg")!.rotation.x); }
+  assert.ok(Math.max(...angles) - Math.min(...angles) > 0.6);
+  const first = avatar("#ffffff", 0, true); p.grounded = true; p.vz = 11;
+  const offsets = new Set<number>();
+  for (let i = 0; i < 120; i++) { pose(first, p); offsets.add(first.getObjectByName("left-arm")!.position.x); }
+  assert.ok(Math.max(...offsets) - Math.min(...offsets) > 0.09);
+  disposeAvatar(first); disposeAvatar(mesh);
+});
+
+
+test("downward first-person shoes are inside the screen and not occluded by the torso at narrow and wide aspects", () => {
+  for (const aspect of [0.69, 1, 16 / 9]) {
+    const mesh = avatar("#ffffff", 0, true), p = createBody(); p.rotY = Math.PI;
+    const camera = new PerspectiveCamera(82, aspect, 0.05, 100), view = new PlayerView(camera, []); view.pitch = -1.3;
+    for (let i = 0; i < 60; i++) { view.update(p, 1 / 60); pose(mesh, p, 1 / 60, view.pitch, camera); }
+    mesh.updateMatrixWorld(true); camera.updateMatrixWorld(true);
+    mesh.traverse(child => {
+      if (child.name !== "shoe") return;
+      const position = child.getWorldPosition(new Vector3()), screen = position.clone().project(camera);
+      assert.ok(Math.abs(screen.x) < 1 && Math.abs(screen.y) < 1 && screen.z < 1);
+      const ray = new Raycaster(camera.position, position.sub(camera.position).normalize());
+      assert.equal(ray.intersectObject(mesh, true)[0]?.object, child, "torso does not hide a projected shoe");
+    });
+    disposeAvatar(mesh);
+  }
+});
+
+test("first-person slide shows its leading shoe at neutral gaze after the camera settles", () => {
+  const mesh = avatar("#ffffff", 0, true), p = createBody(); p.anim = 4; p.vz = 11;
+  const camera = new PerspectiveCamera(82, 16 / 9, 0.05, 100), view = new PlayerView(camera, []); view.yaw = Math.PI;
+  for (let i = 0; i < 40; i++) { view.update(p, 1 / 60); pose(mesh, p, 1 / 60, 0, camera); }
+  mesh.updateMatrixWorld(true); camera.updateMatrixWorld(true);
+  const shoe = mesh.getObjectByName("shoe")!, position = shoe.getWorldPosition(new Vector3());
+  const screen = position.clone().project(camera);
+  assert.ok(Math.abs(screen.x) < 1 && screen.y > -1 && screen.y < -0.5 && screen.z < 1, "leading foot is in the lower view");
+  const ray = new Raycaster(camera.position, position.sub(camera.position).normalize());
+  assert.equal(ray.intersectObject(mesh, true)[0]?.object, shoe, "body does not cover the foot");
   disposeAvatar(mesh);
 });

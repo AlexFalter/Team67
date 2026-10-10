@@ -17,7 +17,6 @@ export interface PlayerState {
   knockdownUntil: number;
   simTime: number;
   vehicleKind: number;
-  shoes: boolean;
   attackReadyAt: number;
   mateCount: number;
   mateBoostMs: number;
@@ -106,12 +105,18 @@ export interface Input {
   z: number;
   sprint: boolean;
   jump: boolean;
-  toggleShoes?: boolean;
+  slide?: boolean;
   hit?: boolean;
   aim?: boolean;
   facing?: number;
 }
 export interface Body extends PlayerState {
+  jumpReadyAt?: number;
+  jumpFatigue?: number;
+  jumpSprintLocked?: boolean;
+  sprintJump?: boolean;
+  slideUntil?: number;
+  slideReadyAt?: number;
 }
 
 // Main's compact client-owned movement reports, with feature gameplay metadata

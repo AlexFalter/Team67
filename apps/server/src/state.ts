@@ -32,7 +32,6 @@ export const Player = schema(
     knockdownUntil: t.number().default(0),
     simTime: t.number().default(0),
     vehicleKind: t.int8().default(-1),
-    shoes: t.boolean().default(false),
     attackReadyAt: t.number().default(0),
     mateCount: t.uint8().default(0),
     mateBoostMs: t.number().default(0),

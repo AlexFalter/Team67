@@ -1,18 +1,63 @@
 import * as THREE from "three";
-import type { Bump, PlayerState } from "@race/shared";
+import { SLIDE_ANIM, SLIDE_MIN_SPEED, type Body, type Bump, type PlayerState } from "@race/shared";
 interface Particle {
   mesh: THREE.Mesh;
   velocity: THREE.Vector3;
   age: number;
+  gravity?: number;
 }
+// Twelve faint, short-lived streaks at the edge of the owning view.
+// Shared geometry/material avoid allocating a particle every animation frame.
+export class SpeedParticles {
+  readonly mesh: THREE.LineSegments;
+  private positions = new Float32Array(12 * 6);
+  private phase = 0;
+  constructor(scene: THREE.Scene) {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(this.positions, 3));
+    this.mesh = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({
+      color: "#d4e7dc", transparent: true, opacity: 0.32, depthWrite: false, depthTest: false,
+    }));
+    this.mesh.name = "first-person-speed-particles";
+    this.mesh.renderOrder = 10;
+    this.mesh.visible = false; this.mesh.frustumCulled = false; scene.add(this.mesh);
+  }
+  update(p: Body, camera: THREE.PerspectiveCamera, dt: number, enabled: boolean) {
+    this.mesh.visible = enabled && !p.vehicleId && p.anim !== 3 && p.knockdownUntil <= p.simTime &&
+      (p.anim === SLIDE_ANIM || (!p.grounded && p.anim === 2 && p.sprintJump === true));
+    if (!this.mesh.visible) { this.phase = 0; return; }
+    this.phase += dt * 5;
+    this.mesh.position.copy(camera.position); this.mesh.quaternion.copy(camera.quaternion);
+    const spread = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    for (let i = 0; i < 12; i++) {
+      const age = (this.phase + i * 0.618) % 1;
+      const depth = 1.8 - age * 1.2;
+      const side = i % 2 ? -1 : 1, height = ((i * 0.37) % 1 - 0.5) * 1.5;
+      const jump = p.anim === 2;
+      const x = side * (0.76 + age * 0.10 + (i % 3) * 0.025) * spread * camera.aspect;
+      const y = (jump ? -0.8 + age * 1.6 : height) * spread;
+      if (jump) {
+        // Rise vertically at the view edges instead of radial slide streaks.
+        this.positions.set([x * depth, y * depth, -depth, x * depth, (y + 0.12 * spread) * depth, -depth], i * 6);
+        continue;
+      }
+      this.positions.set([x * depth, y * depth, -depth, x * (depth + 0.06), y * (depth + 0.06), -depth - 0.26], i * 6);
+    }
+    this.mesh.geometry.attributes.position.needsUpdate = true;
+  }
+  dispose() { this.mesh.removeFromParent(); this.mesh.geometry.dispose(); (this.mesh.material as THREE.Material).dispose(); }
+}
+
 export class Effects {
   private queue: Bump[] = [];
+  private speedParticles: SpeedParticles;
   private particles: Particle[] = [];
   private audio?: AudioContext;
-  private motion = new Map<string, { grounded: boolean; nextDust: number; seen: number }>();
+  private motion = new Map<string, { grounded: boolean; sprintJump: boolean; nextDust: number; seen: number }>();
   private geometry = new THREE.SphereGeometry(0.07, 6, 4);
   private abort = new AbortController();
   constructor(private scene: THREE.Scene) {
+    this.speedParticles = new SpeedParticles(scene);
     const resume = () => {
       this.audio ??= new AudioContext();
       void this.audio.resume();
@@ -22,25 +67,31 @@ export class Effects {
     });
     window.addEventListener("keydown", resume, { signal: this.abort.signal });
   }
+  speed(p: Body, camera: THREE.PerspectiveCamera, dt: number, enabled: boolean) {
+    this.speedParticles.update(p, camera, dt, enabled);
+  }
   enqueue(b: Bump) {
     this.queue.push(b);
     this.queue.sort((a, b) => a.t - b.t);
   }
   trail(id: string, p: PlayerState, now: number) {
     let last = this.motion.get(id);
-    if (!last) { last = { grounded: p.grounded, nextDust: now, seen: now }; this.motion.set(id, last); }
+    if (!last) { last = { grounded: p.grounded, sprintJump: false, nextDust: now, seen: now }; this.motion.set(id, last); }
     const landing = !last.grounded && p.grounded;
-    const takeoff = last.grounded && !p.grounded && p.vy > 2;
-    const sprint = p.grounded && Math.hypot(p.vx, p.vz) > 7 && now > last.nextDust;
-    if (!p.vehicleId && p.anim !== 3 && (landing || takeoff || sprint)) {
+    const takeoff = last.grounded && !p.grounded && p.vy > 2 &&
+      ((p as Body).sprintJump ?? Math.hypot(p.vx, p.vz) >= SLIDE_MIN_SPEED);
+    if (takeoff) last.sprintJump = true;
+    const slide = p.grounded && p.anim === SLIDE_ANIM && now > last.nextDust;
+    if (!p.vehicleId && p.anim !== 3 && ((landing && last.sprintJump) || takeoff || slide)) {
       last.nextDust = now + 90;
-      for (let i = 0; i < (sprint ? 2 : 7) && this.particles.length < 400; i++) {
-        const mesh = new THREE.Mesh(this.geometry, new THREE.MeshBasicMaterial({ color: p.shoes ? "#91e5b9" : "#d1d9bc", transparent: true, opacity: 0.55, depthWrite: false }));
+      for (let i = 0; i < (slide ? 3 : 9) && this.particles.length < 400; i++) {
+        const mesh = new THREE.Mesh(this.geometry, new THREE.MeshBasicMaterial({ color: "#d1d9bc", transparent: true, opacity: 0.55, depthWrite: false }));
         mesh.position.set(p.x + (Math.random() - 0.5) * 0.35, p.y + 0.08, p.z + (Math.random() - 0.5) * 0.35);
-        mesh.scale.setScalar(sprint ? 0.8 : 1.2); this.scene.add(mesh);
-        this.particles.push({ mesh, age: 0, velocity: new THREE.Vector3((Math.random() - 0.5) * 2 - p.vx * 0.08, 1.5 + Math.random(), (Math.random() - 0.5) * 2 - p.vz * 0.08) });
+        mesh.scale.setScalar(slide ? 0.8 : 1.0); this.scene.add(mesh);
+        this.particles.push({ mesh, age: 0, gravity: takeoff ? 6 : 12, velocity: new THREE.Vector3((Math.random() - 0.5) * 2 - p.vx * 0.08, takeoff ? 3 + Math.random() * 2 : slide ? 0.3 + Math.random() * 0.4 : 1.5 + Math.random(), (Math.random() - 0.5) * 2 - p.vz * 0.08) });
       }
     }
+    if (p.grounded) last.sprintJump = false;
     last.grounded = p.grounded; last.seen = now;
   }
   update(renderTime: number, dt: number) {
@@ -57,7 +108,7 @@ export class Effects {
         continue;
       }
       p.mesh.position.addScaledVector(p.velocity, dt);
-      p.velocity.y -= 12 * dt;
+      p.velocity.y -= (p.gravity ?? 12) * dt;
       (p.mesh.material as THREE.MeshBasicMaterial).opacity = 1 - p.age / 0.4;
     }
   }
@@ -113,6 +164,7 @@ export class Effects {
     }
     this.particles = [];
     this.geometry.dispose();
+    this.speedParticles.dispose();
     if (this.audio) void this.audio.close();
   }
 }

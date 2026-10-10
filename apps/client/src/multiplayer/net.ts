@@ -129,14 +129,13 @@ export class Network {
     body.simTime = this.now() - remaining * 1000;
     while (remaining > 0) {
       const step = Math.min(remaining, 1 / 60);
-      impact = Math.max(impact, stepPlayer(body, first ? cmd : { ...cmd, jump: false, toggleShoes: false, hit: false }, step, zurichWorld) ?? 0);
+      impact = Math.max(impact, stepPlayer(body, first ? cmd : { ...cmd, slide: false, jump: false, hit: false }, step, zurichWorld) ?? 0);
       first = false; remaining -= step;
     }
     // Report pose before actions so the server uses the current facing/position.
-    if (cmd.hit || cmd.toggleShoes || impact >= CART_MIN_HIT_SPEED) {
+    if (cmd.hit || impact >= CART_MIN_HIT_SPEED) {
       if (body.vehicleId) this.room.send("vehicleMove", [body.vehicleId, body.x, body.z, body.rotY, body.vx, body.vz]);
       else this.room.send("move", packMove(body));
-      if (cmd.toggleShoes) this.room.send("toggleShoes");
       if (cmd.hit) this.room.send("hit");
       if (body.vehicleKind === 2 && impact >= CART_MIN_HIT_SPEED) this.room.send("bikeCrash");
     }

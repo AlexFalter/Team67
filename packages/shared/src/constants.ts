@@ -10,11 +10,21 @@ export const INTERP_DELAY_MS = 100,
   GRAVITY = -25;
 export const KNOCKDOWN_DURATION_MS = 700,
   PAIR_COOLDOWN_MS = 300;
-export const ACCELERATION = 12,
-  FRICTION = 22,
-  AIR_ACCELERATION = 4,
+// Horizontal acceleration/deceleration in m/s²; drag and lateral grip in s⁻¹.
+export const ACCELERATION = 40,
+  BRAKING_DECELERATION = 45,
+  REVERSAL_ACCELERATION = 90,
+  OVERSPEED_DECELERATION = 14,
+  FRICTION = 4,
+  GROUND_GRIP = 9,
+  AIR_ACCELERATION = 9,
   COYOTE_MS = 90,
   JUMP_BUFFER_MS = 120,
+  JUMP_COOLDOWN_MS = 150,
+  JUMP_FATIGUE_PER_JUMP = 0.25,
+  JUMP_FATIGUE_MIN_POWER = 0.55,
+  JUMP_FATIGUE_WALK_THRESHOLD = 0.75,
+  JUMP_FATIGUE_RECOVERY_MS = 500,
   RESPAWN_DEPTH = -10;
 
 export const VEHICLE_BOARD_DISTANCE = 3.2,
@@ -38,7 +48,6 @@ export const CART_SPAWNS = [
   { x: 0, z: -5 },
 ];
 export const BIKE_SPEED = 12, BIKE_HIT_STRENGTH = 0.65;
-export const SHOE_SPEED_MULTIPLIER = 1.5, SHOE_JUMP_MULTIPLIER = 1.35;
 export const ATTACK_RANGE = 2.4, ATTACK_HALF_ANGLE = Math.PI / 4,
   ATTACK_COOLDOWN_MS = 1500, ATTACK_KNOCKDOWN_MS = 5000;
 export const SHUTTLE_STOPS = [
@@ -50,5 +59,10 @@ export const SPAWN_SPREAD = 8;
 
 export const CLIENT_SEND_RATE = 20, MAX_POSITION = 100, MAX_VERTICAL_SPEED = 50;
 // Include boosted running, airborne momentum, and collision impulses.
-export const MAX_HORIZONTAL_SPEED = 2 * SPRINT_SPEED * SHOE_SPEED_MULTIPLIER;
+export const MAX_HORIZONTAL_SPEED = 3 * SPRINT_SPEED;
 export const VEHICLE_STALE_MS = 500;
+
+// A brief grounded sprint slide; keep the normal collision clearance so
+// standing up cannot trap a player beneath the coarse terrain mask.
+export const SLIDE_ANIM = 4, SLIDE_DURATION_MS = 750, SLIDE_COOLDOWN_MS = 400,
+  SLIDE_MIN_SPEED = 9, SLIDE_FRICTION = 0.8;

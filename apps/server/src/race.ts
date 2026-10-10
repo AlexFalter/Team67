@@ -66,10 +66,6 @@ export class Race extends Room<{ state: RaceState }> {
       const t = (data as C.Ping)?.clientTime;
       if (Number.isFinite(t)) client.send("pong", { clientTime: t, serverTime: Date.now() });
     });
-    this.onMessage("toggleShoes", client => {
-      const p = this.state.players.get(client.sessionId);
-      if (p && this.rounds.canPlay(client.sessionId)) p.shoes = !p.shoes;
-    });
     this.onMessage("hit", client => this.attack(client));
     this.onMessage("bikeCrash", client => {
       const p = this.state.players.get(client.sessionId), v = p && this.state.vehicles.get(p.vehicleId);
@@ -210,9 +206,11 @@ export class Race extends Room<{ state: RaceState }> {
     p.vx = clamp(data[4], C.MAX_HORIZONTAL_SPEED);
     p.vy = clamp(data[5], C.MAX_VERTICAL_SPEED);
     p.vz = clamp(data[6], C.MAX_HORIZONTAL_SPEED);
-    p.anim = now < p.knockdownUntil ? 3 : Math.max(0, Math.min(3, Math.floor(data[7])));
+    p.anim = now < p.knockdownUntil ? 3 : Math.max(0, Math.min(C.SLIDE_ANIM, Math.floor(data[7])));
     p.simTime = now;
     p.grounded = Math.abs(p.y - (this.world.height(p.x, p.z) ?? Infinity)) < 0.1 && p.vy <= 0;
+    if (p.anim === C.SLIDE_ANIM && (!p.grounded || Math.hypot(p.vx, p.vz) < 1))
+      p.anim = p.grounded ? 0 : 2;
     this.lastMoves.set(client.sessionId, now);
   }
   private attack(client: Client) {

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ATTACK_COOLDOWN_MS, TRAM_KIND, POLYBAHN_KIND, type PlayerState } from "@race/shared";
+import { ATTACK_COOLDOWN_MS, SLIDE_ANIM, TRAM_KIND, POLYBAHN_KIND, type PlayerState } from "@race/shared";
 
 // The seated owner can turn through their torso; show the body in third person
 // and to other players, while keeping the owning rail camera clear.
@@ -12,15 +12,15 @@ export const CHARACTERS = ["CS Student", "Student Athlete", "Albert Einstein"];
 const cube = new THREE.BoxGeometry(1, 1, 1), facet = new THREE.DodecahedronGeometry(1, 0);
 const tapered = new THREE.CylinderGeometry(0.5, 0.42, 1, 8);
 const shoeShape = new THREE.CapsuleGeometry(0.5, 0.45, 1, 6).rotateX(Math.PI / 2);
-interface Limb { joint: THREE.Group; bend: THREE.Group; foot?: THREE.Mesh }
+interface Limb { joint: THREE.Group; bend: THREE.Group; tip: THREE.Group; foot?: THREE.Mesh }
 interface Rig {
-  torso: THREE.Group; head: THREE.Group; arms: Limb[]; legs: Limb[];
+  torso: THREE.Group; chest: THREE.Group; head: THREE.Group; arms: Limb[]; legs: Limb[];
   viewArms?: THREE.Group;
-  phase: number; fall: number; speed: number; grounded: boolean; landing: number; air: number; firstPerson: boolean;
+  phase: number; fall: number; speed: number; grounded: boolean; landing: number; air: number; firstPerson: boolean; slide: number; airPhase: number;
 }
 const rigs = new WeakMap<THREE.Group, Rig>();
 export function avatar(color: string, character = 0, firstPerson = false) {
-  const root = new THREE.Group(), torso = new THREE.Group(), head = new THREE.Group();
+  const root = new THREE.Group(), torso = new THREE.Group(), chest = new THREE.Group(), head = new THREE.Group();
   root.name = CHARACTERS[character] ?? CHARACTERS[0];
   torso.name = "torso"; head.name = "head";
   root.add(torso); torso.position.y = 0.75;
@@ -75,71 +75,107 @@ export function avatar(color: string, character = 0, firstPerson = false) {
     }
   }
   const limb = (x: number, y: number, length: number, width: number, upper: string, lower: string, leg = false): Limb => {
-    const joint = new THREE.Group(), bend = new THREE.Group();
+    const joint = new THREE.Group(), bend = new THREE.Group(), tip = new THREE.Group();
     joint.position.set(x, y, 0); torso.add(joint);
     part(joint, [width, length, width], [0, -length / 2, 0], upper, false, tapered);
     bend.position.y = -length; joint.add(bend);
     part(bend, [width * 0.85, length * 0.9, width * 0.9], [0, -length * 0.45, 0], lower, false, tapered);
-    const foot = part(bend, leg ? [0.19, 0.11, 0.22] : [0.055, 0.065, 0.065], [0, -length * 0.95, leg ? 0.07 : 0], leg ? "#e8dfcb" : skin, !leg, leg ? shoeShape : facet);
+    tip.position.y = -length * 0.95; bend.add(tip);
+    const foot = part(tip, leg ? [0.19, 0.11, 0.22] : [0.055, 0.065, 0.065], [0, 0, leg ? 0.07 : 0], leg ? "#e8dfcb" : skin, !leg, leg ? shoeShape : facet);
     foot.name = leg ? "shoe" : "hand";
-    return { joint, bend, foot: leg ? foot : undefined };
+    return { joint, bend, tip, foot: leg ? foot : undefined };
   };
   const arms = [1, -1].map(side => limb(side * (firstPerson ? 0.25 : athlete ? 0.35 : 0.30), firstPerson ? 0.56 : 0.50, 0.24, 0.14, athlete ? "#f1e4ce" : shirt, skin));
   const legs = [1, -1].map(side => limb(side * 0.13, 0, 0.33, 0.17, pants, athlete ? skin : pants, true));
-  [arms, legs].forEach((pair, i) => pair.forEach((limb, side) => { limb.joint.name = `${side ? "right" : "left"}-${i ? "leg" : "arm"}`; }));
+  [arms, legs].forEach((pair, i) => pair.forEach((limb, side) => {
+    const name = side ? "right" : "left";
+    limb.joint.name = `${name}-${i ? "leg" : "arm"}`;
+    limb.bend.name = `${name}-${i ? "knee" : "elbow"}`;
+    limb.tip.name = `${name}-${i ? "ankle" : "wrist"}`;
+  }));
+  // Split at the waist without changing any of the original mesh pieces.
+  chest.name = "chest"; torso.add(chest);
+  for (const child of [...torso.children]) {
+    if (child === head || arms.some(arm => arm.joint === child) ||
+      (child instanceof THREE.Mesh && child.position.y > 0.1)) chest.add(child);
+  }
   let viewArms: THREE.Group | undefined;
   if (firstPerson) {
     // Keep legs in the world; arms follow gaze without a chest filling the screen.
-    torso.children.forEach(child => { if (child instanceof THREE.Mesh) child.visible = false; });
-    viewArms = new THREE.Group(); viewArms.position.set(0, 1.6, 0.15); root.add(viewArms);
-    for (const arm of arms) { arm.joint.position.y -= 0.85; arm.joint.position.z = -0.03; viewArms.add(arm.joint); }
+    // The torso and feet remain visible below the eyes; only the head is hidden.
+    viewArms = new THREE.Group(); viewArms.name = "view-arms"; viewArms.position.set(0, 1.6, 0.15); root.add(viewArms);
+    for (const arm of arms) { arm.joint.position.set(arm.joint.position.x < 0 ? -0.34 : 0.34, -0.32, 0.12); viewArms.add(arm.joint); }
   }
-  rigs.set(root, { torso, head, arms, legs, viewArms, phase: 0, fall: 0, speed: 0, grounded: true, landing: 0, air: 0, firstPerson });
+  rigs.set(root, { torso, chest, head, arms, legs, viewArms, slide: 0, airPhase: 0, phase: 0, fall: 0, speed: 0, grounded: true, landing: 0, air: 0, firstPerson });
   return root;
 }
 
 // Roughly 3–4 alternating footfalls per second, not six tiny sprint steps.
 export function gaitRate(speed: number) { return Math.PI * 2 * (1.15 + Math.min(speed, 16.5) * 0.055) * Math.min(1, speed / 2); }
-export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0) {
+export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, camera?: THREE.PerspectiveCamera) {
   const r = rigs.get(mesh)!;
   const blend = 1 - Math.exp(-14 * Math.min(dt, 0.1));
   const down = p.anim === 3 || p.knockdownUntil > p.simTime;
+  const sliding = p.anim === SLIDE_ANIM && !down;
+  r.slide += ((sliding ? 1 : 0) - r.slide) * blend;
   const riding = !!p.vehicleId, bike = riding && p.vehicleKind === 2;
   r.speed += ((down || riding ? 0 : Math.hypot(p.vx, p.vz)) - r.speed) * blend;
-  if (p.grounded || bike) r.phase += (bike ? Math.hypot(p.vx, p.vz) * 2 : gaitRate(r.speed)) * dt;
+  if ((p.grounded && !sliding) || bike) r.phase += (bike ? Math.hypot(p.vx, p.vz) * 2 : gaitRate(r.speed)) * dt;
   r.fall += ((down ? 1 : 0) - r.fall) * (1 - Math.exp(-(down ? 9 : 5) * dt));
   if (p.grounded && !r.grounded && !down && !riding) r.landing = 1;
   r.grounded = p.grounded; r.landing *= Math.exp(-10 * dt);
   const run = Math.min(1, r.speed / 9), airborne = !p.grounded && !riding && !down;
   r.air += ((airborne ? 1 : 0) - r.air) * blend;
+  if (airborne) r.airPhase += dt * 10; else r.airPhase = 0;
+  const rise = THREE.MathUtils.clamp(p.vy / 8, 0, 1), descend = THREE.MathUtils.clamp(-p.vy / 8, 0, 1);
+  const stride = run * (1 - r.air) * (1 - r.slide);
   const forward = (p.vx * Math.sin(p.rotY) + p.vz * Math.cos(p.rotY)) / Math.max(0.1, Math.hypot(p.vx, p.vz));
   const sideways = (p.vx * Math.cos(p.rotY) - p.vz * Math.sin(p.rotY)) / Math.max(0.1, Math.hypot(p.vx, p.vz));
   const attack = Math.max(0, p.attackReadyAt - p.simTime - ATTACK_COOLDOWN_MS + 420) / 420;
   const punch = Math.sin(Math.min(1, attack) * Math.PI);
   mesh.position.set(p.x, p.y, p.z); mesh.rotation.set(0, p.rotY, 0);
-  if (r.viewArms) r.viewArms.rotation.x = -pitch;
-  r.torso.position.y = (riding ? 0.25 : 0.75) - r.fall * 0.47 - r.landing * 0.09 + Math.sin(r.phase * 2) * run * (1 - r.air) * 0.025;
-  r.torso.rotation.set(-r.fall * 1.52 + run * forward * 0.12 + (bike ? 0.25 : 0), 0, Math.cos(r.phase) * run * (1 - r.air) * 0.025);
+  if (r.viewArms) {
+    r.viewArms.rotation.x = -(camera?.rotation.x ?? pitch);
+    if (camera) {
+      mesh.updateMatrixWorld(true);
+      r.viewArms.position.copy(camera.position);
+      mesh.worldToLocal(r.viewArms.position);
+    } else r.viewArms.position.set(0, 1.6 - r.slide * 0.78, 0.15);
+  }
+  r.torso.position.y = (riding ? 0.25 : 0.75) - r.fall * 0.47 - r.slide * 0.49 - r.landing * 0.09 + Math.sin(r.phase * 2) * stride * 0.025;
+  r.torso.rotation.set(-r.fall * 1.52 + stride * forward * 0.14 - r.slide * 0.42 + (bike ? 0.25 : 0), 0, Math.cos(r.phase) * stride * 0.025);
+  r.chest.rotation.set(r.air * rise * 0.07 + r.landing * 0.12, Math.sin(r.phase) * stride * 0.06, 0);
   r.head.rotation.set(0, punch * -0.15, Math.sin(p.simTime / 1100) * 0.018);
   r.arms.forEach((arm, i) => {
     const swing = Math.sin(r.phase + i * Math.PI);
-    const gait = -swing * run * (1 - r.air) * (r.firstPerson ? 0.28 : 0.65);
-    let upper = bike ? -0.95 : riding ? -0.8 : r.firstPerson ? (gait - 0.25 - run) * (1 - r.air) - r.air * 1.2 : gait - r.air * 0.65;
-    let elbow = r.firstPerson ? -(0.25 + run * 1.05) * (1 - r.air) - r.air : -(0.25 + run * 0.75 + r.air * 0.45);
+    const gait = -swing * stride * (r.firstPerson ? 0.16 : 0.72);
+    let upper = bike ? -0.95 : riding ? -0.8 : r.firstPerson ? gait - 0.62 - run * 0.22 - r.air * rise * 0.20 : gait - r.air * (0.25 + rise * 0.55 - descend * 0.15);
+    let elbow = r.firstPerson ? -(0.85 + run * 0.25 + swing * stride * 0.12) : -(0.20 + run * 0.85 + Math.max(0, swing) * stride * 0.25 + r.air * rise * 0.4);
+    upper = upper * (1 - r.slide) + (r.firstPerson ? -0.55 : -0.4) * r.slide;
+    elbow = elbow * (1 - r.slide) - r.slide * 0.85;
+    if (r.firstPerson) {
+      const side = i ? -1 : 1;
+      const spread = camera ? THREE.MathUtils.clamp(camera.aspect, 0.65, 1.6) : 1;
+      arm.joint.position.x = side * (0.43 + Math.sin(r.phase + i * Math.PI) * stride * 0.055) * spread;
+      arm.joint.position.y = -0.40;
+      arm.joint.rotation.y = side * Math.sin(r.phase + i * Math.PI) * stride * 0.16;
+    }
     const action = i ? punch : 0;
     if (!down && !riding) { upper -= action * 1.5; elbow *= 1 - action; }
     arm.joint.rotation.x += (upper - arm.joint.rotation.x) * blend;
-    arm.joint.rotation.z += ((i === 0 ? 1 : -1) * (-0.10 + r.fall * 0.55) - arm.joint.rotation.z) * blend;
+    arm.joint.rotation.z += ((i === 0 ? 1 : -1) * (-0.10 + r.fall * 0.55 - (r.firstPerson ? 0.12 + Math.cos(r.phase + i * Math.PI) * stride * 0.08 : 0)) - arm.joint.rotation.z) * blend;
     arm.bend.rotation.x += (elbow - arm.bend.rotation.x) * blend;
+    arm.tip.rotation.x += ((-0.08 - stride * 0.12) - arm.tip.rotation.x) * blend;
   });
   r.legs.forEach((leg, i) => {
     const swing = Math.sin(r.phase + i * Math.PI);
-    const upper = bike ? -0.8 + swing * 0.35 : riding ? -1.35 : swing * run * forward * 0.75 * (1 - r.air) - r.air * (0.35 + i * 0.25);
-    const knee = bike ? 1.2 - swing * 0.45 : riding ? 1.3 : Math.max(0, -swing * forward) * run * 1.1 * (1 - r.air) + r.air * 0.65 + r.landing * 0.35;
+    const flail = Math.sin(r.airPhase + i * Math.PI) * r.air * (0.40 + rise * 0.35);
+    const upper = bike ? -0.8 + swing * 0.35 : riding ? -1.35 : swing * stride * forward * 0.85 - r.air * ((0.22 + i * 0.20) * rise + 0.08 * descend) - r.slide * (i ? 1.5 : 0.98) + flail;
+    const knee = bike ? 1.2 - swing * 0.45 : riding ? 1.3 : Math.pow(Math.max(0, -swing * forward), 1.5) * stride * 1.55 + r.air * (0.20 + rise * 0.75 - descend * 0.12) + r.landing * 0.45 + r.slide * (i ? 1.6 : 0.18) + Math.max(0, -flail) * 1.4;
     leg.joint.rotation.x += (upper - leg.joint.rotation.x) * blend;
-    leg.joint.rotation.z += (swing * run * sideways * 0.3 * (1 - r.air) - leg.joint.rotation.z) * blend;
+    leg.joint.rotation.z += (swing * stride * sideways * 0.3 - leg.joint.rotation.z) * blend;
     leg.bend.rotation.x += (knee - leg.bend.rotation.x) * blend;
-    (leg.foot!.material as THREE.MeshStandardMaterial).color.set(p.shoes ? "#86efad" : "#e8dfcb");
+    leg.tip.rotation.x += ((-knee * 0.3 + Math.max(0, swing * forward) * stride * 0.22) - leg.tip.rotation.x) * blend;
   });
 }
 export function disposeAvatar(mesh: THREE.Group) {

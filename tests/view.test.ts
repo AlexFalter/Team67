@@ -97,6 +97,34 @@ test("looking changes hit facing while stationary or strafing, without rotating 
   assert.equal(p.rotY, Math.PI / 2); assert.ok(p.z < 0, "strafe does not change aim");
 });
 
+test("rail head offsets stay fixed during mouse look and on-foot slide/gaze offsets return after exiting", () => {
+  const camera = new PerspectiveCamera(82), view = new PlayerView(camera, []), p = C.createBody();
+  p.vehicleId = "polybahn-1"; p.vehicleKind = C.POLYBAHN_KIND; p.rotY = 0.4;
+  for (let i = 0; i < 60; i++) view.update(p, 1 / 60, { rotY: 0.4, pitch: -0.2 });
+  const seat = camera.position.clone();
+  view.look(400, 400);
+  view.update(p, 1 / 60, { rotY: 0.4, pitch: -0.2 });
+  assert.ok(camera.position.distanceTo(seat) < 0.0001, "seated look rotates at the head without orbiting into windows");
+  p.vehicleId = ""; p.vehicleKind = -1; p.anim = C.SLIDE_ANIM;
+  view.yaw = 0; view.pitch = -1.3;
+  for (let i = 0; i < 90; i++) view.update(p, 1 / 60);
+  assert.ok(Math.abs(camera.position.y - 0.82) < 0.001);
+  assert.ok(camera.position.z < -0.25, "on-foot downward gaze clears the torso again");
+  assert.ok(camera.rotation.x < view.pitch - 0.19, "slide camera tilt returns after leaving the rail seat");
+});
+
+test("slide smoothly lowers the eyes and looking down reveals torso and shoes without entering the chest", () => {
+  const camera = new PerspectiveCamera(82), view = new PlayerView(camera, []), p = C.createBody();
+  p.anim = C.SLIDE_ANIM; p.vz = 10; view.update(p, 1 / 60);
+  assert.ok(camera.position.y > 1.3);
+  for (let i = 0; i < 60; i++) view.update(p, 1 / 60);
+  assert.ok(Math.abs(camera.position.y - 0.82) < 0.01);
+  p.anim = 0; p.vz = 0; view.pitch = -1.3;
+  for (let i = 0; i < 60; i++) view.update(p, 1 / 60);
+  assert.ok(camera.position.z < -0.35, "eyes move ahead of chest at downward gaze");
+  assert.ok(Math.abs(camera.position.y - 1.6) < 0.01);
+});
+
 test("Polybahn third-person camera frames the whole cabin in both directions", () => {
   const camera = new PerspectiveCamera(75), view = new PlayerView(camera, []), p = C.createBody();
   p.vehicleId = "polybahn-1"; p.vehicleKind = C.POLYBAHN_KIND;
