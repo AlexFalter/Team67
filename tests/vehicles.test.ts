@@ -143,3 +143,12 @@ test("bikes fall and throw their rider off on a crash; heavy traffic ejects driv
   assert.equal(b.vehicle, "", "driver knocked out of the cart");
   assert.equal(s.knocks.at(-1)![0], "b");
 });
+
+test("traffic never starts on the spawn square", () => {
+  const pose = { kind: 3, x: 0, y: 0, z: 0, yaw: 0, vx: 0, vz: 0 }, now = 5_000_000;
+  const start = now - (world.routeLength / 2 / C.TRAFFIC_SPEED) * 1000; // as GameRoom sets it at round start
+  for (let t = 0; t <= 30_000; t += 500) {
+    C.trafficPose(world, start, now + t, pose);
+    assert.ok(Math.hypot(pose.x - world.spawn.x, pose.z - world.spawn.z) > C.SPAWN_SPREAD + C.SHUTTLE_RADIUS + 5, `clear of spawn at +${t} ms`);
+  }
+});

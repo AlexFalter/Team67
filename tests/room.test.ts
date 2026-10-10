@@ -61,22 +61,29 @@ test("movement: valid reports propagate, teleports and walls are corrected", { t
     await until(() => corrections.length === 1, "teleport corrected");
     assert.ok(Math.abs(corrections[0][0] - near.x) < 1e-3, "correction points back to the last valid pose");
     assert.ok(Math.abs(me(a).x - near.x) < 1e-3, "teleport not applied");
-    // A building column within reach (search outward from the current position).
-    let wall: C.Point | undefined;
-    for (let r = 2; r < 12 && !wall; r += 0.5)
-      for (let k = 0; k < 32 && !wall; k++) {
-        const x = near.x + Math.cos(k / 5) * r, z = near.z + Math.sin(k / 5) * r, y = world.height(x, z);
-        if (!Number.isNaN(y) && world.blocked(x, y, z, C.RADIUS * 0.8, C.HEIGHT)) wall = { x, y, z };
+    // A building column near the spawn square, and free ground right next to it.
+    let wall: C.Point | undefined, beside: C.Point | undefined;
+    for (let r = 2; r < 60 && !beside; r += 0.5)
+      for (let k = 0; k < 64 && !beside; k++) {
+        const x = world.spawn.x + Math.cos(k / 10) * r, z = world.spawn.z + Math.sin(k / 10) * r, y = world.height(x, z);
+        if (Number.isNaN(y) || !world.blocked(x, y, z, C.RADIUS * 0.8, C.HEIGHT)) continue;
+        wall = { x, y, z };
+        const back = C.findGround(world, x - Math.cos(k / 10) * 2, z - Math.sin(k / 10) * 2);
+        if (back && Math.hypot(back.x - x, back.z - z) < 4) beside = back;
       }
-    assert.ok(wall, "test setup: a building near spawn");
-    await delay(600);
+    assert.ok(wall && beside, "test setup: a building near spawn");
+    await delay(2500); // enough time budget to walk there in one report
+    move(a, beside.x, beside.y, beside.z);
+    await until(() => Math.abs(me(a).x - beside.x) < 1e-3, "next to the building");
+    await delay(100);
     move(a, wall.x, wall.y, wall.z);
     await until(() => corrections.length === 2, "walking into a building corrected");
-    assert.ok(Math.abs(me(a).x - near.x) < 1e-3);
+    assert.ok(Math.abs(me(a).x - beside.x) < 1e-3);
+    const near2 = beside;
     a.send(C.MOVE, [Date.now(), NaN, 0, 0, 0, 0, 0, 0, 0]);
     a.send(C.MOVE, [Date.now(), 1, 2]);
     await delay(100);
-    assert.ok(Math.abs(me(a).x - near.x) < 1e-3, "malformed reports ignored");
+    assert.ok(Math.abs(me(a).x - near2.x) < 1e-3, "malformed reports ignored");
   });
 });
 

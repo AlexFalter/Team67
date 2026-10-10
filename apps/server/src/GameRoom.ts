@@ -152,6 +152,8 @@ export class GameRoom extends Room<{ state: GameState }> {
       m.punchReadyAt = 0;
       this.scores.set(id, { name: p.name, hits: 0, taken: 0 });
     }
+    // Traffic starts mid-route (heading to ETH), a minute away from the spawn square.
+    this.state.trafficStart = now - (world.routeLength / 2 / C.TRAFFIC_SPEED) * 1000;
     this.vehicles.reset(now);
     this.state.endsAt = now + roundMs;
     this.state.phase = C.RUNNING;
