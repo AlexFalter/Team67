@@ -1,6 +1,6 @@
 import data from "./zurich-world.json";
 import * as C from "./constants.ts";
-import { passageFloor } from "./transit.ts";
+import { passageFloor, polybahnPassages, polybahnPlatforms } from "./transit.ts";
 import { MATE_POSITION, mateBlocked } from "./mate.ts";
 import { TICKET_POSITION, ticketBlocked } from './ticket.ts';
 export interface GroundPoint {
@@ -17,7 +17,8 @@ export interface MovementWorld {
   route: readonly GroundPoint[];
   routeDistances: readonly number[];
   routeLength: number;
-  height(x: number, z: number): number | undefined;
+  /** ground under (x, z); with `y` (feet) and stacked surfaces, the one at or below that level */
+  height(x: number, z: number, y?: number): number | undefined;
   blocked(
     x: number,
     y: number,
@@ -134,6 +135,23 @@ for (let i = 1; i < data.route.length; i++)
         data.route[i].z - data.route[i - 1].z,
       ),
   );
+// Within the walkable track corridor (not a 2.1 m platform connector), see transit.ts. Inside the two
+// Polybahn station areas (the 0.5 m patches that contain a boarding platform) only the cabin opening
+// around the track centre counts, so the corridor's full width does not cut through the station walls.
+const stationPatches = patches.filter((p) => polybahnPlatforms.some((q) =>
+  q.x >= p.minX && q.z >= p.minZ && q.x <= p.minX + (p.width - 1) * p.step && q.z <= p.minZ + (p.depth - 1) * p.step));
+function onTrack(x: number, z: number) {
+  const inStation = stationPatches.some((p) => x >= p.minX && z >= p.minZ &&
+    x <= p.minX + (p.width - 1) * p.step && z <= p.minZ + (p.depth - 1) * p.step);
+  for (const s of polybahnPassages) {
+    if (s.width < 3) continue;
+    const dx = s.b.x - s.a.x, dz = s.b.z - s.a.z, length = Math.hypot(dx, dz);
+    const along = ((x - s.a.x) * dx + (z - s.a.z) * dz) / length;
+    if (along < -0.2 || along > length + 0.2) continue;
+    if (Math.abs((-(x - s.a.x) * dz + (z - s.a.z) * dx) / length) <= (inStation ? 1.0 : s.width)) return true;
+  }
+  return false;
+}
 export const zurichWorld: MovementWorld = {
   name: "zurich",
   bounds: data,
@@ -143,12 +161,28 @@ export const zurichWorld: MovementWorld = {
   route: data.route,
   routeDistances: distances,
   routeLength: distances.at(-1)!,
-  height: (x, z) => passageFloor(x, z) ?? groundHeight(x, z),
+  // Two stacked surfaces: the map's walk grid (streets, Polybahn hall floors, ramps) and the walkable
+  // Polybahn track corridor (transit.ts passageFloor). With the body's height `y`, stand on the highest
+  // surface at or just above the feet; e.g. the street under the Polybahn bridge vs. the track above it,
+  // or a hall floor vs. the corridor floor below it. Without `y` (placement queries) the corridor wins.
+  height: (x, z, y) => {
+    const floor = passageFloor(x, z), ground = groundHeight(x, z);
+    if (floor === undefined || ground === undefined) return floor ?? ground;
+    if (y === undefined) return floor;
+    const reach = y + C.MAX_GROUND_STEP;
+    if (floor <= reach && ground <= reach) return Math.max(floor, ground);
+    if (floor <= reach) return floor;
+    if (ground <= reach) return ground;
+    return Math.min(floor, ground);
+  },
   blocked: (x, y, z, radius, height) => {
     if (mateBlocked(x, y, z, radius, height, mateGround)) return true;
     if (ticketBlocked(x, y, z, radius, height, ticketGround)) return true;
     const floor = passageFloor(x, z);
-    if (floor !== undefined && y >= floor - 0.5 && y + height <= floor + 4.4 &&
+    // Walls are ignored along the walkable Polybahn TRACK (its structure is a wall in the walk grid), but
+    // not on the narrow platform connectors inside the station halls: there the real hall floors and walls
+    // of the walk grid apply, so nobody slips through the door jambs or hall walls.
+    if (floor !== undefined && onTrack(x, z) && y >= floor - 0.5 && y + height <= floor + 4.4 &&
       [[-radius, -radius], [-radius, radius], [radius, -radius], [radius, radius]].every(([dx, dz]) => passageFloor(x + dx, z + dz) !== undefined)) return false;
     return blocked(x, y, z, radius, height);
   },

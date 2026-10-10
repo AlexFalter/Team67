@@ -1,7 +1,9 @@
 import type { GroundPoint, MovementWorld } from './world.ts';
 
-// Clear floor beside Central's current, authored Polybahn platform.
-export const TICKET_POSITION = { x: 8.5, z: 114 };
+// On the street beside Central's Polybahn entrance, 2 m north of the door and off the walking line
+// (players stand on its north side). (8.5, 114) stood in the middle of the 5.6 m doorway and blocked
+// walking into the hall; inside the hall the platform corridor would place it at the wrong height.
+export const TICKET_POSITION = { x: 6.0, z: 108.0 };
 export const TICKET_PRINT_MS = 1800;
 export interface TicketCommand { action: 'pay' | 'collect'; roundStartedAt: number; tiles?: number[] }
 export interface TicketResult { action: TicketCommand['action']; roundStartedAt: number; ok: boolean; message: string }
