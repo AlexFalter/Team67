@@ -20,7 +20,7 @@ import { activeTheme, applyRendererLook, themeLights } from "../maps/zurich/them
 export function MapViewer() {
   const [examSession, setExamSession] = useState<ExamSession>(emptyExamSession);
   const [playing, setPlaying] = useState(true);
-  const [resolution, setResolution] = useState<"performance" | "high">("performance");
+  const [resolution, setResolution] = useState<"performance" | "high">("high");
   return (
     <div className="map-viewer" data-exam-active={examSession.stage !== "world"}>
       <MapCanvas key={playing ? "play" : "inspect"} playing={playing}
