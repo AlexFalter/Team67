@@ -20,6 +20,9 @@ wall when `roof > ground + 1.5 m`. This script decides both per cell:
   * cliffs: the lower cell beside a > 1 m jump in ground height (ground is interpolated, so quay and
     terrace walls would otherwise be walkable slopes). Station floors ignore the enclosing building.
   Cells without any walkable surface (track pit) become walls, so there are no holes.
+- patches: 0.5 m grids (same rules) over both Polybahn stations, where the 2 m grid cannot follow the
+  thin rotated hall walls and doors. world-grid.json 'patches' -> zurich-world.json; the game's
+  height()/blocked() use a patch where one covers the point, the 2 m grid elsewhere.
 
     exec(open(ZH_DIR + '/blender/walk_grid.py').read())   # -> world-grid.json + report
 """
@@ -123,58 +126,63 @@ minX, maxX, minZ, maxZ, step = minE - OE, maxE - OE, ON - maxN, ON - minN, 2
 width, depth = int(round((maxX - minX) / step)) + 1, int(round((maxZ - minZ) / step)) + 1
 DIRS = [Vector((1, 0, 0)), Vector((-1, 0, 0)), Vector((0, 1, 0)), Vector((0, -1, 0))]
 n_ground = len(g_me.polygons)
-ground, roof, kind = [None] * (width * depth), [None] * (width * depth), [0] * (width * depth)  # kind 1 water 2 wall
-for zi in range(depth):
-    by = -(minZ + zi * step)
-    for xi in range(width):
-        i = zi * width + xi; x = minX + xi * step
-        h = W_bvh.ray_cast(Vector((x, by, 500.0)), DOWN)
-        if h[0] is None: continue
-        g = h[0].z; ground[i] = g
-        if h[2] < n_ground and h[2] in g_water:
-            roof[i] = g + 3.0; kind[i] = 1; continue
-        top = None
-        hh = H_bvh.ray_cast(Vector((x, by, g + 0.3)), DOWN, 0.8)
-        if hh[0] is None:  # station floors (and their doorways) ignore the building they are built into
-            s = S_bvh.ray_cast(Vector((x, by, 500.0)), DOWN)
-            if s[0] is not None and s[0].z > g + 0.25: top = s[0].z
-            b = B_bvh.ray_cast(Vector((x, by, 500.0)), DOWN)
-            if top is None and b[0] is not None and b[0].z > g + 0.25:
-                # closed LoD2 solid: inside -> wall; under a ceiling (door, arcade, canopy) -> open
-                u = B_bvh.ray_cast(Vector((x, by, g + 0.25)), UP)
-                if not (u[0] is not None and u[1].z < -0.3 and HEADROOM <= u[0].z - g <= CEILING_MAX): top = b[0].z
-        if top is None:
-            u = O_bvh.ray_cast(Vector((x, by, g + 0.25)), UP)
-            if u[0] is not None and u[0].z < g + HEADROOM: top = max(u[0].z, g + WALL_MIN)
-            else:
-                for zz in (0.4, 1.2):
-                    for d in DIRS:
-                        t = T_bvh.ray_cast(Vector((x, by, g + zz)), d, THIN_REACH)
-                        if t[0] is not None: top = g + WALL_MIN; break
-                    if top is not None: break
-        if top is not None: roof[i] = max(top, g + WALL_MIN); kind[i] = 2
-
-# holes (e.g. the Polybahn track pit inside the halls): wall at the height of whatever is there
-for i in range(width * depth):
-    if ground[i] is not None: continue
-    x, by = minX + (i % width) * step, -(minZ + (i // width) * step)
-    hs = [b.ray_cast(Vector((x, by, 500.0)), DOWN)[0] for b in (S_bvh, B_bvh, O_bvh)]
-    hs = [h.z for h in hs if h is not None]
-    if hs: ground[i] = min(hs); roof[i] = max(hs) + WALL_MIN; kind[i] = 2
-# cliffs: ground is bilinear, so a 3 m quay or terrace wall would read as a steep walkable slope.
-# The LOWER cell next to a jump of more than CLIFF becomes a wall up to the upper level (jumping down works).
 CLIFF = 1.0
-cliff = []
-for i in range(width * depth):
-    if kind[i] != 0 or ground[i] is None: continue
-    xi, zi = i % width, i // width; hi = None
-    for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-        nx, nz = xi + dx, zi + dz
-        if 0 <= nx < width and 0 <= nz < depth:
-            j = nz * width + nx
-            if ground[j] is not None and kind[j] != 1 and ground[j] - ground[i] > CLIFF: hi = max(hi or -1e9, ground[j])
-    if hi is not None: cliff.append((i, hi))
-for i, hi in cliff: roof[i] = max(hi, ground[i] + 1.6); kind[i] = 3
+
+def grid_for(gx0, gz0, gw, gd, gstep, thin_reach):
+    """ground / roof / kind (0 free, 1 water, 2 wall, 3 cliff) for a gw x gd grid at gstep (three.js x, z)."""
+    ground, roof, kind = [None] * (gw * gd), [None] * (gw * gd), [0] * (gw * gd)
+    for zi in range(gd):
+        by = -(gz0 + zi * gstep)
+        for xi in range(gw):
+            i = zi * gw + xi; x = gx0 + xi * gstep
+            h = W_bvh.ray_cast(Vector((x, by, 500.0)), DOWN)
+            if h[0] is None: continue
+            g = h[0].z; ground[i] = g
+            if h[2] < n_ground and h[2] in g_water:
+                roof[i] = g + 3.0; kind[i] = 1; continue
+            top = None
+            hh = H_bvh.ray_cast(Vector((x, by, g + 0.3)), DOWN, 0.8)
+            if hh[0] is None:  # station floors (and their doorways) ignore the building they are built into
+                s_ = S_bvh.ray_cast(Vector((x, by, 500.0)), DOWN)
+                if s_[0] is not None and s_[0].z > g + 0.25: top = s_[0].z
+                b_ = B_bvh.ray_cast(Vector((x, by, 500.0)), DOWN)
+                if top is None and b_[0] is not None and b_[0].z > g + 0.25:
+                    # closed LoD2 solid: inside -> wall; under a ceiling (door, arcade, canopy) -> open
+                    u = B_bvh.ray_cast(Vector((x, by, g + 0.25)), UP)
+                    if not (u[0] is not None and u[1].z < -0.3 and HEADROOM <= u[0].z - g <= CEILING_MAX): top = b_[0].z
+            if top is None:
+                u = O_bvh.ray_cast(Vector((x, by, g + 0.25)), UP)
+                if u[0] is not None and u[0].z < g + HEADROOM: top = max(u[0].z, g + WALL_MIN)
+                else:
+                    for zz in (0.4, 1.2):
+                        for d in DIRS:
+                            t = T_bvh.ray_cast(Vector((x, by, g + zz)), d, thin_reach)
+                            if t[0] is not None: top = g + WALL_MIN; break
+                        if top is not None: break
+            if top is not None: roof[i] = max(top, g + WALL_MIN); kind[i] = 2
+    # holes (e.g. the Polybahn track pit inside the halls): wall at the height of whatever is there
+    for i in range(gw * gd):
+        if ground[i] is not None: continue
+        x, by = gx0 + (i % gw) * gstep, -(gz0 + (i // gw) * gstep)
+        hs = [b_.ray_cast(Vector((x, by, 500.0)), DOWN)[0] for b_ in (S_bvh, B_bvh, O_bvh)]
+        hs = [h_.z for h_ in hs if h_ is not None]
+        if hs: ground[i] = min(hs); roof[i] = max(hs) + WALL_MIN; kind[i] = 2
+    # cliffs: ground is bilinear, so a 3 m quay or terrace wall would read as a steep walkable slope.
+    # The LOWER cell next to a jump of more than CLIFF becomes a wall up to the upper level (jumping down works).
+    cliff = []
+    for i in range(gw * gd):
+        if kind[i] != 0 or ground[i] is None: continue
+        xi, zi = i % gw, i // gw; hi = None
+        for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nx, nz = xi + dx, zi + dz
+            if 0 <= nx < gw and 0 <= nz < gd:
+                j = nz * gw + nx
+                if ground[j] is not None and kind[j] != 1 and ground[j] - ground[i] > CLIFF: hi = max(hi or -1e9, ground[j])
+        if hi is not None: cliff.append((i, hi))
+    for i, hi in cliff: roof[i] = max(hi, ground[i] + 1.6); kind[i] = 3
+    return ground, roof, kind
+
+ground, roof, kind = grid_for(minX, minZ, width, depth, step, THIN_REACH)
 
 # --- reachability from spawn (step up <= 0.65 m walking, <= 1.2 m with a jump; any drop)
 def idx(x, z): return int(math.floor((z - minZ) / step + 0.5)) * width + int(math.floor((x - minX) / step + 0.5))
@@ -223,16 +231,52 @@ for s0 in range(width * depth):
         c = comp[len(comp) // 2]; islands.append((len(comp), minX + (c % width) * step, minZ + (c // width) * step))
 islands.sort(reverse=True)
 
+# --- 0.5 m detail patches over the Polybahn stations: the 2 m grid cannot follow their thin, rotated
+# walls and 3.6 m doors. The game checks a patch first (height + blocked), the 2 m grid elsewhere.
+PATCH_STEP, PATCH_THIN, PATCH_MARGIN = 0.5, 0.25, 6.0  # thin reach = half a cell
+pts = sorted((c.x, -c.y) for o, me, polys, tag in walk if tag == 'Polybahn_halls'
+             for c in (o.matrix_world @ p.center for p in polys))
+cut = max(range(1, len(pts)), key=lambda k: pts[k][0] - pts[k - 1][0]) if len(pts) > 1 else len(pts)
+patches, patch_report = [], {}
+for name, cl in (('bottom', pts[:cut]), ('top', pts[cut:])):
+    if not cl: continue
+    snap = lambda v, f: f(v / PATCH_STEP) * PATCH_STEP
+    px0, px1 = snap(min(x for x, _ in cl) - PATCH_MARGIN, math.floor), snap(max(x for x, _ in cl) + PATCH_MARGIN, math.ceil)
+    pz0, pz1 = snap(min(z for _, z in cl) - PATCH_MARGIN, math.floor), snap(max(z for _, z in cl) + PATCH_MARGIN, math.ceil)
+    pw, pd = int(round((px1 - px0) / PATCH_STEP)) + 1, int(round((pz1 - pz0) / PATCH_STEP)) + 1
+    pg, pr, pk = grid_for(px0, pz0, pw, pd, PATCH_STEP, PATCH_THIN)
+    # reachability inside the patch, seeded from its border cells whose 2 m cell is reachable
+    pfree = [pg[i] is not None and pk[i] == 0 for i in range(pw * pd)]
+    pseen = bytearray(pw * pd); q = deque()
+    for i in range(pw * pd):
+        xi, zi = i % pw, i // pw
+        if pfree[i] and (xi < 2 or zi < 2 or xi >= pw - 2 or zi >= pd - 2):
+            j = idx(px0 + xi * PATCH_STEP, pz0 + zi * PATCH_STEP)
+            if 0 <= j < len(seen) and seen[j]: pseen[i] = 1; q.append(i)
+    while q:
+        i = q.popleft(); xi, zi = i % pw, i // pw
+        for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nx, nz = xi + dx, zi + dz
+            if 0 <= nx < pw and 0 <= nz < pd:
+                j = nz * pw + nx
+                if pfree[j] and not pseen[j]: pseen[j] = 1; q.append(j)
+    floor_cells = [i for i in range(pw * pd) if H_bvh.ray_cast(Vector((px0 + (i % pw) * PATCH_STEP, -(pz0 + (i // pw) * PATCH_STEP), (pg[i] or 0) + 0.3)), DOWN, 0.8)[0] is not None]
+    walkable_floor = [i for i in floor_cells if pfree[i]]
+    patch_report[name] = {'bounds': [px0, pz0, px1, pz1], 'cells': [pw, pd], 'hall floor cells': len(floor_cells),
+                          'free floor': len(walkable_floor), 'reached floor': sum(pseen[i] for i in walkable_floor)}
+    patches.append({'minX': px0, 'minZ': pz0, 'step': PATCH_STEP, 'width': pw, 'depth': pd, 'ground': pg, 'roof': pr})
+
 def encode(vals):
     return base64.b64encode(b''.join(struct.pack('<H', 65535 if v is None else max(0, min(65534, round(v * 100)))) for v in vals)).decode()
 grid = {'minX': minX, 'maxX': maxX, 'minZ': minZ, 'maxZ': maxZ, 'step': step, 'width': width, 'depth': depth,
-        'ground': encode(ground), 'roof': encode(roof)}
+        'ground': encode(ground), 'roof': encode(roof),
+        'patches': [{**pt, 'ground': encode(pt['ground']), 'roof': encode(pt['roof'])} for pt in patches]}
 if os.path.exists(MAP): grid['sourceHash'] = hashlib.sha256(open(MAP, 'rb').read()).hexdigest()
 json.dump(grid, open(os.path.join(ZH_DIR, 'world-grid.json'), 'w'), separators=(',', ':'))
 for o in meshes: o.evaluated_get(dg).to_mesh_clear()
 interior_holes = sum(1 for i in range(width * depth) if ground[i] is None and 0 < i % width < width - 1 and 0 < i // width < depth - 1)
 WALK_REPORT = {'passerelle_decks': decks, 'free': n_free, 'reachable': n_reach, 'water': kind.count(1), 'walls': kind.count(2), 'cliffs': kind.count(3),
-               'interior_holes': interior_holes, 'checks': report, 'unreachable_islands': islands[:15]}
+               'interior_holes': interior_holes, 'checks': report, 'patches': patch_report, 'unreachable_islands': islands[:8]}
 print(json.dumps(WALK_REPORT, indent=1), f'{time.time() - t_walk:.0f} s')
 
 if globals().get('WALK_PNG'):  # debug map: green reachable, orange free but unreachable, grey wall, blue water, magenta hole
