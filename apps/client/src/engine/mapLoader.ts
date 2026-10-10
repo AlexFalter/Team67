@@ -1,4 +1,5 @@
-import { InstancedMesh, Mesh, Texture, type Material, type Object3D } from "three";
+import { InstancedMesh, Mesh, Texture, type BufferGeometry, type Material, type Object3D } from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { MeshBVH, acceleratedRaycast } from "three-mesh-bvh";
@@ -49,10 +50,13 @@ export async function loadMap(theme: MapTheme, signal: AbortSignal, progress: (f
     try { map.add(await loadTrees(signal, theme)); } catch (error) { signal.throwIfAborted(); console.warn("Trees not loaded:", error); }
     progress(0.96, "Preparing collision");
     await new Promise(r => setTimeout(r, 0)); // let the progress bar paint
+    mergeTiles(map);
     const colliders: Mesh[] = [];
     map.traverse(o => {
       if (!(o instanceof Mesh)) return;
-      o.castShadow = o.receiveShadow = true;
+      o.receiveShadow = true;
+      // Ground and trees only receive shadows: trees span the whole map, so they would cast all of it.
+      o.castShadow = !(o instanceof InstancedMesh) && o.name !== "Ground" && o.parent?.name !== "Ground";
       if (o instanceof InstancedMesh) return;
       o.geometry.boundsTree = new MeshBVH(o.geometry, { indirect: true });
       o.raycast = acceleratedRaycast;
@@ -63,6 +67,34 @@ export async function loadMap(theme: MapTheme, signal: AbortSignal, progress: (f
   } catch (error) {
     disposeObject(map);
     throw error;
+  }
+}
+
+/**
+ * Each 200 m City tile is split per material (~600 meshes). Merge tiles in pairs (400 × 200 m) per
+ * material at load time: ~40% fewer draw calls while blocks stay small enough for frustum and shadow
+ * culling to keep the triangle count in budget. Runtime only; the GLB stays as exported.
+ */
+function mergeTiles(map: Object3D) {
+  map.updateMatrixWorld(true);
+  const groups = new Map<string, Mesh[]>();
+  map.traverse(o => {
+    const tile = o.parent?.name.match(/^City_(-?\d+)_(-?\d+)$/) ?? o.name.match(/^City_(-?\d+)_(-?\d+)$/);
+    if (!(o instanceof Mesh) || !tile || Array.isArray(o.material)) return;
+    const key = `${Math.floor(+tile[1] / 2)},${+tile[2]},${o.material.uuid}`;
+    const list = groups.get(key);
+    if (list) list.push(o); else groups.set(key, [o]);
+  });
+  for (const [key, meshes] of groups) {
+    if (meshes.length < 2) continue;
+    const parts: BufferGeometry[] = meshes.map(m => m.geometry.clone().applyMatrix4(m.matrixWorld));
+    const merged = mergeGeometries(parts);
+    parts.forEach(g => g.dispose());
+    if (!merged) continue; // attribute mismatch: keep the originals
+    const mesh = new Mesh(merged, meshes[0].material);
+    mesh.name = `City_${key.split(",", 2).join("_")}`;
+    for (const m of meshes) { m.removeFromParent(); m.geometry.dispose(); }
+    map.add(mesh);
   }
 }
 

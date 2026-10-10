@@ -7,6 +7,8 @@ export class InspectMode implements Mode {
   constructor(private engine: Engine) {
     const { camera, renderer } = engine;
     camera.fov = 45;
+    camera.far = 4000;
+    engine.setFog(600, 2600);
     camera.updateProjectionMatrix();
     camera.position.set(650, 850, 900);
     this.controls = new OrbitControls(camera, renderer.domElement);

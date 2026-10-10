@@ -62,6 +62,12 @@ export class Engine {
     this.scene.add(map);
   }
 
+  setFog(near: number, far: number) {
+    const fog = this.scene.fog as Fog;
+    fog.near = near;
+    fog.far = far;
+  }
+
   setMode(mode: Mode | undefined) {
     this.mode?.dispose();
     this.mode = mode;
