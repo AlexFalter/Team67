@@ -2,7 +2,6 @@
 import {
   Color,
   DirectionalLight,
-  HemisphereLight,
   Mesh,
   PerspectiveCamera,
   Scene,
@@ -16,7 +15,7 @@ import { MapGame } from "../multiplayer/MapGame";
 import { ExamOverlay } from "../exam/ExamOverlay";
 import { ExamDebugButton } from "../exam/ExamDebugButton";
 import { emptyExamSession, type ExamSession } from "../exam/ExamSequence";
-import { activeTheme, applyRendererLook } from "../maps/zurich/theme";
+import { activeTheme, applyRendererLook, themeLights } from "../maps/zurich/theme";
 
 export function MapViewer() {
   const [examSession, setExamSession] = useState<ExamSession>(emptyExamSession);
@@ -106,8 +105,8 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
         renderer.shadowMap.enabled = playing;
         renderer.shadowMap.type = PCFShadowMap;
         const light = theme.lighting;
-        scene.add(new HemisphereLight(light.skyLight, light.groundLight, light.hemiIntensity));
-        const sun = new DirectionalLight(light.sun, light.sunIntensity);
+        // same lights as the Blender preview (blender/scene_light.py): sun lamp + uniform world colour
+        const { sun } = themeLights(theme);  // world light: applyRendererLook
         sunlight = sun;
         // sun direction from the theme (azimuth from north, clockwise; map north = -Z)
         const el = (light.sunElevation * Math.PI) / 180, az = (light.sunAzimuth * Math.PI) / 180;
