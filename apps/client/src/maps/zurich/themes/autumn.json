@@ -8,10 +8,15 @@
     "leaves": ["#c8642a", "#d98b2b", "#b0452a", "#e0b23a", "#9c5a2c", "#e8c547", "#a8331f", "#cf7a1e", "#7d8a3e", "#b98a2f"]
   },
   "sky": "#d9cdb8",
+  "skyDome": {
+    "$comment": "Noon sky (sky.ts): saturated blue zenith, pale hazy horizon, soft glow + disc around the sun. pixel = angular pixel size in degrees.",
+    "zenith": "#2f6fd6", "upper": "#5f9be8", "horizon": "#cfe3f2", "glow": "#fff4d6", "sun": "#fffbea",
+    "cloudLit": "#ffffff", "cloudShade": "#b7c6dc", "pixel": 0.12, "sunSize": 2.2
+  },
   "lighting": {
-    "sun": "#ffd29a",
+    "sun": "#fff0d8",
     "sunIntensity": 2.8,
-    "sunElevation": 28,
+    "sunElevation": 58,
     "sunAzimuth": 235,
     "skyLight": "#f0dcc0",
     "groundLight": "#6e5a48",

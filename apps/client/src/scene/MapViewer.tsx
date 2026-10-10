@@ -7,6 +7,7 @@ import {
   Scene,
   WebGLRenderer,
   PCFShadowMap,
+  Vector3,
 } from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { disposeMap, loadZurichMap } from "../maps/zurich/loadZurichMap";
@@ -16,6 +17,7 @@ import { ExamOverlay } from "../exam/ExamOverlay";
 import { ExamDebugButton } from "../exam/ExamDebugButton";
 import { emptyExamSession, type ExamSession } from "../exam/ExamSequence";
 import { activeTheme, applyRendererLook, themeLights } from "../maps/zurich/theme";
+import { createSky } from "../maps/zurich/sky";
 
 export function MapViewer() {
   const [examSession, setExamSession] = useState<ExamSession>(emptyExamSession);
@@ -124,6 +126,11 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
         });
         sun.shadow.bias = -0.0005;
         scene.add(sun, sun.target);
+        if (theme.skyDome) {
+          const sky = createSky(theme.skyDome, new Vector3(sunDir.x, sunDir.y, sunDir.z));
+          scene.add(sky.mesh);
+          abort.signal.addEventListener("abort", sky.dispose);
+        }
         const camera = new PerspectiveCamera(
           playing ? 60 : 45,
           1,
