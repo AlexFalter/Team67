@@ -40,7 +40,7 @@ export class NpcFeature {
   this.message.querySelector('button').onclick=()=>{const kind=this.message.dataset.kind;this.message.hidden=true;if(kind==='invitation'){this.send('solve','limousine',{answer:'3'});}else if(kind==='rejection')this.limo?.readRejection();this.syncLock();};
   this.menu.addEventListener('click',e=>{const button=e.target.closest('button');if(!button)return;const person=button.dataset.person;this.menu.hidden=true;const pair=this.currentPoly();if(person!=='close'&&pair)pair[person].interact(this.position);this.syncLock();},{signal:this.abort.signal});
   window.addEventListener('keydown',e=>{
-   if(e.code==='Backspace'&&this.currentPoly()&&!this.active){e.preventDefault();if(this.net.canPlay)this.net.room.send('vehicleExit');return;}
+   if(e.code==='Backspace'&&this.local.enabled&&this.currentPoly()&&!this.active){e.preventDefault();if(this.net.canPlay)this.net.room.send('vehicleExit');return;}
    if(!this.active)return;
    if(!this.message.hidden){if(e.code==='Enter')this.message.querySelector('button').click();e.preventDefault();e.stopImmediatePropagation();return;}
    if(this.pending||this.travel||this.finance?.active()||this.inspector?.active()||this.property?.active()||this.scooter?.active()){e.preventDefault();e.stopImmediatePropagation();return;}
@@ -122,6 +122,18 @@ export class NpcFeature {
   this.syncLock();
  }
  notice(text){this.hint.textContent=text;this.noticeUntil=this.net.now()+4000;this.hint.hidden=false;}
+ mapMarkers(){
+  const markers=[],add=(label,p)=>{if(p)markers.push({label,x:p.x??p[0],z:p.z??p[2]??p[1]});};
+  if(this.finance&&!this.finance.state().used)add('Finance Guy',this.finance.actor.position);
+  if(this.einstein)add('Albert Einstein',this.einstein.actor.position);
+  if(this.limo&&!this.limo.state().solved)add('Jane Street laptop',this.limo.laptop.position);
+  if(this.limo?.state().phase==='waiting'){const p=this.limo.state().pickup;add('Chauffeur',{x:p[0],z:p[2]});}
+  if(this.scooter&&!this.scooter.state().playing)add('Scooter riders',this.scooter.group.position);
+  if(this.tourists?.group.visible)add('Tourist photos',this.tourists.state().meetingPoint);
+  const state=this.net.room?.state.npcs?.get(this.net.room.sessionId);
+  if(!state?.ticketCount)add('Polybahn ticket machine',C.ticketSite(C.zurichWorld));
+  return markers;
+ }
  syncLock(){
   const active=this.active;
   if(active&&!this.saved){this.saved={fov:this.camera.fov,up:this.camera.up.clone()};this.local.clear();this.local.body.vx=this.local.body.vy=this.local.body.vz=0;if(document.pointerLockElement===this.canvas)document.exitPointerLock();}

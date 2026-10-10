@@ -22,7 +22,7 @@ export function MapViewer() {
   const [playing, setPlaying] = useState(true);
   const [resolution, setResolution] = useState<"performance" | "high">("performance");
   return (
-    <div className="map-viewer" data-exam-active={examSession.stage !== "world"}>
+    <div className="map-viewer" data-playing={playing} data-exam-active={examSession.stage !== "world"}>
       <MapCanvas key={playing ? "play" : "inspect"} playing={playing}
         resolution={resolution} onResolutionChange={setResolution} examSession={examSession} onExamChange={setExamSession} />
       <button

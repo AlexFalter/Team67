@@ -8,6 +8,7 @@ import { RemotePlayers } from "./remotePlayers.ts";
 import { Vehicles } from "./vehicles.ts";
 import { Effects } from "./effects.ts";
 import { Hud } from "./hud.ts";
+import { RaceMap } from "./raceMap.ts";
 import { avatar, pose, disposeAvatar, firstPersonBodyVisible } from "./avatar.ts";
 import { PlayerView } from "./view.ts";
 import { GameControls } from "./gameControls.ts";
@@ -37,6 +38,7 @@ export class MapGame {
   private vehicles: Vehicles;
   private effects: Effects;
   private hud: Hud;
+  private maps: RaceMap;
   private view: PlayerView;
   private disposeMapRaycasts: () => void;
   private controls: GameControls;
@@ -81,7 +83,11 @@ export class MapGame {
     this.bus = new BattleBusIntro(scene, camera, this.net, canvas, () => this.view.sensitivity);
     this.ready = Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready, this.npcs.ready]).then(() => {});
     this.roomFlow = new RoomFlow(this.net, this.ready, () => this.bus.unlockAudio());
-    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active, () => this.net.now()<this.derailUntil);
+    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active, () => this.net.now()<this.derailUntil || !!this.maps?.active);
+    this.maps = new RaceMap(this.net, () => ({ ...this.local.body, enabled: this.local.enabled }),
+      () => [...this.npcs.mapMarkers(), { ...this.mate.machine.position, label: "El Tony Mate" }],
+      () => !!this.net.canPlay && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now() >= this.derailUntil && !!document.querySelector<HTMLElement>("#pause")!.hidden,
+      () => this.controls.suspendForMap(), () => void this.controls.resume());
     Object.assign(this.local.body, zurichWorld.spawn);
     camera.near = 0.05;
     camera.position.set(zurichWorld.spawn.x, zurichWorld.spawn.y + 1.6, zurichWorld.spawn.z);
@@ -147,7 +153,8 @@ export class MapGame {
       remote.mesh.visible = this.net.room?.state.npcs?.get(id)?.kind !== "limousine";
       this.effects.trail(id, remote.rendered, now);
     }
-    this.controls.update(dt); this.effects.update(renderTime, dt); this.hud.update(dt, this.net);
+    this.controls.update(dt); this.effects.update(renderTime, dt); this.hud.update(dt, this.net, this.local.body);
+    this.maps.update(dt, this.net.canPlay && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now() >= this.derailUntil);
     this.vehicles.updateLabels(this.local.body, now);
     this.bus.update(dt, this.mesh, this.remotes);
     const inMenu = !state || state.phase === RoomPhase.Lobby;
@@ -231,7 +238,7 @@ export class MapGame {
   completeExam(score: number) { this.exam.complete(score); }
   returnFromExam() { this.exam.returnToWorld(); }
   debugTeleportToTerrace(enterPortal = false) {
-    if (!import.meta.env.DEV || !this.net.canPlay || this.exam.active || this.mate.active || this.publiBikes.active || this.npcs.active || this.net.now()<this.derailUntil) return;
+    if (!import.meta.env.DEV || !this.net.room?.state.devMode || !this.net.canPlay || this.maps.active || this.exam.active || this.mate.active || this.publiBikes.active || this.npcs.active || this.net.now()<this.derailUntil) return;
     this.local.clear(); this.local.body.vx = this.local.body.vy = this.local.body.vz = 0;
     this.view.yaw = this.view.pitch = 0;
     if (enterPortal) void this.controls.resume();
@@ -239,6 +246,7 @@ export class MapGame {
   }
   afterRender() { this.publiBikes.renderPreview(); this.npcs.afterRender(); }
   dispose() {
+    this.maps.dispose(); this.hud.dispose();
     this.menuScene.dispose();
     this.exam.dispose();
     this.npcs.dispose();

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./game.css";
+import "./raceHud.css";
 import { CHARACTERS as characters } from "./avatar.ts";
 
 export function GameOverlay({ resolution, onResolutionChange }: {
@@ -14,7 +15,23 @@ export function GameOverlay({ resolution, onResolutionChange }: {
         <p className="menu-place">ZÜRICH / SCHWEIZ</p>
         <h2>Race to ETH</h2>
         <p className="menu-neighbourhoods">Zürich HB <span className="menu-route-arrow">→</span> ETH HG</p>
-        <p className="menu-game-type">Solo multiplayer</p>
+        <p className="menu-game-type">One city. Every player for themselves.</p>
+        <p className="mission-intro">Your exam is starting. Race across Zürich, find a ride, and reach ETH before time runs out.</p>
+        <div className="lobby-controls" aria-label="Game controls">
+          <h3>Know your moves</h3>
+          <dl>
+            <div><dt><kbd>W A S D</kbd></dt><dd>Move <span>Mouse to look</span></dd></div>
+            <div><dt><kbd>Shift</kbd></dt><dd>Sprint <span>C to slide while sprinting</span></dd></div>
+            <div><dt><kbd>Space</kbd></dt><dd>Jump</dd></div>
+            <div><dt><kbd>E</kbd></dt><dd>Interact / ride <span>Follow prompts near people and vehicles</span></dd></div>
+            <div><dt><kbd>Click / F</kbd></dt><dd>Punch</dd></div>
+            <div><dt><kbd>M</kbd></dt><dd>Open city map <span>Scroll to zoom · drag to pan</span></dd></div>
+            <div><dt><kbd>V</kbd></dt><dd>Change view</dd></div>
+            <div><dt><kbd>Esc</kbd></dt><dd>Game menu</dd></div>
+          </dl>
+          <p className="controls-extra"><kbd>1</kbd> Drink Mate · <kbd>E</kbd> Leave a ride · <kbd>Backspace</kbd> Leave Polybahn</p>
+        </div>
+        <a className="practice-exam" href="/minigames/eth-blur">Practice the final exam ↗</a>
       </div>
       <form onSubmit={event => event.preventDefault()}>
         <div className="menu-card-heading"><span>CHOOSE YOUR CHARACTER</span><span>0{character + 1} / 0{characters.length}</span></div>
@@ -76,10 +93,33 @@ export function GameOverlay({ resolution, onResolutionChange }: {
       </div>
       <a className="menu-credit" href="https://data.stadt-zuerich.ch/dataset/geo_bauten___kombinierte_darstellung_heute" target="_blank" rel="noreferrer">Source data: Stadt Zürich · CC0</a>
     </section>
-    <div id="round-timer" hidden aria-live="off"></div>
+    <div id="round-timer" hidden aria-live="off">
+      <span id="timer-label">EXAM STARTS IN</span><strong id="timer-value">0:00</strong>
+      <div className="timer-track" aria-hidden="true"><i id="timer-fill" /></div>
+    </div>
+    <section id="race-leaderboard" hidden aria-label="Players closest to ETH">
+      <h2><span>RACE LEADERS</span><small>TO ETH ↗</small></h2>
+      <ol id="race-leaders" /><p id="race-own-rank" hidden />
+      <small className="distance-note">Straight-line distance</small>
+    </section>
+    <aside id="race-radar" hidden aria-label="Minimap">
+      <div className="radar-heading"><span>N ↑</span><span>ETH HG <b id="eth-distance" /></span></div>
+      <canvas id="race-minimap" aria-label="Nearby routes, players, and encounters" />
+      <button id="open-city-map"><kbd>M</kbd> City map <span>↗</span></button>
+    </aside>
+    <section id="city-map" hidden role="dialog" aria-modal="true" aria-labelledby="city-map-title" tabIndex={-1}>
+      <div className="city-map-panel">
+        <header><div><span>ZÜRICH / RACE TO ETH</span><h2 id="city-map-title">Find your way to ETH</h2></div><button id="close-city-map" aria-label="Close city map">Close <kbd>M / Esc</kbd></button></header>
+        <div className="map-tools"><button data-map="out" aria-label="Zoom out">−</button><output id="map-zoom">100%</output><button data-map="in" aria-label="Zoom in">+</button><button data-map="fit">Fit all</button><button data-map="player">Find me</button></div>
+        <canvas id="city-map-canvas" aria-label="City map. Drag to pan and scroll to zoom." />
+        <p id="map-readout" role="status">Scroll to zoom · Drag to pan · + / − zoom · F fit all · C find me</p>
+        <div className="map-legend"><span className="legend-you">● You</span><span className="legend-player">● Players</span><span className="legend-route">━ Suggested route</span><span className="legend-tram">┅ Tram</span><span className="legend-poly">━ Polybahn</span><span className="legend-npc">? Encounters / rides</span><span>◆ ETH exam entrance</span></div>
+        <small>The round keeps running while you check the map. Map data © OpenStreetMap contributors · City model: Stadt Zürich / CC0</small>
+      </div>
+    </section>
     <div id="battle-bus-intro" hidden role="status" aria-live="polite"></div>
     <div id="activity-feed" hidden role="log" aria-live="polite" aria-label="Activity feed"></div>
-    <button id="play" hidden>Click to play<br /><small>Mouse / trackpad look · WASD run · Space jump · Esc menu</small></button>
+    <button id="play" hidden>Click to play <span aria-hidden="true">↗</span></button>
     <div id="crosshair" hidden aria-hidden="true">+</div>
     <section id="pause" hidden aria-label="Game menu">
       <div>
@@ -102,7 +142,7 @@ export function GameOverlay({ resolution, onResolutionChange }: {
         <p>Mouse / trackpad: look · click to punch.<br />
           WASD run · Shift sprint · Space jump · C slide while sprinting · E ride<br />
           F hit<br />
-          F5 / V change view · Esc menu</p>
+          M city map · F5 / V change view · Esc menu<br />1 drink Mate · Backspace leave Polybahn</p>
         <p role="status"></p>
         <button id="leave">Leave room</button>
         <button id="finish-round" hidden>End round for everyone</button>
