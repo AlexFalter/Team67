@@ -50,28 +50,33 @@ export function stepCart(v: VehicleState, input: Input, dt: number, world: Movem
   v.x += v.vx * dt;
   v.z += v.vz * dt;
   const vx = v.vx, vz = v.vz;
+  let impactX = 0, impactZ = 0;
   if (v.x < bounds.minX + radius || v.x > bounds.maxX - radius) {
     v.x = Math.max(bounds.minX + radius, Math.min(bounds.maxX - radius, v.x));
-    v.vx = 0;
+    impactX = v.vx; v.vx = 0;
   }
   if (v.z < bounds.minZ + radius || v.z > bounds.maxZ - radius) {
     v.z = Math.max(bounds.minZ + radius, Math.min(bounds.maxZ - radius, v.z));
-    v.vz = 0;
+    impactZ = v.vz; v.vz = 0;
   }
   const body = { ...v, vy: 0, grounded: true };
   if (world.name === "flat") resolveHouses(body, previous, radius);
   else {
     const canMove = (x: number, z: number) => {
       const y = world.height(x, z, v.y);
-      return y !== undefined && Math.abs(y - v.y) <= C.MAX_GROUND_STEP &&
-        !world.blocked(x, y, z, radius, C.CART_HIT_HEIGHT);
+      // Missing ground / an unrideable height step stops motion safely, but
+      // is not evidence of a wall impact and must not eject a bike rider.
+      if (y === undefined || Math.abs(y - v.y) > C.MAX_GROUND_STEP) return "terrain";
+      return world.blocked(x, y, z, radius, C.CART_HIT_HEIGHT) ? "solid" : "clear";
     };
-    if (!canMove(body.x, previous.z)) { body.x = previous.x; body.vx = 0; }
-    if (!canMove(body.x, body.z)) { body.z = previous.z; body.vz = 0; }
+    const xMove = canMove(body.x, previous.z);
+    if (xMove !== "clear") { if (xMove === "solid") impactX = body.vx; body.x = previous.x; body.vx = 0; }
+    const zMove = canMove(body.x, body.z);
+    if (zMove !== "clear") { if (zMove === "solid") impactZ = body.vz; body.z = previous.z; body.vz = 0; }
     v.y = world.height(body.x, body.z, v.y) ?? v.y;
   }
   v.x = body.x; v.z = body.z; v.vx = body.vx; v.vz = body.vz;
-  return Math.hypot(vx - v.vx, vz - v.vz);
+  return world.name === "flat" ? Math.hypot(vx - v.vx, vz - v.vz) : Math.hypot(impactX, impactZ);
 }
 
 export function seatPosition(

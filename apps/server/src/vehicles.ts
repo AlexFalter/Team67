@@ -200,7 +200,7 @@ export class VehicleManager {
         (now - (this.reports.get(data[0]) ?? now)) / 1000,
       ),
       bounds = this.world.bounds;
-    const y = this.world.height(data[1], data[2]);
+    const y = this.world.height(data[1], data[2], v.y);
     if (
       Math.hypot(data[1] - v.x, data[2] - v.z) > C.vehicleSpeed(v) * 2 * dt + 0.15 ||
       data[1] < bounds.minX + C.vehicleRadius(v) ||

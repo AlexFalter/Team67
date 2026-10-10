@@ -120,3 +120,11 @@ click-to-play control remains available to retry; Escape still releases it.
 Missing reservation or unlock replies time out after five seconds instead of
 leaving a phone overlay indefinitely. Knockdown keeps camera look available.
 Regression tests cover interruption, timeouts, real releases and late releases.
+
+### Uphill collision handling
+
+Vehicle steps distinguish unavailable ground or unrideable height changes from
+solid obstacles. Terrain rejection can safely stop the bike without reporting a
+crash; walls, bounds and entity impacts still cause falls. Server driver reports
+resolve ground using the current vehicle elevation, matching prediction under
+bridges and other stacked walkable surfaces.
