@@ -17,6 +17,8 @@ export class LocalPlayer {
   /** Interpolated, correction-offset position to draw and to put the camera on. */
   readonly render = new Vector3();
   private offset = new Vector3();
+  /** Simulation time not yet stepped (s): the latest tick state is this far in the past. */
+  get pending() { return this.acc; }
   /** Called after every tick (separation against other players etc.). */
   afterTick?: (body: Body) => void;
   /** Ticks with a landing since the last frame, with the impact speed. */

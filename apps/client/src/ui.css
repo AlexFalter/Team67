@@ -27,3 +27,12 @@ button.secondary { background: #e3e7ea; color: #1f2a33; }
 .hud-toast { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); font-size: 18px; }
 .hud-status { position: absolute; left: 16px; bottom: 14px; }
 .hud-debug { position: absolute; right: 12px; top: 12px; white-space: pre; font: 12px/1.5 monospace; padding: 8px 10px; background: #000a; text-shadow: none; border-radius: 4px; }
+.panel .row { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
+.panel p { margin: 0; }
+.eyebrow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7680; }
+.roster { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.roster li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 8px; background: #eef1f3; border-radius: 6px; font-size: 14px; }
+.roster span { color: #55606b; }
+table { border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #dde2e6; }
+th:not(:first-child), td:not(:first-child) { text-align: right; }
