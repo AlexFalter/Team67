@@ -144,8 +144,11 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
   p.vy += C.GRAVITY * dt;
   const canMove = (x: number, z: number) => {
     const ground = world.height(x, z, previousY);
-    return !world.blocked(x, p.y, z, C.CAPSULE_RADIUS, C.CAPSULE_HEIGHT) &&
-      (!grounded || ground === undefined || oldGround === undefined || ground - oldGround <= C.MAX_GROUND_STEP);
+    if (world.blocked(x, p.y, z, C.CAPSULE_RADIUS, C.CAPSULE_HEIGHT)) return false;
+    if (ground === undefined) return true;
+    // grounded: at most one step up; airborne: never into terrain above the feet (+ one step), else a
+    // jump against a slope moves the body inside the ground and it falls through the map
+    return grounded ? oldGround === undefined || ground - oldGround <= C.MAX_GROUND_STEP : ground - p.y <= C.MAX_GROUND_STEP;
   };
   const x = p.x + p.vx * dt, z = p.z + p.vz * dt;
   if (canMove(x, p.z)) p.x = x; else p.vx = 0;
@@ -153,7 +156,9 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
   p.y += p.vy * dt;
   const ground = world.height(p.x, p.z, previousY);
   if (ground !== undefined && p.vy <= 0 &&
-    ((previousY >= ground - 0.05 && p.y <= ground) ||
+    // land when crossing the ground from above, or when (up to one step) below it after a move onto a
+    // ledge, instead of continuing to fall inside the terrain
+    ((previousY >= ground - C.MAX_GROUND_STEP && p.y <= ground) ||
       (grounded && oldGround !== undefined && Math.abs(ground - oldGround) <= C.MAX_GROUND_STEP))) {
     p.y = ground;
     p.vy = 0;
