@@ -1,0 +1,7 @@
+.npc-ui-root{font-family:Arial,sans-serif;color:#fff}
+#npc-hint{position:absolute;bottom:96px;left:50%;transform:translateX(-50%);padding:9px 16px;background:#102132df;border:1px solid #c4a269;border-radius:8px;z-index:30;text-align:center;font-size:13px;pointer-events:none}
+#npc-choice,#npc-message{position:fixed;z-index:160;left:50%;bottom:32px;transform:translateX(-50%);width:min(560px,90vw);box-sizing:border-box;padding:24px;background:#102132f5;border:2px solid #c4a269;border-radius:12px}
+#npc-choice b,#npc-message b{display:block;color:#f4d18a;margin-bottom:14px;letter-spacing:2px}
+#npc-choice button,#npc-message button{display:block;width:100%;padding:12px;margin-top:10px;background:#223441;color:white;border:1px solid #829ba8;border-radius:6px;cursor:pointer;font-size:15px}
+#npc-message p{line-height:1.6}#npc-choice button:focus-visible,#npc-message button:focus-visible{outline:2px solid #f4d18a}
+.npc-ui-root [hidden]{display:none!important}

@@ -1,0 +1,5 @@
+gis/
+*.blend
+*.blend1
+bench/assets/
+bench/three

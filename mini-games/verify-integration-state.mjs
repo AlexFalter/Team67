@@ -1,0 +1,31 @@
+import {createMateInventoryState} from './src/interactions/mate/mate-inventory-state.js';
+import assert from 'node:assert/strict';
+import {createBikeFleetState} from './src/vehicles/publibike/bike-fleet-state.js';
+import {createMateMachineState} from './src/interactions/mate/mate-machine-state.js';
+import {createVehiclePassengers} from './src/vehicles/passengers/vehicle-passengers.js';
+import {createInteractionCoordinator} from './src/shared/runtime/interaction-coordinator.js';
+import {createWorldAdapter} from './src/world/core/world-adapter.js';
+import {createFeatureLifecycle} from './src/shared/runtime/feature-lifecycle.js';
+const fleet=createBikeFleetState({failurePercent:0});
+assert(fleet.claim(1,'alice'));assert(!fleet.claim(1,'bob'));assert(!fleet.claim(2,'alice'));assert(!fleet.claim(1,'alice'));
+assert(!fleet.park(1,'bob'));assert(!fleet.destroy(1,'bob'));
+fleet.tick(7);const before=fleet.snapshot(),replica=createBikeFleetState({snapshot:JSON.parse(JSON.stringify(before))});assert.deepEqual(replica.snapshot(),before);
+assert(!replica.claim(1,'bob'));assert.equal(replica.bike(1).rideTime,7);
+assert(!replica.park(1,'alice',1),'cannot occupy another dock');assert(replica.park(1,'alice',null));assert(replica.claim(1,'bob'));assert.deepEqual(replica.tick(8),[1]);assert(!replica.claim(1,'alice'));assert(replica.park(1,'bob',0));assert.equal(replica.bike(1).rideTime,15);
+const corrupt=structuredClone(before);corrupt.bikes[1].ownerId='alice';corrupt.bikes[1].dock=null;assert.throws(()=>fleet.restore(corrupt));assert.deepEqual(fleet.snapshot(),before,'invalid restore is atomic');
+const copy=fleet.bike(1);copy.rideTime=0;assert.equal(fleet.bike(1).rideTime,7);
+for(let winner=0;winner<4;winner++){
+ const mate=createMateMachineState({workingFlavor:winner});const loser=(winner+1)%4;
+ assert(mate.select(loser));assert(mate.pay());assert(!mate.pay());mate.tick(1.4);assert.equal(mate.snapshot().phase,'failure');mate.tick(3);assert(!mate.select(loser));assert(mate.select(winner));assert(mate.pay());mate.tick(1.4);assert.equal(mate.snapshot().phase,'dropping');mate.tick(.95);assert.equal(mate.snapshot().phase,'collect');assert(mate.collect());assert(!mate.collect());
+ const restored=createMateMachineState({snapshot:JSON.parse(JSON.stringify(mate.snapshot()))});assert.deepEqual(restored.snapshot(),mate.snapshot());assert(!restored.collect());restored.reset({workingFlavor:winner});assert.equal(restored.snapshot().workingFlavor,winner);
+}
+const inventory=createMateInventoryState();assert(inventory.add('mate-collected-1'));assert(!inventory.add('mate-collected-1'));assert(inventory.use());assert(!inventory.use());inventory.tick(4,{walking:true});const invReplica=createMateInventoryState({snapshot:JSON.parse(JSON.stringify(inventory.snapshot()))});assert.equal(invReplica.snapshot().remaining,11);assert(!invReplica.add('mate-collected-1'));invReplica.tick(20,{walking:false});assert.equal(invReplica.snapshot().remaining,11);invReplica.tick(11,{walking:true});assert.equal(invReplica.multiplier(),1);
+const stale=before;fleet.tick(1);assert(!fleet.applySnapshot(stale));assert.equal(fleet.bike(1).rideTime,8);
+const forged=createMateMachineState().snapshot();forged.phase='collect';forged.selected=forged.workingFlavor;forged.dropAge=1;assert.throws(()=>createMateMachineState({snapshot:forged}));
+const seats=createVehiclePassengers('tram','tram-1');assert(seats.board('alice'));assert(seats.board('bob'));assert(!seats.board('alice'));seats.beginBoarding();seats.tick(3);
+const other=createVehiclePassengers('tram','tram-1');other.restore(JSON.parse(JSON.stringify(seats.snapshot())));assert.deepEqual(other.snapshot(),seats.snapshot());assert.equal(other.slot('bob'),1);
+const bad=seats.snapshot();bad.passengers[1].slot=0;assert.throws(()=>other.restore(bad));assert.equal(other.slot('bob'),1);
+const interactions=createInteractionCoordinator();let open=false;const unregister=interactions.register('phone',{active:()=>open,blocks:['movement']});assert(!interactions.blocks('movement'));open=true;assert(interactions.blocks('movement'));assert(!interactions.blocks('movement',{except:['phone']}));unregister();assert(!interactions.blocks('movement'));
+const map=createWorldAdapter({height:(x,z)=>x*.1,bounds:{minX:0,maxX:100,minZ:0,maxZ:100},blocked:()=>false,penetration:()=>0,solve:p=>({x:0,y:0,z:0})});assert.equal(map.world.height(10,0),1);assert(!map.world.isWater(0,0));assert.equal(map.world.addStationPassages,undefined);assert.throws(()=>createWorldAdapter({}),/requires height/);
+const lifecycle=createFeatureLifecycle(),target=new EventTarget();let hits=0,cleanups=0;lifecycle.listen(target,'test',()=>hits++);lifecycle.own(()=>cleanups++);target.dispatchEvent(new Event('test'));lifecycle.dispose();lifecycle.dispose();target.dispatchEvent(new Event('test'));assert.equal(hits,1);assert.equal(cleanups,1);
+console.log('PASS: two-player bike ownership, duplicate claims/collections, battery and reconnect snapshots, atomic invalid-state rejection, stable passenger seats, local interaction policies, alternate-map adapter and idempotent listener cleanup.');

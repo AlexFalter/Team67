@@ -1,13 +1,12 @@
 node_modules/
 dist/
-.geodata-cache/
-
-# Generated, reviewable feature exports
-exports/
-
-# Local test evidence and editor files
-artifacts/
-.DS_Store
+*.tsbuildinfo
 .env
-.env.*
-!.env.example
+.env.local
+.env.*.local
+*.log
+
+# Local prototype caches, exports and browser evidence
+/.geodata-cache/
+/artifacts/
+/exports/

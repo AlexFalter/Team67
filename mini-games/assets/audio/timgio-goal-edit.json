@@ -1,0 +1,17 @@
+{
+  "source": "v26044gc0000d8nfo7fog65snbqicql0.MP4",
+  "sourceDuration": 125.386009,
+  "loudnessLUFS": -20,
+  "peakDb": -3,
+  "segments": [
+    {"id":"germany-1","file":"timgio-goal-1.mp3","start":0,"end":14.5,"note":"Opening shot, first goal and full reaction through unfassbar."},
+    {"id":"curacao","file":"timgio-curacao.mp3","start":14.5,"end":31.45,"note":"Curaçao attack and equaliser, including both disappointed reactions."},
+    {"id":"germany-2","file":"timgio-goal-2.mp3","start":31.45,"end":47.75,"note":"2–1 celebration, including hol ihn raus."},
+    {"id":"germany-3","file":"timgio-goal-3.mp3","start":47.75,"end":60.8,"note":"Third goal and full follow-up reaction."},
+    {"id":"germany-4","file":"timgio-goal-4.mp3","start":60.8,"end":74.95,"note":"Fourth goal and mistaken-team explanation."},
+    {"id":"germany-5","file":"timgio-goal-5.mp3","start":74.95,"end":82.35,"note":"Water distraction and discovery of the fifth goal."},
+    {"id":"germany-6","file":"timgio-goal-6.mp3","start":82.35,"end":95.8,"note":"Sixth goal and full celebration."},
+    {"id":"germany-7","file":"timgio-goal-7.mp3","start":95.8,"end":125.386009,"note":"Seventh goal, closing reactions and recording ending."}
+  ],
+  "reply": {"file":"timgio-hol-ihn-raus.mp3","start":41,"end":44}
+}

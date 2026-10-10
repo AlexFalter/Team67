@@ -1,0 +1,251 @@
+{
+  "mission": {
+    "deadlineSeconds": 120,
+    "scorePerSecond": 100,
+    "derailPenaltySeconds": 5
+  },
+  "player": {
+    "walkSpeed": 6,
+    "sprintSpeed": 12,
+    "jumpSpeed": 7,
+    "mouseSensitivity": 0.005,
+    "arrowLookSpeed": 1.8,
+    "slide": {
+      "durationSeconds": 2.25,
+      "minimumSpeed": 7,
+      "speedBonus": 1.5,
+      "maximumSpeed": 16,
+      "friction": 1.8,
+      "cooldownSeconds": 0.45,
+      "cameraDrop": 0.78
+    }
+  },
+  "moodle": {
+    "deadlineSeconds": 30,
+    "intervalSeconds": [
+      25,
+      55
+    ],
+    "sitOutSeconds": 7,
+    "rewardSeconds": 10,
+    "urgentAtSeconds": 10,
+    "questions": [
+      {
+        "course": "Analysis I",
+        "question": "What is 2 + 2?",
+        "options": [
+          "3",
+          "4",
+          "5"
+        ],
+        "correct": 1,
+        "explanation": "2 + 2 = 4."
+      },
+      {
+        "course": "Linear Algebra",
+        "question": "What is 3 \u00d7 2?",
+        "options": [
+          "6",
+          "9",
+          "12"
+        ],
+        "correct": 0,
+        "explanation": "3 \u00d7 2 = 6."
+      },
+      {
+        "course": "Physics I",
+        "question": "You drop a ball. Which way does it fall?",
+        "options": [
+          "Up",
+          "Sideways",
+          "Down"
+        ],
+        "correct": 2,
+        "explanation": "Gravity pulls it down."
+      }
+    ]
+  },
+  "mate": {
+    "boostSeconds": 15,
+    "speedMultiplier": 1.35,
+    "loadingSeconds": 1.4,
+    "retrySeconds": [
+      1,
+      2
+    ]
+  },
+  "vehicles": {
+    "bikeSpeed": 16,
+    "bikeSprintSpeed": 22,
+    "scooterSpeed": 12,
+    "scooterSprintSpeed": 18,
+    "bikeBatterySeconds": 15,
+    "bikeFailurePercent": 50
+  },
+  "npcs": {
+    "scooter": {
+      "interactionDistance": 4,
+      "volume": 0.75,
+      "audioNearDistance": 4,
+      "audioFarDistance": 24,
+      "handoverSeconds": 0.8,
+      "horns": false,
+      "greeting": "Komm nach Frankfurt bek\u00e4mpfen.",
+      "giftLine": "F\u00fcr dich."
+    },
+    "finance": {
+      "interactionDistance": 2.8,
+      "volume": 0.9
+    },
+    "kid": {
+      "interactionDistance": 1.15,
+      "volume": 0.48,
+      "inspectionVolume": 0.12,
+      "audioNearDistance": 1.2,
+      "audioFarDistance": 8,
+      "question": "Quick question. How much does that clock cost?",
+      "choices": [
+        "CHF 12. It is a clock.",
+        "67.",
+        "Sir, this is a funicular."
+      ],
+      "triggerChoice": 1,
+      "replies": [
+        "Twelve? That is barely a tutorial number. Try again.",
+        "",
+        "Funicular? Weird way to pronounce six seven. Anyway, how much is the clock?"
+      ]
+    },
+    "eater": {
+      "interactionDistance": 1.15,
+      "voiceVolume": 0.58,
+      "chewingVolume": 0.48,
+      "audioNearDistance": 0.8,
+      "audioFarDistance": 6,
+      "choices": [
+        "What are you eating on the Polybahn?",
+        "I thought that was the rail brakes.",
+        "That sounds suspiciously delicious.",
+        "Enjoy your meal. I have a lecture."
+      ],
+      "lines": {
+        "question": [
+          "Wow, hast du das Squeezing geh\u00f6rt?",
+          "\u201cWow, did you hear that squeezing?\u201d"
+        ],
+        "lunch": [
+          "Bei uns gibt\u2019s heute Pulled Pork.",
+          "\u201cPulled pork is on the menu today.\u201d"
+        ],
+        "closer": [
+          "Nee, musst mal n\u00e4her kommen.",
+          "\u201cNo, you need to come closer.\u201d"
+        ],
+        "delicious": [
+          "Einfach nur geil.",
+          "\u201cAbsolutely delicious.\u201d"
+        ]
+      }
+    },
+    "inspector": {
+      "fineCHF": 100,
+      "timePenaltySeconds": 10,
+      "speechRate": 0.88,
+      "speechPitch": 0.85,
+      "lines": [
+        "Tickets, please. Your student aura is not a valid fare.",
+        "No ticket? I see. You bought the invisible student discount.",
+        "CHF {fineCHF}. Congratulations. This is now the most expensive lecture you have attended.",
+        "The ticket machine was right there. It was not a decorative fridge.",
+        "Next time, collect a ticket. It is the tiny rectangle with a better academic record than you.",
+        "Right. Off you go. The syllabus will survive without your punctuality."
+      ]
+    },
+    "privateProperty": {
+      "volume": 0.85,
+      "durationSeconds": 8.4,
+      "audioStartSeconds": 2.3
+    },
+    "einstein": {
+      "interactionDistance": 3,
+      "portalDistance": 2.2
+    },
+    "interview": {
+      "interactionDistance": 2.8,
+      "boardingDistance": 9
+    },
+    "football": {
+      "voiceVolume": 0.38,
+      "audioNearDistance": 3,
+      "audioFarDistance": 28,
+      "celebrationGapSeconds": [
+        7,
+        12
+      ]
+    },
+    "cat": {
+      "interactionDistance": 3,
+      "strokesRequired": 5,
+      "strokeDistance": 0.2,
+      "maximumStrokeSpeed": 3,
+      "hurtSeconds": 15,
+      "hurtSpeedMultiplier": 0.7,
+      "meowVolume": 0.65,
+      "purrVolume": 0.55,
+      "minimumStrokeSeconds": 0.35,
+      "roughPetSeconds": 0.4,
+      "angryVolume": 0.8,
+      "biteReactionSeconds": 2.1
+    }
+  },
+  "camera": {
+    "worldFovDegrees": 60,
+    "portraitFovDegrees": 90,
+    "landscapeFovDegrees": 55,
+    "frameCoverage": 0.88,
+    "previewWidth": 600,
+    "aimSmoothing": 18,
+    "yawSensitivityCap": 0.8,
+    "pitchSensitivityCap": 0.6,
+    "cursorWarpFraction": 0.45,
+    "qrYawOffsetRadians": [
+      0.12,
+      0.18
+    ],
+    "qrPitchOffsetRadians": [
+      0.035,
+      0.065
+    ]
+  },
+  "visuals": {
+    "skyColor": "#aabecb",
+    "hemisphereSkyColor": "#ffffff",
+    "hemisphereGroundColor": "#7c8792",
+    "hemisphereIntensity": 2,
+    "sunColor": "#fff7e6",
+    "sunIntensity": 2.5,
+    "maximumPixelRatio": 2,
+    "shadows": true,
+    "shadowMapSize": 1024
+  },
+  "settingsDefaults": {
+    "moodleEvents": true,
+    "vehicleSounds": true,
+    "michaelJacksonSounds": true,
+    "railCrashProtection": true,
+    "highlightWorkingBikes": true,
+    "teleportMode": false,
+    "freezeTimer": false,
+    "skipIntro": false,
+    "medalSounds": true
+  },
+  "scanning": {
+    "ticketHoldSeconds": 1.4,
+    "ticketSettleSeconds": 0.2,
+    "bikeHoldSeconds": 1.25,
+    "bikeSettleSeconds": 0.3,
+    "bikeStutterSeconds": 0.5,
+    "bikeStutterAtProgress": 0.45,
+    "bikeAimTolerancePixels": 13
+  }
+}

@@ -1,0 +1,23 @@
+// Screen-space navigation stays separate from city geometry and gameplay movement.
+export function createMapControls(canvas,{draw,isOpen,getPlayer,onSelect,getMarkers}){
+ const view={zoom:1,cx:null,cz:null},panel=canvas.parentElement;
+ const toolbar=document.createElement('div');toolbar.className='map-tools';toolbar.innerHTML='<button data-map="out" aria-label="Zoom out">−</button><output id="map-zoom">100%</output><button data-map="in" aria-label="Zoom in">+</button><button data-map="fit">Fit all</button><button data-map="player">Find me</button>';
+ panel.insertBefore(toolbar,canvas);const readout=document.createElement('p');readout.id='map-readout';readout.textContent='Scroll to zoom · Drag to pan · + / − to zoom · F: fit all · C: find me';panel.insertBefore(readout,canvas.nextSibling);
+ let projection=null,drag=null,suppressClick=false;
+ function size(){const rect=canvas.getBoundingClientRect(),w=Math.max(1,Math.round(rect.width||innerWidth-64)),h=Math.max(1,Math.round(rect.height||innerHeight-180)),dpr=Math.min(devicePixelRatio,2);if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);}canvas.getContext('2d').setTransform(dpr,0,0,dpr,0,0);return {w,h};}
+ function project(bounds,w,h){const base=Math.min((w-100)/(bounds.maxX-bounds.minX),(h-100)/(bounds.maxZ-bounds.minZ));if(view.cx===null){view.cx=(bounds.minX+bounds.maxX)/2;view.cz=(bounds.minZ+bounds.maxZ)/2;}projection={cx:view.cx,cz:view.cz,scale:base*view.zoom,w,h};toolbar.querySelector('output').value=`${Math.round(view.zoom*100)}%`;return projection;}
+ function local(event){const r=canvas.getBoundingClientRect();return {x:event.clientX-r.left,y:event.clientY-r.top};}
+ function worldAt(x,y){if(!projection)return null;return {x:projection.cx+(x-projection.w/2)/projection.scale,z:projection.cz+(y-projection.h/2)/projection.scale};}
+ function zoom(factor,anchor){if(!projection)return;const point=anchor??{x:projection.w/2,y:projection.h/2},before=worldAt(point.x,point.y),old=view.zoom;view.zoom=Math.max(1,Math.min(12,old*factor));const scale=projection.scale*view.zoom/old;view.cx=before.x-(point.x-projection.w/2)/scale;view.cz=before.z-(point.y-projection.h/2)/scale;draw();}
+ function fit(){view.zoom=1;view.cx=view.cz=null;draw();}
+ function player(){const p=getPlayer();view.cx=p.x;view.cz=p.z;view.zoom=Math.max(3,view.zoom);draw();}
+ toolbar.onclick=e=>{const action=e.target.closest('button')?.dataset.map;if(action==='in')zoom(1.4);if(action==='out')zoom(1/1.4);if(action==='fit')fit();if(action==='player')player();};
+ canvas.addEventListener('wheel',e=>{if(!isOpen())return;e.preventDefault();zoom(Math.exp(-Math.max(-240,Math.min(240,e.deltaY))*.002),local(e));},{passive:false});
+ canvas.addEventListener('pointerdown',e=>{if(e.button!==0||!projection)return;const p=local(e);drag={id:e.pointerId,x:p.x,y:p.y,cx:view.cx,cz:view.cz,scale:projection.scale,moved:false};suppressClick=false;canvas.setPointerCapture(e.pointerId);canvas.classList.add('panning');});
+ canvas.addEventListener('pointermove',e=>{const p=local(e);if(drag&&e.pointerId===drag.id){const dx=p.x-drag.x,dy=p.y-drag.y;if(Math.hypot(dx,dy)>5)drag.moved=true;if(drag.moved){view.cx=drag.cx-dx/drag.scale;view.cz=drag.cz-dy/drag.scale;draw();}return;}if(!projection)return;let closest=null,distance=22;for(const marker of getMarkers()){const x=projection.w/2+(marker.x-projection.cx)*projection.scale,y=projection.h/2+(marker.z-projection.cz)*projection.scale,d=Math.hypot(x-p.x,y-p.y);if(d<distance){closest=marker;distance=d;}}readout.textContent=closest?`?  ${closest.label}`:'Scroll to zoom · Drag to pan · + / − to zoom · F: fit all · C: find me';});
+ for(const type of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(type,()=>{if(drag)suppressClick=drag.moved;drag=null;canvas.classList.remove('panning');});
+ canvas.addEventListener('click',e=>{if(suppressClick){suppressClick=false;return;}const p=local(e),world=worldAt(p.x,p.y);if(world)onSelect(world);});
+ const observer=new ResizeObserver(()=>{if(isOpen())draw();});observer.observe(canvas);
+ function keydown(e){if(!isOpen())return false;let handled=true;if(['Equal','NumpadAdd'].includes(e.code))zoom(1.4);else if(['Minus','NumpadSubtract'].includes(e.code))zoom(1/1.4);else if(e.code==='KeyF')fit();else if(e.code==='KeyC')player();else if(e.code.startsWith('Arrow')&&projection){view.cx+=(e.code==='ArrowRight'?1:e.code==='ArrowLeft'?-1:0)*70/projection.scale;view.cz+=(e.code==='ArrowDown'?1:e.code==='ArrowUp'?-1:0)*70/projection.scale;draw();}else handled=false;if(handled)e.preventDefault();return handled;}
+ return {size,project,keydown,fit,state:()=>({...view,projection:projection&&{...projection}})};
+}

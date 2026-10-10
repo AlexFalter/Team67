@@ -1,0 +1,20 @@
+{
+  "$comment": "Autumn variant (the default theme): only the keys that differ from summer.json. ?theme=summer for summer.",
+  "extends": "summer",
+  "surfaces": {
+    "Green": { "palette": ["#7d8a3e", "#8a9444", "#6f7a36", "#a0974c"], "pattern": "noise", "weights": [55, 25, 15, 5] }
+  },
+  "trees": {
+    "leaves": ["#c8642a", "#d98b2b", "#b0452a", "#e0b23a", "#9c5a2c", "#e8c547", "#a8331f", "#cf7a1e", "#7d8a3e", "#b98a2f"]
+  },
+  "sky": "#d9cdb8",
+  "lighting": {
+    "sun": "#ffd29a",
+    "sunIntensity": 2.0,
+    "sunElevation": 28,
+    "sunAzimuth": 235,
+    "skyLight": "#f0dcc0",
+    "groundLight": "#6e5a48",
+    "hemiIntensity": 0.4, "exposure": 1.2, "environment": 0.9
+  }
+}

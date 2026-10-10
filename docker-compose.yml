@@ -1,0 +1,15 @@
+﻿services:
+  client:
+    build:
+      context: .
+      dockerfile: apps/client/Dockerfile
+    ports:
+      - 80:8080
+    depends_on:
+      - server
+    restart: unless-stopped
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    restart: unless-stopped
