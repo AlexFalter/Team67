@@ -26,6 +26,7 @@ export class Network {
   private pending = new Set<number>();
   vehicleMove?: () => VehicleMove | undefined;
   onVehicleResult?: (result: VehicleResult) => void;
+  onBikeUnlockResult?: (result: import("@race/shared").BikeUnlockResult) => void;
   now() {
     return Date.now() + this.offset;
   }
@@ -79,6 +80,7 @@ export class Network {
     this.room.onMessage<VehicleResult>("vehicleResult", (result) =>
       this.onVehicleResult?.(result),
     );
+    this.room.onMessage<import("@race/shared").BikeUnlockResult>("bikeUnlockResult", result => this.onBikeUnlockResult?.(result));
     this.room.onMessage<Bump>("bump", (hit) => {
       this.collisions++;
       onBump(hit);

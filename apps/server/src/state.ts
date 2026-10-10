@@ -62,6 +62,13 @@ export const Vehicle = schema(
   "Vehicle",
 );
 export type Vehicle = SchemaType<typeof Vehicle>;
+export const PubliBike = schema({
+  broken: t.boolean().default(false),
+  batteryMs: t.number().default(15000),
+  reservedBy: t.string().default(""),
+  reservationUntil: t.number().default(0),
+  dock: t.int8().default(-1),
+}, "PubliBike");
 export const RaceState = schema(
   {
     serverTime: t.number().default(0),
@@ -76,6 +83,7 @@ export const RaceState = schema(
     results: t.map(RoundResult),
     players: t.map(Player),
     vehicles: t.map(Vehicle),
+    publiBikes: t.map(PubliBike),
   },
   "RaceState",
 );

@@ -30,9 +30,9 @@ export class ContactWorld {
         { x: b.maxX - b.minX, y: 1, z: b.maxZ - b.minZ }).setTranslation((b.minX + b.maxX) / 2, 0, (b.minZ + b.maxZ) / 2));
     }
   }
-  sync(players: ReadonlyMap<string, C.PlayerState>, vehicles: ReadonlyMap<string, C.VehicleState> = new Map()) {
+  sync(players: ReadonlyMap<string, C.PlayerState>, vehicles: ReadonlyMap<string, C.VehicleState> = new Map(), fixedVehicles: ReadonlySet<string> = new Set()) {
     const entities = new Map<string, { x: number; y: number; z: number; radius?: number; dynamic?: boolean; ball?: boolean; vx?: number; vz?: number }>(players);
-    for (const [id, v] of vehicles) entities.set(`v:${id}`, { ...C.snapshot(v, C.createVehicle()), radius: C.vehicleRadius(v), ball: v.kind === 4, dynamic: v.kind === 4 || (v.kind !== 1 && v.kind < 3 && !v.driver && !v.fallenUntil) });
+    for (const [id, v] of vehicles) entities.set(`v:${id}`, { ...C.snapshot(v, C.createVehicle()), radius: C.vehicleRadius(v), ball: v.kind === 4, dynamic: !fixedVehicles.has(id) && (v.kind === 4 || (v.kind !== 1 && v.kind < 3 && !v.driver && !v.fallenUntil)) });
     for (const [id, p] of entities) {
       let shape = this.shapes.get(id);
       if (shape && shape.parent()!.isDynamic() !== !!p.dynamic) {

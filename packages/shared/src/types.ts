@@ -33,6 +33,7 @@ export interface WorldState {
   results: Map<string, RoundResult>;
   players: Map<string, PlayerState>;
   vehicles: Map<string, VehicleState>;
+  publiBikes: Map<string, import("./publiBike.ts").PubliBikeState>;
 }
 export interface RoomMember {
   introSeat: number;

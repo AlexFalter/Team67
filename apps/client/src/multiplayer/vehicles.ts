@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import * as C from "@race/shared";
 import type { Network } from "./net.ts";
+import { loadPubliBikeModel } from "./publiBikeModel.ts";
+import { disposeMap } from "../maps/zurich/loadZurichMap.ts";
 interface Snapshot extends C.VehicleState {
   t: number;
 }
@@ -14,6 +16,9 @@ interface Visual {
   labelText: string;
 }
 export class Vehicles {
+  readonly publiReady: Promise<void>;
+  private abort = new AbortController();
+  private publiModel?: Awaited<ReturnType<typeof loadPubliBikeModel>>;
   items = new Map<string, Visual>();
   private prediction = C.createVehicle();
   private drivenId = "";
@@ -26,6 +31,11 @@ export class Vehicles {
     private net: Network,
     private controls: HTMLDivElement,
   ) {
+    this.publiReady = loadPubliBikeModel(this.abort.signal).then(model => {
+      if (this.abort.signal.aborted) { model.dispose(); return; }
+      this.publiModel = model;
+      for (const [id, visual] of this.items) if (id.startsWith("publibike-")) this.replacePubliBike(id, visual);
+    });
     net.vehicleMove = () => this.drivenId ? [this.drivenId, this.prediction.x, this.prediction.z,
       this.prediction.rotY, this.prediction.vx, this.prediction.vz] : undefined;
     net.onVehicleResult = (result) => {
@@ -51,10 +61,19 @@ export class Vehicles {
       let visual = this.items.get(id);
       if (!visual) {
         visual = this.create(v);
+        if (state.publiBikes.has(id) && this.publiModel) this.replacePubliBike(id, visual);
         this.items.set(id, visual);
         this.scene.add(visual.mesh);
       }
       C.snapshot(v, visual.latest);
+      const bike = state.publiBikes.get(id);
+      if (bike) visual.mesh.traverse(object => {
+        if (!(object instanceof THREE.Mesh)) return;
+        for (const mat of Array.isArray(object.material) ? object.material : [object.material]) {
+          if (mat instanceof THREE.MeshStandardMaterial && mat.name.includes("berry enamel"))
+            mat.color.copy(bike.broken ? mat.userData.originalColor ?? mat.color : new THREE.Color("#ffd174"));
+        }
+      });
       const snapshot: Snapshot = {
         ...C.snapshot(v, C.createVehicle()),
         t: state.serverTime,
@@ -70,17 +89,16 @@ export class Vehicles {
     }
     for (const [id, v] of this.items)
       if (!state.vehicles.has(id)) {
-        v.mesh.traverse((object) => {
-          if (object instanceof THREE.Mesh) {
-            object.geometry.dispose();
-            (object.material as THREE.Material).dispose();
-          }
-        });
+        disposeMap(v.mesh);
         (v.label.material as THREE.SpriteMaterial).map?.dispose();
         v.label.material.dispose();
         v.mesh.removeFromParent();
         this.items.delete(id);
       }
+  }
+  private replacePubliBike(id: string, visual: Visual) {
+    for (const child of [...visual.mesh.children]) if (child !== visual.label) { disposeMap(child); child.removeFromParent(); }
+    visual.mesh.add(this.publiModel!.create(Number(id.split("-")[1])));
   }
   private create(v: C.VehicleState): Visual {
     const mesh = new THREE.Group(),
@@ -250,6 +268,7 @@ export class Vehicles {
       if (id) this.net.room.send("vehicleEnter", id);
     }
   }
+  nearestId(body: C.Body) { return this.nearest(body); }
   updateLabels(body: C.Body, now: number) {
     if (now - this.lastLabels < 250) return;
     this.lastLabels = now;
@@ -268,6 +287,8 @@ export class Vehicles {
         ),
       );
       const text =
+        state?.publiBikes?.has(id)
+          ? `PUBLIBIKE · ${state.publiBikes.get(id)!.broken ? "out of service" : v.driver ? "occupied" : state.publiBikes.get(id)!.reservedBy ? "being unlocked" : "E to scan"}` :
         v.kind !== 1
           ? `${v.kind === 2 ? "BIKE" : v.kind === 3 ? "NPC CAR" : v.kind === 4 ? "LOOSE BALL" : "CART"} · ${v.kind >= 3 ? "watch out" : v.fallenUntil > this.net.now() ? "recovering" : v.driver ? "occupied" : "E to ride"}`
           : `TRAM ${count}/${v.capacity} · ${v.traveling ? "arriving " + seconds + "s" : v.departureAt ? "leaving " + seconds + "s" : "E to board"}`;
@@ -311,16 +332,12 @@ export class Vehicles {
       this.messageUntil > Date.now() ? `${prompt} · ${this.message}` : prompt;
   }
   dispose() {
+    this.abort.abort(); this.publiModel?.dispose();
     this.drivenId = "";
     this.net.onVehicleResult = undefined;
     this.net.vehicleMove = undefined;
     for (const v of this.items.values()) {
-      v.mesh.traverse((object) => {
-        if (object instanceof THREE.Mesh) {
-          object.geometry.dispose();
-          (object.material as THREE.Material).dispose();
-        }
-      });
+      disposeMap(v.mesh);
       (v.label.material as THREE.SpriteMaterial).map?.dispose();
       v.label.material.dispose();
       v.mesh.removeFromParent();
