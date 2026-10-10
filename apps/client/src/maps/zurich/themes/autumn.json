@@ -9,14 +9,14 @@
   },
   "sky": "#d9cdb8",
   "skyDome": {
-    "$comment": "Evening sky (sky.ts): deep blue zenith, warm sunset horizon, glow + disc around the sun. pixel = angular pixel size in degrees.",
-    "zenith": "#2b3f7a", "upper": "#6f86c4", "horizon": "#f2b68a", "glow": "#ff9a5a", "sun": "#fff1c8",
-    "cloudLit": "#ffc79a", "cloudShade": "#8a7fa8", "pixel": 0.12, "sunSize": 2.2
+    "$comment": "Noon sky (sky.ts): saturated blue zenith, pale hazy horizon, soft glow + disc around the sun. pixel = angular pixel size in degrees.",
+    "zenith": "#2f6fd6", "upper": "#5f9be8", "horizon": "#cfe3f2", "glow": "#fff4d6", "sun": "#fffbea",
+    "cloudLit": "#ffffff", "cloudShade": "#b7c6dc", "pixel": 0.12, "sunSize": 2.2
   },
   "lighting": {
-    "sun": "#ffc08a",
+    "sun": "#fff0d8",
     "sunIntensity": 2.8,
-    "sunElevation": 16,
+    "sunElevation": 58,
     "sunAzimuth": 235,
     "skyLight": "#f0dcc0",
     "groundLight": "#6e5a48",
