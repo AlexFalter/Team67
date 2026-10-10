@@ -1,3 +1,4 @@
+import { decoratePlayer } from "./playerIdentity.ts";
 import * as THREE from "three";
 import { BATTLE_BUS_HEADING, INTERP_DELAY_MS, IDLE_INPUT, zurichWorld, isRail, railFrame, railSeat, tramDerailFrame, examSecondsRemaining, RoomPhase } from "@race/shared";
 import { Network } from "./net.ts";
@@ -89,6 +90,7 @@ export class MapGame {
           this.mesh = avatar(p.color, p.character); this.firstBody = avatar(p.color, p.character, true);
           scene.add(this.mesh, this.firstBody); this.avatarReady = true;
         }
+        if (p && this.avatarReady) decoratePlayer(this.mesh, state.members.get(id)?.name ?? "Player");
       }, hit => this.effects.enqueue(hit), selection);
     });
   }

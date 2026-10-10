@@ -8,7 +8,7 @@ export interface PlayerState {
   vz: number;
   anim: number;
   color: string;
-  character: number; // 0: CS student, 1: Student Athlete, 2: Einstein
+  character: number; // 0: CS student boy, 1: CS student girl, 2: Einstein, 3: Rector Dissertori
   vehicleId: string;
   seat: number;
   grounded: boolean;

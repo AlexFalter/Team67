@@ -22,14 +22,15 @@
       <option>Third person</option><option>First person</option><option>Look down</option>
     </select>
     <select id="character" aria-label="Character">
-      <option>CS Student</option><option>Athlete</option><option>Einstein</option>
+      <option>CS Student Boy</option><option>CS Student Girl</option><option>Einstein</option><option>Rector Dissertori</option>
     </select>
     <label><input id="slow" type="checkbox" /> Slow motion</label>
     <p>Same character · sprint, airborne kicks and slide · <a href="/">Play the game</a></p>
   </nav>
   <script type="module">
     import * as T from 'three';
-    import { avatar, pose, disposeAvatar } from '/src/multiplayer/avatar.ts';
+    import { avatar, pose, disposeAvatar, CHARACTERS } from '/src/multiplayer/avatar.ts';
+    import { decoratePlayer } from '/src/multiplayer/playerIdentity.ts';
     import { SpeedParticles } from '/src/multiplayer/effects.ts';
     import { PlayerView } from '/src/multiplayer/view.ts';
     import { createBody } from '@race/shared';
@@ -44,6 +45,7 @@
     floor.rotation.x = -Math.PI / 2; scene.add(floor);
     const grid = new T.GridHelper(100, 100, 0x455d58, 0x6a807b); scene.add(grid);
     let full = avatar('#ffc978'), first = avatar('#ffc978', 0, true); scene.add(full, first);
+    decoratePlayer(full, CHARACTERS[0], true);
     const p = createBody(), view = new PlayerView(camera, []), speed = new SpeedParticles(scene);
     view.yaw = Math.PI;
     const motion = document.querySelector('#motion'), perspective = document.querySelector('#view');
@@ -53,6 +55,7 @@
       disposeAvatar(full); disposeAvatar(first);
       full = avatar('#ffc978', event.target.selectedIndex);
       first = avatar('#ffc978', event.target.selectedIndex, true); scene.add(full, first);
+      decoratePlayer(full, CHARACTERS[event.target.selectedIndex], true);
     };
     motion.onchange = () => { t = 0; };
     function frame(now) {

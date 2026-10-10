@@ -8,6 +8,7 @@ import {
   createBody,
   passengerYaw,
 } from "@race/shared";
+import { decoratePlayer } from "./playerIdentity.ts";
 import { avatar, pose, disposeAvatar } from "./avatar.ts";
 interface Snapshot extends PlayerState {
   t: number;
@@ -29,6 +30,7 @@ export class RemotePlayers {
         this.players.set(id, r);
         this.scene.add(r.mesh);
       }
+      decoratePlayer(r.mesh, state.members.get(id)?.name ?? "Player", true);
       const s: Snapshot = {
         x: p.x,
         y: p.y,

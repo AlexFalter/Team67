@@ -1,6 +1,6 @@
 # Character movement
 
-The three existing characters keep their mesh pieces, colours, outfits and proportions. The procedural rig now names the elbows and knees and adds chest, wrist and ankle pivots. Running uses opposing arm swings, chest rotation, knee recovery and ankle flexion. Jumping alternates the legs in the air, with pronounced alternating kicks on ascent and extended legs approaching landing. Landing compresses the body briefly.
+The original male student and Einstein retain their mesh pieces, colours, outfits and proportions. The female CS student replaces the athlete, and Rector Dissertori is a fourth outfit on the same articulated rig. The procedural rig now names the elbows and knees and adds chest, wrist and ankle pivots. Running uses opposing arm swings, chest rotation, knee recovery and ankle flexion. Jumping alternates the legs in the air, with pronounced alternating kicks on ascent and extended legs approaching landing. Landing compresses the body briefly.
 
 ## Sprint slide
 

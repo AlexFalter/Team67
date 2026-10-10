@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { updatePlayerIdentity, disposePlayerIdentity } from "./playerIdentity.ts";
 import { ATTACK_COOLDOWN_MS, SLIDE_ANIM, TRAM_KIND, POLYBAHN_KIND, type PlayerState } from "@race/shared";
 
 // The seated owner can turn through their torso; show the body in third person
@@ -8,7 +9,7 @@ export function firstPersonBodyVisible(p: Pick<PlayerState, "anim" | "vehicleId"
 }
 
 // Original articulated models: all outfits share geometry, joints and motion.
-export const CHARACTERS = ["CS Student", "Student Athlete", "Albert Einstein"];
+export const CHARACTERS = ["CS Student Boy", "CS Student Girl", "Albert Einstein", "Rector Dissertori"];
 const cube = new THREE.BoxGeometry(1, 1, 1), facet = new THREE.DodecahedronGeometry(1, 0);
 const tapered = new THREE.CylinderGeometry(0.5, 0.42, 1, 8);
 const shoeShape = new THREE.CapsuleGeometry(0.5, 0.45, 1, 6).rotateX(Math.PI / 2);
@@ -32,18 +33,25 @@ export function avatar(color: string, character = 0, firstPerson = false) {
     mesh.scale.set(size[0], size[1], size[2]); mesh.position.set(at[0], at[1], at[2]);
     mesh.castShadow = true; mesh.receiveShadow = true; parent.add(mesh); return mesh;
   };
-  const athlete = character === 1, einstein = character === 2;
-  const skin = athlete ? "#955e40" : einstein ? "#e3b797" : "#d9a37a";
-  const shirt = athlete ? "#a63851" : einstein ? "#85887e" : "#386889";
-  const pants = athlete ? "#263449" : einstein ? "#555b5b" : "#263947";
-  part(torso, [athlete ? 0.57 : 0.47, 0.48, 0.28], [0, 0.28, 0], shirt, false, tapered);
+  const female = character === 1, einstein = character === 2, rector = character === 3;
+  const skin = female ? "#e8bea1" : rector ? "#dfb69d" : einstein ? "#e3b797" : "#d9a37a";
+  const shirt = female ? "#688c82" : rector ? "#343d4a" : einstein ? "#85887e" : "#386889";
+  const pants = female ? "#344457" : rector ? shirt : einstein ? "#555b5b" : "#263947";
+  const hair = female ? "#d8b766" : rector ? "#a9aaa7" : "#302a31";
+  part(torso, [female ? 0.44 : 0.47, 0.48, 0.28], [0, 0.28, 0], shirt, false, tapered);
   part(torso, [0.41, 0.14, 0.27], [0, 0.02, 0], pants, false, tapered);
   if (!firstPerson) part(torso, [0.16, 0.12, 0.15], [0, 0.59, 0], skin);
-  if (athlete) {
-    part(torso, [0.16, 0.035, 0.016], [0, 0.43, 0.15], "#f1e4ce");
-    part(torso, [0.035, 0.19, 0.016], [0.055, 0.33, 0.15], "#f1e4ce");
-  } else part(torso, [0.075, 0.26, 0.015], [0, 0.32, 0.151], einstein ? "#292d35" : "#ede9db");
-  part(torso, [0.10, 0.085, 0.018], [-0.14, 0.40, 0.152], color);
+  part(torso, [rector ? 0.20 : 0.075, 0.26, 0.015], [0, 0.32, 0.151], einstein ? "#292d35" : "#ede9db");
+  if (rector) {
+    for (const side of [-1, 1]) {
+      part(torso, [0.085, 0.27, 0.025], [side * 0.11, 0.38, 0.17], "#505b6a").rotation.z = side * -0.30;
+      part(torso, [0.07, 0.07, 0.018], [side * 0.05, 0.48, 0.177], "#faf6ef").rotation.z = side * 0.45;
+    }
+    part(torso, [0.045, 0.19, 0.02], [0, 0.35, 0.18], "#6b3542");
+    part(torso, [0.055, 0.045, 0.02], [0, 0.46, 0.18], "#6b3542");
+    for (const y of [0.18, 0.25]) part(torso, [0.018, 0.018, 0.025], [0.025, y, 0.165], "#1f2630");
+  }
+  part(torso, [rector ? 0.055 : 0.10, rector ? 0.025 : 0.085, 0.018], [-0.14, 0.40, rector ? 0.182 : 0.152], color);
   torso.add(head); head.position.y = 0.82;
   head.visible = !firstPerson; // The owning camera must never see inside its head/hair.
   part(head, [0.22, 0.265, 0.20], [0, 0, 0], skin, true);
@@ -52,7 +60,7 @@ export function avatar(color: string, character = 0, firstPerson = false) {
     part(head, [0.05, 0.075, 0.055], [side * 0.21, -0.02, 0], skin, true);
     part(head, [0.066, 0.043, 0.025], [side * 0.08, 0.028, 0.19], "#faf6ef");
     part(head, [0.025, 0.032, 0.02], [side * 0.08, 0.025, 0.209], "#222a31");
-    part(head, [0.072, 0.018, 0.025], [side * 0.08, 0.087, 0.191], einstein ? "#e4e6dc" : "#282634");
+    part(head, [0.072, 0.018, 0.025], [side * 0.08, 0.087, 0.191], einstein ? "#e4e6dc" : rector ? "#777b7b" : female ? "#aa884c" : "#282634");
   }
   part(head, [0.09, 0.016, 0.02], [0, -0.13, 0.18], "#915e54");
   if (einstein) {
@@ -62,16 +70,30 @@ export function avatar(color: string, character = 0, firstPerson = false) {
     }
     part(head, [0.18, 0.045, 0.045], [0, -0.092, 0.21], "#ecebdf");
   } else {
-    part(head, [0.21, athlete ? 0.09 : 0.12, 0.20], [0, 0.22, -0.025], "#302a31", true);
-    if (!athlete) {
-      part(head, [0.20, 0.045, 0.13], [-0.055, 0.21, 0.12], "#302a31");
+    if (rector) {
+      // A receding, swept-back crown and silver temples distinguish his silhouette.
+      part(head, [0.20, 0.09, 0.18], [0, 0.22, -0.07], hair, true);
+      for (const side of [-1, 1]) part(head, [0.055, 0.17, 0.16], [side * 0.195, 0.12, -0.035], "#c4c7c4", true);
+      for (let i = 0; i < 3; i++) {
+        const sweep = part(head, [0.075, 0.055, 0.19], [-0.10 + i * 0.075, 0.27, -0.045], i === 1 ? "#c4c7c4" : hair, true);
+        sweep.rotation.z = -0.24; sweep.rotation.x = -0.22;
+      }
+    } else part(head, [0.21, 0.12, 0.20], [0, 0.22, -0.025], hair, true);
+    if (female) {
+      part(head, [0.26, 0.30, 0.13], [0, -0.01, -0.19], hair, true).name = "ponytail";
+      for (const side of [-1, 1]) part(head, [0.07, 0.28, 0.10], [side * 0.18, 0.04, -0.04], hair);
+    }
+    if (!female) {
+      if (!rector) part(head, [0.20, 0.045, 0.13], [-0.055, 0.21, 0.12], hair);
       for (const x of [-0.09, 0.09]) {
         for (const y of [-0.025, 0.085]) part(head, [0.15, 0.016, 0.02], [x, y, 0.222], "#192530");
         for (const side of [-1, 1]) part(head, [0.016, 0.11, 0.02], [x + side * 0.068, 0.03, 0.222], "#192530");
       }
       part(head, [0.04, 0.016, 0.02], [0, 0.03, 0.222], "#192530");
-      part(torso, [0.35, 0.42, 0.17], [0, 0.27, -0.23], "#bc824f");
-      for (const x of [-0.16, 0.16]) part(torso, [0.035, 0.43, 0.028], [x, 0.28, 0.153], "#c69760");
+      if (!rector) {
+        part(torso, [0.35, 0.42, 0.17], [0, 0.27, -0.23], "#bc824f");
+        for (const x of [-0.16, 0.16]) part(torso, [0.035, 0.43, 0.028], [x, 0.28, 0.153], "#c69760");
+      }
     }
   }
   const limb = (x: number, y: number, length: number, width: number, upper: string, lower: string, leg = false): Limb => {
@@ -81,12 +103,12 @@ export function avatar(color: string, character = 0, firstPerson = false) {
     bend.position.y = -length; joint.add(bend);
     part(bend, [width * 0.85, length * 0.9, width * 0.9], [0, -length * 0.45, 0], lower, false, tapered);
     tip.position.y = -length * 0.95; bend.add(tip);
-    const foot = part(tip, leg ? [0.19, 0.11, 0.22] : [0.055, 0.065, 0.065], [0, 0, leg ? 0.07 : 0], leg ? "#e8dfcb" : skin, !leg, leg ? shoeShape : facet);
+    const foot = part(tip, leg ? [0.19, 0.11, 0.22] : [0.055, 0.065, 0.065], [0, 0, leg ? 0.07 : 0], leg ? rector ? "#20252b" : "#e8dfcb" : skin, !leg, leg ? shoeShape : facet);
     foot.name = leg ? "shoe" : "hand";
     return { joint, bend, tip, foot: leg ? foot : undefined };
   };
-  const arms = [1, -1].map(side => limb(side * (firstPerson ? 0.25 : athlete ? 0.35 : 0.30), firstPerson ? 0.56 : 0.50, 0.24, 0.14, athlete ? "#f1e4ce" : shirt, skin));
-  const legs = [1, -1].map(side => limb(side * 0.13, 0, 0.33, 0.17, pants, athlete ? skin : pants, true));
+  const arms = [1, -1].map(side => limb(side * (firstPerson ? 0.25 : female ? 0.28 : 0.30), firstPerson ? 0.56 : 0.50, 0.24, 0.14, shirt, rector ? shirt : skin));
+  const legs = [1, -1].map(side => limb(side * 0.13, 0, 0.33, 0.17, pants, pants, true));
   [arms, legs].forEach((pair, i) => pair.forEach((limb, side) => {
     const name = side ? "right" : "left";
     limb.joint.name = `${name}-${i ? "leg" : "arm"}`;
@@ -177,8 +199,10 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
     leg.bend.rotation.x += (knee - leg.bend.rotation.x) * blend;
     leg.tip.rotation.x += ((-knee * 0.3 + Math.max(0, swing * forward) * stride * 0.22) - leg.tip.rotation.x) * blend;
   });
+  updatePlayerIdentity(mesh, p);
 }
 export function disposeAvatar(mesh: THREE.Group) {
+  disposePlayerIdentity(mesh);
   const materials = new Set<THREE.Material>();
   mesh.traverse(child => { if (child instanceof THREE.Mesh) materials.add(child.material as THREE.Material); });
   materials.forEach(m => m.dispose()); mesh.removeFromParent(); rigs.delete(mesh);

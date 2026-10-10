@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { createBody, RoomPhase, zurichWorld, type WorldState } from "@race/shared";
-import { avatar, disposeAvatar, pose } from "./avatar";
+import { avatar, disposeAvatar, pose, CHARACTERS } from "./avatar";
 
 // Presentation only: lobby avatars never grant movement or gameplay membership.
 export class MenuScene {
@@ -23,7 +23,7 @@ export class MenuScene {
     new THREE.PlaneGeometry(1, 1),
     new THREE.MeshBasicMaterial({ color: "#102731", fog: false, toneMapped: false }),
   );
-  private previewModels = [0, 1, 2].map(character => avatar("#d7f87a", character));
+  private previewModels = CHARACTERS.map((_, character) => avatar("#d7f87a", character));
   private previewBody = createBody();
   private previewStage = document.querySelector<HTMLElement>("#character-stage")!;
   private characterField = document.querySelector<HTMLInputElement>("#character")!;
