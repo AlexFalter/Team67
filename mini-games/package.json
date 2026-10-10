@@ -1,0 +1,44 @@
+{
+  "name": "zurich-eth-run",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "npm run test:map:interactions",
+    "data:refresh": "node scripts/import-team67-map.mjs && node scripts/route-native-map.mjs",
+    "test:physics:node": "node verify-physics-node.mjs && node verify-world-continuity.mjs",
+    "test:bikes": "node verify-publibike-station.mjs",
+    "test:polybahn": "node verify-polybahn-motion.mjs && node verify-polybahn-ticket.mjs",
+    "test:interview": "node verify-interview-limo.mjs",
+    "test:finance": "node verify-finance-guy.mjs",
+    "test:cabins": "node verify-passenger-look.mjs && node verify-cabin-rides.mjs",
+    "map:import:team67": "node scripts/import-team67-map.mjs",
+    "test:map": "node --import ./scripts/browser-gpu.mjs verify-team67-map.mjs",
+    "test:map:interactions": "node scripts/verify-map-interactions.mjs",
+    "test:render": "node verify-render-parity.mjs",
+    "features:list": "node scripts/export-feature.mjs --list",
+    "features:export": "node scripts/export-feature.mjs",
+    "features:check": "node scripts/export-feature.mjs --all --dry-run",
+    "test:modules": "node verify-feature-modules.mjs",
+    "config:check": "node scripts/check-game-config.mjs",
+    "test:config": "node verify-game-config.mjs && node verify-configurable-game.mjs",
+    "test:placements": "node verify-feature-placements.mjs",
+    "test:integration": "node verify-integration-state.mjs && node verify-integration-lifecycle.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "proj4": "^2.22.0",
+    "three": "^0.186.1",
+    "three-mesh-bvh": "^0.9.16",
+    "vite": "^6.4.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0"
+  },
+  "type": "module"
+}

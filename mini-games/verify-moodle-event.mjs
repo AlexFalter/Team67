@@ -1,0 +1,4 @@
+import assert from 'node:assert/strict';
+import {createMoodleEvent} from './moodle-event.js';
+let starts=0,results=[];const event=createMoodleEvent({random:()=>.5,onStart:()=>starts++,onResolve:r=>results.push(r)});
+event.update(100,{canStart:false});assert.equal(starts,0);event.update(39);assert.equal(starts,0);event.update(1);assert.equal(starts,1);assert.equal(event.state().remaining,30);event.update(29);assert(event.state().active);event.update(1);assert.deepEqual(results,[false]);assert(!event.answer(true),'late answer rejected');event.update(40);event.answer(true);assert.deepEqual(results,[false,true]);event.update(40);event.update(0,{enabled:false});assert(!event.state().active);assert.deepEqual(results,[false,true],'disable cancels without failure');event.reset();assert.equal(event.state().sequence,0);console.log('PASS: randomized scheduling, safe start, 30-second deadline, success/failure, late answers, disable and reset.');

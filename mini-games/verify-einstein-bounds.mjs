@@ -1,0 +1,12 @@
+import './scripts/browser-gpu.mjs';
+import {chromium} from '@playwright/test';
+import assert from 'node:assert/strict';
+const browser=await chromium.launch();
+try{
+ const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.routeWebSocket('**',ws=>ws.onMessage(()=>{}));
+ await page.addInitScript(()=>{const raf=requestAnimationFrame;window.requestAnimationFrame=cb=>raf(t=>{if(!window.freezeEinsteinAudit)cb(t);});});
+ await page.goto(`${process.env.GAME_URL??'http://127.0.0.1:5173'}/?debug=1`);await page.waitForFunction(()=>window.__test,{},{timeout:60000});await page.click('#start');await page.keyboard.press('Space');await page.evaluate(()=>{window.freezeEinsteinAudit=true;});
+ const candidates=await page.evaluate(()=>{const t=__test,b=t.world.data.encounterBounds,points=t.einstein.destinations;return {count:points.length,valid:points.every(([x,z])=>x>=b.minX+25&&x<=b.maxX-25&&z>=b.minZ+25&&z<=b.maxZ-25&&!t.world.isWater(x,z)&&t.solver.penetration(new t.position.constructor(x,t.world.height(x,z),z))<.01)};});assert(candidates.count===3&&candidates.valid,'all random destinations are clear and safely inside marked territory');
+ await page.evaluate(()=>{const p=__test.einstein.actor.position;__test.setPosition(p.x,p.z-1.5);});await page.keyboard.press('KeyE');await page.waitForSelector('#einstein-dialogue:not([hidden])');await page.click('[data-einstein=travel]');assert.equal(await page.evaluate(()=>gameState().einstein.travels),1);
+ const checks=await page.evaluate(()=>{const t=__test,b=t.world.data.encounterBounds;function check(){const p=t.position;if(p.x<b.minX+25||p.x>b.maxX-25||p.z<b.minZ+25||p.z>b.maxZ-25)throw Error('Unsafe landing');if(gameState().privateProperty.active||Math.min(p.x-b.minX,b.maxX-p.x,p.z-b.minZ,b.maxZ-p.z)<=12)throw Error('Teleport triggers boundary encounter');t.teleportTransition.update(5);}check();let checked=1;for(const p of t.einstein.destinations){if(!t.teleportTo(...p,true))throw Error('Candidate teleport failed');check();checked++;}for(const [x,z] of [[b.minX-30,b.minZ-30],[b.maxX+30,b.maxZ+30]])if(t.teleportTo(x,z,true))throw Error('Outside invention destination accepted');return checked;});assert.equal(checks,4);assert.deepEqual(errors,[]);console.log(`PASS: Einstein dialogue travel, ${candidates.count} valid candidates, ${checks} actual safe landings, no boundary encounter, outside destinations rejected.`);
+}finally{await browser.close();}
