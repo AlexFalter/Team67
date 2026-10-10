@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { BATTLE_BUS_HEADING, INTERP_DELAY_MS, IDLE_INPUT, zurichWorld, isRail, railFrame, railSeat, tramDerailFrame } from "@race/shared";
+import { BATTLE_BUS_HEADING, INTERP_DELAY_MS, IDLE_INPUT, zurichWorld, isRail, railFrame, railSeat, tramDerailFrame, examSecondsRemaining, RoomPhase } from "@race/shared";
 import { Network } from "./net.ts";
 import { LocalPlayer } from "./localPlayer.ts";
 import { RemotePlayers } from "./remotePlayers.ts";
@@ -15,10 +15,12 @@ import { accelerateMapRaycasts } from "./mapRaycast.ts";
 import { BattleBusIntro } from "./battleBus.ts";
 import { PubliBikeFeature } from "./publiBikes.ts";
 import { TransitScenery } from "./transitScenery.ts";
+import { ExamSequence, type ExamSession } from "../exam/ExamSequence";
 import { MateFeature } from "./mate.ts";
 
 // MapViewer owns rendering and the loop; this instance owns gameplay cleanup.
 export class MapGame {
+  private exam: ExamSequence;
   private derailVehicle="";
   private derailUntil=0;
   private derailRun=0;
@@ -43,7 +45,8 @@ export class MapGame {
   private transitScenery: TransitScenery;
   private mate: MateFeature;
   constructor(scene: THREE.Scene, private camera: THREE.PerspectiveCamera, private canvas: HTMLCanvasElement,
-    hud: HTMLDivElement, hints: HTMLDivElement, map: THREE.Object3D) {
+    hud: HTMLDivElement, hints: HTMLDivElement, map: THREE.Object3D, onExamChange: (session: ExamSession) => void = () => {}) {
+    this.exam = new ExamSequence(scene, camera, onExamChange);
     this.transitScenery = new TransitScenery(scene, map);
     this.disposeMapRaycasts = accelerateMapRaycasts(map);
     this.remotes = new RemotePlayers(scene);
@@ -56,7 +59,7 @@ export class MapGame {
     this.view = new PlayerView(camera, [map, this.mate.machine], zurichWorld);
     this.bus = new BattleBusIntro(scene, camera, this.net, canvas, () => this.view.sensitivity);
     this.roomFlow = new RoomFlow(this.net, Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready]).then(() => {}), () => this.bus.unlockAudio());
-    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.publiBikes.active && !this.mate.active, () => this.net.now()<this.derailUntil);
+    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.exam.active && !this.publiBikes.active && !this.mate.active, () => this.net.now()<this.derailUntil);
     Object.assign(this.local.body, zurichWorld.spawn);
     camera.near = 0.05;
     camera.position.set(zurichWorld.spawn.x, zurichWorld.spawn.y + 1.6, zurichWorld.spawn.z);
@@ -79,16 +82,20 @@ export class MapGame {
       }
     }, hit => this.effects.enqueue(hit), selection));
   }
+  get examScreenVisible() { return this.exam.screenVisible; }
   get focus() { return this.bus.active ? this.bus.focus : this.local.body; }
   update(elapsed: number, now: number) {
     const dt = Math.min(0.1, elapsed), renderTime = this.net.now() - INTERP_DELAY_MS;
+    const state = this.net.room?.state;
+    const remaining = state?.phase === RoomPhase.Running ? examSecondsRemaining(state.endsAt, this.net.now()) : 0;
+    this.exam.update(this.local.body, this.net.canPlay, this.local.enabled && !this.publiBikes.active && !this.mate.active && this.net.now()>=this.derailUntil, state?.startedAt ?? 0, remaining, now);
     this.vehicles.render(renderTime, dt, "rail");
     this.transitScenery.update(this.net.room?.state.vehicles.values() ?? [], this.net.now(), this.net.canPlay);
     const riding=this.vehicles.items.get(this.local.body.vehicleId)?.latest;
     if(riding?.derailStartedAt&&this.derailRun!==riding.derailStartedAt){
       this.derailRun=riding.derailStartedAt;this.derailVehicle=this.local.body.vehicleId;this.derailUntil=riding.derailStartedAt+3200;
     }
-    if (this.net.canPlay) {
+    if (this.net.canPlay && !this.exam.active) {
       this.net.frame(dt, this.local.body, () => this.net.now()<this.derailUntil?IDLE_INPUT:this.local.controls(this.view.yaw));
       if (this.net.now()>=this.derailUntil && this.local.takeInteraction() && !this.mate.interact() && !this.publiBikes.interact()) this.vehicles.interact(this.local.body);
       if (this.local.body.vehicleId) this.vehicles.local(this.local.body, this.net.room.sessionId);
@@ -103,7 +110,7 @@ export class MapGame {
         this.view.update(this.local.body, dt, vehicle && isRail(vehicle) ? railFrame(vehicle, railSeat(vehicle, this.local.body.seat).part) : undefined);
       }
     }
-    if (!this.net.canPlay) { this.mesh.visible = this.firstBody.visible = false; this.vehicles.stopDriving(); }
+    if (!this.net.canPlay || this.exam.active) { this.mesh.visible = this.firstBody.visible = false; this.vehicles.stopDriving(); }
     this.roomFlow.update();
     this.vehicles.render(renderTime, dt, "other"); this.remotes.render(renderTime, this.vehicles.items, dt);
     for (const [id, remote] of this.remotes.players) this.effects.trail(id, remote.rendered, now);
@@ -131,8 +138,19 @@ export class MapGame {
       }
     }
   }
+  skipExamTransition() { this.exam.skipTransition(); }
+  completeExam(score: number) { this.exam.complete(score); }
+  returnFromExam() { this.exam.returnToWorld(); }
+  debugTeleportToTerrace(enterPortal = false) {
+    if (!import.meta.env.DEV || !this.net.canPlay || this.exam.active || this.mate.active || this.publiBikes.active || this.net.now()<this.derailUntil) return;
+    this.local.clear(); this.local.body.vx = this.local.body.vy = this.local.body.vz = 0;
+    this.view.yaw = this.view.pitch = 0;
+    if (enterPortal) void this.controls.resume();
+    this.net.room.send("debugTeleportToPolyterrasse", enterPortal ? "portal" : "terrace");
+  }
   afterRender() { this.publiBikes.renderPreview(); }
   dispose() {
+    this.exam.dispose();
     this.mate.dispose();
     this.publiBikes.dispose();
     this.bus.dispose();

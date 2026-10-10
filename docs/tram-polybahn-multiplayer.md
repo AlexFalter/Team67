@@ -1,6 +1,6 @@
 # Tram and Polybahn multiplayer integration
 
-Work branch: `mini-games`. No commits or changes to `main`.
+Server-owned tram and Polybahn gameplay for the multiplayer client.
 
 ## Included
 
@@ -18,7 +18,7 @@ Work branch: `mini-games`. No commits or changes to `main`.
   Empty boarding sessions cancel; disconnects release seats; room resets rebuild
   transport. Client movement reports cannot drive either service.
 - Existing shuttle, vehicles, PubliBike unlocking, character movement, room flow,
-  and unskippable battle-bus intro remain in place. Tickets, inspectors, NPC
+  and battle-bus intro remain in place; dev rooms can skip the intro. Tickets, inspectors, NPC
   passenger stories and free movement inside the cabins are
   separate future additions.
 
