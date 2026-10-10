@@ -37,7 +37,7 @@
 #round-timer[data-urgent=true] { color: #ffd271; border-color: #ffd271; }
 #round-timer[data-final=true] { top: 18px; transform: translateX(-50%); z-index: 4; width: 196px; padding: 12px 22px 14px; border-radius: 14px; background: #472426f5; color: #ffb3a4; font: inherit; letter-spacing: normal; text-shadow: none; border-color: #ff907e; }
 #round-timer[data-final=true] #timer-label { color: #ffd3c8; }
-#race-leaderboard { position: absolute; top: 18px; left: 18px; width: 340px; padding: 12px; border: 0; background: transparent; color: #fff; pointer-events: none; font-family: "Consolas", ui-monospace, monospace; text-shadow: 2px 2px 0 #10242e, 0 0 3px #10242e; }
+#race-leaderboard { position: absolute; top: 18px; left: 18px; width: 340px; padding: 12px; border: 0; background: rgb(225 229 232 / 55%); color: #fff; pointer-events: none; font-family: "Consolas", ui-monospace, monospace; text-shadow: 2px 2px 0 #10242e, 0 0 3px #10242e; }
 #race-leaderboard h2 { display: flex; justify-content: space-between; gap: 8px; margin: 0 0 12px; padding-bottom: 10px; border-bottom: 3px solid #d7f87a; font-size: 15px; letter-spacing: 1px; color: #d7f87a; }
 #race-leaderboard h2 small { color: #edf4ef; font-size: 12px; letter-spacing: .5px; }
 #race-leaders { list-style: none; padding: 0; margin: 0; }
