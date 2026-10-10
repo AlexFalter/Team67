@@ -22,6 +22,7 @@ export interface PlayerState {
   mateBoostMs: number;
 }
 export interface WorldState {
+  npcs?: Map<string, import("./npc.ts").NpcState>;
   serverTime: number;
   phase: string;
   hostId: string;

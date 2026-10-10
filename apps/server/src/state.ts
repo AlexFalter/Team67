@@ -83,6 +83,22 @@ export const Mate = schema({
   retryAt: t.number().default(0),
   dropStartedAt: t.number().default(0),
 }, "Mate");
+export const Npc = schema({
+  limoVisible: t.boolean().default(false),
+  limoX: t.number().default(0),
+  limoY: t.number().default(0),
+  limoZ: t.number().default(0),
+  limoYaw: t.number().default(0),
+  limoPitch: t.number().default(0),
+  kind: t.string().default(""),
+  startedAt: t.number().default(0),
+  targetX: t.number().default(0),
+  targetY: t.number().default(0),
+  targetZ: t.number().default(0),
+  teleportUsed: t.boolean().default(false),
+  limoSolved: t.boolean().default(false),
+  limoUsed: t.boolean().default(false),
+}, "Npc");
 export const RaceState = schema(
   {
     serverTime: t.number().default(0),
@@ -96,6 +112,7 @@ export const RaceState = schema(
     members: t.map(RoomMember),
     results: t.map(RoundResult),
     players: t.map(Player),
+    npcs: t.map(Npc),
     vehicles: t.map(Vehicle),
     publiBikes: t.map(PubliBike),
     mates: t.map(Mate),

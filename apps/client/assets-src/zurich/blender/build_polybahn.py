@@ -292,13 +292,13 @@ def facing(pos, away_dir):
     """Facade frame at the doorway: outward normal = away_dir (pointing out of the building)."""
     nrm = Vector((away_dir.x, away_dir.y, 0)).normalized(); t = Vector((-nrm.y, nrm.x, 0))
     return Vector((pos.x, pos.y, 0)), t, nrm
-# bottom: two big open arched doorways (red jambs, centre pillar, arches), large sign band, wide canopy
+# bottom: one wide open arched doorway (red jambs, no centre pillar: it blocked walking in), sign band, canopy
 o, t, nrm = facing(BOTTOM_ENTRANCE[0], -Vector((d1.x, d1.y, 0))); z = BOTTOM_ENTRANCE[1]
 wall_box(o, t, nrm, -4.6, 4.6, 0.0, 0.28, z + 4.7, z + 6.0, RED, front=SIGN)
-for t0, t1 in ((-3.15, -2.8), (-0.18, 0.18), (2.8, 3.15)):
+for t0, t1 in ((-3.15, -2.8), (2.8, 3.15)):
     wall_box(o, t, nrm, t0, t1, 0.0, 0.16, z, z + 4.2, RED)
-for tc in (-1.49, 1.49):
-    arch = [o + t * (tc + 1.31 * math.cos(a)) + nrm * 0.12 + Vector((0, 0, z + 4.2 + 0.6 * math.sin(a))) for a in (math.pi * i / 8 for i in range(9))]
+for tc in (0.0,):
+    arch = [o + t * (tc + 2.8 * math.cos(a)) + nrm * 0.12 + Vector((0, 0, z + 4.2 + 0.6 * math.sin(a))) for a in (math.pi * i / 12 for i in range(13))]
     try:
         f = bm.faces.new([bm.verts.new(v) for v in arch]); f.material_index = RED; f.normal_update()
         if f.normal.dot(nrm) < 0: f.normal_flip()

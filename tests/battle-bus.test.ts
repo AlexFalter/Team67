@@ -6,12 +6,12 @@ import { Player, RaceState } from "../apps/server/src/state.ts";
 import { withServer, until, delay, type WireState } from "./fixture.ts";
 import { Network } from "../apps/client/src/multiplayer/net.ts";
 
-test("all ready schedules one unskippable intro before the round clock, with stable seats", () => {
+test("host start schedules one unskippable intro before the round clock, with stable seats", () => {
   const state = new RaceState(); let arrivals = 0;
   const rounds = new RoundManager(state, 1000, undefined, undefined, { onArrival: () => arrivals++ });
   for (const id of ["a", "b"]) { rounds.join(id, { name: id }); state.players.set(id, new Player()); }
-  rounds.ready("a", true, 1000); assert.equal(state.introStartedAt, 0);
-  rounds.ready("b", true, 1000);
+  rounds.ready("b", true, 1000); assert.equal(state.introStartedAt, 0);
+  rounds.ready("a", true, 1000);
   assert.equal(state.phase, C.RoomPhase.Running);
   assert.equal(state.introStartedAt, 1000 + C.BATTLE_BUS_LEAD_MS);
   assert.equal(state.startedAt, state.introStartedAt + C.BATTLE_BUS_DURATION_MS);

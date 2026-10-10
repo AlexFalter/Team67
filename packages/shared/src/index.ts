@@ -15,3 +15,4 @@ export * from "./battleBus.ts";
 export * from "./publiBike.ts";
 export * from "./transit.ts";
 export * from "./mate.ts";
+export * from "./npc.ts";

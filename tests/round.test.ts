@@ -25,17 +25,30 @@ test("names are required, bounded and normalized; invalid joins do not create me
   assert.equal(C.playerName("<b>Ada</b>"), "<b>Ada</b>", "names stay text, rather than markup");
 });
 
-test("every lobby member must ready; readiness can be cancelled and disconnects recheck it", () => {
+test("only the host starts the round; guest readiness and disconnects never auto-start", () => {
   const { state, rounds, join } = fixture(); join("a"); join("b"); join("c");
-  rounds.ready("a", true, 1000); rounds.ready("b", "true", 1000);
-  assert.equal(state.phase, C.RoomPhase.Lobby); assert.equal(state.members.get("b")!.ready, false);
-  rounds.ready("a", false, 1000); assert.equal(state.members.get("a")!.ready, false);
-  rounds.ready("a", true, 1000); rounds.ready("b", true, 1000);
+  rounds.ready("b", "true", 1000);
+  assert.equal(state.members.get("b")!.ready, false);
+  rounds.ready("b", true, 1000); rounds.ready("c", true, 1000);
   assert.equal(state.phase, C.RoomPhase.Lobby);
+  rounds.ready("b", false, 1000); assert.equal(state.members.get("b")!.ready, false);
+  rounds.ready("a", false, 1000); assert.equal(state.phase, C.RoomPhase.Lobby);
   state.players.delete("c"); rounds.leave("c", 1000);
+  assert.equal(state.phase, C.RoomPhase.Lobby);
+  rounds.ready("a", true, 1000);
   assert.equal(state.phase, C.RoomPhase.Running);
+  assert.equal(state.members.get("b")!.ready, false, "unready guests participate too");
+  assert.equal(rounds.canPlay("b", 1500), true);
   assert.equal(state.startedAt, 1000); assert.equal(state.endsAt, 2000);
-  rounds.ready("a", false, 1200); assert.equal(state.phase, C.RoomPhase.Running);
+  rounds.ready("a", true, 1200); assert.equal(state.startedAt, 1000, "repeated start is ignored");
+});
+
+test("a transferred host can start without the other members readying", () => {
+  const { state, rounds, join } = fixture(); join("a"); join("b"); join("c");
+  state.players.delete("a"); rounds.leave("a", 1000);
+  assert.equal(state.hostId, "b"); assert.equal(state.phase, C.RoomPhase.Lobby);
+  rounds.ready("c", true, 1000); assert.equal(state.phase, C.RoomPhase.Lobby);
+  rounds.ready("b", true, 1000); assert.equal(state.phase, C.RoomPhase.Running);
 });
 
 test("late arrivals wait; timed results retain departed players and remain frozen until the host restarts", () => {
@@ -83,11 +96,13 @@ test("live room lifecycle gates gameplay, shows identical results to late joiner
     const position = { x: initial.x, y: initial.y, z: initial.z };
     a.send("move", [initial.x + 0.1, initial.y, initial.z, 0, 1, 0, 0, 1]);
     a.send("vehicleEnter", "cart-1"); a.send("hit");
-    a.send("ready", true);
-    await until(() => a.state.members.get(a.sessionId)!.ready, "first ready");
+    b.send("ready", true);
+    await until(() => a.state.members.get(b.sessionId)!.ready, "guest ready");
     assert.equal(a.state.phase, C.RoomPhase.Lobby);
     assert.equal(initial.x, position.x); assert.equal(initial.vehicleId, "");
-    b.send("ready", true);
+    b.send("ready", false);
+    await until(() => !a.state.members.get(b.sessionId)!.ready, "guest not ready");
+    a.send("ready", true);
     await until(() => a.state.phase === C.RoomPhase.Running && b.state.phase === C.RoomPhase.Running && a.state.introComplete && b.state.introComplete, "start");
     const waiting = await client.joinById<WireState>(a.roomId, { name: "Cam", character: 2 }); rooms.push(waiting);
     waiting.onMessage("bump", () => {});
