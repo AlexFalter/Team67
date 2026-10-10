@@ -1,6 +1,7 @@
 import data from "./zurich-world.json";
 import * as C from "./constants.ts";
 import { passageFloor } from "./transit.ts";
+import { MATE_POSITION, mateBlocked } from "./mate.ts";
 export interface GroundPoint {
   x: number;
   y: number;
@@ -104,6 +105,7 @@ function blocked(
   return false;
 }
 const distances = [0];
+const mateGround = groundHeight(MATE_POSITION.x, MATE_POSITION.z)!;
 for (let i = 1; i < data.route.length; i++)
   distances.push(
     distances[i - 1] +
@@ -123,6 +125,7 @@ export const zurichWorld: MovementWorld = {
   routeLength: distances.at(-1)!,
   height: (x, z) => passageFloor(x, z) ?? groundHeight(x, z),
   blocked: (x, y, z, radius, height) => {
+    if (mateBlocked(x, y, z, radius, height, mateGround)) return true;
     const floor = passageFloor(x, z);
     if (floor !== undefined && y >= floor - 0.5 && y + height <= floor + 4.4 &&
       [[-radius, -radius], [-radius, radius], [radius, -radius], [radius, radius]].every(([dx, dz]) => passageFloor(x + dx, z + dz) !== undefined)) return false;

@@ -50,6 +50,8 @@ export class RemotePlayers {
         vehicleKind: p.vehicleKind,
         shoes: p.shoes,
         attackReadyAt: p.attackReadyAt,
+        mateCount: p.mateCount,
+        mateBoostMs: p.mateBoostMs,
         t: state.serverTime,
       };
       if (r.snapshots.at(-1)?.t === s.t)
