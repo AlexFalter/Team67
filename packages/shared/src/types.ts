@@ -19,6 +19,8 @@ export interface PlayerState {
   vehicleKind: number;
   shoes: boolean;
   attackReadyAt: number;
+  mateCount: number;
+  mateBoostMs: number;
 }
 export interface WorldState {
   serverTime: number;
@@ -34,6 +36,7 @@ export interface WorldState {
   players: Map<string, PlayerState>;
   vehicles: Map<string, VehicleState>;
   publiBikes: Map<string, import("./publiBike.ts").PubliBikeState>;
+  mates: Map<string, import("./mate.ts").MateState>;
 }
 export interface RoomMember {
   introSeat: number;

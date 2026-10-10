@@ -15,6 +15,7 @@ import { accelerateMapRaycasts } from "./mapRaycast.ts";
 import { BattleBusIntro } from "./battleBus.ts";
 import { PubliBikeFeature } from "./publiBikes.ts";
 import { TransitScenery } from "./transitScenery.ts";
+import { MateFeature } from "./mate.ts";
 
 // MapViewer owns rendering and the loop; this instance owns gameplay cleanup.
 export class MapGame {
@@ -36,6 +37,7 @@ export class MapGame {
   private publiBikes: PubliBikeFeature;
   private introStartedAt = 0;
   private transitScenery: TransitScenery;
+  private mate: MateFeature;
   constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, private canvas: HTMLCanvasElement,
     hud: HTMLDivElement, hints: HTMLDivElement, map: THREE.Object3D) {
     this.transitScenery = new TransitScenery(scene, map);
@@ -44,11 +46,12 @@ export class MapGame {
     this.vehicles = new Vehicles(scene, this.net, hints);
     this.effects = new Effects(scene);
     this.hud = new Hud(hud);
-    this.view = new PlayerView(camera, [map], zurichWorld);
     this.bus = new BattleBusIntro(scene, camera, this.net);
     this.publiBikes = new PubliBikeFeature(scene, camera, this.net, this.vehicles, this.local, canvas);
-    this.roomFlow = new RoomFlow(this.net, Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady]).then(() => {}), () => this.bus.unlockAudio());
-    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.publiBikes.active);
+    this.mate = new MateFeature(scene, camera, this.net, this.local, canvas);
+    this.view = new PlayerView(camera, [map, this.mate.machine], zurichWorld);
+    this.roomFlow = new RoomFlow(this.net, Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready]).then(() => {}), () => this.bus.unlockAudio());
+    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.publiBikes.active && !this.mate.active);
     Object.assign(this.local.body, zurichWorld.spawn);
     camera.near = 0.05;
     camera.position.set(zurichWorld.spawn.x, zurichWorld.spawn.y + 1.6, zurichWorld.spawn.z);
@@ -76,15 +79,15 @@ export class MapGame {
     this.vehicles.render(renderTime, dt, "rail");
     if (this.net.canPlay) {
       this.net.frame(dt, this.local.body, () => this.local.controls(this.view.yaw));
-      if (this.local.takeInteraction() && !this.publiBikes.interact()) this.vehicles.interact(this.local.body);
+      if (this.local.takeInteraction() && !this.mate.interact() && !this.publiBikes.interact()) this.vehicles.interact(this.local.body);
       if (this.local.body.vehicleId) this.vehicles.local(this.local.body, this.net.room.sessionId);
       else this.vehicles.stopDriving();
       pose(this.mesh, this.local.body, dt); pose(this.firstBody, this.local.body, dt, this.view.pitch);
       this.mesh.visible = this.avatarReady && this.view.perspective !== 0;
       this.firstBody.visible = this.avatarReady && this.view.perspective === 0 && this.local.body.anim !== 3;
-      if (this.publiBikes.active) this.mesh.visible = this.firstBody.visible = false;
+      if (this.publiBikes.active || this.mate.active) this.mesh.visible = this.firstBody.visible = false;
       this.effects.trail(this.net.room.sessionId, this.local.body, now);
-      if (!this.publiBikes.active) this.view.update(this.local.body, dt);
+      if (!this.publiBikes.active && !this.mate.active) this.view.update(this.local.body, dt);
     }
     if (!this.net.canPlay) { this.mesh.visible = this.firstBody.visible = false; this.vehicles.stopDriving(); }
     this.roomFlow.update();
@@ -94,8 +97,10 @@ export class MapGame {
     this.vehicles.updateLabels(this.local.body, now);
     this.bus.update(dt, this.mesh, this.remotes);
     this.publiBikes.update(dt);
+    this.mate.update();
   }
   dispose() {
+    this.mate.dispose();
     this.publiBikes.dispose();
     this.bus.dispose();
     this.disposeMapRaycasts();

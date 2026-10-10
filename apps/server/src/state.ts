@@ -34,6 +34,8 @@ export const Player = schema(
     vehicleKind: t.int8().default(-1),
     shoes: t.boolean().default(false),
     attackReadyAt: t.number().default(0),
+    mateCount: t.uint8().default(0),
+    mateBoostMs: t.number().default(0),
   },
   "Player",
 );
@@ -73,6 +75,15 @@ export const PubliBike = schema({
   reservationUntil: t.number().default(0),
   dock: t.int8().default(-1),
 }, "PubliBike");
+export const Mate = schema({
+  phase: t.string().default("idle"),
+  selected: t.uint8().default(0),
+  tried: t.uint8().default(0),
+  attempts: t.uint8().default(0),
+  readyAt: t.number().default(0),
+  retryAt: t.number().default(0),
+  dropStartedAt: t.number().default(0),
+}, "Mate");
 export const RaceState = schema(
   {
     serverTime: t.number().default(0),
@@ -88,6 +99,7 @@ export const RaceState = schema(
     players: t.map(Player),
     vehicles: t.map(Vehicle),
     publiBikes: t.map(PubliBike),
+    mates: t.map(Mate),
   },
   "RaceState",
 );
