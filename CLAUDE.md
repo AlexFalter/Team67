@@ -21,7 +21,7 @@ The Zürich map is authored in Blender. On the PR branch `map/zurich-v2`, merged
 | `apps/client/public/maps/zurich/trees.glb` + `trees.json` | 3 tree models (`TreeModel_Round/Cone/Tall`) plus 6,393 rows `[x, y, z, height, crownRadius, kind, colorIndex, yaw, brightness]` in three.js coordinates. Render as `InstancedMesh`; trees are not collidable. |
 | `apps/client/src/maps/zurich/theme.ts` + `themes/{autumn,summer}.json` | Builds pixel-art `CanvasTexture`s (NearestFilter) per `G_*` material, building colours from `TEXCOORD_1`, sky and lighting. `?theme=summer` switches theme. |
 | `apps/client/src/maps/zurich/loadZurichMap.ts`, `loadTrees.ts`, `area.json` | Loader, tree instancing, map contract (bounds, origin, landmarks, asset paths). |
-| `apps/client/assets-src/zurich/world-grid.json` | 2 m height grids exported from Blender: `ground` (walkable, Polyterrasse included) and `roof` (obstacle top). Each is base64 uint16 little-endian in centimetres, `65535` = none, with `minX/maxX/minZ/maxZ/step/width/depth` (801×951). |
+| `apps/client/assets-src/zurich/world-grid.json` | 2 m walk grid from Blender (`walk_grid.py`): `ground` = walkable height (streets, bridge decks, Polyterrasse, Polybahn station floors, Quaibrücke) and `roof` = wall top. Walls cover buildings, water, railings, low headroom and cliffs over 1 m, all at least 2.5 m tall so no jump clears them. There are no holes. Doorways, arcades and platform canopies are walkable. Each is base64 uint16 little-endian in centimetres, `65535` = none, with `minX/maxX/minZ/maxZ/step/width/depth` (801×951). |
 | `packages/shared/src/zurich-world.json` | Generated from `world-grid.json` by `scripts/build-world.ts` (`npm run world:build`). Adds spawn, cart spots and shuttle route. |
 
 **Get them onto your branch** (copy, don't regenerate):
@@ -50,7 +50,11 @@ scene.add(gltf.scene);
 // sky colour + sun/hemisphere light come from theme.lighting (see main's MapViewer.tsx)
 ```
 
-Without `MeshoptDecoder` the GLB will not load. The decoder works in the browser and in Node (tests) with no extra files.
+Without `MeshoptDecoder` the GLB will not load.
+
+Two rendering gotchas, both handled in `theme.ts` (re-pull it from `origin/map/zurich-v2` if your copy predates 2026-10-10 evening):
+- Theme `CanvasTexture`s need `flipY = false`, because glTF UVs have row 0 at v = 0. Otherwise signs (COOP, POLYBAHN) and window details render upside down.
+- glTF flips V, so the building seed in `TEXCOORD_1` must be read as `1 - v`, with a non-negative modulo. Otherwise most buildings render white. The decoder works in the browser and in Node (tests) with no extra files.
 
 **Re-exporting from Blender** (only Tom has the `.blend`). Blender 5.2 with the Blender MCP add-on. In Blender's Python console or via MCP:
 

@@ -6,6 +6,7 @@ import { MeshBVH, acceleratedRaycast } from "three-mesh-bvh";
 import area from "../maps/zurich/area.json";
 import { applyTheme, type MapTheme } from "../maps/zurich/theme";
 import { loadTrees } from "../maps/zurich/loadTrees";
+import { loadProps } from "../maps/zurich/loadProps";
 
 // The download survives React StrictMode's mount/unmount/mount and inspect ↔ play switches.
 let bytes: Promise<ArrayBuffer> | undefined;
@@ -45,9 +46,14 @@ export async function loadMap(theme: MapTheme, signal: AbortSignal, progress: (f
   const map = gltf.scene;
   try {
     signal.throwIfAborted();
+    // Exporter min/max can be slightly off; exact bounds keep frustum culling and raycasts correct.
+    map.traverse(o => { if (o instanceof Mesh) { o.geometry.computeBoundingBox(); o.geometry.computeBoundingSphere(); } });
     applyTheme(map, theme);
     progress(0.92, "Planting trees");
-    try { map.add(await loadTrees(signal, theme)); } catch (error) { signal.throwIfAborted(); console.warn("Trees not loaded:", error); }
+    // Trees and street props are instanced decoration: no collision, no raycasts.
+    for (const [label, load] of [["Trees", loadTrees], ["Props", loadProps]] as const) {
+      try { map.add(await load(signal, theme)); } catch (error) { signal.throwIfAborted(); console.warn(`${label} not loaded:`, error); }
+    }
     progress(0.96, "Preparing collision");
     await new Promise(r => setTimeout(r, 0)); // let the progress bar paint
     mergeTiles(map);

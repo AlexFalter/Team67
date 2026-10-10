@@ -196,6 +196,7 @@ export function surfaceTexture(name: string, style: SurfaceStyle, pixels: number
     }
   context.putImageData(image, 0, 0);
   const texture = new CanvasTexture(canvas);
+  texture.flipY = false; // glTF UVs: row 0 of the canvas is v = 0 (otherwise signs/windows render upside down)
   texture.colorSpace = SRGBColorSpace;
   texture.magFilter = NearestFilter;
   texture.wrapS = texture.wrapT = RepeatWrapping;
@@ -243,7 +244,9 @@ function tintBuildings(mesh: Mesh, palette: (typeof TINTED)[string], theme: MapT
   for (let i = 0; i < style.count; i++) {
     const category = BUILDING_CATEGORIES[Math.round(style.getX(i))] ?? "other";
     const swatches = palette(theme, category);
-    color.set(swatches[Math.round(style.getY(i)) % swatches.length]);
+    // glTF stores V flipped (v' = 1 - v); undo it to get Blender's seed back
+    const seed = Math.round(1 - style.getY(i));
+    color.set(swatches[((seed % swatches.length) + swatches.length) % swatches.length]);
     colors.set([color.r, color.g, color.b], i * 3);
   }
   mesh.geometry.setAttribute("color", new BufferAttribute(colors, 3));

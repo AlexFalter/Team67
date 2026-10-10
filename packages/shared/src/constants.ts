@@ -61,7 +61,7 @@ export const RUN_OVER_KNOCKDOWN_MS = 2500;
 export const BIKE_FALL_MS = 2500;
 export const SHUTTLE_SEATS = 6;
 export const SHUTTLE_COUNTDOWN_MS = 10000;
-export const SHUTTLE_SPEED = 8;
+export const SHUTTLE_SPEED = 12; // ~2 min for the 1.4 km route
 export const TRAFFIC_SPEED = 8;
 export const DRIVER_STALE_MS = 500;
 
