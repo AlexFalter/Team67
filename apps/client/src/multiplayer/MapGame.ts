@@ -14,6 +14,7 @@ import { RoomFlow } from "./roomFlow.ts";
 import { accelerateMapRaycasts } from "./mapRaycast.ts";
 import { BattleBusIntro } from "./battleBus.ts";
 import { PubliBikeFeature } from "./publiBikes.ts";
+import { TransitScenery } from "./transitScenery.ts";
 
 // MapViewer owns rendering and the loop; this instance owns gameplay cleanup.
 export class MapGame {
@@ -34,8 +35,10 @@ export class MapGame {
   private bus: BattleBusIntro;
   private publiBikes: PubliBikeFeature;
   private introStartedAt = 0;
+  private transitScenery: TransitScenery;
   constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, private canvas: HTMLCanvasElement,
     hud: HTMLDivElement, hints: HTMLDivElement, map: THREE.Object3D) {
+    this.transitScenery = new TransitScenery(scene, map);
     this.disposeMapRaycasts = accelerateMapRaycasts(map);
     this.remotes = new RemotePlayers(scene);
     this.vehicles = new Vehicles(scene, this.net, hints);
@@ -44,7 +47,7 @@ export class MapGame {
     this.view = new PlayerView(camera, [map], zurichWorld);
     this.bus = new BattleBusIntro(scene, camera, this.net);
     this.publiBikes = new PubliBikeFeature(scene, camera, this.net, this.vehicles, this.local, canvas);
-    this.roomFlow = new RoomFlow(this.net, Promise.all([this.bus.ready, this.vehicles.publiReady]).then(() => {}), () => this.bus.unlockAudio());
+    this.roomFlow = new RoomFlow(this.net, Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady]).then(() => {}), () => this.bus.unlockAudio());
     this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.publiBikes.active);
     Object.assign(this.local.body, zurichWorld.spawn);
     camera.near = 0.05;
@@ -70,6 +73,7 @@ export class MapGame {
   get focus() { return this.bus.active ? this.bus.focus : this.local.body; }
   update(elapsed: number, now: number) {
     const dt = Math.min(0.1, elapsed), renderTime = this.net.now() - INTERP_DELAY_MS;
+    this.vehicles.render(renderTime, dt, "rail");
     if (this.net.canPlay) {
       this.net.frame(dt, this.local.body, () => this.local.controls(this.view.yaw));
       if (this.local.takeInteraction() && !this.publiBikes.interact()) this.vehicles.interact(this.local.body);
@@ -84,7 +88,7 @@ export class MapGame {
     }
     if (!this.net.canPlay) { this.mesh.visible = this.firstBody.visible = false; this.vehicles.stopDriving(); }
     this.roomFlow.update();
-    this.vehicles.render(renderTime, dt); this.remotes.render(renderTime, this.vehicles.items, dt);
+    this.vehicles.render(renderTime, dt, "other"); this.remotes.render(renderTime, this.vehicles.items, dt);
     for (const [id, remote] of this.remotes.players) this.effects.trail(id, remote.rendered, now);
     this.controls.update(dt); this.effects.update(renderTime, dt); this.hud.update(dt, this.net);
     this.vehicles.updateLabels(this.local.body, now);
@@ -95,6 +99,7 @@ export class MapGame {
     this.publiBikes.dispose();
     this.bus.dispose();
     this.disposeMapRaycasts();
+    this.transitScenery.dispose();
     this.closeLobby(); this.roomFlow.dispose(); this.controls.dispose(); this.local.dispose(); this.net.dispose();
     this.effects.dispose(); this.vehicles.dispose(); this.remotes.dispose();
     disposeAvatar(this.mesh); disposeAvatar(this.firstBody); this.canvas.removeAttribute("tabindex");

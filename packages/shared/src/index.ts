@@ -12,3 +12,4 @@ export * from "./roomCode.ts";
 export * from "./room.ts";
 export * from "./battleBus.ts";
 export * from "./publiBike.ts";
+export * from "./transit.ts";

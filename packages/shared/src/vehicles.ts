@@ -2,13 +2,15 @@ import * as C from "./constants.ts";
 import type { Input, PlayerState, VehicleState } from "./types.ts";
 import { resolveHouses } from "./flatObstacles.ts";
 import { flatWorld, routePoint, type MovementWorld } from "./world.ts";
+import { isRail, railSeatPosition } from "./transit.ts";
 
-export function vehicleRadius(v: Pick<VehicleState, "kind">) { return v.kind === 2 ? 0.65 : v.kind === 1 ? 2.4 : C.CART_RADIUS; }
+export function vehicleRadius(v: Pick<VehicleState, "kind">) { return v.kind === 2 ? 0.65 : v.kind === 1 ? 2.4 : isRail(v) ? 1.3 : C.CART_RADIUS; }
 export function vehicleSpeed(v: Pick<VehicleState, "kind">) { return v.kind === 2 ? C.BIKE_SPEED : C.CART_SPEED; }
 
 export function createVehicle(kind = 0, x = 0, z = 0): VehicleState {
   return {
     kind,
+    railDistance: 0, railLane: 0, railReverse: false, pitch: 0,
     x,
     y: 0,
     z,
@@ -76,6 +78,7 @@ export function seatPosition(
   seat: number,
   out: { x: number; y: number; z: number },
 ) {
+  if (isRail(v)) { railSeatPosition(v, seat, out); return; }
   const x = v.kind !== 1 ? 0 : seat % 2 === 0 ? -0.65 : 0.65;
   const z = v.kind !== 1 ? 0 : (Math.floor(seat / 2) - 1) * 1.25;
   out.x = v.x + x * Math.cos(v.rotY) + z * Math.sin(v.rotY);

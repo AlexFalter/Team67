@@ -48,7 +48,11 @@ export interface RoundResult {
   hitsReceived: number;
 }
 export interface VehicleState {
-  kind: number; // 0: cart, 1: shared shuttle, 2: bicycle, 3: NPC car
+  kind: number; // 0 cart, 1 shuttle, 2 bike, 3 NPC car, 4 ball, 5 tram, 6 Polybahn
+  railDistance: number;
+  railLane: number;
+  railReverse: boolean;
+  pitch: number;
   x: number;
   y: number;
   z: number;
