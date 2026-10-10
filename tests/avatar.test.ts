@@ -88,7 +88,9 @@ test("first-person elbows pump in opposition, track gaze, and blend to airborne/
   assert.ok(Math.abs(right.rotation.x - before) < 0.4, "no jump pose snap");
   p.attackReadyAt = ATTACK_COOLDOWN_MS - 210;
   for (let n = 0; n < 15; n++) pose(mesh, p);
-  assert.ok(right.rotation.x < -2, "punch reaches forward");
+  assert.ok(right.rotation.x < -1.3, "hook raises the right arm");
+  assert.ok(mesh.getObjectByName("right-elbow")!.rotation.z > 1.2, "hook keeps the elbow bent sideways");
+  assert.ok(right.rotation.y > 0.1, "right shoulder swings across the body");
   assert.ok(gaitRate(11) / Math.PI < 4, "sprint stays below four alternating footfalls per second");
   disposeAvatar(mesh);
 });

@@ -22,6 +22,7 @@ export function createBody(): Body {
     groundTime: 0,
     jumpUntil: 0,
     knockdownUntil: 0,
+    impactStartedAt: 0, impactX: 0, impactZ: 0, impactStrength: 0,
     simTime: 0,
     vehicleKind: -1,
     attackReadyAt: 0,
@@ -36,9 +37,10 @@ export function respawn(p: Body, world: MovementWorld = flatWorld) {
   p.vx = p.vy = p.vz = 0;
   p.grounded = true;
   p.knockdownUntil = 0;
+  p.impactStartedAt = p.impactX = p.impactZ = p.impactStrength = 0;
   p.groundTime = p.simTime; p.jumpUntil = 0; p.jumpReadyAt = 0;
   p.jumpFatigue = 0; p.jumpSprintLocked = false;
-  p.slideUntil = p.slideReadyAt = 0; p.sprintJump = false;
+  p.slideUntil = p.slideReadyAt = p.slideBufferedUntil = 0; p.sprintJump = false;
 }
 export function applyImpulse(p: Body, hit: Impulse, now: number) {
   p.vx += hit.ix;
@@ -46,8 +48,14 @@ export function applyImpulse(p: Body, hit: Impulse, now: number) {
   p.vz += hit.iz;
   if (hit.iy > 0) p.grounded = false;
   p.groundTime = -1e9; p.jumpUntil = 0;
-  p.slideUntil = 0; p.sprintJump = false;
-  if (hit.knockdown) p.knockdownUntil = Math.max(p.knockdownUntil, now + (hit.durationMs ?? C.KNOCKDOWN_DURATION_MS));
+  p.slideUntil = 0; p.slideBufferedUntil = 0; p.sprintJump = false;
+  if (hit.knockdown) {
+    const at = hit.at ?? now;
+    p.impactStartedAt = at; p.impactX = hit.ix; p.impactZ = hit.iz;
+    p.impactStrength = Math.hypot(hit.ix, hit.iy, hit.iz);
+    p.knockdownUntil = Math.max(p.knockdownUntil, at + (hit.durationMs ?? C.KNOCKDOWN_DURATION_MS));
+    p.anim = 3;
+  }
 }
 // Velocity is integrated from acceleration, not replaced by an input target.
 // Ground grip removes lateral slip; airborne control adds bounded directional
@@ -101,11 +109,17 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
   if (fatigue >= C.JUMP_FATIGUE_WALK_THRESHOLD) p.jumpSprintLocked = true;
   const sprinting = input.sprint && !p.jumpSprintLocked;
   if (down || !p.grounded) p.slideUntil = 0;
-  if (input.slide && sprinting && p.grounded && !down && !input.jump &&
-    now >= (p.slideReadyAt ?? 0) && Math.hypot(p.vx, p.vz) >= C.SLIDE_MIN_SPEED) {
-    p.slideUntil = now + C.SLIDE_DURATION_MS;
-    p.slideReadyAt = now + C.SLIDE_DURATION_MS + C.SLIDE_COOLDOWN_MS;
-  }
+  if (input.slide && sprinting && !down && !input.jump) p.slideBufferedUntil = now + C.SLIDE_BUFFER_MS;
+  if (down || !sprinting || input.jump || (p.slideBufferedUntil ?? 0) <= now) p.slideBufferedUntil = 0;
+  const startSlide = () => {
+    if ((p.slideBufferedUntil ?? 0) <= now || !p.grounded) return;
+    if (now >= (p.slideReadyAt ?? 0) && Math.hypot(p.vx, p.vz) >= C.SLIDE_MIN_SPEED) {
+      p.slideUntil = now + C.SLIDE_DURATION_MS;
+      p.slideReadyAt = now + C.SLIDE_DURATION_MS + C.SLIDE_COOLDOWN_MS;
+    }
+    p.slideBufferedUntil = 0;
+  };
+  startSlide();
   const slideJump = input.jump && now < (p.slideUntil ?? 0);
   if (input.jump) p.slideUntil = 0;
   const sliding = now < (p.slideUntil ?? 0);
@@ -117,7 +131,7 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
     const drag = slideJump ? 1 : Math.exp(-C.SLIDE_FRICTION * dt);
     p.vx *= drag; p.vz *= drag;
   } else if (down) {
-    const drag = Math.exp(-9 * dt);
+    const drag = Math.exp(-(p.grounded ? 6 : 0.8) * dt);
     p.vx *= drag; p.vz *= drag;
   } else {
     const takingOff = now >= (p.jumpReadyAt ?? 0) && (input.jump || p.jumpUntil > now) && (p.grounded || now - p.groundTime <= C.COYOTE_MS);
@@ -164,6 +178,7 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
     p.vy = 0;
     p.grounded = true;
   } else p.grounded = false;
+  if (!grounded && p.grounded) startSlide();
   if (world.name === "flat") resolveHouses(p, previous);
   if (p.y < (ground ?? world.spawn.y) + C.RESPAWN_DEPTH) respawn(p, world);
   if (p.grounded || down) p.sprintJump = false;
@@ -175,11 +190,11 @@ export function stepPlayer(p: Body, input: Input, dt: number, world: MovementWor
   if (input.hit && !p.vehicleId && p.simTime >= p.knockdownUntil && p.simTime >= p.attackReadyAt)
     p.attackReadyAt = p.simTime + C.ATTACK_COOLDOWN_MS;
   if (p.vehicleId) {
-    p.slideUntil = 0; p.sprintJump = false;
+    p.slideUntil = 0; p.slideBufferedUntil = 0; p.sprintJump = false;
     let impact = 0;
     if (p.vehicleKind === 0 || p.vehicleKind === 2) {
       const v = createVehicle(p.vehicleKind, p.x, p.z);
-      v.y = p.y - C.CART_SEAT_HEIGHT;
+      v.y = p.y - (p.vehicleKind === 2 ? C.BIKE_SEAT_HEIGHT : C.CART_SEAT_HEIGHT);
       v.vx = p.vx; v.vz = p.vz; v.rotY = p.rotY;
       impact = stepCart(v, input, dt, world);
       seatPosition(v, p.seat, p);

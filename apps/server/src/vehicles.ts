@@ -200,7 +200,7 @@ export class VehicleManager {
         (now - (this.reports.get(data[0]) ?? now)) / 1000,
       ),
       bounds = this.world.bounds;
-    const y = this.world.height(data[1], data[2]);
+    const y = this.world.height(data[1], data[2], v.y);
     if (
       Math.hypot(data[1] - v.x, data[2] - v.z) > C.vehicleSpeed(v) * 2 * dt + 0.15 ||
       data[1] < bounds.minX + C.vehicleRadius(v) ||
@@ -231,7 +231,7 @@ export class VehicleManager {
   syncDriver(id: string) {
     const p = this.state.players.get(id), v = p && this.state.vehicles.get(p.vehicleId);
     if (!p || !v || v.driver !== id) return;
-    v.x = p.x; v.y = p.y - C.CART_SEAT_HEIGHT; v.z = p.z; v.rotY = p.rotY; v.vx = p.vx; v.vz = p.vz;
+    v.x = p.x; v.y = p.y - (v.kind === 2 ? C.BIKE_SEAT_HEIGHT : C.CART_SEAT_HEIGHT); v.z = p.z; v.rotY = p.rotY; v.vx = p.vx; v.vz = p.vz;
   }
   private attach(p: Player, v: Vehicle) {
     C.seatPosition(v, p.seat, p);
@@ -242,21 +242,21 @@ export class VehicleManager {
     p.anim = 0;
     p.grounded = false;
   }
-  crashBike(id: string, now: number, hit: Parameters<VehicleManager["tick"]>[1], speed?: number) {
+  crashBike(id: string, now: number, hit: Parameters<VehicleManager["tick"]>[1], speed?: number, impact?: { from: string; rotY: number; kind: number }) {
     const v = this.state.vehicles.get(id);
     if (!v || v.kind !== 2 || now < v.fallenUntil) return;
     speed ??= Math.hypot(v.vx, v.vz);
     v.fallenUntil = now + 2500;
-    this.ejectDriver(v, id, speed, hit);
+    this.ejectDriver(v, impact?.from ?? id, speed, hit, impact?.rotY ?? v.rotY, impact?.kind ?? v.kind);
   }
-  private ejectDriver(v: Vehicle, from: string, speed: number, hit: Parameters<VehicleManager["tick"]>[1], rotY = v.rotY) {
+  private ejectDriver(v: Vehicle, from: string, speed: number, hit: Parameters<VehicleManager["tick"]>[1], rotY = v.rotY, sourceKind = v.kind) {
     const rider = this.state.players.get(v.driver), driver = v.driver;
     v.driver = ""; v.vx = v.vz = 0;
     if (rider) {
       // Keep the rider at the impact point; reconciliation blends the ejection.
       rider.vehicleId = ""; rider.vehicleKind = -1; rider.seat = -1;
       hit(from, driver, rider.x, rider.y + 0.8, rider.z,
-        Math.sin(rotY) * speed * 0.6, 2, Math.cos(rotY) * speed * 0.6, true);
+        Math.sin(rotY) * speed * 0.6, 2, Math.cos(rotY) * speed * 0.6, true, sourceKind);
     }
   }
   tick(
@@ -271,6 +271,7 @@ export class VehicleManager {
       iy: number,
       iz: number,
       knockdown: boolean,
+      sourceKind?: number,
     ) => void,
   ) {
     this.tickRail(now);
@@ -357,7 +358,10 @@ export class VehicleManager {
         const dx = other.x - v.x, dz = other.z - v.z, distance = Math.hypot(dx, dz);
         const closing = ((v.vx - other.vx) * dx + (v.vz - other.vz) * dz) / Math.max(distance, 0.001);
         if (distance <= C.vehicleRadius(v) + C.vehicleRadius(other) + 0.02 && closing >= C.CART_MIN_HIT_SPEED) {
-          this.crashBike(id, now, hit, Math.max(closing, Math.hypot(v.vx, v.vz))); break;
+          const otherSpeed = Math.hypot(other.vx, other.vz), bikeSpeed = Math.hypot(v.vx, v.vz);
+          const incomingVehicle = other.kind !== 2 && otherSpeed > bikeSpeed;
+          this.crashBike(id, now, hit, Math.max(closing, bikeSpeed), incomingVehicle
+            ? { from: other.driver || otherId, rotY: Math.atan2(other.vx, other.vz), kind: other.kind } : undefined); break;
         }
       }
     }
@@ -370,7 +374,7 @@ export class VehicleManager {
         const radius = C.vehicleRadius(v) + C.vehicleRadius(other);
         if (distance >= radius) continue;
         if (C.isPassengerVehicle(other) && Math.hypot(other.vx, other.vz) >= C.CART_MIN_HIT_SPEED) {
-          this.ejectDriver(v, otherId, Math.hypot(other.vx, other.vz), hit, other.rotY); break;
+          this.ejectDriver(v, otherId, Math.hypot(other.vx, other.vz), hit, other.rotY, other.kind); break;
         }
         v.x += (distance > 0.001 ? dx / distance : 1) * (radius - distance);
         v.z += (distance > 0.001 ? dz / distance : 0) * (radius - distance);
@@ -398,6 +402,7 @@ export class VehicleManager {
           v.kind === 2 ? 1 : C.CART_HIT_LIFT,
           o.nz * o.closing * strength,
           true,
+          v.kind,
         );
         this.separate(v, p);
         if (v.kind === 2) this.crashBike(id, now, hit);

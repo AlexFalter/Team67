@@ -196,3 +196,17 @@ button:disabled { cursor: wait; opacity: 0.6; }
 main:has(.game-loading) > :is(header, footer) { display: none; }
 @keyframes loading-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .loading-spinner { animation: none; } }
+
+#combat-actions { position:absolute; left:50%; bottom:24px; transform:translateX(-50%); z-index:6; display:flex; gap:12px; color:#edf1ef; }
+.combat-action { display:grid; justify-items:center; gap:5px; }
+.combat-action kbd { color:#d6ddda; font:11px/1 ui-monospace,monospace; text-shadow:0 1px 3px #000; }
+#combat-actions button { position:relative; width:46px; height:46px; padding:9px; border:1px solid #ffffff38; border-radius:10px; background:#12232b24; color:#edf1ef; cursor:pointer; }
+#combat-actions button svg { width:26px; height:26px; display:block; filter:drop-shadow(0 1px 2px #0008); }
+#combat-actions button:hover:not(:disabled) { background:#ffffff18; border-color:#ffffff80; }
+#combat-actions button:focus-visible { outline:2px solid #d7f87a; outline-offset:3px; }
+#combat-actions button:disabled { color:#89928f; opacity:1; cursor:default; border-color:#abb6b326; }
+#combat-actions .has-countdown svg { opacity:.18; }
+.action-countdown { position:absolute; inset:0; display:grid; place-items:center; color:#aeb5b2; font:600 26px/1 ui-monospace,monospace; text-shadow:0 1px 4px #0009; pointer-events:none; }
+
+.context-actions { display: flex; gap: 12px; }
+.context-actions:empty { display: none; }

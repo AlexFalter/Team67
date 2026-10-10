@@ -68,3 +68,20 @@ test("closing the scanner after the round ends does not enable player input", ()
   (s.feature as unknown as { net: { canPlay: boolean } }).net.canPlay = false;
   s.feature.close(false);assert.equal(s.local.enabled, false);
 });
+
+test("an interrupted scanner restores gameplay through the controls owner", () => {
+  const s = setup(); let resumed = 0;
+  Object.assign(s.feature, { resumeGameplay: () => { resumed++; s.local.enabled = true; } });
+  s.feature.interact();
+  s.modal.hidden = false; s.local.enabled = false; s.local.body.knockdownUntil = 11000;
+  (s.feature as unknown as { maintainRequest(): void }).maintainRequest();
+  assert.equal(s.feature.active, false); assert.equal(s.local.enabled, true); assert.equal(resumed, 1);
+});
+test("a missing unlock reply closes the phone and restores control instead of trapping the cursor", () => {
+  const s = setup(); s.feature.interact();
+  s.modal.hidden = false; s.local.enabled = false;
+  Object.assign(s.feature, { net: { ...((s.feature as unknown as { net: object }).net), now: () => 16001 } });
+  (s.feature as unknown as { maintainRequest(): void }).maintainRequest();
+  assert.equal(s.feature.active, false); assert.equal(s.local.enabled, true);
+  assert.ok(s.notices.at(-1)?.includes("timed out"));
+});

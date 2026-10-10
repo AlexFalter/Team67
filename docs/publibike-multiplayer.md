@@ -1,8 +1,8 @@
 # Multiplayer PubliBikes
 
 This adds the prototype's eight-bike station, bike model, rear QR scanner,
-50% broken-bike probability, working-bike gold highlighting, and 15-second
-battery. Riding and falling use the existing multiplayer bike controller,
+working-bike gold highlighting, and a fully available fleet. All eight bikes
+start working and remain charged while riding. Riding and falling use the existing multiplayer bike controller,
 physics, interpolation, and collision handling. Other game content, the
 map, battle bus, normal camera controls, and ordinary vehicles remain intact.
 
@@ -21,13 +21,14 @@ On the current map its center is approximately `(-205.478, 54.448)`.
 - Move the mouse/trackpad over the live phone preview (no button hold), or use WASD/arrows to center the rear QR code, then hold still.
   The prototype's settling, scan progress, and connection stutter are retained.
 - A successful scan boards the bike through existing vehicle occupancy.
-  Broken bikes report that they are out of service; put the phone away and
-  choose another. The small home control, Esc or E closes the scanner.
+  The small home control, Esc or E closes the scanner.
 - Use the existing riding controls. E returns the bike to a free nearby
   station slot, or parks it where it is if away from the station.
-- The battery display uses shared server state. Parking pauses battery
-  consumption; the next rider gets the remaining charge. Depletion stops
-  the ride and marks the bike out of service until the next round.
+- All bikes remain charged and usable. The riding status shows E to get off.
+- Nearby actions appear left of the punch and slide toolbar with E and a
+  human, Polybahn, tram, bike or can icon. Buttons use the same path as
+  keyboard interaction. Owned Mate cans show a separate manual drink action
+  labelled 1.
 
 ## Multiplayer ownership
 
@@ -53,12 +54,17 @@ knockdown, losing eligibility, and round completion. Hiding the browser or
 losing focus cancels the local scan. Round reset creates fresh fleet state.
 
 Docked and currently scanned bikes are held in place in Rapier. Released
-bikes outside the station retain existing loose-bike physics. Server time
-controls battery use; clients cannot reset charge or choose working status.
+bikes outside the station retain existing loose-bike physics. The server
+keeps the fleet charged and working; clients cannot grant themselves a bike.
 
 ## Rendering and cleanup
 
-The prototype model's static meshes are merged by material per instance.
+The bike model is scaled to 68% of its source size (about 2.24 m long and
+1.19 m tall), with a shared 0.65 m rider root height and 15 m/s top speed.
+Static geometry is merged by material; front and rear wheels have separate
+pivots and turn with signed travel. Knees pedal in opposite phases, ankles
+counter-rotate and the forward-leaning torso sways slightly. First-person
+riding uses slide-style edge speed streaks once up to speed.
 The station uses instanced dock stands and lights. The phone copies a portrait crop from the existing renderer immediately after the host render. QR detection uses the same crop, so the viewfinder and scan alignment agree at any viewport size. A wider lens keeps the rear QR visible. Pointer input starts with a modest random aim offset, ignores the inherited cursor position and large warps, and smooths relative motion. No extra renderer or animation loop is introduced.
 Bike loading participates in lobby preparation. Pending loads, scanner input
 listeners, phone UI, station resources, and model resources are disposed when
@@ -68,8 +74,8 @@ leaving Play mode. Each bike owns its cloned GPU resources.
 
 `tests/publi-bike.test.ts` covers simultaneous claims, direct-boarding
 bypass attempts, stolen and stale tokens, early completion, duplicate
-requests, cancellation, disconnect, timeout, range, knockdown, broken bikes,
-battery depletion, parking, station clearance, and a live two-client room
+requests, cancellation, disconnect, timeout, range, knockdown, all eight bikes riding concurrently
+without breaking or depleting charge, parking, station clearance, and a live two-client room
 with competing claims and round reset.
 
 Type checking, lint, and the production client build passed for the initial
@@ -81,7 +87,7 @@ because it did not finish in the previous integration's nine-minute run.
 Two real Chrome clients were checked against the production build: the
 second player's scan is rejected while the first holds the reservation;
 pointer aiming completes the scanner; riding moves the bike; returning
-pauses its battery; Inspect disposes the feature; and returning to Play
+parks it; Inspect disposes the feature; and returning to Play
 loads a fresh station and enables Ready. The run reports no browser errors.
 
 The phone-opening follow-up adds `tests/publi-bike-phone.test.ts`, covering
@@ -94,3 +100,31 @@ type checking and lint also pass for this change.
 The scan reticle stays centred in the phone while the initial camera view starts slightly off-target. Mouse/trackpad movement is relative and works across the whole overlay, including outside the phone. The first pointer event establishes an anchor without moving the camera, so a restored cursor far from the phone cannot warp the aim. At a viewport edge, the phone continues turning slowly; returning the cursor inward stops it. Resize, leaving the window, touch release, closing, and reopening reset this state.
 
 Verified scan completion from outside the phone on desktop and narrow screens, plus home/Escape dismissal, server-error display, and disposal. Pure input regressions cover corner starts, cursor handoff, outside-phone movement, edge turning, and touch/reset handling.
+
+### Buffered landing slides
+
+A slide press in the air is buffered for one second and starts on the exact
+landing frame if sprinting, above minimum speed and off cooldown. Releasing
+sprint, jumping again, knockdown, respawning or boarding cancels the buffer.
+`tests/slide-buffer.test.ts` covers landing timing, cancellation, bike seat
+height/speed and first-person riding streak visibility.
+
+### Cursor recovery
+
+Scanner dismissal and crash interruption restore gameplay through GameControls,
+clear the pause overlay, and synchronize cursor capture before delayed browser
+events arrive. Intentional scanner releases do not pause the game again.
+Unlocking or dismissing the scanner automatically recaptures the cursor, so
+trackpad/mouse look continues immediately. If the browser rejects capture, a
+click-to-play control remains available to retry; Escape still releases it.
+Missing reservation or unlock replies time out after five seconds instead of
+leaving a phone overlay indefinitely. Knockdown keeps camera look available.
+Regression tests cover interruption, timeouts, real releases and late releases.
+
+### Uphill collision handling
+
+Vehicle steps distinguish unavailable ground or unrideable height changes from
+solid obstacles. Terrain rejection can safely stop the bike without reporting a
+crash; walls, bounds and entity impacts still cause falls. Server driver reports
+resolve ground using the current vehicle elevation, matching prediction under
+bridges and other stacked walkable surfaces.

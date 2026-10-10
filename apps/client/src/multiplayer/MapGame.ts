@@ -1,3 +1,4 @@
+import type { ContextAction } from "./actionHud.ts";
 import { decoratePlayer } from "./playerIdentity.ts";
 import * as THREE from "three";
 import * as C from "@race/shared";
@@ -68,7 +69,7 @@ export class MapGame {
     this.vehicles = new Vehicles(scene, this.net, hints);
     this.effects = new Effects(scene, bump => this.audio.bump(this.listener, bump));
     this.hud = new Hud(hud);
-    this.publiBikes = new PubliBikeFeature(scene, camera, this.net, this.vehicles, this.local, canvas);
+    this.publiBikes = new PubliBikeFeature(scene, camera, this.net, this.vehicles, this.local, canvas, () => this.controls.restoreGameplay());
     this.mate = new MateFeature(scene, camera, this.net, this.local, canvas);
     // Camera shutter from mini-games-2 when a photo is taken.
     this.npcs = new NpcFeature(scene, camera, this.net, this.local, this.vehicles, canvas, map, () => { this.audio.effect("shutter"); return capture(); });
@@ -83,7 +84,7 @@ export class MapGame {
     this.bus = new BattleBusIntro(scene, camera, this.net, canvas, () => this.view.sensitivity);
     this.ready = Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready, this.npcs.ready]).then(() => {});
     this.roomFlow = new RoomFlow(this.net, this.ready, () => this.bus.unlockAudio());
-    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active, () => this.net.now()<this.derailUntil || !!this.maps?.active);
+    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active, () => this.net.now()<this.derailUntil || !!this.maps?.active, () => this.net.now(), () => this.contextActions());
     this.maps = new RaceMap(this.net, () => ({ ...this.local.body, enabled: this.local.enabled }),
       () => [...this.npcs.mapMarkers(), { ...this.mate.machine.position, label: "El Tony Mate" }],
       () => !!this.net.canPlay && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now() >= this.derailUntil && !!document.querySelector<HTMLElement>("#pause")!.hidden,
@@ -112,11 +113,18 @@ export class MapGame {
           scene.add(this.mesh, this.firstBody); this.avatarReady = true;
         }
         if (p && this.avatarReady) decoratePlayer(this.mesh, state.members.get(id)?.name ?? "Player");
-      }, hit => { this.awardRunOver(hit); this.effects.enqueue(hit); }, selection);
+      }, hit => { this.awardRunOver(hit); this.effects.enqueue(hit, this.net.room.sessionId); }, selection);
     });
   }
   get examScreenVisible() { return this.exam.screenVisible; }
   get focus() { return this.net.room?.state?.phase === RoomPhase.Lobby ? this.menuScene.focus : this.bus.active ? this.bus.focus : this.local.body; }
+  private contextActions(): ContextAction[] {
+    const p = this.local.body, actions: ContextAction[] = [];
+    const icon = this.npcs.nearbyTicket ? "polybahn" : this.npcs.nearbyInteraction ? "person" : this.mate.nearby ? "mate" : this.vehicles.interactionKind(p);
+    if (icon) actions.push({ icon, key: "E", label: this.npcs.nearbyTicket ? "Buy Polybahn ticket" : icon === "person" ? "Talk / interact" : icon === "mate" ? "Use Mate machine" : p.vehicleId ? "Get off" : icon === "bike" ? "Ride / scan bike" : "Board transport", enabled: p.knockdownUntil <= this.net.now(), run: () => this.local.requestInteraction() });
+    if (p.mateCount > 0) actions.push({ icon: "mate", key: "1", label: "Drink Mate", enabled: this.mate.canConsume, run: () => this.mate.consume() });
+    return actions;
+  }
   update(elapsed: number, now: number) {
     const dt = Math.min(0.1, elapsed), renderTime = this.net.now() - INTERP_DELAY_MS;
     const state = this.net.room?.state;

@@ -11,6 +11,8 @@ export class NpcFeature {
   readonly root: THREE.Group;
   readonly active: boolean;
   readonly hideAvatar: boolean;
+  readonly nearbyInteraction: boolean;
+  readonly nearbyTicket: boolean;
   onMedal: (id: string) => void;
   interact(): boolean;
   update(dt: number, available: boolean): void;

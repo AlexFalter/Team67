@@ -16,4 +16,5 @@ export * from "./publiBike.ts";
 export * from "./transit.ts";
 export * from "./mate.ts";
 export * from "./npc.ts";
+export * from "./impact.ts";
 export * from "./ticket.ts";

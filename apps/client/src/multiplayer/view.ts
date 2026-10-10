@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { WALK_SPEED, SPRINT_SPEED, SLIDE_ANIM, TRAM_KIND, POLYBAHN_KIND, type MovementWorld, type PlayerState } from "@race/shared";
+import { WALK_SPEED, SPRINT_SPEED, impactPose, SLIDE_ANIM, TRAM_KIND, POLYBAHN_KIND, type MovementWorld, type PlayerState } from "@race/shared";
 import { gaitRate } from "./avatar.ts";
 
 export const PERSPECTIVES = ["First person", "Third person — behind", "Third person — front"];
@@ -52,15 +52,19 @@ export class PlayerView {
     } else this.railRide = "";
     const blend = 1 - Math.exp(-10 * dt), speed = Math.hypot(p.vx, p.vz);
     const down = p.anim === 3 || p.knockdownUntil > p.simTime;
+    const impact = impactPose(p);
+    const fall = impact.active ? impact.fall : down ? 1 : 0;
+    const force = Math.hypot(p.impactX ?? 0, p.impactZ ?? 0);
+    const sideHit = force ? ((p.impactX ?? 0) * Math.cos(this.yaw) - (p.impactZ ?? 0) * Math.sin(this.yaw)) / force : 1;
     const sliding = p.anim === SLIDE_ANIM && !down;
     this.slideTilt += ((sliding ? 0.20 : 0) - this.slideTilt) * blend;
     const walking = !p.vehicleId && p.grounded && !down && !sliding;
     // Distance-driven steps, but no bone-driven camera or oscillating horizon.
     if (walking) this.phase += gaitRate(speed) * dt;
     this.amplitude += ((this.bob && walking ? Math.min(0.018, speed * 0.0015) : 0) - this.amplitude) * blend;
-    this.eye += ((down ? 0.48 : sliding ? 0.82 : p.vehicleKind === TRAM_KIND ? 1.65 : rail ? 1.4 : p.vehicleId ? 1.05 : 1.6) - this.eye) * blend;
+    this.eye += ((down ? 1.6 - fall * 1.18 - Math.sin(impact.rise * Math.PI) * 0.2 : sliding ? 0.82 : p.vehicleKind === TRAM_KIND ? 1.65 : rail ? 1.4 : p.vehicleId ? 1.05 : 1.6) - this.eye) * blend;
     const strafe = p.vx * Math.cos(this.yaw) - p.vz * Math.sin(this.yaw);
-    this.roll += ((down ? 0.35 : this.bob && walking ? THREE.MathUtils.clamp(-strafe * 0.001, -0.008, 0.008) : 0) - this.roll) * blend;
+    this.roll += ((down ? sideHit * fall * 0.5 : this.bob && walking ? THREE.MathUtils.clamp(-strafe * 0.001, -0.008, 0.008) : 0) - this.roll) * blend;
     this.landing *= Math.exp(-14 * dt);
     if(rail && p.vehicleId && !down){this.amplitude=0;this.roll=0;this.landing=0;}
     if (this.bob && !down && !p.vehicleId) {
@@ -87,7 +91,7 @@ export class PlayerView {
       this.camera.position.x += Math.cos(this.yaw) * sway;
       this.camera.position.z -= Math.sin(this.yaw) * sway;
       this.camera.position.y += Math.sin(this.phase * 2) * this.amplitude - this.landing;
-      this.camera.rotation.set(this.pitch - this.slideTilt, this.yaw, this.roll, "YXZ");
+      this.camera.rotation.set(this.pitch - this.slideTilt + (down ? fall * 0.3 - Math.sin(impact.rise * Math.PI) * 0.4 + impact.recoil * 0.12 : 0), this.yaw, this.roll, "YXZ");
     } else {
       this.direction.set(-Math.sin(this.yaw) * Math.cos(this.pitch), Math.sin(this.pitch), -Math.cos(this.yaw) * Math.cos(this.pitch));
       const polybahn = p.vehicleKind === POLYBAHN_KIND && !!p.vehicleId;

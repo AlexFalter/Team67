@@ -15,6 +15,10 @@ export interface PlayerState {
   groundTime: number;
   jumpUntil: number;
   knockdownUntil: number;
+  impactStartedAt?: number;
+  impactX?: number;
+  impactZ?: number;
+  impactStrength?: number;
   simTime: number;
   vehicleKind: number;
   attackReadyAt: number;
@@ -91,6 +95,7 @@ export interface Impulse {
   iz: number;
   knockdown: boolean;
   durationMs?: number;
+  at?: number;
 }
 export interface Bump {
   a: string;
@@ -117,6 +122,7 @@ export interface Body extends PlayerState {
   sprintJump?: boolean;
   slideUntil?: number;
   slideReadyAt?: number;
+  slideBufferedUntil?: number;
 }
 
 // Main's compact client-owned movement reports, with feature gameplay metadata

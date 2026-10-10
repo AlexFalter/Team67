@@ -9,7 +9,7 @@ import { withServer, until, startRound, type WireState } from "./fixture.ts";
 
 function setup() {
   const state = new RaceState({ phase: C.RoomPhase.Running, introComplete: true });
-  const vehicles = new VehicleManager(state), fleet = new PubliBikes(state, vehicles, C.flatWorld, undefined, () => 1);
+  const vehicles = new VehicleManager(state), fleet = new PubliBikes(state, vehicles, C.flatWorld);
   const messages = new Map<string, { type: string; data: C.BikeUnlockResult }[]>();
   const client = (id: string) => {
     const v = state.vehicles.get("publibike-1")!;
@@ -53,7 +53,7 @@ test("cancel and disconnect release scans; stale tokens, duplicate begins and ol
   fleet.tick(6001 + C.PUBLI_BIKE_LEASE_MS); assert.equal(state.publiBikes.get(request.bikeId)!.reservedBy, "");
 });
 
-test("walking away, knockdown, and finished rooms release locks; broken bikes cannot unlock", () => {
+test("walking away, knockdown, and finished rooms release locks; bikes stay available", () => {
   const { state, fleet, client, last } = setup(), a = client("a"), request = { bikeId: "publibike-1", requestId: "scan" };
   fleet.begin(a, request, 1000); state.players.get("a")!.x += 20; fleet.tick(1100);
   assert.equal(state.publiBikes.get(request.bikeId)!.reservedBy, "");
@@ -63,21 +63,26 @@ test("walking away, knockdown, and finished rooms release locks; broken bikes ca
   assert.equal(state.publiBikes.get(request.bikeId)!.reservedBy, "");
   state.phase = C.RoomPhase.Running; state.publiBikes.get(request.bikeId)!.broken = true;
   fleet.begin(a, request, 2000); fleet.finish(a, { ...request, token: last("a").token }, 5000);
-  assert.equal(last("a").ok, false); assert.equal(state.vehicles.get(request.bikeId)!.driver, "");
+  assert.equal(last("a").ok, true); assert.equal(state.vehicles.get(request.bikeId)!.driver, "a");
 });
 
-test("battery consumption is server-timed, pauses when parked, and cannot be reset by rescanning", () => {
-  const { state, vehicles, fleet, client, last } = setup(), a = client("a"), request = { bikeId: "publibike-1", requestId: "scan" };
-  fleet.begin(a, request, 1000); fleet.finish(a, { ...request, token: last("a").token }, 4000);
-  fleet.tick(4000); fleet.tick(9000); assert.equal(state.publiBikes.get(request.bikeId)!.batteryMs, 10000);
-  vehicles.exit(a); fleet.park(request.bikeId); fleet.tick(14000);
-  assert.equal(state.publiBikes.get(request.bikeId)!.batteryMs, 10000);
-  const v = state.vehicles.get(request.bikeId)!, p = state.players.get("a")!;
-  Object.assign(p, { x: v.x, y: v.y, z: v.z - 2, simTime: 14000 });
-  fleet.begin(a, { ...request, requestId: "again" }, 14000);
-  fleet.finish(a, { ...request, token: last("a").token }, 17000); fleet.tick(17000); fleet.tick(30000);
-  assert.equal(state.publiBikes.get(request.bikeId)!.batteryMs, 0); assert.equal(state.publiBikes.get(request.bikeId)!.broken, true);
-  assert.equal(p.vehicleId, ""); assert.equal(v.driver, "");
+test("all eight bikes can be scanned and ridden concurrently without becoming broken or running out", () => {
+  const { state, fleet, client, last } = setup();
+  for (const [id, bike] of state.publiBikes) {
+    assert.equal(bike.broken, false);
+    const a = client(id), v = state.vehicles.get(id)!;
+    Object.assign(state.players.get(id)!, { x: v.x, y: v.y, z: v.z - 2 });
+    const request = { bikeId: id, requestId: id };
+    fleet.begin(a, request, 1000);
+    fleet.finish(a, { ...request, token: last(id).token }, 4000);
+    assert.equal(last(id).ok, true);
+  }
+  fleet.tick(4000); fleet.tick(64000);
+  for (const [id, bike] of state.publiBikes) {
+    assert.equal(bike.broken, false); assert.equal(bike.batteryMs, C.PUBLI_BIKE_BATTERY_MS);
+    assert.equal(state.vehicles.get(id)!.driver, id);
+    assert.equal(state.players.get(id)!.vehicleId, id);
+  }
 });
 
 test("prototype station positions have room for all bike footprints and the access aisle", () => {

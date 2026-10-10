@@ -121,6 +121,26 @@ export function GameOverlay({ resolution, onResolutionChange }: {
     <div id="activity-feed" hidden role="log" aria-live="polite" aria-label="Activity feed"></div>
     <button id="play" hidden>Click to play <span aria-hidden="true">↗</span></button>
     <div id="crosshair" hidden aria-hidden="true">+</div>
+    <div id="combat-actions" hidden role="group" aria-label="Player actions">
+      <div className="combat-action">
+        <kbd>F</kbd>
+        <button id="punch-action" type="button" aria-label="Punch (F)" title="Right hook · F or click">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" aria-hidden="true">
+            <path d="M5 11V7a2 2 0 0 1 4 0v4M9 11V5a2 2 0 0 1 4 0v6M13 11V6a2 2 0 0 1 4 0v5M17 11V8a2 2 0 0 1 4 0v6c0 3-2 5-4 5H9c-2 0-3-1-4-3l-2-3a2 2 0 0 1 3-2l3 3h5M9 19v3h8v-3" />
+          </svg>
+          <span className="action-countdown" aria-hidden="true" />
+        </button>
+      </div>
+      <div className="combat-action">
+        <kbd>C</kbd>
+        <button id="slide-action" type="button" aria-label="Slide (C)" title="Slide while sprinting · C">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="15" cy="5" r="2" /><path d="m13 9-4 4 4 3 7 2M9 13l-4 5H2M13 9l5 3 3-1M2 22h20M3 10h4M1 14h3" />
+          </svg>
+          <span className="action-countdown" aria-hidden="true" />
+        </button>
+      </div>
+    </div>
     <section id="pause" hidden aria-label="Game menu">
       <div>
         <h2>Game menu</h2>

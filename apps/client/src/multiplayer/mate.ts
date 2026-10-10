@@ -87,6 +87,9 @@ export class MateFeature {
   }
   get active() { return !this.modal.hidden; }
   private get state() { return this.net.room?.state?.mates?.get(this.net.room.sessionId); }
+  get nearby() { return this.net.canPlay && !this.local.body.vehicleId && C.nearMate(this.local.body, C.zurichWorld); }
+  get canConsume() { const p = this.local.body; return !this.pending && !this.active && !p.vehicleId && p.mateCount > 0 && p.mateBoostMs <= 0 && p.knockdownUntil <= this.net.now(); }
+  consume() { if (this.canConsume) this.send("use"); }
   interact() {
     if (!this.net.canPlay || this.local.body.vehicleId || !C.nearMate(this.local.body, C.zurichWorld)) return false;
     if (this.local.body.knockdownUntil > this.net.now()) return true;

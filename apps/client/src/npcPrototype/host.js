@@ -140,6 +140,14 @@ export class NpcFeature {
   if(!active&&this.saved){this.camera.fov=this.saved.fov;this.camera.up.copy(this.saved.up);this.camera.updateProjectionMatrix();this.saved=null;}
   this.net.npcPaused=active&&!this.local.body.vehicleId;if(active){this.local.enabled=false;this.local.clear();}
  }
+ get nearbyTicket(){return !this.local.body.vehicleId&&C.nearTicket(this.local.body,C.zurichWorld);}
+ get nearbyInteraction(){
+  this.position.set(this.local.body.x,this.local.body.y,this.local.body.z);
+  if(this.currentPoly())return true;
+  if(this.local.body.vehicleId)return false;
+  const laptop=this.limo?.laptop.position,pickup=this.limo?.state().pickup;
+  return !!(this.nearbyTicket||this.einstein?.near(this.position)||laptop&&this.position.distanceTo(laptop)<3||this.limo?.state().phase==='waiting'&&this.position.distanceTo(new THREE.Vector3(...pickup))<9||this.scooter?.canTalk(this.position));
+ }
  interact(){
   if(!this.net.canPlay||this.active||this.local.body.knockdownUntil>this.net.now())return false;
   this.position.set(this.local.body.x,this.local.body.y,this.local.body.z);
