@@ -143,7 +143,6 @@ button:disabled { cursor: wait; opacity: 0.6; }
 }
 #round-timer { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); padding: 8px 14px; background: #142333dd; color: #edf4fc; border-radius: 8px; font: 14px monospace; pointer-events: none; }
 #round-timer[data-final=true] { top: 50%; transform: translate(-50%, -50%); z-index: 12; padding: 0; background: transparent; border-radius: 0; color: #d7f87a; text-align: center; font: 900 148px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -8px; text-shadow: 0 4px 0 #122b35, 0 8px 30px #000b; }
-#round-timer[data-final=true]::before { content: "TIME LEFT"; display: block; margin-bottom: 12px; color: #edf4fc; font: 700 12px/1 system-ui, sans-serif; letter-spacing: 4px; }
 
 
 
