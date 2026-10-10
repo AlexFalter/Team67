@@ -13,18 +13,22 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { disposeMap, loadZurichMap } from "../maps/zurich/loadZurichMap";
 import { GameOverlay } from "../multiplayer/GameOverlay";
 import { MapGame } from "../multiplayer/MapGame";
+import { ExamOverlay } from "../exam/ExamOverlay";
+import { ExamDebugButton } from "../exam/ExamDebugButton";
+import { emptyExamSession, type ExamSession } from "../exam/ExamSequence";
 import { activeTheme } from "../maps/zurich/theme";
 
 export function MapViewer() {
+  const [examSession, setExamSession] = useState<ExamSession>(emptyExamSession);
   const [playing, setPlaying] = useState(true);
   const [resolution, setResolution] = useState<"performance" | "high">("performance");
   return (
-    <div className="map-viewer">
+    <div className="map-viewer" data-exam-active={examSession.stage !== "world"}>
       <MapCanvas key={playing ? "play" : "inspect"} playing={playing}
-        resolution={resolution} onResolutionChange={setResolution} />
+        resolution={resolution} onResolutionChange={setResolution} examSession={examSession} onExamChange={setExamSession} />
       <button
         className="mode-toggle"
-        onClick={() => setPlaying((value) => !value)}
+        onClick={() => { setExamSession(emptyExamSession); setPlaying((value) => !value); }}
       >
         {playing ? "Inspect map" : "Join multiplayer"}
       </button>
@@ -32,11 +36,14 @@ export function MapViewer() {
   );
 }
 
-function MapCanvas({ playing, resolution, onResolutionChange }: {
+function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExamChange }: {
+  examSession: ExamSession;
+  onExamChange: (session: ExamSession) => void;
   playing: boolean;
   resolution: "performance" | "high";
   onResolutionChange: (resolution: "performance" | "high") => void;
 }) {
+  const gameRef = useRef<MapGame | undefined>(undefined);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hudRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
@@ -70,7 +77,7 @@ function MapCanvas({ playing, resolution, onResolutionChange }: {
         event.preventDefault();
         renderer?.setAnimationLoop(null);
         game?.dispose();
-        game = undefined;
+        game = undefined; gameRef.current = undefined;
         setFailed(true);
         setStatus("WebGL context lost. Reload to restart the game.");
       },
@@ -121,7 +128,7 @@ function MapCanvas({ playing, resolution, onResolutionChange }: {
           playing ? 0.1 : 1,
           6000,
         );
-        if (playing) game = new MapGame(scene, camera, canvas!, hud!, hints!, map);
+        if (playing) { game = new MapGame(scene, camera, canvas!, hud!, hints!, map, onExamChange); gameRef.current = game; }
         else {
           camera.position.set(650, 850, 900);
           controls = new OrbitControls(camera, canvas!);
@@ -160,7 +167,7 @@ function MapCanvas({ playing, resolution, onResolutionChange }: {
             sun.target.position.set(p.x, p.y, p.z);
             sun.target.updateMatrixWorld();
           }
-          renderer!.render(scene, camera);
+          if (!game?.examScreenVisible) renderer!.render(scene, camera);
         });
         setStatus("Map loaded");
       } catch (error) {
@@ -179,13 +186,14 @@ function MapCanvas({ playing, resolution, onResolutionChange }: {
       resize?.disconnect();
       controls?.dispose();
       game?.dispose();
+      gameRef.current = undefined;
       disposeMap(scene);
       sunlight?.shadow.dispose();
       scene.clear();
       renderer?.dispose();
       renderer?.forceContextLoss();
     };
-  }, [playing]);
+  }, [playing, onExamChange]);
 
   return (
     <>
@@ -199,6 +207,10 @@ function MapCanvas({ playing, resolution, onResolutionChange }: {
       >
         {status}
       </div>
+      {playing && <ExamOverlay session={examSession} onSkip={() => gameRef.current?.skipExamTransition()}
+        onComplete={score => gameRef.current?.completeExam(score)} onExit={() => gameRef.current?.returnFromExam()} />}
+      {playing && <ExamDebugButton enabled={examSession.canEnter && examSession.stage === "world"}
+        onTeleport={enterPortal => gameRef.current?.debugTeleportToTerrace(enterPortal)} />}
       {playing && <GameOverlay resolution={resolution} onResolutionChange={onResolutionChange} />}
       <div ref={hudRef} className="game-hud" hidden={!playing} />
       <div ref={controlsRef} className="map-controls">
