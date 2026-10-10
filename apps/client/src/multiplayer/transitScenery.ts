@@ -116,7 +116,9 @@ export class TransitScenery {
       const v=C.createVehicle(kind),route=C.railPath(v);
       // The bridge's authored rails remain; smoothly join their lower hall extension.
       const end=kind===C.TRAM_KIND?route.length:6;
-      for(const side of [-.5,.5])rails.push(createRailGeometry(d=>{v.railDistance=d;return C.railFrame(v);},0,end,side,kind===C.TRAM_KIND?.07:-.035));
+      // Polybahn: start at the deck edge; before it the route hangs above the Central hall floor.
+      const start=kind===C.TRAM_KIND?0:C.POLYBAHN_TRACK_START;
+      for(const side of [-.5,.5])rails.push(createRailGeometry(d=>{v.railDistance=d;return C.railFrame(v);},start,end,side,kind===C.TRAM_KIND?.07:-.035));
     }
     const poly = C.createVehicle(C.POLYBAHN_KIND);
     for (const [parts, color] of [[rails, "#6d7579"]] as const) {
@@ -124,9 +126,9 @@ export class TransitScenery {
     }
     const tram = C.createVehicle(C.TRAM_KIND);
     for (const distance of [C.TRAM_START_DISTANCE, C.tramPath.length]) { tram.railDistance = distance; this.station(C.railBoardingPoint(tram), distance === C.TRAM_START_DISTANCE ? "TRAM 6 · CENTRAL" : "TRAM 6 · ETH", "#135aa0", C.railFrame(tram, 1), distance); }
-    for (const distance of [0, C.polybahnPath.length]) {
+    for (const distance of [C.POLYBAHN_START_DISTANCE, C.polybahnPath.length]) {
       poly.railDistance = distance;
-      this.station(C.railBoardingPoint(poly), distance ? "POLYBAHN · POLYTERRASSE" : "POLYBAHN · CENTRAL", "#9f1d2f", C.railFrame(poly), distance, true);
+      this.station(C.railBoardingPoint(poly), distance === C.polybahnPath.length ? "POLYBAHN · POLYTERRASSE" : "POLYBAHN · CENTRAL", "#9f1d2f", C.railFrame(poly), distance, true);
     }
   }
   private station(p: C.GroundPoint, text: string, color: string, track: C.GroundPoint, distance: number, inside = false) {

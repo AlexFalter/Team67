@@ -31,7 +31,7 @@ export class VehicleManager {
       Object.assign(tram, C.railFrame(tram)); this.add("tram-1", tram);
       for (let i = 0; i < 2; i++) {
         const cabin = C.createVehicle(C.POLYBAHN_KIND); cabin.capacity = 12;
-        cabin.railDistance = i ? C.polybahnPath.length : 0; cabin.railReverse = !!i; cabin.railLane = i ? -1.25 : 1.25;
+        cabin.railDistance = i ? C.polybahnPath.length : C.POLYBAHN_START_DISTANCE; cabin.railReverse = !!i; cabin.railLane = i ? -1.25 : 1.25;
         Object.assign(cabin, C.railFrame(cabin)); this.add(`polybahn-${i + 1}`, cabin);
       }
     }
