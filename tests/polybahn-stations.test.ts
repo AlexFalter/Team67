@@ -40,3 +40,17 @@ test("hall walls still block: no walking through the side wall of the bottom hal
   const { body } = walk({ x: 22, z: 100 }, { x: 22, z: 112 }, 3);
   assert.ok(body.z < 106, `stopped at the wall (z ${body.z.toFixed(2)})`);
 });
+
+test("walking to a Polyterrasse edge does not sink into the terrace wall", () => {
+  // south edge of the terrace (area 4 in the edit list): top 50.7 m, ground below ~39 m
+  for (const [from, to] of [[{ x: 205, z: 182 }, { x: 188, z: 186 }], [{ x: 205, z: 180 }, { x: 205, z: 196 }]] as const) {
+    const body = C.createBody(); body.x = from.x; body.z = from.z; body.y = C.zurichWorld.height(from.x, from.z)!;
+    const dx = to.x - from.x, dz = to.z - from.z, len = Math.hypot(dx, dz);
+    let lowest = Infinity;
+    for (let t = 0; t < 240; t++) {
+      C.stepPlayer(body, { ...C.IDLE_INPUT, x: dx / len, z: dz / len }, 1 / 60, C.zurichWorld);
+      lowest = Math.min(lowest, body.y);
+    }
+    assert.ok(lowest > 50.4, `stayed on the terrace (lowest ${lowest.toFixed(2)} m)`);
+  }
+});

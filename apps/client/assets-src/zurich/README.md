@@ -5,7 +5,7 @@
 `exec(open('<this dir>/blender/<script>.py').read())` after the .blend has been saved here.
 
 Order: buildings + terrain (see zh_common bounds) → `build_ground.py` (land cover draped on the
-TIN, relabel, water + quay walls, materials) → `build_trees.py` → `build_bahnhofbruecke.py` → `bridge_railing.py` → `build_bridges.py` (all other river bridges; calls `bridges_railing.py`) → `flatten_bridges.py` → `bridges_railing.py` + `bridge_railing.py` → `integrate_landmarks.py` (after appending the HB / ETH packages) → `build_buildings.py` → `hb_forecourt.py` → `build_polybahn.py` (runs `polybahn_stations.py`) → `signs.py` → `fix_normals.py` → `ground_uv.py` → `apply_theme.py` to recolour → `export_game.py` (game files + walk grid).
+TIN, relabel, water + quay walls, materials) → `build_trees.py` → `build_bahnhofbruecke.py` → `bridge_railing.py` → `build_bridges.py` (all other river bridges; calls `bridges_railing.py`) → `flatten_bridges.py` → `bridges_railing.py` + `bridge_railing.py` → `integrate_landmarks.py` (after appending the HB / ETH packages) → `build_buildings.py` → `hb_forecourt.py` → `build_polybahn.py` (runs `polybahn_stations.py`) → `signs.py` → `fix_normals.py` → `area_edits.py` → `ground_uv.py` → `apply_theme.py` to recolour → `export_game.py` (game files + walk grid).
 `bridges_railing.py` is rebuildable on its own (slab + edges + railings from the water footprint).
 
 Buildings: `build_buildings.py` copies `Buildings` (official LoD2, hidden) to `BuildingsStyled`:
@@ -145,3 +145,15 @@ bed). Bottom: door on the Central facade 1.5 m north of the track line. Top: doo
   slopes keep the flat-ground pixel size. Run after any Ground rebuild.
 - Theme textures in the game use `flipY = false` (glTF UVs) and the `Style` seed is read back as
   `1 - v` (glTF flips V). Both matter: otherwise signs are upside down and buildings white.
+
+## Hand-drawn edit areas and props
+
+- `apps/client/tools/props-editor` (dev only, throwaway): top-down map in the browser
+  (`npm run dev`, then `/tools/props-editor/`). Place lanterns/bins (`props.json`) and draw numbered areas
+  (`areas.json`).
+- `import_props.py`: replaces the `Props` collection from a `props.json` (`PROPS_JSON = ...`).
+- `edit-areas.json` + `area_edits.py`: per-area ground edits (`EDITS`): `ramp` = cut along the outline,
+  slice, even slope between the two street ends (outline vertices at the ends keep their height, smoothstep
+  blend over 3 m), `even` = retexture + smooth heights (water/quay kept). Areas 2, 3 and 5 also get 0.5 m
+  walk patches (`walk_grid.py` `EXTRA_PATCHES`); `tests/map-areas.test.ts` walks up each ramp.
+- `polyterrasse.py` builds a 20 % ramp (not stairs) down towards the Polybahn top station (area 3).
