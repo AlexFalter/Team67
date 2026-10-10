@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { BATTLE_BUS_HEADING, INTERP_DELAY_MS, RoomPhase, zurichWorld } from "@race/shared";
+import { BATTLE_BUS_HEADING, INTERP_DELAY_MS, zurichWorld, examSecondsRemaining, RoomPhase } from "@race/shared";
 import { Network } from "./net.ts";
 import { LocalPlayer } from "./localPlayer.ts";
 import { RemotePlayers } from "./remotePlayers.ts";
@@ -11,16 +11,19 @@ import { PlayerView } from "./view.ts";
 import { GameControls } from "./gameControls.ts";
 import { lobby } from "./lobby.ts";
 import { RoomFlow } from "./roomFlow.ts";
+import { ExamSequence, type ExamSession } from "../exam/ExamSequence";
 import { accelerateMapRaycasts } from "./mapRaycast.ts";
 import { BattleBusIntro } from "./battleBus.ts";
 import { PubliBikeFeature } from "./publiBikes.ts";
 import { TransitScenery } from "./transitScenery.ts";
 import { MateFeature } from "./mate.ts";
 import { MenuScene } from "./MenuScene";
+import { NpcFeature } from "../npcPrototype/host.js";
 
 // MapViewer owns rendering and the loop; this instance owns gameplay cleanup.
 export class MapGame {
   readonly ready: Promise<void>;
+  private exam: ExamSequence;
   private net = new Network();
   private local = new LocalPlayer();
   private remotes: RemotePlayers;
@@ -41,8 +44,10 @@ export class MapGame {
   private transitScenery: TransitScenery;
   private mate: MateFeature;
   private menuScene: MenuScene;
+  private npcs: NpcFeature;
   constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, private canvas: HTMLCanvasElement,
-    hud: HTMLDivElement, hints: HTMLDivElement, map: THREE.Object3D) {
+    hud: HTMLDivElement, hints: HTMLDivElement, map: THREE.Object3D, capture: () => void, onExamChange: (session: ExamSession) => void = () => {}) {
+    this.exam = new ExamSequence(scene, camera, onExamChange);
     this.transitScenery = new TransitScenery(scene, map);
     this.disposeMapRaycasts = accelerateMapRaycasts(map);
     this.remotes = new RemotePlayers(scene);
@@ -52,10 +57,11 @@ export class MapGame {
     this.bus = new BattleBusIntro(scene, camera, this.net);
     this.publiBikes = new PubliBikeFeature(scene, camera, this.net, this.vehicles, this.local, canvas);
     this.mate = new MateFeature(scene, camera, this.net, this.local, canvas);
+    this.npcs = new NpcFeature(scene, camera, this.net, this.local, this.vehicles, canvas, map, capture);
     this.view = new PlayerView(camera, [map, this.mate.machine], zurichWorld);
-    this.ready = Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready]).then(() => {});
+    this.ready = Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready, this.npcs.ready]).then(() => {});
     this.roomFlow = new RoomFlow(this.net, this.ready, () => this.bus.unlockAudio());
-    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.publiBikes.active && !this.mate.active);
+    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active);
     Object.assign(this.local.body, zurichWorld.spawn);
     camera.near = 0.05;
     camera.position.set(zurichWorld.spawn.x, zurichWorld.spawn.y + 1.6, zurichWorld.spawn.z);
@@ -81,38 +87,58 @@ export class MapGame {
       }, hit => this.effects.enqueue(hit), selection);
     });
   }
+  get examScreenVisible() { return this.exam.screenVisible; }
   get focus() { return this.net.room?.state?.phase === RoomPhase.Lobby ? this.menuScene.focus : this.bus.active ? this.bus.focus : this.local.body; }
   update(elapsed: number, now: number) {
     const dt = Math.min(0.1, elapsed), renderTime = this.net.now() - INTERP_DELAY_MS;
+    const state = this.net.room?.state;
+    const remaining = state?.phase === RoomPhase.Running ? examSecondsRemaining(state.endsAt, this.net.now()) : 0;
+    // Encounters keep camera ownership until they finish; vehicles also block exam entry.
+    this.exam.update(this.local.body, this.net.canPlay, this.local.enabled && !this.publiBikes.active && !this.mate.active && !this.npcs.active, state?.startedAt ?? 0, remaining, now);
     this.vehicles.render(renderTime, dt, "rail");
-    if (this.net.canPlay) {
+    if (this.net.canPlay && !this.exam.active) {
       this.net.frame(dt, this.local.body, () => this.local.controls(this.view.yaw));
-      if (this.local.takeInteraction() && !this.mate.interact() && !this.publiBikes.interact()) this.vehicles.interact(this.local.body);
+      if (this.local.takeInteraction() && !this.npcs.active && !this.npcs.interact() && !this.mate.interact() && !this.publiBikes.interact()) this.vehicles.interact(this.local.body);
       if (this.local.body.vehicleId) this.vehicles.local(this.local.body, this.net.room.sessionId);
       else this.vehicles.stopDriving();
       pose(this.mesh, this.local.body, dt); pose(this.firstBody, this.local.body, dt, this.view.pitch);
       this.mesh.visible = this.avatarReady && this.view.perspective !== 0;
       this.firstBody.visible = this.avatarReady && this.view.perspective === 0 && this.local.body.anim !== 3;
-      if (this.publiBikes.active || this.mate.active) this.mesh.visible = this.firstBody.visible = false;
+      if (this.publiBikes.active || this.mate.active || this.npcs.hideAvatar) this.mesh.visible = this.firstBody.visible = false;
       this.effects.trail(this.net.room.sessionId, this.local.body, now);
-      if (!this.publiBikes.active && !this.mate.active) this.view.update(this.local.body, dt);
+      if (!this.publiBikes.active && !this.mate.active && !this.npcs.active) this.view.update(this.local.body, dt);
     }
-    if (!this.net.canPlay) { this.mesh.visible = this.firstBody.visible = false; this.vehicles.stopDriving(); }
+    if (!this.net.canPlay || this.exam.active) { this.mesh.visible = this.firstBody.visible = false; this.vehicles.stopDriving(); }
     this.roomFlow.update();
     this.vehicles.render(renderTime, dt, "other"); this.remotes.render(renderTime, this.vehicles.items, dt);
-    for (const [id, remote] of this.remotes.players) this.effects.trail(id, remote.rendered, now);
+    for (const [id, remote] of this.remotes.players) {
+      remote.mesh.visible = this.net.room?.state.npcs?.get(id)?.kind !== "limousine";
+      this.effects.trail(id, remote.rendered, now);
+    }
     this.controls.update(dt); this.effects.update(renderTime, dt); this.hud.update(dt, this.net);
     this.vehicles.updateLabels(this.local.body, now);
     this.bus.update(dt, this.mesh, this.remotes);
-    const state = this.net.room?.state;
     const inMenu = !state || state.phase === RoomPhase.Lobby;
-    for (const remote of this.remotes.players.values()) remote.mesh.visible = !inMenu;
+    if (inMenu) for (const remote of this.remotes.players.values()) remote.mesh.visible = false;
     this.menuScene.update(dt, state, this.net.room?.sessionId);
     this.publiBikes.update(dt);
     this.mate.update();
+    this.npcs.update(dt, this.net.canPlay && !this.exam.active && this.local.enabled && !this.publiBikes.active && !this.mate.active);
+  }
+  skipExamTransition() { this.exam.skipTransition(); }
+  completeExam(score: number) { this.exam.complete(score); }
+  returnFromExam() { this.exam.returnToWorld(); }
+  debugTeleportToTerrace(enterPortal = false) {
+    if (!import.meta.env.DEV || !this.net.canPlay || this.exam.active) return;
+    this.local.clear(); this.local.body.vx = this.local.body.vy = this.local.body.vz = 0;
+    this.view.yaw = this.view.pitch = 0;
+    if (enterPortal) void this.controls.resume();
+    this.net.room.send("debugTeleportToPolyterrasse", enterPortal ? "portal" : "terrace");
   }
   dispose() {
     this.menuScene.dispose();
+    this.exam.dispose();
+    this.npcs.dispose();
     this.mate.dispose();
     this.publiBikes.dispose();
     this.bus.dispose();
@@ -122,4 +148,5 @@ export class MapGame {
     this.effects.dispose(); this.vehicles.dispose(); this.remotes.dispose();
     disposeAvatar(this.mesh); disposeAvatar(this.firstBody); this.canvas.removeAttribute("tabindex");
   }
+  afterRender() { this.npcs.afterRender(); }
 }

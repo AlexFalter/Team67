@@ -161,6 +161,8 @@ const data = {
   depth,
   ground: encode(ground),
   roof: encode(roof),
+  // 0.5 m detail grids (Polybahn stations) from walk_grid.py, same encoding; world.ts prefers them
+  patches: (grid.patches ?? []) as { minX: number; minZ: number; step: number; width: number; depth: number; ground: string; roof: string }[],
   spawn,
   carts,
   stops: [point(start), point(end)],
