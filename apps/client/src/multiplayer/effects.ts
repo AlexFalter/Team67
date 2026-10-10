@@ -23,8 +23,9 @@ export class SpeedParticles {
     this.mesh.visible = false; this.mesh.frustumCulled = false; scene.add(this.mesh);
   }
   update(p: Body, camera: THREE.PerspectiveCamera, dt: number, enabled: boolean) {
+    // Bikes at speed and slides; no sprint-jump streaks (they looked jagged).
     this.mesh.visible = enabled && p.anim !== 3 && p.knockdownUntil <= p.simTime &&
-      ((!!p.vehicleId && p.vehicleKind === 2 && Math.hypot(p.vx, p.vz) >= SLIDE_MIN_SPEED) || (!p.vehicleId && (p.anim === SLIDE_ANIM || (!p.grounded && p.anim === 2 && p.sprintJump === true))));
+      ((!!p.vehicleId && p.vehicleKind === 2 && Math.hypot(p.vx, p.vz) >= SLIDE_MIN_SPEED) || (!p.vehicleId && p.anim === SLIDE_ANIM));
     if (!this.mesh.visible) { this.phase = 0; return; }
     this.phase += dt * 5;
     this.mesh.position.copy(camera.position); this.mesh.quaternion.copy(camera.quaternion);
@@ -33,14 +34,8 @@ export class SpeedParticles {
       const age = (this.phase + i * 0.618) % 1;
       const depth = 1.8 - age * 1.2;
       const side = i % 2 ? -1 : 1, height = ((i * 0.37) % 1 - 0.5) * 1.5;
-      const jump = p.anim === 2;
       const x = side * (0.76 + age * 0.10 + (i % 3) * 0.025) * spread * camera.aspect;
-      const y = (jump ? -0.8 + age * 1.6 : height) * spread;
-      if (jump) {
-        // Rise vertically at the view edges instead of radial slide streaks.
-        this.positions.set([x * depth, y * depth, -depth, x * depth, (y + 0.12 * spread) * depth, -depth], i * 6);
-        continue;
-      }
+      const y = height * spread;
       this.positions.set([x * depth, y * depth, -depth, x * (depth + 0.06), y * (depth + 0.06), -depth - 0.26], i * 6);
     }
     this.mesh.geometry.attributes.position.needsUpdate = true;
