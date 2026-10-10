@@ -102,7 +102,8 @@ bed). Bottom: door on the Central facade 1.5 m north of the track line. Top: doo
 ## Manual edits in Blender (safe from rebuilds)
 
 - To delete something by hand: move it into the **`Manual Removed`** collection (works for source
-  buildings, styled `_s` copies, `Tree_*`, ...). Build scripts never recreate it.
+  buildings, styled `_s` copies, `Tree_*`, ...). Build scripts never recreate it. `guard.py` excludes
+  the collection from the view layer (so it is hidden in the viewport); the export never includes it.
 - To hand-edit a generated object: add the custom property **`keep`** (any value) to it. Build
   scripts skip it.
 - `blender/guard.py`: `snapshot()` stores a fingerprint of all objects after a scripted build;

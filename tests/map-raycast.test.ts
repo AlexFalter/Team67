@@ -3,13 +3,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { BoxGeometry, Group, Mesh, MeshBasicMaterial, PerspectiveCamera, Raycaster, Vector3 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { createBody } from "../packages/shared/src/index.ts";
 import { accelerateMapRaycasts } from "../apps/client/src/multiplayer/mapRaycast.ts";
 import { PlayerView } from "../apps/client/src/multiplayer/view.ts";
 
 test("BVH nearest hits match the original city geometry from both sides without changing its buffers", async () => {
-  const bytes = readFileSync(new URL("../apps/client/public/maps/zurich/hb-eth.glb", import.meta.url));
-  const { scene } = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), "");
+  const bytes = readFileSync(new URL("../apps/client/public/maps/zurich/zurich.glb", import.meta.url));
+  const { scene } = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), "");
   scene.updateMatrixWorld(true);
   const meshes: Mesh[] = [];
   scene.traverse(object => { if (object instanceof Mesh) meshes.push(object); });
@@ -38,7 +39,9 @@ test("BVH nearest hits match the original city geometry from both sides without 
   for (let i = 0; i < 16; i++) probes.push({ origin: new Vector3(-273, 9.13, -106), direction: new Vector3(Math.sin(i * Math.PI / 8), i % 2 ? 0 : -1, Math.cos(i * Math.PI / 8)).normalize() });
   const reference = probes.map(({ origin, direction }) => {
     ray.set(origin, direction);
-    return ray.intersectObject(scene, true)[0];
+    const hit = ray.intersectObject(scene, true)[0];
+    // A ray lying inside a wall's plane only grazes its edge; that hit is not well defined.
+    return hit && Math.abs(hit.face!.normal.dot(direction)) < 1e-6 ? null : hit;
   });
   assert.ok(reference.filter(Boolean).length >= 60, "exercise actual intersections, not only misses");
   const dispose = accelerateMapRaycasts(scene);
@@ -46,6 +49,7 @@ test("BVH nearest hits match the original city geometry from both sides without 
     probes.forEach(({ origin, direction }, i) => {
       ray.set(origin, direction);
       const actual = ray.intersectObject(scene, true)[0], expected = reference[i];
+      if (expected === null) return;
       assert.equal(!!actual, !!expected);
       if (expected) {
         assert.equal(actual.object, expected.object);

@@ -10,6 +10,7 @@ import {
   type BufferGeometry,
 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { surfaceTexture, type MapTheme } from "./theme";
 
 /** One row per tree, in map coordinates: [x, y, z, height, crownRadius, model, colorIndex, yaw, brightness]. */
@@ -28,7 +29,7 @@ export async function loadTrees(signal: AbortSignal, theme: MapTheme) {
   ]);
   if (!rowsResponse.ok || !modelResponse.ok) throw new Error("Tree assets missing.");
   const rows = (await rowsResponse.json()) as TreeRow[];
-  const gltf = await new GLTFLoader().parseAsync(await modelResponse.arrayBuffer(), "");
+  const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(await modelResponse.arrayBuffer(), "");
   signal.throwIfAborted();
 
   const parts = new Map<string, { geometry: BufferGeometry; material: string }[]>();
@@ -65,6 +66,7 @@ export async function loadTrees(signal: AbortSignal, theme: MapTheme) {
         if (!isTrunk) mesh.setColorAt(i, color.set(palette[colorIndex % palette.length]).multiplyScalar(brightness));
       });
       mesh.castShadow = mesh.receiveShadow = true;
+      mesh.raycast = () => {}; // decoration only: keep the per-frame map raycasts (physics, camera) cheap
       mesh.computeBoundingSphere();
       group.add(mesh);
     }

@@ -2,8 +2,10 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 
 // Preprocess the checked-in map. No network requests or runtime GLB parsing on Node.
-const mapPath = new URL(
-  "../apps/client/public/maps/zurich/hb-eth.glb",
+// The ground / obstacle height grids are exported from Blender together with the GLB
+// (apps/client/assets-src/zurich/blender/export_game.py): the GLB is meshopt-compressed.
+const gridPath = new URL(
+  "../apps/client/assets-src/zurich/world-grid.json",
   import.meta.url,
 );
 const area = JSON.parse(
@@ -12,75 +14,28 @@ const area = JSON.parse(
     "utf8",
   ),
 );
-const bytes = readFileSync(mapPath),
-  jsonLength = bytes.readUInt32LE(12);
-const gltf = JSON.parse(bytes.subarray(20, 20 + jsonLength).toString("utf8"));
-const bin = bytes.subarray(28 + jsonLength);
-const step = 2,
+const bytes = readFileSync(gridPath);
+const grid = JSON.parse(bytes.toString("utf8"));
+const step = grid.step as number,
   minX = area.boundsLV95[0] - area.originLV95[0],
   maxX = area.boundsLV95[2] - area.originLV95[0];
 const minZ = area.originLV95[1] - area.boundsLV95[3],
   maxZ = area.originLV95[1] - area.boundsLV95[1];
 const width = Math.round((maxX - minX) / step) + 1,
   depth = Math.round((maxZ - minZ) / step) + 1;
-const ground = new Float32Array(width * depth).fill(-Infinity),
-  roof = new Float32Array(width * depth).fill(-Infinity);
-function accessor(index: number) {
-  const a = gltf.accessors[index],
-    v = gltf.bufferViews[a.bufferView],
-    offset = (v.byteOffset ?? 0) + (a.byteOffset ?? 0);
-  const elements = a.count * (a.type === "VEC3" ? 3 : 1),
-    data = bin.subarray(offset, offset + elements * 4);
-  return a.componentType === 5126
-    ? new Float32Array(data.buffer, data.byteOffset, elements)
-    : new Uint32Array(data.buffer, data.byteOffset, elements);
-}
-for (const mesh of gltf.meshes) {
-  const target = mesh.name === "Terrain" ? ground : roof;
-  for (const primitive of mesh.primitives) {
-    const positions = accessor(primitive.attributes.POSITION),
-      indices = accessor(primitive.indices);
-    for (let i = 0; i < indices.length; i += 3) {
-      const a = indices[i] * 3,
-        b = indices[i + 1] * 3,
-        c = indices[i + 2] * 3;
-      const ax = positions[a],
-        ay = positions[a + 1],
-        az = positions[a + 2],
-        bx = positions[b],
-        by = positions[b + 1],
-        bz = positions[b + 2],
-        cx = positions[c],
-        cy = positions[c + 1],
-        cz = positions[c + 2];
-      const determinant = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz);
-      if (Math.abs(determinant) < 1e-8) continue;
-      const x0 = Math.max(0, Math.ceil((Math.min(ax, bx, cx) - minX) / step)),
-        x1 = Math.min(
-          width - 1,
-          Math.floor((Math.max(ax, bx, cx) - minX) / step),
-        );
-      const z0 = Math.max(0, Math.ceil((Math.min(az, bz, cz) - minZ) / step)),
-        z1 = Math.min(
-          depth - 1,
-          Math.floor((Math.max(az, bz, cz) - minZ) / step),
-        );
-      for (let z = z0; z <= z1; z++)
-        for (let x = x0; x <= x1; x++) {
-          const px = minX + x * step,
-            pz = minZ + z * step;
-          const u =
-              ((bz - cz) * (px - cx) + (cx - bx) * (pz - cz)) / determinant,
-            v = ((cz - az) * (px - cx) + (ax - cx) * (pz - cz)) / determinant;
-          if (u >= -1e-5 && v >= -1e-5 && u + v <= 1.00001) {
-            const y = u * ay + v * by + (1 - u - v) * cy,
-              index = z * width + x;
-            if (y > target[index]) target[index] = y;
-          }
-        }
-    }
+if (grid.width !== width || grid.depth !== depth || grid.minX !== minX || grid.minZ !== minZ)
+  throw new Error("world-grid.json does not match area.json bounds; re-export from Blender.");
+function decode(base64: string) {
+  const raw = Buffer.from(base64, "base64"),
+    values = new Float32Array(raw.length / 2);
+  for (let i = 0; i < values.length; i++) {
+    const v = raw.readUInt16LE(i * 2);
+    values[i] = v === 65535 ? -Infinity : v / 100;
   }
+  return values;
 }
+const ground = decode(grid.ground),
+  roof = decode(grid.roof);
 function point(index: number) {
   return {
     x: minX + (index % width) * step,
@@ -195,7 +150,7 @@ function encode(values: Float32Array) {
   return buffer.toString("base64");
 }
 const data = {
-  sourceHash: createHash("sha256").update(bytes).digest("hex"),
+  sourceHash: grid.sourceHash ?? createHash("sha256").update(bytes).digest("hex"),
   origin: area.originLV95,
   minX,
   maxX,
@@ -220,5 +175,5 @@ mkdirSync(new URL("../packages/shared/src/", import.meta.url), {
 });
 writeFileSync(output, JSON.stringify(data) + "\n");
 console.log(
-  `World: ${width}x${depth} cells; spawn ${JSON.stringify(spawn)}; ${route.length} shuttle waypoints. Generated from checked-in GLB.`,
+  `World: ${width}x${depth} cells; spawn ${JSON.stringify(spawn)}; ${route.length} shuttle waypoints. Generated from the Blender world grid.`,
 );

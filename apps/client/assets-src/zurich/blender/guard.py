@@ -20,7 +20,20 @@ def manual_removed():
     c = bpy.data.collections.get(MANUAL)
     if not c:
         c = bpy.data.collections.new(MANUAL); bpy.context.scene.collection.children.link(c)
+    hide_manual_removed()
     return {o.name[:-2] if o.name.endswith('_s') else o.name for o in c.all_objects}
+
+def hide_manual_removed():
+    """Exclude 'Manual Removed' from the view layer so removed objects really disappear."""
+    c = bpy.data.collections.get(MANUAL)
+    if not c: return
+    c.hide_render = True
+    def walk(lc):
+        if lc.collection is c: lc.exclude = True; return True
+        return any(walk(ch) for ch in lc.children)
+    for vl in bpy.context.scene.view_layers: walk(vl.layer_collection)
+
+hide_manual_removed()  # also when guard.py is only exec'd
 
 def kept(name):
     o = bpy.data.objects.get(name)
