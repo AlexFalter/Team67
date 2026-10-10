@@ -49,8 +49,9 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
   const controlsRef = useRef<HTMLDivElement>(null);
   const resolutionRef = useRef(resolution);
   const fitRef = useRef<(() => void) | undefined>(undefined);
-  const [status, setStatus] = useState("Loading official Zürich 3D map…");
+  const [status, setStatus] = useState("Loading the Zürich game map…");
   const [failed, setFailed] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     resolutionRef.current = resolution;
@@ -174,7 +175,14 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
             game?.afterRender();
           }
         });
+        setStatus("Preparing characters and vehicles…");
+        await game?.ready;
+        if (abort.signal.aborted) return;
+        setStatus("Preparing the city view…");
+        await renderer.compileAsync(scene, camera);
+        if (abort.signal.aborted) return;
         setStatus("Map loaded");
+        setInitialized(true);
       } catch (error) {
         if (abort.signal.aborted) return;
         setFailed(true);
@@ -207,6 +215,15 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
         ref={canvasRef}
         aria-label="Multiplayer on the Zürich map between Hauptbahnhof and ETH Zentrum"
       />
+      {(!initialized || failed) && <section className={`game-loading${failed ? " error" : ""}`} role="status" aria-live="polite">
+        <div>
+          <p className="loading-route">Zürich HB <span>→</span> ETH HG</p>
+          {!failed && <div className="loading-spinner" aria-hidden="true" />}
+          <p className="loading-title">{failed ? "Unable to load the game" : "Loading Zürich"}</p>
+          <p className="loading-detail">{status}</p>
+          {failed && <button onClick={() => location.reload()}>Try again</button>}
+        </div>
+      </section>}
       <div
         className={`map-status ${failed ? "error" : ""}`}
         role={failed ? "alert" : "status"}
