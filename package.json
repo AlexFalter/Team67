@@ -1,0 +1,31 @@
+{
+  "name": "zurich-multiplayer",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "workspaces": [
+    "apps/client",
+    "apps/server",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n server,client \"npm run dev -w @race/server\" \"npm run dev:client -w @race/client\"",
+    "build": "npm run world:build && npm run check && npm run build -w @race/client",
+    "check": "tsc --noEmit && npm run check -w @race/client",
+    "lint": "npm run lint -w @race/client",
+    "start": "npm start -w @race/server",
+    "bots": "tsx apps/server/src/bots.ts",
+    "test": "tsx --test tests/*.test.ts",
+    "world:build": "tsx scripts/build-world.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/three": "^0.186.0",
+    "three": "^0.186.1",
+    "concurrently": "^9.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "~6.0.3"
+  }
+}

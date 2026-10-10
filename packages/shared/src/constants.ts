@@ -1,0 +1,51 @@
+export const CAPSULE_RADIUS = 0.5,
+  CAPSULE_HEIGHT = 1.8,
+  PLANE_SIZE = 60;
+export const CLIENT_SEND_RATE = 20,
+  SERVER_PATCH_RATE = 20,
+  COLLISION_TICK_RATE = 30;
+export const INTERP_DELAY_MS = 100,
+  WALK_SPEED = 6,
+  SPRINT_SPEED = 11,
+  JUMP_VELOCITY = 8,
+  GRAVITY = -25;
+export const HIT_STRENGTH = 1.2,
+  KNOCKDOWN_SPEED = 7,
+  KNOCKDOWN_DURATION_MS = 700,
+  PAIR_COOLDOWN_MS = 300;
+export const SERVER_RADIUS_MARGIN = 0.1,
+  STOMP_BOUNCE = 9;
+export const ACCELERATION = 18,
+  FRICTION = 9,
+  RESPAWN_DEPTH = -10,
+  SPAWN_SPREAD = 8;
+export const MAX_POSITION = 100,
+  MAX_VERTICAL_SPEED = 50,
+  MAX_HORIZONTAL_SPEED = 2 * SPRINT_SPEED;
+
+export const VEHICLE_BOARD_DISTANCE = 3.2,
+  VEHICLE_BOARD_HEIGHT = 0.6;
+export const CART_SPEED = 16,
+  CART_ACCELERATION = 7,
+  CART_FRICTION = 5;
+export const CART_RADIUS = 1,
+  CART_SEAT_HEIGHT = 0.8,
+  CART_HIT_HEIGHT = 1.1;
+export const CART_HIT_STRENGTH = 1.4,
+  CART_HIT_LIFT = 2,
+  CART_MIN_HIT_SPEED = 3;
+export const SHUTTLE_CAPACITY = 6,
+  SHUTTLE_COUNTDOWN_MS = 10000,
+  SHUTTLE_SPEED = 8;
+export const SHUTTLE_SEAT_HEIGHT = 1,
+  VEHICLE_STALE_MS = 500;
+export const CART_SPAWNS = [
+  { x: -5, z: 0 },
+  { x: 5, z: 0 },
+  { x: 0, z: -5 },
+];
+export const SHUTTLE_STOPS = [
+  { x: -12, z: 9 },
+  { x: 12, z: 9 },
+];
+export const MAX_GROUND_STEP = 0.65;

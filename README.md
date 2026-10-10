@@ -1,240 +1,75 @@
-# VIScon Hackathon Template
+# Zürich multiplayer prototype
 
-Welcome, hackers, to the VIScon Hackathon!
+The original Zürich map viewer and Colyseus prototype now run together. The workspace contains the integrated game. The existing React page hosts plain TypeScript gameplay modules and a single Three.js scene. No physics engine, database, or new authentication system was added.
 
-This repository is a small but complete example app: a React frontend, a
-Python (FastAPI) backend with an AI-powered endpoint, and a web server (Caddy)
-that ties them together. It's meant to show you all the moving parts, so
-read it, change it, or yeet it completely :)
+## Run locally
 
-## Quick Start
+Use Node **22.12+** (Node 24 also works). From `Team67/`:
 
-```bash
-cp .env.sample .env
-# In .env: add your team's API key
-docker compose up --build
-```
-
-Then open:
-
-- **App:** http://localhost:8080
-- **API docs:** http://localhost:8080/api/docs
-
-## On Your Team VM
-
-The template is already running on your team VM, in `~/template`, at your
-team's address (see your team page in the portal). Its `.env` is prefilled,
-including a shared LLM key.
-
-> [!IMPORTANT]
-> The shared LLM key is only for trying out the demo and has a very limited
-> quota. For development and for your deployed app, use your team's own key:
-> set it as `LLM_API_KEY` in `.env`.
-
-After changing code or `.env`, redeploy with:
-
-```bash
-cd ~/template
-docker compose up -d --build
-```
-
-- The portal forwards your team's address to port 8080 on the VM. If you
-  change the port, change it in the portal's network configuration too.
-- If you set the portal's access control to "Disabled", your app is public
-  and receives no user headers, so all visitors share one "Guest" user and
-  its todo list. Change `extract_user()` in [`backend/app.py`](backend/app.py)
-  if you want something else.
-- Dev servers on the VM aren't reachable from outside. Forward the port over
-  SSH, e.g. `ssh -L 5173:localhost:5173 viscon@<your VM>` (VS Code Remote-SSH
-  does this automatically).
-
-The portal's documentation covers the network configuration in more detail.
-
-## Configuration
-
-All configuration lives in the `.env` file in the project root (see [`.env.sample`](.env.sample)).
-
-| Variable       | Description                                                             |
-| :------------- | :---------------------------------------------------------------------- |
-| `LLM_API_BASE` | URL of an OpenAI-compatible API. Defaults to the hackathon's LLM proxy. |
-| `LLM_API_KEY`  | Your team's API key. The prefilled shared key is for the demo only.     |
-| `LLM_MODEL`    | The model id to use.                                                    |
-
-Want to use OpenAI (or any other OpenAI-compatible provider) directly? Set
-`LLM_API_BASE=https://api.openai.com/v1` and use your own key.
-
-## Local Development (without Docker)
-
-For fast iteration with hot reloading, run the backend and frontend directly
-in two terminals. The team VMs come with the right versions (Python 3.14,
-Node 24).
-
-**Backend** (reads the root `.env` automatically):
-
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-python app.py
-```
-
-**Frontend:**
-
-```bash
-cd frontend
+```sh
 npm install
 npm run dev
 ```
 
-Then open http://localhost:5173. The dev server forwards all `/api` requests
-to the backend on port 8000 (see [`vite.config.ts`](frontend/vite.config.ts)).
+Open **http://localhost:5173** in two tabs. Each tab automatically joins a `race` room, with up to 40 players. Players spawn on clear terrain near Hauptbahnhof, alongside three single-seat carts and a six-seat shuttle. The project contains only the game client, multiplayer server, and shared code.
 
-No authentication headers are added locally, so you're logged in as "Guest".
-To test as a specific user, send `X-User-Id` and `X-User-Name` yourself, e.g.
-`curl localhost:8000/api/me -H 'X-User-Id: einstein@ethz.ch' -H 'X-User-Name: Albert Einstein'`.
+Click the scene to focus input. **WASD** moves relative to the camera, **Shift** sprints, **Space** jumps, **E** boards/exits a nearby vehicle, dragging turns the camera, and scrolling zooms. Click **Inspect map** for the original orbit/pan view; this leaves the multiplayer room. **Join multiplayer** reconnects.
 
-## Backend
+Carts are claimed exclusively by one player. Their driver can run over foot players. The shuttle starts its **10-second countdown** when the first passenger boards, follows a shared terrain route toward ETH, and automatically disembarks riders on arrival. Later boarders do not reset the countdown. An empty shuttle cancels its countdown; passengers cannot exit while it travels. Board again at ETH for the return trip. The route is roughly two minutes each way, rather than the old short flat-plane trip.
 
-A Python [FastAPI](https://fastapi.tiangolo.com/) app that provides a REST API
-for a multi-user todo list. Todos are stored in memory, so they're gone after a
-restart. Plug in a database when you need one.
+## Commands
 
-| File                             | Purpose                                     |
-| :------------------------------- | :------------------------------------------ |
-| [`app.py`](backend/app.py)       | API endpoints, authentication and app state |
-| [`models.py`](backend/models.py) | Data models (Pydantic)                      |
-| [`ai.py`](backend/ai.py)         | LLM call that turns a prompt into a todo    |
+Run these from `Team67/`:
 
-### API Endpoints
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Colyseus on 2567 and Vite on 5173, both bound to the network |
+| `npm run build` | Regenerate shared map queries from the checked-in GLB, type-check, build `apps/client/dist` |
+| `npm start` | One Node process serves the built game and Colyseus on 2567 |
+| `npm run bots -- 30` | 30 headless players using the same map movement/impulse code |
+| `npm test` | Shared collision, interpolation, live server, vehicle, and map regression checks |
+| `npm run check` | TypeScript checks across the workspace |
+| `npm run lint` | Frontend ESLint |
+| `npm run world:build` | Regenerate terrain/building queries and shuttle route, entirely offline |
 
-All backend routes start with `/api`. Interactive docs are available at `/api/docs`.
+`npm run dev` from `apps/client/` also starts both services. Use the root workspace install and lockfile. `npm run dev:client` inside `apps/client/` starts only Vite for work with an already running server. `vite preview` alone serves static files and does not provide the multiplayer service.
 
-| Method   | Path                   | Description                                         |
-| :------- | :--------------------- | :-------------------------------------------------- |
-| `GET`    | `/api/me`              | Get the current user.                               |
-| `GET`    | `/api/todos`           | Get all todos for the current user.                 |
-| `POST`   | `/api/todos`           | Create a new todo for the current user.             |
-| `DELETE` | `/api/todos/{todo_id}` | Delete a specific todo by its ID.                   |
-| `GET`    | `/api/todos/generate`  | Suggests a new todo from a natural language prompt. |
-| `GET`    | `/api/todos/events`    | Event stream that tells you when your todos change. |
+## Environment and production
 
-### Authentication
+| Variable | Used by | Meaning |
+| --- | --- | --- |
+| `VITE_COLYSEUS_URL` | Vite development client | Defaults to `ws://localhost:2567`; copy `apps/client/.env.example` to `apps/client/.env.local` to override |
+| `PORT` | Node server | Defaults to 2567 |
+| `COLYSEUS_URL` | Bots | Defaults to `ws://localhost:2567` |
+| `GAME_WORLD=flat` | Server/bots regression tests | Old flat prototype world; leave unset for the Zürich frontend |
 
-When deployed, authentication is handled by the VIScon portal. When a user
-logs in, the portal adds these headers to every request forwarded to your app:
-
-- `X-User-Id`: The user's email address, which uniquely identifies them.
-- `X-User-Name`: The user's full name, with non-ASCII characters
-  percent-encoded (`Zo%C3%AB` for "Zoë").
-
-The backend reads and decodes them in `extract_user()` and uses `X-User-Id`
-to keep a separate todo list for each user. Requests without these headers
-(locally, or with the portal's access control disabled) all share one "Guest"
-user.
-
-Only trust these headers while port 8080 is reachable through the portal
-alone, which is the default. If you open the port in your VM's firewall,
-anyone can call your app directly and send fake headers.
-
-### AI-Powered Todo Generation
-
-`GET /api/todos/generate` sends your prompt to an LLM using the
-[`openai`](https://github.com/openai/openai-python) Python package and asks for
-an answer in the shape of a todo item (structured output). The prompt includes
-a few examples to show the model what we expect ("few-shot prompting").
-
-If the LLM can't be reached (e.g. the API key is missing), the endpoint logs
-the error and returns a todo prefilled with your prompt, so the app keeps
-working.
-
-### Live Updates (Server-Sent Events)
-
-Open the app in two tabs side by side and add a todo in one: it shows up in
-the other right away. Each tab keeps a request to `/api/todos/events` open.
-When a todo is created or deleted, the backend sends
-`{"type": "todos_changed"}` to all open streams of that user, and the tabs
-reload their todos over the normal REST API.
-
-- Backend: `todo_events()` and `notify_todos_changed()` in
-  [`app.py`](backend/app.py), using FastAPI's `EventSourceResponse`. FastAPI
-  also sends a keep-alive ping every 15 seconds so proxies don't close idle
-  streams.
-- Frontend: `subscribeToTodoChanges()` in
-  [`api.ts`](frontend/src/api.ts) uses the browser's
-  `EventSource`, which reconnects by itself (e.g. when the backend restarts).
-
-Why not WebSockets? Server-Sent Events are plain HTTP, so they pass every
-proxy between the browser and your VM. WebSockets currently don't make it
-through the hackathon's network (you get a `502 Bad Gateway` when deployed),
-even though they work locally. For server-to-browser updates like these, you
-don't need them: send data the other way with normal `fetch` requests.
-
-Prefer a library? [Socket.IO](https://socket.io/) works too, e.g. for chat
-rooms. When deployed, it automatically uses its built-in HTTP long-polling
-transport. A few tips to get it running:
-
-- **Keep the default transports**, so Socket.IO can pick long-polling by
-  itself. Many tutorials set `transports: ["websocket"]`; just leave that out.
-- **Mount it under `/api`**, so its requests reach the backend:
-  `socketio_path="/api/socket.io"` on the server and
-  `path: "/api/socket.io"` on the client.
-- **Run a single backend process**, as the template already does, so all
-  requests of a connection reach the same process.
-- Each message is a regular HTTP request, which is plenty for chats,
-  notifications and similar features.
-
-Open streams live in memory in the backend process, like the todos. With
-several workers or replicas, each only knows its own streams. Locally, browsers
-allow only 6 open connections per host, so with many tabs open on the dev
-server, requests start to hang (deployed, HTTP/2 lifts this limit).
-
-## Frontend
-
-A [React](https://react.dev/) app written in TypeScript and built with
-[Vite](https://vite.dev/). It talks to the backend with the browser's `fetch`
-API and gets live updates with `EventSource`.
-
-| File                                         | Purpose                                   |
-| :------------------------------------------- | :---------------------------------------- |
-| [`src/App.tsx`](frontend/src/App.tsx)        | Main component, loads the current user    |
-| [`src/api.ts`](frontend/src/api.ts)          | All backend requests and their types      |
-| [`src/components/`](frontend/src/components) | UI components (header, todo form & table) |
-| [`public/`](frontend/public)                 | Static files like images, served as-is    |
-
-Useful commands (run in `frontend/`):
-
-- `npm run dev`: start the dev server with hot reloading
-- `npm run build`: type-check and build for production into `dist/`
-- `npm run lint`: check the code with ESLint
-
-## Project Structure
-
-```
-.
-├── docker-compose.yml   # The two services: backend and frontend
-├── .env.sample          # Configuration template, copy to .env
-├── backend/             # FastAPI app (see "Backend")
-│   └── Dockerfile
-└── frontend/            # React app (see "Frontend")
-    ├── Caddyfile        # Routing: /api to the backend, the rest to the React app
-    └── Dockerfile       # Builds the app, then serves it with Caddy
+```sh
+npm run build
+npm start
 ```
 
-## Adding a Service
+Open **http://localhost:2567**. On another device on the same LAN, open `http://<server-LAN-IP>:2567` and allow that port through the host firewall. Production derives its WebSocket URL from the page's host and port, using `wss:` with HTTPS. No client environment override is required in production. For Vite development from another device, set `VITE_COLYSEUS_URL=ws://<server-LAN-IP>:2567` and restart Vite; otherwise its default points at that device's own localhost.
 
-All traffic enters through Caddy on port 8080, configured in
-[`frontend/Caddyfile`](frontend/Caddyfile). To add a service (say, a second
-API under `/ml`), add it to [`docker-compose.yml`](docker-compose.yml) and
-give it its own `handle` block in the Caddyfile, next to the `/api` one:
+Docker Compose runs two services: `client` (Caddy) and `server` (Colyseus). Caddy on **8080** forwards `/matchmake/*` and WebSocket upgrade requests to Colyseus and serves the frontend:
 
-```
-handle /ml/* {
-	reverse_proxy ml:5000
-}
+```sh
+docker compose up -d --build --remove-orphans
 ```
 
-Containers reach each other by their service name (`backend`, `ml`, …).
-Rebuild with `docker compose up --build`. For local development, add the
-same prefix to the proxy in [`vite.config.ts`](frontend/vite.config.ts).
+Open http://localhost:8080. No `.env` file or API key is required. The service names have changed; `--remove-orphans` removes containers from the previous layout. View logs with `docker compose logs -f client server` and stop the game with `docker compose down`.
+
+The original hackathon template documents that the **portal proxy rejects WebSockets with 502**. Caddy routing cannot fix a proxy upstream of it. Use direct LAN access, an SSH tunnel, or a deployment endpoint that supports WebSockets; portal compatibility must be verified separately. Inspection mode still works without a multiplayer connection.
+
+## Architecture and authority
+
+- `apps/client/src/scene/MapViewer.tsx`: map loading, renderer, camera, lights, resizing, one animation loop, inspect/play lifecycle.
+- `apps/client/src/multiplayer/`: local movement/input, delayed remote interpolation, networking/clock sync, vehicles, particles/audio, and HUD. `MapGame.ts` wires these into the existing map scene.
+- `apps/server/src/`: Colyseus 0.18 server, schema 5 state, collision referee, atomic vehicle occupancy, shuttle schedule, and bots.
+- `packages/shared/src/`: constants, protocol types, capsule/cart collision math, movement, terrain and building queries, and route sampling.
+- `scripts/build-world.ts`: derives `zurich-world.json` from the existing GLB, with a source hash and deterministic placements/route.
+
+Players and cart drivers simulate their own movement and send compact reports at 20 Hz. The server validates report speed/bounds, synchronizes state at 20 Hz, and checks player/player and cart/player contacts at 30 Hz. It sends impulses to affected clients and broadcasts timestamped bump effects. Clients apply impulses locally; remote players/vehicles render 100 ms behind estimated server time. Occupancy and shuttle motion are server authoritative. The server does not simulate foot movement.
+
+The map keeps its original LV95 conversion: **X = E − 2683475**, **Y = elevation − 400**, **Z = 1248000 − N**, in metres. Shared terrain uses bilinear heights on a **2 m grid**, and buildings use a sampled roof/footprint obstruction mask. This is a deliberately approximate hackathon collision surface: it blocks ordinary buildings and follows hills, but does not model doors, tunnels, bridges, rooftop walking, water, or detailed wall geometry. The shuttle route avoids sampled building footprints; it is not an imported road network. The original 60 × 60 plane is only used in regression tests.
+
+The official GLB and source credit are preserved. Builds do not fetch GIS data. See [apps/client/README.md](apps/client/README.md) for provenance and explicit map re-import instructions. If the GLB changes, run `npm run world:build` and commit its generated JSON too.
