@@ -1,5 +1,5 @@
 export function createGameHUD(scene){
- const help=document.createElement('details');help.id='game-help';help.innerHTML='<summary>Controls</summary><div class="help-card"><b>Controls & credits</b></div>';const card=help.querySelector('.help-card');card.append(document.querySelector('footer'),document.querySelector('.credits'));document.body.append(help);
+ const help=document.createElement('details');help.id='game-help';help.innerHTML='<summary>Controls</summary><div class="help-card"><b>Controls & credits</b><p>B: Emote wheel · 1–6: Choose a dance · Move / Esc: Stop</p></div>';const card=help.querySelector('.help-card');card.append(document.querySelector('footer'),document.querySelector('.credits'));document.body.append(help);
  document.addEventListener('pointerdown',e=>{if(help.open&&!help.contains(e.target))help.open=false;});document.addEventListener('keydown',e=>{if(help.open&&e.code==='Escape'){help.open=false;e.preventDefault();e.stopImmediatePropagation();}},{capture:true});
  const hiddenSprites=new Set();let interacting=false;
  return {update({playing,machine,phone,settings,map,rail,showHint,labelFree=false}){

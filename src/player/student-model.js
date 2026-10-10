@@ -5,7 +5,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 // remain separate; visual geometry stays inside the player's compact silhouette.
 export function createStudent() {
   const player = new THREE.Group();
-  const limbs = [], knees = [], elbows = [];
+  const limbs = [], knees = [], elbows = [], feet = [];
   const materials = new Map();
   const material = color => {
     if (!materials.has(color)) materials.set(color, new THREE.MeshStandardMaterial({ color, roughness: .82 }));
@@ -50,5 +50,16 @@ export function createStudent() {
     box(leg,pants,0,-.18,0,.19,.36,.225,.045);const knee=new THREE.Group();knee.position.y=-.36;leg.add(knee);box(knee,pants,0,-.18,0,.175,.36,.21,.04);box(knee,'#f0eee5',0,-.425,-.045,.205,.145,.325,.04);box(knee,'#52666d',0,-.495,-.045,.215,.045,.335,.015);knees.push(knee);
     limbs.push(leg);
   }
-  return { player, limbs, knees, elbows };
+  for(const knee of knees){
+    const foot=new THREE.Group();foot.name='Student ankle';foot.position.y=-.425;
+    const shoes=knee.children.filter(o=>o.position.y<-.4);knee.add(foot);player.updateMatrixWorld(true);
+    for(const shoe of shoes)foot.attach(shoe);feet.push(foot);
+  }
+  // Independent chest/head pivots let dances lean without tilting planted feet.
+  const torso=new THREE.Group();torso.name='Student torso';torso.position.y=.9;
+  const bodyParts=player.children.filter(o=>!limbs.includes(o));player.add(torso);player.updateMatrixWorld(true);
+  for(const o of bodyParts)torso.attach(o);
+  const head=new THREE.Group();head.name='Student head';head.position.y=.55;torso.add(head);player.updateMatrixWorld(true);
+  for(const o of [...torso.children])if(o!==head&&o.position.y>.54)head.attach(o);
+  return { player, limbs, knees, elbows, torso, head, feet };
 }

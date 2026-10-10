@@ -28,7 +28,10 @@
     "test:integration": "node verify-integration-state.mjs && node verify-integration-lifecycle.mjs",
     "test:medals": "node verify-medals.mjs",
     "test:football": "node verify-football.mjs",
-    "test:medals:audio": "node verify-medal-sound-browser.mjs"
+    "test:medals:audio": "node verify-medal-sound-browser.mjs",
+    "test:michael-jackson": "node verify-michael-jackson.mjs",
+    "test:tiki-performer": "node verify-tiki-performer.mjs",
+    "test:emotes": "node verify-emote-animation.mjs && node verify-emotes.mjs"
   },
   "keywords": [],
   "author": "",

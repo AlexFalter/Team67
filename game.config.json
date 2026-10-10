@@ -231,6 +231,7 @@
   "settingsDefaults": {
     "moodleEvents": true,
     "vehicleSounds": true,
+    "michaelJacksonSounds": true,
     "railCrashProtection": true,
     "highlightWorkingBikes": true,
     "teleportMode": false,

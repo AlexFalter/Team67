@@ -1,5 +1,6 @@
 {
   "features": {
+    "emotes": {"entry": "src/player/emotes/index.js", "description": "Emote wheel and student dance animations", "legacyStyles": false, "category": "player"},
     "phone": {
       "entry": "src/ui/phone/index.js",
       "description": "Phone",
@@ -221,6 +222,18 @@
       "description": "Bench cat and gentle mouse petting challenge",
       "category": "npcs",
       "legacyStyles": false
+    },
+    "michael-jackson": {
+      "entry": "src/npcs/michael-jackson/index.js",
+      "description": "Blender moonwalking Michael Jackson with distance-faded hee-hee audio",
+      "category": "npcs",
+      "legacyStyles": false
+    },
+    "tiki-performer": {
+      "entry": "src/npcs/tiki-performer/index.js",
+      "description": "Blender Tiki Tiki dancer with wheeled LED music box and distance-faded sound",
+      "category": "npcs",
+      "legacyStyles": false
     }
   },
   "assetOverrides": {
@@ -255,6 +268,16 @@
     ],
     "src/npcs/cat/cat-bench.js": [
       "public/models/cat"
+    ],
+    "src/npcs/michael-jackson/michael-jackson.js": [
+      "public/models/michael-jackson",
+      "assets/blender/michael-jackson.blend",
+      "assets/blender/build-michael-jackson.py"
+    ],
+    "src/npcs/tiki-performer/tiki-performer.js": [
+      "public/models/tiki-performer",
+      "assets/blender/tiki-performer.blend",
+      "assets/blender/build-tiki-performer.py"
     ]
   }
 }

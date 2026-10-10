@@ -1,10 +1,11 @@
 import * as THREE from 'three';
-export function createRiderAnimation({player,limbs,knees,elbows}){
+export function createRiderAnimation({player,limbs,knees,elbows,torso,head,feet}){
  let phase=0,dismount=null;
  const basePositions=limbs.map(l=>l.position.clone());
  return {reset(){phase=0;dismount=null;player.rotation.x=player.rotation.z=0;},startDismount(kind,start,end,heading){dismount={kind,start:start.clone(),end:end.clone(),heading,age:0,duration:1.05};},active(){return !!dismount;},state(){return {mode:dismount?'dismount':player.userData.animationMode,phase,dismountAge:dismount?.age??0};},update(dt,{position,heading,mode,speed,pedaling,groundPitch=0}){
   phase+=Math.abs(speed)*dt/(mode==='bike'?1.6:2.7);
-  player.userData.animationMode=mode;player.position.copy(position);player.position.y+=.1;player.rotation.set(0,heading,0);
+  feet?.forEach(f=>f.rotation.set(0,0,0));torso?.rotation.set(0,0,0);head?.rotation.set(0,0,0);
+  player.userData.poseVersion=(player.userData.poseVersion??0)+1;player.userData.animationMode=mode;player.position.copy(position);player.position.y+=.1;player.rotation.set(0,heading,0);
   limbs.forEach((l,i)=>{l.rotation.set(0,0,0);l.position.copy(basePositions[i]);});knees.forEach(k=>k.rotation.x=0);elbows.forEach(e=>e.rotation.x=0);
   if(mode==='bike'){
    player.position.y+=.6;player.translateZ(.35);player.rotation.x=.18+groundPitch;

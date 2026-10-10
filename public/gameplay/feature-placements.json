@@ -1551,6 +1551,35 @@
         ]
       ],
       "heading": 0
+    },
+    "michaelJackson": {
+      "anchor": [
+        -205.551,
+        49.449
+      ],
+      "radius": 1.4,
+      "speed": 0.65
+    },
+    "tikiPerformer": {
+      "searchAnchors": [
+        [
+          19,
+          42
+        ],
+        [
+          -3,
+          60
+        ],
+        [
+          23,
+          -74
+        ],
+        [
+          -187,
+          50
+        ]
+      ],
+      "heading": 0
     }
   },
   "roads": {

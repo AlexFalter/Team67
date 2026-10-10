@@ -1,0 +1,5 @@
+# Emotes
+
+`createEmoteWheel(student, {canUse, onStart, onStop, root})` provides a six-slot wheel and procedural animations for the student rig. B toggles the wheel; mouse, 1–6 or arrow keys and Enter choose a dance. Escape cancels; moving or interacting stops the dance. Call `keydown` before world input and `update` after the normal character pose. `canUse` should allow only grounded walking outside other interactions. The host switches to third person for dancing and restores the previous perspective on stop.
+
+Floss, Orange Justice, Take the L, Dance Moves, Dab and The Robot are original procedural interpretations of familiar Fortnite dances, not extracted animation or audio assets. Timed hand/foot targets and chest/head poses live in `choreography.js`. `emotes.js` solves elbow and knee positions, keeps the shoes level, blends dance entry, and smooths arm changes. Add a definition and a choreography phrase to extend the wheel. No map dependencies. `reset` and `dispose` clean up both UI and rig state.

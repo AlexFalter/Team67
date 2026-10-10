@@ -67,3 +67,9 @@ The complete audio is partitioned into contiguous goal sections in match order. 
 - `cat-purr.mp3`: “Whiskers' purr.ogg”, recorded by Adam Cuerden. Source: https://commons.wikimedia.org/wiki/File:Whiskers%27_purr.ogg . Released into the public domain by its author. Changes: 45 Hz high-pass / 2500 Hz low-pass, -22 LUFS / -4 dBTP normalization, edge fades, MP3 encoding at 96 kbps.
 
 - `cat-angry-yowl.mp3`: “Cat, Screaming, A.wav” by InspectorJ (www.jshaw.co.uk) of Freesound.org. Source: https://freesound.org/people/InspectorJ/sounds/415209/ . CC BY 4.0: https://creativecommons.org/licenses/by/4.0/ . Derived from the publicly served HQ preview; full cat scream, -15 LUFS / -2 dBTP normalization, 10 ms attack / 70 ms tail fades, 128 kbps MP3.
+
+## Michael Jackson moonwalk NPC
+
+- `michael-jackson-hee-hee.mp3`: short original-recording “hee-hee” sound, from the Myinstants upload by isaiah29: https://www.myinstants.com/en/instant/michael-jackson-hee-hee-40277/ . Direct sample: https://www.myinstants.com/media/sounds/michael-jackson-hee-hee.mp3 . Duration approximately 1.4 seconds; normalized to -14 LUFS / -1 dBTP with edge fades and encoded at 128 kbps. Attribution records the source; it does not grant a new redistribution licence.
+
+- `tiki-tiki.mp3`: full 5:30 user-provided `TIKI-TIKI-Slowed-SnapYT.App.mp3`, normalized for in-game playback. Source rights remain with their owners.

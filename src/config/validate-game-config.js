@@ -21,7 +21,7 @@ export function validateGameConfig(config){
  number('npcs.scooter.handoverSeconds',Number.EPSILON);
  for(const key of ['greeting','giftLine'])if(typeof config.npcs.scooter[key]!=='string')fail(`npcs.scooter.${key}`,'must be text');
  if(typeof config.npcs.scooter.horns!=='boolean')fail('npcs.scooter.horns','must be true or false');
- for(const key of ['moodleEvents','medalSounds','vehicleSounds','railCrashProtection','highlightWorkingBikes','teleportMode','freezeTimer','skipIntro'])if(typeof config.settingsDefaults?.[key]!=='boolean')fail(`settingsDefaults.${key}`,'must be true or false');
+ for(const key of ['moodleEvents','medalSounds','michaelJacksonSounds','vehicleSounds','railCrashProtection','highlightWorkingBikes','teleportMode','freezeTimer','skipIntro'])if(typeof config.settingsDefaults?.[key]!=='boolean')fail(`settingsDefaults.${key}`,'must be true or false');
  number('vehicles.bikeFailurePercent',0,100);
  for(const key of ['skyColor','hemisphereSkyColor','hemisphereGroundColor','sunColor'])if(!/^#[0-9a-f]{6}$/i.test(config.visuals[key]))fail(`visuals.${key}`,'must be a six-digit hex color');
  if(typeof config.visuals.shadows!=='boolean')fail('visuals.shadows','must be true or false');

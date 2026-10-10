@@ -15,3 +15,7 @@ export {createFootballStand} from './football/index.js';
 export {createCatBench} from './cat/index.js';
 
 export {createCyclingKid} from './cycling-kid/index.js';
+
+export {createMichaelJackson} from './michael-jackson/index.js';
+
+export {createTikiPerformer} from './tiki-performer/index.js';

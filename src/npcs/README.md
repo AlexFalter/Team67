@@ -9,3 +9,7 @@ Reusable NPC UI lives in `shared/`:
 - `conversation-camera.js` frames a character from their accessible approach side and restores the previous camera on exit.
 
 Einstein uses the compact variant with one short line at a time, bottom-screen choices, optional destination details, and a front-facing view. Teleport limits and GTA travel remain in the Einstein feature. Existing shared/dialogue import paths forward to the NPC dialogue helper for compatibility; edit the NPC helper rather than the forwarding files. General subtitle/audio typography remains in `src/shared/dialogue/encounter-ui.*`.
+
+`michael-jackson/` contains a Blender-authored dancer with a perpetual moonwalk and a short distance-faded “hee-hee” recording. Its validated loop comes from the host's feature placement; editable Blender source stays under `assets/blender/`.
+
+- `tiki-performer/`: Blender hoodie dancer, rolling LED party speaker, short distance-faded Tiki Tiki audio.

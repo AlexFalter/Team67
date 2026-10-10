@@ -5,8 +5,9 @@ export function drawEncounterMarkers(ctx,markers,sx,sz,{size=12,width=ctx.canvas
 
  ctx.restore();
 }
-export function encounterMapMarkers({benchCat,football,einstein,bridgeScooter,mateMachine,financeGuy,interviewLimo,sixSevenKid,ticketChecker,touristPhoto,polybahn,bikeStation,transport}){
+export function encounterMapMarkers({tikiPerformer,benchCat,football,einstein,bridgeScooter,mateMachine,financeGuy,interviewLimo,sixSevenKid,ticketChecker,touristPhoto,polybahn,bikeStation,transport}){
  const markers=[],add=(id,label,p)=>{if(!p)return;const x=p.x??p[0],z=p.z??p[2]??p[1];if(Number.isFinite(x)&&Number.isFinite(z))markers.push({id,label,x,z});};
+ if(tikiPerformer)add('tiki-performer','Tiki Tiki · music box',tikiPerformer.group.position);
  if(benchCat)add('cat','Bench cat · pet gently',benchCat.group.position);
  if(football)add('football','Tim Gio · football TV and penalty goal',football.group.position);
  if(einstein){add('einstein','Albert Einstein',einstein.actor.position);if(einstein.state().introduced)add('einstein-portal','Random teleporter',einstein.portal.position);}
