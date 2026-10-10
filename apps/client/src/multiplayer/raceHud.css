@@ -1,7 +1,10 @@
 .game-shell { min-height: 0; background: #12272e; color: #edf4ef; overflow: hidden; }
 .game-shell > p { margin: auto; }
 .game-shell .map-viewer { isolation: isolate; }
-#lobby { align-content: safe center; }
+#lobby { align-content: safe center; row-gap: 24px; }
+#lobby .menu-coordinate, #lobby .menu-credit { position: static; align-self: end; }
+#lobby .menu-coordinate { flex-wrap: wrap; }
+#lobby .menu-credit { justify-self: end; }
 #lobby #dev-settings label { justify-content: flex-start; margin: 8px 0; font-size: 11px; }
 #lobby #dev-settings input[type=checkbox] { min-height: 16px; height: 16px; width: 16px; padding: 0; }
 .mission-intro { max-width: 420px; color: #c6d9d1; font-size: 16px; line-height: 1.7; margin: 24px 0; }
