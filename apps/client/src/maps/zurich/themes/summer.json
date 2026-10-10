@@ -52,7 +52,10 @@
     "LampIron": { "palette": ["#34433f", "#2a3633", "#405049"], "pattern": "noise", "weights": [70, 20, 10] },
     "LampGlass": { "palette": ["#f6e7bd", "#fff3d2", "#e7d39f"], "pattern": "noise", "weights": [70, 20, 10] },
     "BinSteel": { "palette": ["#bcc2c6", "#ccd1d4", "#a9afb3"], "pattern": "noise", "weights": [65, 20, 15] },
-    "BinSlot": { "palette": ["#1f2427", "#2b3135"], "pattern": "noise", "weights": [80, 20] }
+    "BinSlot": { "palette": ["#1f2427", "#2b3135"], "pattern": "noise", "weights": [80, 20] },
+    "TramRoof": { "palette": ["#2f6fb8", "#2862a6", "#3a7dc6"], "pattern": "noise", "weights": [70, 20, 10] },
+    "FlagCH": { "palette": ["#d52b1e", "#ffffff"], "pattern": "flag_ch", "size": [16, 16] },
+    "FlagZH": { "palette": ["#268bcc", "#ffffff"], "pattern": "flag_zh", "size": [16, 16] }
   },
   "trees": {
     "$comment": "Leaf colours tint the greyscale Leaves texture per tree (plus a small brightness jitter); trunks use the Bark texture.",
@@ -77,13 +80,13 @@
     }
   },
   "lighting": {
-    "$comment": "Sun + sky light (game: DirectionalLight + HemisphereLight; Blender preview: sun lamp + world).",
+    "$comment": "Sun + world light, identical in Blender (scene_light.py) and the game (theme.ts themeLights): sun strength = sunIntensity*1.6 W/m2 in Blender (/pi in three.js), uniform sky colour = hemiIntensity*0.55 (groundLight unused). AgX tone mapping at exposure; environment = optional neutral studio fill (0 = off, like Blender).",
     "sun": "#fff2dc",
-    "sunIntensity": 1.6,
+    "sunIntensity": 2.6,
     "sunElevation": 40,
     "sunAzimuth": 210,
     "skyLight": "#dfe8f2",
     "groundLight": "#7c8792",
-    "hemiIntensity": 0.3, "exposure": 1.0, "environment": 1.0
+    "hemiIntensity": 1.8, "exposure": 1.1, "environment": 0
   }
 }

@@ -75,7 +75,8 @@ export class Effects {
   private motion = new Map<string, { grounded: boolean; sprintJump: boolean; nextDust: number; seen: number }>();
   private geometry = new THREE.SphereGeometry(0.07, 6, 4);
   private abort = new AbortController();
-  constructor(private scene: THREE.Scene) {
+  // Bump sounds use the recorded collision thud from GameAudio (mini-games-2); explosions keep their own sound.
+  constructor(private scene: THREE.Scene, private onBurst: (b: Bump) => void = () => {}) {
     this.speedParticles = new SpeedParticles(scene);
     const resume = () => {
       this.audio ??= new AudioContext();
@@ -162,6 +163,7 @@ export class Effects {
         age: 0,
       });
     }
+    this.onBurst(b);
   }
   private impactSound(strength: number, floor: boolean, volume = 1) {
     const a = this.audio;

@@ -4,6 +4,7 @@ import type { Client } from "colyseus";
 import * as C from "../packages/shared/src/index.ts";
 import { RaceState, Player, RoomMember } from "../apps/server/src/state.ts";
 import { NpcEncounters } from "../apps/server/src/npcs.ts";
+import { VehicleManager } from '../apps/server/src/vehicles.ts';
 import { withServer, startRound, type WireState, until } from "./fixture.ts";
 
 function fixture() {
@@ -49,18 +50,42 @@ test("Jane Street validates the puzzle before granting a personal ride",()=>{
   f.command("alice","finish","limousine",{},f.now+9000);assert.equal(f.replies.at(-1)!.ok,true);assert.equal(f.encounters.busy("alice"),false);
 });
 
-test("Private property returns only players at the map boundary to the bus start",()=>{
+test("Private property returns only players at the shared story boundary to spawn",()=>{
   const f=fixture();f.command("alice","begin","property");assert.equal(f.replies.at(-1)!.ok,false);
-  const p=f.state.players.get("alice")!,b=C.zurichWorld.bounds;Object.assign(p,{x:b.minX+2,z:0});
+  const p=f.state.players.get("alice")!,b=C.npcBounds(C.zurichWorld);Object.assign(p,{x:b.minX+2,z:0});
   f.command("alice","begin","property");assert.equal(f.replies.at(-1)!.ok,true);
   f.command("alice","finish","property",{},f.now+8400);assert.equal(f.replies.at(-1)!.ok,true);
-  assert.deepEqual(f.replies.at(-1)!.target,C.battleBusDropoffs(C.zurichWorld,40)[0]);
+  assert.deepEqual(f.replies.at(-1)!.target,C.zurichWorld.spawn);
+  assert.equal(f.state.npcs.get('bob')!.kind,'');
+  f.command('bob','begin','property');assert.equal(f.replies.at(-1)!.ok,false);
 });
 
 test("Travel cancels and disconnects release the player without replenishing charges",()=>{
   const f=fixture();f.command("alice","begin");f.command("alice","cancel");assert.equal(f.encounters.busy("alice"),false);assert.equal(f.state.npcs.get("alice")!.teleportUsed,true);
   f.command("bob","begin");f.state.phase=C.RoomPhase.Finished;f.encounters.tick(f.now+100);assert.equal(f.encounters.busy("bob"),false);
   f.encounters.leave("alice");assert.equal(f.state.npcs.has("alice"),false);
+});
+
+test('boundary return works repeatedly on every edge and preserves other players',()=>{
+  const f=fixture(),p=f.state.players.get('alice')!,bounds=C.npcBounds(C.zurichWorld);
+  for(const [i,point] of [{x:bounds.minX+10,z:0},{x:bounds.maxX-10,z:0},{x:0,z:bounds.minZ+10},{x:0,z:bounds.maxZ-10}].entries()){
+    Object.assign(p,point);const now=f.now+i*10000;
+    f.command('alice','begin','property',{},now);assert.equal(f.replies.at(-1)!.ok,true);
+    f.command('alice','finish','property',{},now+8400);assert.deepEqual(f.replies.at(-1)!.target,C.zurichWorld.spawn);
+    assert.equal(f.encounters.busy('bob'),false);
+  }
+});
+
+test('boundary NPC dismounts drivers before returning them, while rail passengers remain aboard',()=>{
+  const f=fixture(),manager=new VehicleManager(f.state,C.zurichWorld),p=f.state.players.get('alice')!,bounds=C.npcBounds(C.zurichWorld);
+  const encounters=new NpcEncounters(f.state,C.zurichWorld,(_id,point)=>Object.assign(p,point),client=>manager.exit(client));
+  const cart=f.state.vehicles.get('cart-1')!;Object.assign(cart,{x:bounds.minX+10,z:0,y:C.zurichWorld.height(bounds.minX+10,0)!});Object.assign(p,{x:cart.x,y:cart.y,z:cart.z});
+  manager.enter(f.client('alice'),'cart-1',f.now);assert.equal(p.vehicleId,'cart-1');
+  encounters.command(f.client('alice'),{action:'begin',kind:'property',roundStartedAt:f.state.startedAt},f.now);
+  assert.equal(p.vehicleId,'');assert.equal(cart.driver,'');assert.equal(f.state.npcs.get('alice')!.kind,'property');
+  encounters.command(f.client('alice'),{action:'finish',kind:'property',roundStartedAt:f.state.startedAt},f.now+8400);assert.equal(p.x,C.zurichWorld.spawn.x);
+  Object.assign(p,{vehicleId:'polybahn-1',x:bounds.minX+10,z:0});
+  encounters.command(f.client('alice'),{action:'begin',kind:'property',roundStartedAt:f.state.startedAt},f.now+10000);assert.equal(p.vehicleId,'polybahn-1');assert.equal(f.state.npcs.get('alice')!.kind,'');
 });
 
 test("Live rooms synchronize NPC state, reject spectator travel, and reset per-round progress",async()=>{

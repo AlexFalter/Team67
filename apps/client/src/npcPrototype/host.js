@@ -14,6 +14,8 @@ import {createBridgeScooter} from './src/npcs/scooter/bridge-scooter.js';
 import {createPrivatePropertyEncounter} from './src/npcs/private-property/private-property.js';
 import {createEinsteinTeleporter} from './src/npcs/einstein/einstein-teleporter.js';
 import {createTeleportTransition} from './src/npcs/einstein/teleport-transition.js';
+import {createPolybahnTicketMachine} from './src/interactions/tickets/polybahn-ticket-machine.js';
+import {createTicketProps} from './src/interactions/tickets/ticket-props.js';
 import {drawPhoneCameraPreviews} from './src/shared/phone-camera/phone-camera.js';
 import './src/shared/dialogue/encounter-ui.css';
 import './src/shared/dialogue/rpg-dialogue.css';
@@ -25,6 +27,8 @@ export class NpcFeature {
  root=new THREE.Group();abort=new AbortController();features=[];poly=new Map();position=new THREE.Vector3();
  remoteLimos=new Map();
  skins=new Map();
+ // Set by MapGame: plays the mini-games-2 medal sting (Revenge / Frankfurt Delivery on the scooter gift).
+ onMedal=()=>{};
  saved=null;round=0;lastPlayable=false;pending=null;travel=null;lastPose=0;previousPoly=null;noticeUntil=0;
  constructor(scene,camera,net,local,vehicles,canvas,map,capture){
   Object.assign(this,{scene,camera,net,local,vehicles,canvas});this.root.name='NPC encounters';scene.add(this.root);
@@ -36,7 +40,7 @@ export class NpcFeature {
   this.message.querySelector('button').onclick=()=>{const kind=this.message.dataset.kind;this.message.hidden=true;if(kind==='invitation'){this.send('solve','limousine',{answer:'3'});}else if(kind==='rejection')this.limo?.readRejection();this.syncLock();};
   this.menu.addEventListener('click',e=>{const button=e.target.closest('button');if(!button)return;const person=button.dataset.person;this.menu.hidden=true;const pair=this.currentPoly();if(person!=='close'&&pair)pair[person].interact(this.position);this.syncLock();},{signal:this.abort.signal});
   window.addEventListener('keydown',e=>{
-   if(e.code==='Backspace'&&this.currentPoly()&&!this.active){e.preventDefault();if(this.net.canPlay)this.net.room.send('vehicleExit');return;}
+   if(e.code==='Backspace'&&this.local.enabled&&this.currentPoly()&&!this.active){e.preventDefault();if(this.net.canPlay)this.net.room.send('vehicleExit');return;}
    if(!this.active)return;
    if(!this.message.hidden){if(e.code==='Enter')this.message.querySelector('button').click();e.preventDefault();e.stopImmediatePropagation();return;}
    if(this.pending||this.travel||this.finance?.active()||this.inspector?.active()||this.property?.active()||this.scooter?.active()){e.preventDefault();e.stopImmediatePropagation();return;}
@@ -44,20 +48,35 @@ export class NpcFeature {
    for(const feature of this.features)if(feature.keydown?.(e)){e.stopImmediatePropagation();this.syncLock();break;}
   },{capture:true,signal:this.abort.signal});
   net.onNpcResult=result=>this.result(result);
+  net.onTicketResult=result=>{
+   const pending=this.ticketRequest;
+   if(!pending||result.action!==pending.action||result.roundStartedAt!==pending.round)return;
+   this.ticketRequest=null;pending.resolve(result.ok);if(!result.ok)this.notice(result.message);
+  };
   const {world,solver}=mainNpcWorld(map,placements);Object.assign(this,{world,solver});
   this.transition=createTeleportTransition(camera,{uiRoot:this.ui,onComplete:()=>this.send('finish','einstein')});this.features.push(this.transition);
   this.ready=this.load(capture);
  }
  own(feature){this.features.push(feature);return feature;}
+ requestTicket(action,tiles){
+  if(!this.net.canPlay||this.ticketRequest)return Promise.resolve(false);
+  return new Promise(resolve=>{const round=this.net.room.state.startedAt;this.ticketRequest={action,round,resolve,at:this.net.now()};this.net.room.send('ticket',{action,roundStartedAt:round,tiles});});
+ }
  async load(capture){
   const {world,solver,camera}=this,uiRoot=this.ui;
   try{
+   const ticketPoint=new THREE.Vector3().copy(C.ticketSite(C.zurichWorld));
+   this.ticketProps=createTicketProps(this.root,[ticketPoint]);
+   const ticketRail={ticketProps:this.ticketProps,ticketPoints:[ticketPoint],nearTicketIndex:position=>C.nearTicket(position,C.zurichWorld)?0:-1,
+    state:()=>({ticketCount:this.net.room?.state.npcs?.get(this.net.room.sessionId)?.ticketCount??0}),collectTicket:()=>this.requestTicket('collect')};
+   this.ticketMachine=this.own(createPolybahnTicketMachine(ticketRail,{camera,canvas:this.canvas,uiRoot,
+    onPayment:tiles=>this.requestTicket('pay',tiles),onClose:()=>this.syncLock(),onPurchase:already=>{if(already)this.notice('You already have a Polybahn ticket.');this.syncLock();}}));
    this.finance=this.own(createFinanceGuy(this.root,world,solver,{onComplete:()=>this.syncLock(),uiRoot,
     placement:{...placements.finance,fixedSite:C.NPC_LAYOUT.finance.position,fixedAccess:C.NPC_LAYOUT.finance.access}}));
    this.tourists=this.own(createTouristPhoto(this.root,world,solver,{capture,onComplete:()=>this.syncLock(),uiRoot,renderCanvas:this.canvas,
     location:new THREE.Vector3(placements.tourists.position[0],0,placements.tourists.position[1]),viewpoint:new THREE.Vector3(placements.tourists.viewpoint[0],0,placements.tourists.viewpoint[1])}));
    this.property=this.own(createPrivatePropertyEncounter(this.root,world,new THREE.Vector3(),0,solver,{uiRoot}));
-   this.scooter=this.own(createBridgeScooter(this.root,world,{placement:placements.scooterEncounter,parked:true,uiRoot,onCollect:()=>this.syncLock()}));
+   this.scooter=this.own(createBridgeScooter(this.root,world,{placement:placements.scooterEncounter,parked:true,uiRoot,onCollect:()=>{this.onMedal('frankfurtDelivery');this.syncLock();}}));
    // A fixed parked trio is shared scenery; approaching different players cannot divert it.
    this.scooter.park();
    this.limo=this.own(await createInterviewLimo(this.root,world,solver,{uiRoot,
@@ -103,18 +122,31 @@ export class NpcFeature {
   this.syncLock();
  }
  notice(text){this.hint.textContent=text;this.noticeUntil=this.net.now()+4000;this.hint.hidden=false;}
+ mapMarkers(){
+  const markers=[],add=(label,p)=>{if(p)markers.push({label,x:p.x??p[0],z:p.z??p[2]??p[1]});};
+  if(this.finance&&!this.finance.state().used)add('Finance Guy',this.finance.actor.position);
+  if(this.einstein)add('Albert Einstein',this.einstein.actor.position);
+  if(this.limo&&!this.limo.state().solved)add('Jane Street laptop',this.limo.laptop.position);
+  if(this.limo?.state().phase==='waiting'){const p=this.limo.state().pickup;add('Chauffeur',{x:p[0],z:p[2]});}
+  if(this.scooter&&!this.scooter.state().playing)add('Scooter riders',this.scooter.group.position);
+  if(this.tourists?.group.visible)add('Tourist photos',this.tourists.state().meetingPoint);
+  const state=this.net.room?.state.npcs?.get(this.net.room.sessionId);
+  if(!state?.ticketCount)add('Polybahn ticket machine',C.ticketSite(C.zurichWorld));
+  return markers;
+ }
  syncLock(){
   const active=this.active;
   if(active&&!this.saved){this.saved={fov:this.camera.fov,up:this.camera.up.clone()};this.local.clear();this.local.body.vx=this.local.body.vy=this.local.body.vz=0;if(document.pointerLockElement===this.canvas)document.exitPointerLock();}
   if(!active&&this.saved){this.camera.fov=this.saved.fov;this.camera.up.copy(this.saved.up);this.camera.updateProjectionMatrix();this.saved=null;}
   this.net.npcPaused=active&&!this.local.body.vehicleId;if(active){this.local.enabled=false;this.local.clear();}
  }
+ get nearbyTicket(){return !this.local.body.vehicleId&&C.nearTicket(this.local.body,C.zurichWorld);}
  get nearbyInteraction(){
   this.position.set(this.local.body.x,this.local.body.y,this.local.body.z);
   if(this.currentPoly())return true;
   if(this.local.body.vehicleId)return false;
   const laptop=this.limo?.laptop.position,pickup=this.limo?.state().pickup;
-  return !!(this.einstein?.near(this.position)||laptop&&this.position.distanceTo(laptop)<3||this.limo?.state().phase==='waiting'&&this.position.distanceTo(new THREE.Vector3(...pickup))<9||this.scooter?.canTalk(this.position));
+  return !!(this.nearbyTicket||this.einstein?.near(this.position)||laptop&&this.position.distanceTo(laptop)<3||this.limo?.state().phase==='waiting'&&this.position.distanceTo(new THREE.Vector3(...pickup))<9||this.scooter?.canTalk(this.position));
  }
  interact(){
   if(!this.net.canPlay||this.active||this.local.body.knockdownUntil>this.net.now())return false;
@@ -122,7 +154,7 @@ export class NpcFeature {
   const pair=this.currentPoly();if(pair){this.menu.hidden=false;this.menu.querySelector('button').focus();this.syncLock();return true;}
   if(this.local.body.vehicleId)return false;
   if(this.limo?.state().phase==='waiting'&&this.position.distanceTo(new THREE.Vector3(...this.limo.state().pickup))<9){this.send('begin','limousine');return true;}
-  const handled=this.einstein?.interact(this.position)||this.limo?.interact(this.position)||this.scooter?.interact(this.position);
+  const handled=this.ticketMachine?.interact(this.position)||this.einstein?.interact(this.position)||this.limo?.interact(this.position)||this.scooter?.interact(this.position);
   this.syncLock();return !!handled;
  }
  attachPoly(){
@@ -145,14 +177,20 @@ export class NpcFeature {
   const pair=this.currentPoly();for(const [id,p] of this.poly){p.kid.update(dt,playable&&this.local.body.vehicleId===id,!!this.inspector?.active(),this.position);p.eater.update(dt,playable&&this.local.body.vehicleId===id,this.inspector?.active()||p.kid.active(),this.position);}
   if(!playable){this.hint.hidden=true;return;}
   const own=state.npcs?.get(this.net.room.sessionId);
+  if(this.ticketRequest&&this.net.now()-this.ticketRequest.at>5000){this.ticketRequest.resolve(false);this.ticketRequest=null;this.notice('Ticket machine timed out. Try again.');}
+  this.ticketMachine?.update(dt);this.ticketMachine?.updateInventory(available&&!this.active&&!this.local.body.vehicleId);
   if(own?.teleportUsed&&this.einstein?.state().chargesRemaining)this.einstein.markTravel([own.targetX,own.targetZ]);
   if(this.travel){const own=state.npcs?.get(this.net.room.sessionId);if(own?.kind===this.travel.kind)this.travel.confirmed=true;else if(this.travel.confirmed&&!this.pending){this.reset();this.notice('The encounter ended. You can continue playing.');}}
   if(this.local.body.knockdownUntil>this.net.now()&&this.active&&!this.travel)this.reset();
   if(this.pending&&this.net.now()-this.pending.at>7000){const kind=this.pending.kind;this.net.room.send('npc',{action:'cancel',kind,roundStartedAt:state.startedAt});this.pending=null;this.travel=null;this.reset();this.notice('Encounter timed out. Try again.');}
   if(this.retryAt&&this.net.now()>=this.retryAt){this.retryAt=0;if(this.travel)this.send('finish',this.travel.kind);}
-  if(this.previousPoly&&!this.local.body.vehicleId&&available&&!this.active&&!this.inspected){const vehicle=state.vehicles.get(this.previousPoly.id);if(vehicle&&!vehicle.traveling&&this.net.now()>=this.previousPoly.arrival-100){this.inspected=true;this.inspector?.start(this.position);}this.previousPoly=null;}
+  if(this.previousPoly&&!this.local.body.vehicleId&&available&&!this.active&&!this.inspected){const vehicle=state.vehicles.get(this.previousPoly.id);if(vehicle&&!vehicle.traveling&&this.net.now()>=this.previousPoly.arrival-100){this.inspected=true;if(!own?.polybahnTicketed)this.inspector?.start(this.position);}this.previousPoly=null;}
   if(pair){const vehicle=state.vehicles.get(this.local.body.vehicleId);if(vehicle?.traveling)this.previousPoly={id:this.local.body.vehicleId,arrival:vehicle.arrivalAt};}
-  if(available&&!this.active&&!this.local.body.vehicleId){this.finance?.maybeStart(this.position);if(!this.finance?.active())this.tourists?.update(this.position,this.camera);if(!this.active){const b=this.world.data.encounterBounds;if(Math.min(this.position.x-b.minX,b.maxX-this.position.x,this.position.z-b.minZ,b.maxZ-this.position.z)<12)this.send('begin','property');}}
+  if(available&&!this.active){
+   const b=this.world.data.encounterBounds,vehicle=state.vehicles.get(this.local.body.vehicleId);
+   if((!vehicle||!C.isPassengerVehicle(vehicle))&&Math.min(this.position.x-b.minX,b.maxX-this.position.x,this.position.z-b.minZ,b.maxZ-this.position.z)<=12)this.send('begin','property');
+   if(!this.active&&!this.local.body.vehicleId){this.finance?.maybeStart(this.position);if(!this.finance?.active())this.tourists?.update(this.position,this.camera);}
+  }
   this.syncLock();
   this.finance?.update(dt,this.position,this.camera);
   if(this.tourists?.active())this.tourists.update(this.position,this.camera);
@@ -171,16 +209,17 @@ export class NpcFeature {
   this.syncLock();
   for(const [actor,update] of this.skins){if(!actor.parent)this.skins.delete(actor);else update();}
   if(this.net.now()>=this.noticeUntil){const near=this.einstein?.near(this.position),laptop=this.limo?.laptop.position,pickup=this.limo?.state().pickup;
-   const text=pair?'E · Talk to Polybahn passengers · Backspace to leave':near||laptop&&this.position.distanceTo(laptop)<3?'E · Jane Street laptop':this.limo?.state().phase==='waiting'&&this.position.distanceTo(new THREE.Vector3(...pickup))<9?'E · Board your limousine':this.scooter?.canTalk(this.position)?'E · Talk to the scooter riders':'';
+   const text=pair?'E · Talk to Polybahn passengers · Backspace to leave':C.nearTicket(this.position,C.zurichWorld)?'E · Polybahn ticket machine':near||laptop&&this.position.distanceTo(laptop)<3?'E · Jane Street laptop':this.limo?.state().phase==='waiting'&&this.position.distanceTo(new THREE.Vector3(...pickup))<9?'E · Board your limousine':this.scooter?.canTalk(this.position)?'E · Talk to the scooter riders':'';
    this.hint.textContent=near||text;this.hint.hidden=!available||this.active||!text||!!this.local.body.vehicleId&&!pair;
   }
  }
  reset(){
+  if(this.ticketRequest){this.ticketRequest.resolve(false);this.ticketRequest=null;}
   for(const car of this.remoteLimos.values())car.visible=false;
   this.pending=null;this.travel=null;this.retryAt=0;this.previousPoly=null;this.inspected=false;this.menu.hidden=this.message.hidden=true;
   for(const feature of this.features)feature.reset?.();this.scooter?.park();this.syncLock();
  }
  cleanupFeatures(){for(const car of this.remoteLimos.values())car.removeFromParent();this.remoteLimos.clear();for(const feature of this.features.splice(0))feature.dispose?.();this.poly.clear();this.skins.clear();}
  afterRender(){if(!this.abort.signal.aborted)drawPhoneCameraPreviews(this.canvas);}
- dispose(){if(this.abort.signal.aborted)return;const kind=this.travel?.kind??this.pending?.kind;if(kind&&this.net.status==='Connected')this.net.room.send('npc',{action:'cancel',kind,roundStartedAt:this.net.room.state.startedAt});this.reset();this.abort.abort();this.net.onNpcResult=undefined;this.cleanupFeatures();disposeOwnedObject(this.root);this.ui.remove();}
+ dispose(){if(this.abort.signal.aborted)return;const kind=this.travel?.kind??this.pending?.kind;if(kind&&this.net.status==='Connected')this.net.room.send('npc',{action:'cancel',kind,roundStartedAt:this.net.room.state.startedAt});this.reset();this.abort.abort();this.net.onNpcResult=undefined;this.net.onTicketResult=undefined;this.cleanupFeatures();disposeOwnedObject(this.root);this.ui.remove();}
 }

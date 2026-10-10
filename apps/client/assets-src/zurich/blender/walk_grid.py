@@ -115,6 +115,14 @@ for o in objects(OPEN_COLLECTIONS):
     if w: walk.append((o, me, w, o.name))
     if rest: opn.append((o, me, rest, o.name))
     if th: thin.append((o, me, th, o.name))
+# tram stops (Props collection, build_props.py): walls and roof are obstacles; lanterns/bins/flags are not
+stops = [o for o in (bpy.data.collections['Props'].objects if bpy.data.collections.get('Props') else [])
+         if o.type == 'MESH' and o.data.name.startswith('PropModel_TramStop')]
+for o in stops:
+    me = mesh_of(o)
+    polys = list(me.polygons)
+    opn.append((o, me, polys, o.name))
+    thin.append((o, me, [p for p in polys if abs((o.matrix_world.to_3x3() @ p.normal).normalized().z) < 0.5], o.name))
 H_bvh, _ = bvh([f for f in walk if f[3] == 'Polybahn_halls'])  # station floors + thresholds
 W_bvh, W_tag = bvh(walk); S_bvh, _ = bvh(solid); B_bvh, _ = bvh(styled); O_bvh, _ = bvh(opn); T_bvh, _ = bvh(thin)
 # water flag per Ground face index (BVH indices follow polygon order; Ground is first in `walk`)
@@ -233,7 +241,7 @@ islands.sort(reverse=True)
 
 # --- 0.5 m detail patches over the Polybahn stations: the 2 m grid cannot follow their thin, rotated
 # walls and 3.6 m doors. The game checks a patch first (height + blocked), the 2 m grid elsewhere.
-PATCH_STEP, PATCH_THIN, PATCH_MARGIN = 0.5, 0.25, 6.0  # thin reach = half a cell
+PATCH_STEP, PATCH_THIN, PATCH_MARGIN = 0.5, 0.25, 3.0  # thin reach = half a cell
 pts = sorted((c.x, -c.y) for o, me, polys, tag in walk if tag == 'Polybahn_halls'
              for c in (o.matrix_world @ p.center for p in polys))
 cut = max(range(1, len(pts)), key=lambda k: pts[k][0] - pts[k - 1][0]) if len(pts) > 1 else len(pts)
@@ -242,6 +250,9 @@ patches, patch_report = [], {}
 EXTRA_PATCHES = {'area2 ramp': [(53.0, 86.0), (80.0, 138.0)], 'area3 terrace ramp': [(194.0, 59.0), (212.0, 82.0)],
                  'area5 corridor': [(-30.0, -153.0), (2.0, -143.0)]}
 groups = [('bottom', pts[:cut]), ('top', pts[cut:])] + [(k, v) for k, v in EXTRA_PATCHES.items()]
+for o in stops:  # 0.5 m patch per tram stop so its open side is walkable and the walls block
+    c = [o.matrix_world @ Vector(b) for b in o.bound_box]
+    groups.append((o.name, [(min(v.x for v in c), min(-v.y for v in c)), (max(v.x for v in c), max(-v.y for v in c))]))
 for name, cl in groups:
     if not cl: continue
     snap = lambda v, f: f(v / PATCH_STEP) * PATCH_STEP

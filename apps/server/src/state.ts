@@ -90,6 +90,9 @@ export const Mate = schema({
   dropStartedAt: t.number().default(0),
 }, "Mate");
 export const Npc = schema({
+  ticketCount: t.uint8().default(0),
+  ticketReadyAt: t.number().default(0),
+  polybahnTicketed: t.boolean().default(false),
   limoVisible: t.boolean().default(false),
   limoX: t.number().default(0),
   limoY: t.number().default(0),

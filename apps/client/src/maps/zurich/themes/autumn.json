@@ -10,11 +10,11 @@
   "sky": "#d9cdb8",
   "lighting": {
     "sun": "#ffd29a",
-    "sunIntensity": 2.0,
+    "sunIntensity": 2.8,
     "sunElevation": 28,
     "sunAzimuth": 235,
     "skyLight": "#f0dcc0",
     "groundLight": "#6e5a48",
-    "hemiIntensity": 0.4, "exposure": 1.2, "environment": 0.9
+    "hemiIntensity": 1.6, "exposure": 1.1, "environment": 0
   }
 }

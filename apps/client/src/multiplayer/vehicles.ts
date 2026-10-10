@@ -406,30 +406,30 @@ export class Vehicles {
       }
     }
     const riding = this.items.get(body.vehicleId)?.latest;
-    let prompt = `Mouse / trackpad look · WASD run · Shift sprint · Space jump · C sprint slide · click/F hit · F5/V view · Esc menu`;
+    let prompt = "";
     if (riding)
       prompt =
         !C.isPassengerVehicle(riding)
-          ? "WASD drive · E exit · mouse / trackpad look · F5/V view · Esc menu"
+          ? "E — Leave vehicle"
           : riding.traveling
-            ? `Riding ${C.transitName(riding)} · ${transitStatus(riding,clock)} · mouse / trackpad look · F5/V view · exit at next stop`
-            : `${C.transitName(riding)} · ${transitStatus(riding,clock)} · E leave · mouse / trackpad look · F5/V view`;
+            ? `${C.transitName(riding)} · ${transitStatus(riding,clock)} · Exit at next stop`
+            : `${C.transitName(riding)} · ${transitStatus(riding,clock)} · E — Leave`;
     else {
       const near = this.items.get(this.nearest(body))?.latest;
       if (near)
         prompt +=
           near.kind === 2
-            ? near.fallenUntil > this.net.now() ? " · Bike recovering" : near.driver ? " · Bike occupied" : " · E ride bike"
+            ? near.fallenUntil > this.net.now() ? "Bike recovering" : near.driver ? "Bike occupied" : "E — Ride bike"
             : near.kind === 0
             ? near.driver
-              ? " · Cart occupied"
-              : " · E ride cart"
+              ? "Cart occupied"
+              : "E — Ride cart"
             : near.traveling
-              ? ` · ${C.transitName(near)} moving`
-              : ` · E board ${C.transitName(near)}${C.isRail(near) ? " · inside boarding circle" : ""}`;
+              ? `${C.transitName(near)} moving`
+              : `E — Enter ${C.transitName(near)}`;
     }
     this.controls.textContent =
-      this.messageUntil > Date.now() ? `${prompt} · ${this.message}` : prompt;
+      this.messageUntil > Date.now() ? [prompt, this.message].filter(Boolean).join(" · ") : prompt;
   }
   dispose() {
     this.abort.abort(); this.publiModel?.dispose();

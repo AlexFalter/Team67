@@ -8,6 +8,7 @@ import { RoundManager } from "./round.ts";
 import { PubliBikes } from "./publiBikes.ts";
 import { MateMachine } from "./mate.ts";
 import { NpcEncounters } from "./npcs.ts";
+import { TicketMachine } from './tickets.ts';
 // The prototype runs one server process. Reserve synchronously before async
 // physics initialization so two simultaneous creates cannot claim one code.
 const codes = new Set<string>();
@@ -41,6 +42,8 @@ export class Race extends Room<{ state: RaceState }> {
     this.publiBikes = this.createPubliBikes();
     this.mate = new MateMachine(this.state, this.world);
     this.npcs = this.createNpcs();
+    const tickets = new TicketMachine(this.state,this.world);
+    this.onMessage('ticket', (client, data: unknown) => tickets.command(client,data));
     const configuredDuration = Number(process.env.ROUND_DURATION_MS ?? C.ROUND_DURATION_MS);
     const duration = Number.isFinite(configuredDuration) && configuredDuration > 0 ? configuredDuration : C.ROUND_DURATION_MS;
     const introDuration = Number(process.env.BATTLE_BUS_INTRO_MS ?? C.BATTLE_BUS_DURATION_MS);
@@ -184,10 +187,10 @@ export class Race extends Room<{ state: RaceState }> {
       now = Date.now(),
       dt = Math.max(0.001, (now - (this.lastMoves.get(client.sessionId) ?? now)) / 1000);
     const respawn =
-      p.y < (this.world.height(p.x, p.z) ?? this.world.spawn.y) - 8 &&
+      p.y < (this.world.height(p.x, p.z, p.y) ?? this.world.spawn.y) - 8 &&
       Math.abs(data[0] - this.world.spawn.x) <= C.SPAWN_SPREAD &&
       Math.abs(data[2] - this.world.spawn.z) <= C.SPAWN_SPREAD &&
-      Math.abs(data[1] - (this.world.height(data[0], data[2]) ?? Infinity)) <
+      Math.abs(data[1] - (this.world.height(data[0], data[2], data[1]) ?? Infinity)) <
         0.1;
     if (
       !respawn &&
@@ -212,7 +215,7 @@ export class Race extends Room<{ state: RaceState }> {
     p.vz = clamp(data[6], C.MAX_HORIZONTAL_SPEED);
     p.anim = now < p.knockdownUntil ? 3 : Math.max(0, Math.min(C.SLIDE_ANIM, Math.floor(data[7])));
     p.simTime = now;
-    p.grounded = Math.abs(p.y - (this.world.height(p.x, p.z) ?? Infinity)) < 0.1 && p.vy <= 0;
+    p.grounded = Math.abs(p.y - (this.world.height(p.x, p.z, p.y) ?? Infinity)) < 0.1 && p.vy <= 0;
     if (p.anim === C.SLIDE_ANIM && (!p.grounded || Math.hypot(p.vx, p.vz) < 1))
       p.anim = p.grounded ? 0 : 2;
     this.lastMoves.set(client.sessionId, now);
@@ -276,6 +279,6 @@ export class Race extends Room<{ state: RaceState }> {
       Object.assign(p, point, { vx: 0, vy: 0, vz: 0, grounded: true, anim: 0, simTime: Date.now() });
       this.lastMoves.set(id, p.simTime);
       this.clients.find(c => c.sessionId === id)?.send("playerCorrection", this.correction(p));
-    });
+    }, client => this.vehicles.exit(client));
   }
 }

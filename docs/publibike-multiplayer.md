@@ -108,3 +108,15 @@ landing frame if sprinting, above minimum speed and off cooldown. Releasing
 sprint, jumping again, knockdown, respawning or boarding cancels the buffer.
 `tests/slide-buffer.test.ts` covers landing timing, cancellation, bike seat
 height/speed and first-person riding streak visibility.
+
+### Cursor recovery
+
+Scanner dismissal and crash interruption restore gameplay through GameControls,
+clear the pause overlay, and synchronize cursor capture before delayed browser
+events arrive. Intentional scanner releases do not pause the game again.
+Unlocking or dismissing the scanner automatically recaptures the cursor, so
+trackpad/mouse look continues immediately. If the browser rejects capture, a
+click-to-play control remains available to retry; Escape still releases it.
+Missing reservation or unlock replies time out after five seconds instead of
+leaving a phone overlay indefinitely. Knockdown keeps camera look available.
+Regression tests cover interruption, timeouts, real releases and late releases.

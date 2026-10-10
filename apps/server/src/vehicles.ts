@@ -31,7 +31,7 @@ export class VehicleManager {
       Object.assign(tram, C.railFrame(tram)); this.add("tram-1", tram);
       for (let i = 0; i < 2; i++) {
         const cabin = C.createVehicle(C.POLYBAHN_KIND); cabin.capacity = 12;
-        cabin.railDistance = i ? C.polybahnPath.length : 0; cabin.railReverse = !!i; cabin.railLane = i ? -1.25 : 1.25;
+        cabin.railDistance = i ? C.polybahnPath.length : C.POLYBAHN_START_DISTANCE; cabin.railReverse = !!i; cabin.railLane = i ? -1.25 : 1.25;
         Object.assign(cabin, C.railFrame(cabin)); this.add(`polybahn-${i + 1}`, cabin);
       }
     }
@@ -77,6 +77,10 @@ export class VehicleManager {
         false,
         v.kind === 0 ? "This cart is occupied." : "The shuttle is full.",
       );
+    if (v.kind === C.POLYBAHN_KIND) {
+      const npc = this.state.npcs.get(client.sessionId);
+      if (npc) { npc.polybahnTicketed = npc.ticketCount > 0; if (npc.polybahnTicketed) npc.ticketCount--; }
+    }
     p.vehicleId = data as string;
     p.vehicleKind = v.kind;
     p.seat = seat;
