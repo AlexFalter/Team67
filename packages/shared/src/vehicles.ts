@@ -62,13 +62,13 @@ export function stepCart(v: VehicleState, input: Input, dt: number, world: Movem
   if (world.name === "flat") resolveHouses(body, previous, radius);
   else {
     const canMove = (x: number, z: number) => {
-      const y = world.height(x, z);
+      const y = world.height(x, z, v.y);
       return y !== undefined && Math.abs(y - v.y) <= C.MAX_GROUND_STEP &&
         !world.blocked(x, y, z, radius, C.CART_HIT_HEIGHT);
     };
     if (!canMove(body.x, previous.z)) { body.x = previous.x; body.vx = 0; }
     if (!canMove(body.x, body.z)) { body.z = previous.z; body.vz = 0; }
-    v.y = world.height(body.x, body.z) ?? v.y;
+    v.y = world.height(body.x, body.z, v.y) ?? v.y;
   }
   v.x = body.x; v.z = body.z; v.vx = body.vx; v.vz = body.vz;
   return Math.hypot(vx - v.vx, vz - v.vz);

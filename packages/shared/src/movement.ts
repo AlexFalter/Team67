@@ -140,10 +140,10 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
     p.groundTime = -1e9; p.jumpUntil = 0;
   }
   const previousY = p.y;
-  const oldGround = world.height(p.x, p.z), grounded = p.grounded;
+  const oldGround = world.height(p.x, p.z, previousY), grounded = p.grounded;
   p.vy += C.GRAVITY * dt;
   const canMove = (x: number, z: number) => {
-    const ground = world.height(x, z);
+    const ground = world.height(x, z, previousY);
     return !world.blocked(x, p.y, z, C.CAPSULE_RADIUS, C.CAPSULE_HEIGHT) &&
       (!grounded || ground === undefined || oldGround === undefined || ground - oldGround <= C.MAX_GROUND_STEP);
   };
@@ -151,7 +151,7 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
   if (canMove(x, p.z)) p.x = x; else p.vx = 0;
   if (canMove(p.x, z)) p.z = z; else p.vz = 0;
   p.y += p.vy * dt;
-  const ground = world.height(p.x, p.z);
+  const ground = world.height(p.x, p.z, previousY);
   if (ground !== undefined && p.vy <= 0 &&
     ((previousY >= ground - 0.05 && p.y <= ground) ||
       (grounded && oldGround !== undefined && Math.abs(ground - oldGround) <= C.MAX_GROUND_STEP))) {

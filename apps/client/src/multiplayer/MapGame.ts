@@ -1,5 +1,6 @@
 import { decoratePlayer } from "./playerIdentity.ts";
 import * as THREE from "three";
+import * as C from "@race/shared";
 import { BATTLE_BUS_HEADING, INTERP_DELAY_MS, IDLE_INPUT, zurichWorld, isRail, railFrame, railSeat, tramDerailFrame, examSecondsRemaining, RoomPhase } from "@race/shared";
 import { Network } from "./net.ts";
 import { LocalPlayer } from "./localPlayer.ts";
@@ -21,6 +22,7 @@ import { ExamSequence, type ExamSession } from "../exam/ExamSequence";
 import { MateFeature } from "./mate.ts";
 import { MenuScene } from "./MenuScene";
 import { NpcFeature } from "../npcPrototype/host.js";
+import { GameAudio, type LoopSource } from "./gameAudio.ts";
 
 // MapViewer owns rendering and the loop; this instance owns gameplay cleanup.
 export class MapGame {
@@ -52,6 +54,11 @@ export class MapGame {
   private mate: MateFeature;
   private menuScene: MenuScene;
   private npcs: NpcFeature;
+  private audio = new GameAudio();
+  private audioSources = new Map<string, LoopSource>();
+  private limoTrack = new Map<string, { x: number; z: number; speed: number }>();
+  private medalTargets = new Set<string>();
+  private lastCanDrop = 0;
   constructor(scene: THREE.Scene, private camera: THREE.PerspectiveCamera, private canvas: HTMLCanvasElement,
     hud: HTMLDivElement, hints: HTMLDivElement, map: THREE.Object3D, capture: () => void, onExamChange: (session: ExamSession) => void = () => {}) {
     this.exam = new ExamSequence(scene, camera, onExamChange);
@@ -59,11 +66,19 @@ export class MapGame {
     this.disposeMapRaycasts = accelerateMapRaycasts(map);
     this.remotes = new RemotePlayers(scene);
     this.vehicles = new Vehicles(scene, this.net, hints);
-    this.effects = new Effects(scene);
+    this.effects = new Effects(scene, bump => this.audio.bump(this.listener, bump));
     this.hud = new Hud(hud);
     this.publiBikes = new PubliBikeFeature(scene, camera, this.net, this.vehicles, this.local, canvas);
     this.mate = new MateFeature(scene, camera, this.net, this.local, canvas);
-    this.npcs = new NpcFeature(scene, camera, this.net, this.local, this.vehicles, canvas, map, capture);
+    // Camera shutter from mini-games-2 when a photo is taken.
+    this.npcs = new NpcFeature(scene, camera, this.net, this.local, this.vehicles, canvas, map, () => { this.audio.effect("shutter"); return capture(); });
+    this.npcs.onMedal = () => this.audio.medal();
+    for (const [selector, key] of [["#vehicle-sounds", "vehicleSounds"], ["#medal-sounds", "medalSounds"]] as const) {
+      const input = document.querySelector<HTMLInputElement>(selector);
+      if (!input) continue;
+      input.checked = this.audio.settings[key];
+      input.onchange = () => this.audio.setSetting(key, input.checked);
+    }
     this.view = new PlayerView(camera, [map, this.mate.machine], zurichWorld);
     this.bus = new BattleBusIntro(scene, camera, this.net, canvas, () => this.view.sensitivity);
     this.ready = Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready, this.npcs.ready]).then(() => {});
@@ -97,7 +112,7 @@ export class MapGame {
           scene.add(this.mesh, this.firstBody); this.avatarReady = true;
         }
         if (p && this.avatarReady) decoratePlayer(this.mesh, state.members.get(id)?.name ?? "Player");
-      }, hit => this.effects.enqueue(hit), selection);
+      }, hit => { this.awardRunOver(hit); this.effects.enqueue(hit); }, selection);
     });
   }
   get examScreenVisible() { return this.exam.screenVisible; }
@@ -166,7 +181,59 @@ export class MapGame {
         this.firstBody.visible=false;this.mesh.visible=this.avatarReady;
       }
     }
+    this.updateAudio(dt, renderTime);
   }
+  private get listener() { return this.local.body; }
+  // mini-games-2 medals Bloodthirsty / Public Menace / Bike Lane Justice: running someone over.
+  private awardRunOver(hit: { a: string; b: string }) {
+    const room = this.net.room, body = this.local.body;
+    if (!room || hit.a !== room.sessionId || !body.vehicleId || (body.vehicleKind !== 0 && body.vehicleKind !== 2)) return;
+    const key = `${room.state.startedAt}:${hit.b}`;
+    if (this.medalTargets.has(key)) return;
+    this.medalTargets.add(key); this.audio.medal();
+  }
+  private updateAudio(dt: number, renderTime: number) {
+    const state = this.net.room?.state, id = this.net.room?.sessionId, body = this.local.body, sources = this.audioSources;
+    const playing = (this.net.canPlay && !this.exam.active) || this.bus.active;
+    sources.clear();
+    if (state && playing) {
+      const clock = state.phase === RoomPhase.Finished ? state.finishedAt : renderTime;
+      for (const [key, visual] of this.vehicles.items) {
+        const v = visual.rendered, latest = visual.latest, aboard = body.vehicleId === key;
+        const speed = Math.hypot(v.vx, v.vz), x = v.x, z = v.z;
+        if (v.kind === 0) sources.set(key, { sample: "car-engine", motor: true, active: !!latest.driver, speed, x, z, aboard });
+        else if (v.kind === 3) sources.set(key, { sample: "car-engine", motor: true, active: speed > 0.3, speed, x, z, aboard });
+        else if (v.kind === 1) sources.set(key, { sample: "bus-engine", motor: true, active: latest.traveling || latest.departureAt > 0,
+          speed: latest.traveling ? speed : 0, x, z, aboard, door: !latest.traveling });
+        else if (C.isRail(v)) {
+          // Same door timing as the Polybahn door animation in vehicles.ts.
+          const open = !latest.traveling ? (latest.departureAt ? (latest.departureAt + C.TRANSIT_DOOR_MS - clock) / C.TRANSIT_DOOR_MS : 1)
+            : clock < latest.tripStartedAt ? (latest.tripStartedAt - clock) / C.TRANSIT_DOOR_MS
+            : (clock - (latest.arrivalAt - C.TRANSIT_DOOR_MS)) / C.TRANSIT_DOOR_MS;
+          const frame = C.railFrame(v);
+          // A derailed tram goes quiet; main's explosion effect provides the crash sound.
+          sources.set(key, { sample: "rail-running", motor: false, active: !v.derailStartedAt, speed: latest.traveling ? speed : 0, x: frame.x, z: frame.z, aboard, door: open > 0.5 });
+        } else if (v.kind === 2) sources.set(key, { motor: false, active: true, speed: 0, x, z, aboard, crashed: latest.fallenUntil > this.net.now() });
+      }
+      // Jane Street limousines (interview encounter) use the car engine.
+      for (const [owner, npc] of state.npcs ?? []) {
+        if (!npc.limoVisible) { this.limoTrack.delete(owner); continue; }
+        const last = this.limoTrack.get(owner), moved = last && dt > 0 ? Math.hypot(npc.limoX - last.x, npc.limoZ - last.z) / dt : 0;
+        const speed = last ? last.speed + (moved - last.speed) * Math.min(1, dt * 4) : 0;
+        this.limoTrack.set(owner, { x: npc.limoX, z: npc.limoZ, speed });
+        sources.set(`limo:${owner}`, { sample: "car-engine", motor: true, active: true, speed, x: npc.limoX, z: npc.limoZ, aboard: owner === id && npc.kind === "limousine" });
+      }
+      // Mate can landing in the dispenser (the can lands after 0.28 s of its drop pose).
+      const mate = id ? state.mates?.get(id) : undefined;
+      if (mate && (mate.phase === "dropping" || mate.phase === "collect") && mate.dropStartedAt !== this.lastCanDrop && this.net.now() - mate.dropStartedAt >= 280) {
+        this.lastCanDrop = mate.dropStartedAt; this.audio.effect("canDrop");
+      }
+    }
+    const listener = this.bus.active ? this.bus.focus : body;
+    this.audio.update(sources, listener, { paused: !playing || this.controlsPaused, duck: this.npcs.active || this.mate.active || this.publiBikes.active });
+    if (this.net.canPlay && !this.exam.active && !this.npcs.active) this.audio.movement(dt, body, this.local.pushing, this.net.now());
+  }
+  private get controlsPaused() { return !document.querySelector<HTMLElement>("#pause")?.hidden; }
   skipExamTransition() { this.exam.skipTransition(); }
   completeExam(score: number) { this.exam.complete(score); }
   returnFromExam() { this.exam.returnToWorld(); }
@@ -183,6 +250,7 @@ export class MapGame {
     this.menuScene.dispose();
     this.exam.dispose();
     this.npcs.dispose();
+    this.audio.dispose();
     this.mate.dispose();
     this.publiBikes.dispose();
     this.bus.dispose();

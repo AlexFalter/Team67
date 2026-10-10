@@ -56,7 +56,8 @@ export class Effects {
   private motion = new Map<string, { grounded: boolean; sprintJump: boolean; nextDust: number; seen: number }>();
   private geometry = new THREE.SphereGeometry(0.07, 6, 4);
   private abort = new AbortController();
-  constructor(private scene: THREE.Scene) {
+  // Bump sounds use the recorded collision thud from GameAudio (mini-games-2); explosions keep their own sound.
+  constructor(private scene: THREE.Scene, private onBurst: (b: Bump) => void = () => {}) {
     this.speedParticles = new SpeedParticles(scene);
     const resume = () => {
       this.audio ??= new AudioContext();
@@ -130,20 +131,7 @@ export class Effects {
         age: 0,
       });
     }
-    const a = this.audio;
-    if (a?.state === "running") {
-      const o = a.createOscillator(),
-        g = a.createGain();
-      o.type = "sine";
-      o.frequency.setValueAtTime(220, a.currentTime);
-      o.frequency.exponentialRampToValueAtTime(60, a.currentTime + 0.1);
-      g.gain.setValueAtTime(0.12, a.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.12);
-      o.connect(g);
-      g.connect(a.destination);
-      o.start();
-      o.stop(a.currentTime + 0.13);
-    }
+    this.onBurst(b);
   }
   explosion(origin:{x:number;y:number;z:number},listener:{x:number;y:number;z:number}) {
     const a=this.audio, distance=Math.hypot(origin.x-listener.x,origin.y-listener.y,origin.z-listener.z);
