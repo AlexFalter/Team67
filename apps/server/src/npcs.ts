@@ -7,7 +7,8 @@ export class NpcEncounters {
   private reports = new Map<string, number>();
   private carReports = new Map<string, number>();
   constructor(private state: RaceState, private world: C.MovementWorld,
-    private correct: (id: string, point: C.GroundPoint) => void) {}
+    private correct: (id: string, point: C.GroundPoint) => void,
+    private exitVehicle?: (client: Client) => void) {}
   join(id: string) { this.state.npcs.set(id, new Npc()); }
   leave(id: string) { this.state.npcs.delete(id); this.reports.delete(id); this.carReports.delete(id); }
   busy(id: string) { return !!this.state.npcs.get(id)?.kind; }
@@ -32,6 +33,12 @@ export class NpcEncounters {
       const target = { x: npc.targetX, y: npc.targetY, z: npc.targetZ };
       npc.kind = ""; npc.limoVisible = false; this.correct(id, target); return reply(true, "", target);
     }
+    let boundaryVehicle = false;
+    if (cmd.action === 'begin' && cmd.kind === 'property' && p.vehicleId && !npc.kind && p.knockdownUntil <= now) {
+      const bounds = C.npcBounds(this.world), vehicle = this.state.vehicles.get(p.vehicleId);
+      if (vehicle && !C.isPassengerVehicle(vehicle) && Math.min(p.x-bounds.minX,bounds.maxX-p.x,p.z-bounds.minZ,bounds.maxZ-p.z) <= 13)
+        { this.exitVehicle?.(client); boundaryVehicle = !p.vehicleId; }
+    }
     if (npc.kind || p.vehicleId || p.knockdownUntil > now) return reply(false, "Step away from your vehicle first.");
     const near = (point: number[], range: number) => Math.hypot(p.x-point[0],p.y-point[1],p.z-point[2]) <= range;
     if (cmd.action === "solve") {
@@ -54,9 +61,9 @@ export class NpcEncounters {
       target = C.findGround(this.world,landing[0]+4,landing[2]);
       npc.limoUsed = true;
     } else {
-      const b = this.world.bounds;
-      if (Math.min(p.x-b.minX,b.maxX-p.x,p.z-b.minZ,b.maxZ-p.z)>13) return reply(false, "You are already on public property.");
-      target = C.battleBusDropoffs(this.world, 40)[member.introSeat] ?? this.world.spawn;
+      const b = C.npcBounds(this.world);
+      if (!boundaryVehicle && Math.min(p.x-b.minX,b.maxX-p.x,p.z-b.minZ,b.maxZ-p.z)>13) return reply(false, "You are already on public property.");
+      target = this.world.spawn;
     }
     if (!target) return reply(false, "No safe landing is available.");
     npc.kind = cmd.kind!; npc.startedAt = now;
