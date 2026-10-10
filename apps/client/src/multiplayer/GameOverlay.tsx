@@ -84,6 +84,8 @@ export function GameOverlay({ resolution, onResolutionChange }: {
         <button id="resume">Resume game</button>
         <button id="perspective">View: First person</button>
         <label><input id="bob" type="checkbox" defaultChecked /> Walking / running bob</label>
+        <label><input id="vehicle-sounds" type="checkbox" defaultChecked /> Movement and vehicle sounds</label>
+        <label><input id="medal-sounds" type="checkbox" defaultChecked /> Medal sounds</label>
         <label htmlFor="sensitivity">Mouse / trackpad sensitivity</label>
         <input id="sensitivity" type="range" min="8" max="60" defaultValue="25" />
         <label htmlFor="render-resolution">Rendering resolution</label>

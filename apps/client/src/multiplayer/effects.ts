@@ -8,20 +8,10 @@ interface Particle {
 export class Effects {
   private queue: Bump[] = [];
   private particles: Particle[] = [];
-  private audio?: AudioContext;
   private motion = new Map<string, { grounded: boolean; nextDust: number; seen: number }>();
   private geometry = new THREE.SphereGeometry(0.07, 6, 4);
-  private abort = new AbortController();
-  constructor(private scene: THREE.Scene) {
-    const resume = () => {
-      this.audio ??= new AudioContext();
-      void this.audio.resume();
-    };
-    window.addEventListener("pointerdown", resume, {
-      signal: this.abort.signal,
-    });
-    window.addEventListener("keydown", resume, { signal: this.abort.signal });
-  }
+  // Bump sounds now use the recorded collision thud from GameAudio (mini-games-2).
+  constructor(private scene: THREE.Scene, private onBurst: (b: Bump) => void = () => {}) {}
   enqueue(b: Bump) {
     this.queue.push(b);
     this.queue.sort((a, b) => a.t - b.t);
@@ -79,23 +69,9 @@ export class Effects {
         age: 0,
       });
     }
-    const a = this.audio;
-    if (a?.state === "running") {
-      const o = a.createOscillator(),
-        g = a.createGain();
-      o.type = "sine";
-      o.frequency.setValueAtTime(220, a.currentTime);
-      o.frequency.exponentialRampToValueAtTime(60, a.currentTime + 0.1);
-      g.gain.setValueAtTime(0.12, a.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.12);
-      o.connect(g);
-      g.connect(a.destination);
-      o.start();
-      o.stop(a.currentTime + 0.13);
-    }
+    this.onBurst(b);
   }
   dispose() {
-    this.abort.abort();
     this.queue = [];
     for (const p of this.particles) {
       p.mesh.removeFromParent();
@@ -103,6 +79,5 @@ export class Effects {
     }
     this.particles = [];
     this.geometry.dispose();
-    if (this.audio) void this.audio.close();
   }
 }
