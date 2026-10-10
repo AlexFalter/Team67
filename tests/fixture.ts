@@ -17,7 +17,7 @@ export async function withServer(run: (client: Client, rooms: Room<any, WireStat
   const socket = createServer(), port = await listen(socket);
   await new Promise<void>(resolve => socket.close(() => resolve()));
   const server = spawn(process.execPath, ["--import", "tsx", "apps/server/src/index.ts"],
-    { env: { ...process.env, PORT: String(port), GAME_WORLD: world, ...extraEnv }, stdio: ["ignore", "pipe", "pipe"] });
+    { env: { ...process.env, PORT: String(port), GAME_WORLD: world, BATTLE_BUS_INTRO_MS: "100", BATTLE_BUS_LEAD_MS: "0", ...extraEnv }, stdio: ["ignore", "pipe", "pipe"] });
   let logs = "";
   server.stdout.on("data", chunk => logs += chunk); server.stderr.on("data", chunk => logs += chunk);
   const rooms: Room<any, WireState>[] = [];
@@ -39,5 +39,5 @@ export async function withServer(run: (client: Client, rooms: Room<any, WireStat
 
 export async function startRound(room: Room<any, WireState>, participants: Room<any, WireState>[]) {
   for (const participant of participants) participant.send("ready", true);
-  await until(() => room.state.phase === "Running", "all players ready");
+  await until(() => room.state.phase === "Running" && room.state.introComplete, "all players ready and bus arrived");
 }
