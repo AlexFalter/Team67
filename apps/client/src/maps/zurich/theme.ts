@@ -207,6 +207,8 @@ export function surfaceTexture(name: string, style: SurfaceStyle, pixels: number
   const texture = new CanvasTexture(canvas);
   texture.flipY = false; // glTF UVs: row 0 of the canvas is v = 0 (otherwise signs/windows render upside down)
   texture.colorSpace = SRGBColorSpace;
+  // Text signs use the authored glTF UV orientation, unlike repeating ground patterns.
+  if (style.pattern === "text") texture.flipY = false;
   texture.magFilter = NearestFilter;
   texture.wrapS = texture.wrapT = RepeatWrapping;
   return texture;

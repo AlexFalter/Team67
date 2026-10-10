@@ -146,18 +146,39 @@ button:disabled { cursor: wait; opacity: 0.6; }
 
 #lobby, #room-screen { align-items: safe center; }
 
-#publibike-scan { position:absolute; inset:0; z-index:15; display:grid; place-items:center; touch-action:none; }
+#publibike-scan { position:absolute; inset:0; z-index:15; display:grid; place-items:center; touch-action:none; background:#0007; }
 #publibike-scan[hidden], #publi-bike-battery[hidden] { display:none; }
-.bike-phone { width:300px; max-width:80vw; border:8px solid #171b26; border-radius:28px; color:#edf4fc; box-shadow:0 0 0 2px #697081,0 0 0 100vmax #0008; overflow:hidden; background:linear-gradient(#171b26 46px,transparent 46px,transparent 306px,#171b26 306px); }
-.bike-phone h2 { font:600 16px/18px Arial; padding:14px; margin:0; }
-.bike-viewfinder { height:260px; display:grid; place-items:center; background:#ffffff08; }
-.bike-viewfinder i { width:68px; height:44px; border:3px solid #ffd174; }
-.bike-phone p { margin:12px; font:13px/1.4 Arial; }
-.bike-phone button { display:block; margin:12px auto; padding:8px 16px; border-radius:10px; cursor:pointer; }
-.bike-scan-progress { height:4px; background:#ffffff20; margin:12px; }
+.bike-phone { width:min(340px,calc(100vw - 32px),calc((100dvh - 170px)*.75)); box-sizing:border-box; border:8px solid #171b26; border-radius:28px; color:#edf4fc; box-shadow:0 0 0 2px #697081,0 15px 60px #0008; overflow:hidden; background:#171b26; }
+.bike-phone-status { display:flex; justify-content:space-between; padding:7px 14px 0; font:10px Arial; color:#cbd4dc; }
+.bike-phone h2 { font:600 14px/18px Arial; padding:9px 12px; margin:0; }
+.bike-viewfinder { position:relative; aspect-ratio:3/4; width:100%; overflow:hidden; background:#263138; cursor:crosshair; touch-action:none; }
+.bike-viewfinder canvas { position:absolute; inset:0; display:block; width:100%; height:100%; }
+.bike-viewfinder i { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:68px; height:44px; border:3px solid #ffd174; pointer-events:none; }
+#publibike-scan[data-aligned=true] .bike-viewfinder i { border-color:#7ef1b8; }
+.bike-phone-controls { padding:10px; }
+.bike-phone p { margin:7px 0 0; min-height:18px; font:12px/1.4 Arial; }
+.bike-phone-home { display:flex; justify-content:center; padding:3px 0 8px; }
+.bike-phone-home button { width:24px; height:24px; padding:0; border:2px solid #666b77; border-radius:50%; background:#11141b; cursor:pointer; }
+.bike-phone-home button:focus-visible { outline:2px solid #ed9ad8; outline-offset:3px; }
+.bike-scan-progress { height:4px; background:#ffffff20; border-radius:2px; overflow:hidden; }
 .bike-scan-progress i { display:block; height:100%; width:0; background:#ed9ad8; }
 #publi-bike-battery { position:absolute; bottom:64px; left:16px; padding:12px; background:#142333dd; color:#edf4fc; border-radius:8px; font:14px monospace; pointer-events:none; }
 .map-viewer:has(#publibike-scan:not([hidden])) :is(.mode-toggle, #play, #crosshair, #pause) { display:none; }
+
+#activity-feed { position: absolute; right: 20px; top: 100px; max-width: min(340px, calc(100% - 40px)); display: grid; gap: 6px; pointer-events: none; color: #edf4fc; font: 14px/1.4 monospace; text-shadow: 0 1px 3px #000; }
+#activity-feed[hidden] { display: none; }
+#activity-feed > div { padding: 7px 10px; background: #142333c9; border-radius: 5px; overflow-wrap: anywhere; }
+
+#dev-settings { margin: 16px 0; border: 1px solid #657b8d; border-radius: 8px; padding: 8px 12px; }
+#dev-settings legend { color: #b9ccd9; font-size: 12px; }
+#dev-settings label { display: flex; align-items: center; gap: 10px; }
+#dev-settings input[type="checkbox"] { width: auto; padding: 0; accent-color: #91e5b9; }
+#dev-settings p { margin-bottom: 4px; }
+
+/* The centred viewfinder reticle is the scan cursor; input spans the overlay. */
+#publibike-scan { cursor: none; }
+#publibike-scan .bike-viewfinder { cursor: none; }
+#publibike-scan button { cursor: pointer; }
 
 .game-loading { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; padding: 32px; background: #12272e; color: #edf4ef; text-align: center; font-family: system-ui, sans-serif; }
 .game-loading > div { width: min(520px, 100%); }

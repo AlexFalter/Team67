@@ -145,6 +145,16 @@ export class Effects {
       o.stop(a.currentTime + 0.13);
     }
   }
+  explosion(origin:{x:number;y:number;z:number},listener:{x:number;y:number;z:number}) {
+    const a=this.audio, distance=Math.hypot(origin.x-listener.x,origin.y-listener.y,origin.z-listener.z);
+    if(!a||a.state!=="running"||distance>80)return;
+    const buffer=a.createBuffer(1,Math.floor(a.sampleRate*.8),a.sampleRate),samples=buffer.getChannelData(0);
+    for(let i=0;i<samples.length;i++)samples[i]=(Math.random()*2-1)*Math.exp(-i/a.sampleRate*7);
+    const source=a.createBufferSource(),filter=a.createBiquadFilter(),gain=a.createGain();
+    source.buffer=buffer;filter.type="lowpass";filter.frequency.value=420;gain.gain.value=.35/(1+distance/15);
+    source.connect(filter);filter.connect(gain);gain.connect(a.destination);
+    source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect();};source.start();
+  }
   dispose() {
     this.abort.abort();
     this.queue = [];

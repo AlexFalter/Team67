@@ -25,12 +25,16 @@ export class Race extends Room<{ state: RaceState }> {
   private publiBikes!: PubliBikes;
   private mate!: MateMachine;
   private npcs!: NpcEncounters;
-  async onCreate(options: { code?: unknown } = {}) {
+  async onCreate(options: { code?: unknown; devMode?: unknown; skipIntro?: unknown; goldPubliBikes?: unknown; railCrashProtection?: unknown } = {}) {
     if (options.code !== undefined) {
       const code = C.roomCode(options.code);
       if (codes.has(code)) throw new Error("That code is already in use. Join it or choose another.");
       codes.add(code); this.code = code; this.roomId = code;
     }
+    this.state.devMode = options.devMode === true;
+    this.state.railCrashProtection=this.state.devMode&&options.railCrashProtection===true;
+    this.state.goldPubliBikes = options.goldPubliBikes !== false;
+    this.state.skipIntro = this.state.devMode && options.skipIntro === true;
     this.physics = await ContactWorld.create(this.world);
     this.state.serverTime = Date.now();
     this.vehicles = new VehicleManager(this.state, this.world);
@@ -44,8 +48,8 @@ export class Race extends Room<{ state: RaceState }> {
     this.rounds = new RoundManager(this.state, duration, () => {
       for (const id of this.state.players.keys()) this.lastMoves.set(id, Date.now());
     }, () => this.resetRound(), {
-      durationMs: Number.isFinite(introDuration) && introDuration > 0 ? introDuration : C.BATTLE_BUS_DURATION_MS,
-      leadMs: Number.isFinite(introLead) && introLead >= 0 ? introLead : C.BATTLE_BUS_LEAD_MS,
+      durationMs: this.state.skipIntro ? 0 : Number.isFinite(introDuration) && introDuration > 0 ? introDuration : C.BATTLE_BUS_DURATION_MS,
+      leadMs: this.state.skipIntro ? 0 : Number.isFinite(introLead) && introLead >= 0 ? introLead : C.BATTLE_BUS_LEAD_MS,
       onArrival: () => this.arriveFromBus(),
     });
     registerExamDebug(this, this.world, this.lastMoves, id => this.rounds.canPlay(id));
