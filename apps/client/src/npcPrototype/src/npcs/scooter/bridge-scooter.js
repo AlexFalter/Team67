@@ -43,21 +43,26 @@ export function createBridgeScooter(scene,world,{horns=gameConfig.npcs.scooter.h
  const nav=createMapNavigation({data:world.data,height:world.height,blocked:(x,z)=>!safe(x,z)},{penetration:()=>0},{step:2});
  let entry=placement.entrance?placementPoint(placement.entrance,'scooter entrance'):null;
  if(entry&&!safe(...entry))throw Error('Scooter entrance is blocked');
+ // The map's north edge is no longer straight (the terrain ends before bounds.maxZ in places),
+ // so enter at the northernmost clear ground of each column rather than at bounds.maxZ.
+ let edge=bounds.maxZ;
+ const clearAt=(x,z)=>Array.from({length:9},(_,i)=>safe(x,z+i*.25)).every(Boolean);
  for(let offset=0;offset<300&&!entry;offset+=2)for(const side of [-1,1]){
-  const x=placement.entranceX+side*offset,z=bounds.maxZ-2;
-  if(Array.from({length:9},(_,i)=>safe(x,z+i*.25)).every(Boolean)){entry=[x,z];break;}
+  const x=placement.entranceX+side*offset;let z=bounds.maxZ-2;
+  while(z>bounds.maxZ-400&&!safe(x,z))z-=2;
+  z-=2;if(clearAt(x,z)){entry=[x,z];edge=Math.min(bounds.maxZ,z+2);break;}
  }
  if(!entry)throw Error('No safe scooter entrance from the void');
  const approach=navigatePlacement(nav,entry,placement.approachWaypoints,bridge[0]);
  if(approach.length>1&&nav.line(new THREE.Vector3(entry[0],world.height(...entry),entry[1]),new THREE.Vector3(approach[1][0],world.height(...approach[1]),approach[1][1])))approach.shift();
  if(approach.length>1&&nav.line(new THREE.Vector3(approach.at(-2)[0],world.height(...approach.at(-2)),approach.at(-2)[1]),new THREE.Vector3(bridge[0][0],world.height(...bridge[0]),bridge[0][1])))approach.pop();
- const route=[[entry[0],bounds.maxZ+30],entry,...approach,bridge[0],bridge[1]];
+ const route=[[entry[0],edge+30],entry,...approach,bridge[0],bridge[1]];
  const nodes=route.map(([x,z],i)=>new THREE.Vector3(x,i===0?world.height(...entry):world.height(x,z),z));
  const spans=[];let length=0;for(let i=1;i<nodes.length;i++){const span=nodes[i].clone().sub(nodes[i-1]);const size=Math.hypot(span.x,span.z);if(size<.001)continue;spans.push({a:nodes[i-1],b:nodes[i],start:length,size});length+=size;}
  const bridgeStart=length-Math.hypot(bridge[1][0]-bridge[0][0],bridge[1][1]-bridge[0][1]);
- function frame(distance){const span=spans.find(s=>distance<=s.start+s.size)??spans.at(-1),t=THREE.MathUtils.clamp((distance-span.start)/span.size,0,1),p=span.a.clone().lerp(span.b,t);if(p.z<=bounds.maxZ)p.y=world.height(p.x,p.z);return {p,heading:Math.atan2(-(span.b.x-span.a.x),-(span.b.z-span.a.z))};}
+ function frame(distance){const span=spans.find(s=>distance<=s.start+s.size)??spans.at(-1),t=THREE.MathUtils.clamp((distance-span.start)/span.size,0,1),p=span.a.clone().lerp(span.b,t);if(p.z<=edge)p.y=world.height(p.x,p.z);return {p,heading:Math.atan2(-(span.b.x-span.a.x),-(span.b.z-span.a.z))};}
  function point(distance){return frame(distance).p;}
- for(let d=0;d<=length;d+=.25){const p=point(d);if(p.z<=bounds.maxZ&&!safe(p.x,p.z))throw Error('Scooter arrival route is not clear');}
+ for(let d=0;d<=length;d+=.25){const p=point(d);if(p.z<=edge&&!safe(p.x,p.z))throw Error('Scooter arrival route is not clear');}
  const audio=new Audio('/audio/frankfurt-dialogue.mp3?v=2'),clips=[audio];for(const audio of clips){audio.preload='auto';audio.volume=gameConfig.npcs.scooter.volume;}
  const caption=document.createElement('aside');caption.id='bridge-scooter-caption';caption.hidden=true;caption.setAttribute('aria-live','polite');uiRoot.append(caption);styleEncounterLine(caption);caption.classList.add('encounter-subtitle');
  let distance=0,age=0,used=false,moving=false,playing=false,played=false,failed=false,line=-1,generation=0,cooldown=0,speed=0,heading=0,stopDistance=length,phase='waiting',diverted=false,lastScan=-1;
