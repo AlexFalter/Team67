@@ -36,7 +36,7 @@ export class RoomFlow {
     this.root.querySelector("#room-leave")!.addEventListener("click", () => location.reload(), options);
   }
   patch(state: WorldState, id: string) {
-    const signature = JSON.stringify([state.phase, state.introComplete, state.hostId, id,
+    const signature = JSON.stringify([state.phase, state.introComplete, state.devMode, state.skipIntro, state.hostId, id,
       [...state.members].map(([key, m]) => [key, m.name, m.ready, m.spectator]),
       [...state.results].map(([key, r]) => [key, r.name, r.hitsLanded, r.hitsReceived])]);
     if (signature === this.signature) return;
@@ -88,9 +88,11 @@ export class RoomFlow {
     }
   }
   private lobbyMessage() {
-    return this.net.room?.state.hostId === this.net.room?.sessionId
+    const state = this.net.room?.state;
+    const prefix = state?.devMode ? `Dev mode${state.skipIntro ? " · bus intro skipped" : ""}. ` : "";
+    return prefix + (state?.hostId === this.net.room?.sessionId
       ? "Share the room code. When you're ready, start the match for everyone."
-      : "You're in. The host will start the match—every player competes solo.";
+      : "You're in. The host will start the match—every player competes solo.");
   }
   update() {
     if (this.net.room?.state.phase === RoomPhase.Lobby && !this.prepared)

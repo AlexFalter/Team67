@@ -96,3 +96,51 @@ test("looking changes hit facing while stationary or strafing, without rotating 
   C.stepPlayer(p, { ...C.IDLE_INPUT, aim: true, facing: Math.PI / 2, z: -1 }, 1 / 60);
   assert.equal(p.rotY, Math.PI / 2); assert.ok(p.z < 0, "strafe does not change aim");
 });
+
+test("Polybahn third-person camera frames the whole cabin in both directions", () => {
+  const camera = new PerspectiveCamera(75), view = new PlayerView(camera, []), p = C.createBody();
+  p.vehicleId = "polybahn-1"; p.vehicleKind = C.POLYBAHN_KIND;
+  view.cycle();
+  for (let i = 0; i < 120; i++) view.update(p, 1 / 60);
+  assert.ok(Math.hypot(camera.position.x - p.x, camera.position.z - p.z) > 9.9);
+  assert.ok(camera.position.y > p.y + 4.5, "raised view clears the cabin roof");
+  view.cycle();
+  for (let i = 0; i < 120; i++) view.update(p, 1 / 60);
+  assert.ok(Math.hypot(camera.position.x - p.x, camera.position.z - p.z) > 9.9);
+});
+
+test("Polybahn first-person eyes follow the inclined seat without tilting the horizon", () => {
+  const camera = new PerspectiveCamera(75), view = new PlayerView(camera, []), p = C.createBody();
+  p.vehicleId = "polybahn-1"; p.vehicleKind = C.POLYBAHN_KIND;
+  const frame = { rotY: Math.PI / 2, pitch: -.22 };
+  for (let i = 0; i < 120; i++) view.update(p, 1 / 60, frame);
+  assert.ok(Math.abs(camera.position.y - (p.y + 1.4 * Math.cos(frame.pitch))) < .001);
+  assert.ok(Math.abs(camera.position.x - (p.x + 1.4 * Math.sin(frame.pitch))) < .001);
+  assert.equal(camera.rotation.z, 0);
+  assert.ok(Math.abs(camera.fov - 72) < .001);
+});
+
+test("tram cameras use seated first-person height and a wider carriage view", () => {
+  const camera = new PerspectiveCamera(75), view = new PlayerView(camera, []), p = C.createBody();
+  p.vehicleId = "tram-1"; p.vehicleKind = C.TRAM_KIND;
+  for (let i = 0; i < 120; i++) view.update(p, 1 / 60, { rotY: 0, pitch: 0 });
+  assert.ok(Math.abs(camera.position.y - p.y - 1.65) < .001);
+  assert.ok(Math.abs(camera.fov - 72) < .001);
+  view.cycle();
+  for (let i = 0; i < 120; i++) view.update(p, 1 / 60);
+  assert.ok(Math.hypot(camera.position.x - p.x, camera.position.z - p.z) > 17.9);
+  assert.ok(camera.position.y > p.y + 6.8);
+});
+
+ test('rail riders never see their own seated body through the first-person camera',async()=>{
+  const {firstPersonBodyVisible}=await import('../apps/client/src/multiplayer/avatar.ts');
+  const p=C.createBody();
+  assert.equal(firstPersonBodyVisible(p,0),true);
+  for(const kind of [C.POLYBAHN_KIND,C.TRAM_KIND]){
+   p.vehicleId='rail';p.vehicleKind=kind;
+   assert.equal(firstPersonBodyVisible(p,0),false);
+   assert.equal(firstPersonBodyVisible(p,1),false);
+  }
+  p.vehicleKind=2;assert.equal(firstPersonBodyVisible(p,0),true);
+  p.vehicleId='';p.vehicleKind=-1;assert.equal(firstPersonBodyVisible(p,0),true);
+ });

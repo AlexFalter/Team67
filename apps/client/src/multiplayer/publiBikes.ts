@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import {PhoneAimInput} from "./phoneAimInput.ts";
+import { bikePreviewCrop, bikePreviewTarget, bikePreviewFov } from "./publiBikeCamera.ts";
 import * as C from "@race/shared";
 import type { Network } from "./net.ts";
 import type { Vehicles } from "./vehicles.ts";
@@ -12,8 +14,10 @@ export class PubliBikeFeature {
   private sign: THREE.Sprite;
   private signCanvas = document.createElement("canvas");
   private signText = "";
+  private site = C.publiBikeStation(C.zurichWorld);
   private modal = document.createElement("section");
   private battery = document.createElement("aside");
+  private preview: HTMLCanvasElement;
   private status: HTMLElement;
   private bar: HTMLElement;
   private held = new Set<string>();
@@ -25,12 +29,14 @@ export class PubliBikeFeature {
   private aimed = false;
   private yaw = 0.18;
   private pitch = -0.12;
-  private drag?: { x: number; y: number };
+  private mouse = new PhoneAimInput();
+  private targetYaw = .18;
+  private targetPitch = -.12;
   private lastAim = { yaw: 0.18, pitch: -0.12 };
   private savedView?: { position: THREE.Vector3; quaternion: THREE.Quaternion; up: THREE.Vector3; fov: number };
   constructor(scene: THREE.Scene, private camera: THREE.PerspectiveCamera, private net: Network,
     private vehicles: Vehicles, private local: LocalPlayer, private canvas: HTMLCanvasElement) {
-    const site = C.publiBikeStation(C.zurichWorld);
+    const site = this.site;
     this.station.name = "PubliBike station";
     const pink = new THREE.MeshStandardMaterial({ color: "#a82779" }), metal = new THREE.MeshStandardMaterial({ color: "#50606b" });
     const column = new THREE.Mesh(new THREE.BoxGeometry(0.65, 2.35, 0.38), pink);
@@ -52,22 +58,30 @@ export class PubliBikeFeature {
     this.station.add(this.sign); scene.add(this.station);
     this.modal.id = "publibike-scan"; this.modal.hidden = true; this.modal.setAttribute("role", "dialog");
     this.modal.setAttribute("aria-modal", "true"); this.modal.setAttribute("aria-label", "Unlock PubliBike");
-    this.modal.innerHTML = `<div class="bike-phone"><h2>PubliBike <span></span></h2><div class="bike-viewfinder"><i></i></div><div class="bike-scan-progress"><i></i></div><p role="status" aria-live="polite"></p><p>Drag to aim · WASD / arrows · hold still</p><button type="button">Put phone away</button></div>`;
+    this.modal.innerHTML = `<div class="bike-phone"><div class="bike-phone-status" aria-hidden="true"><span>9:41</span><span>▰</span></div><h2>PubliBike <span></span></h2><div class="bike-viewfinder"><canvas width="600" height="800" aria-label="Live PubliBike QR scanner"></canvas><i></i></div><div class="bike-phone-controls"><div class="bike-scan-progress"><i></i></div><p role="status" aria-live="polite"></p></div><div class="bike-phone-home"><button type="button" aria-label="Close scanner" title="Close scanner · Esc"></button></div></div>`;
+    this.preview = this.modal.querySelector("canvas")!;
     this.status = this.modal.querySelector("[role=status]")!; this.bar = this.modal.querySelector(".bike-scan-progress i")!;
     this.battery.id = "publi-bike-battery"; this.battery.hidden = true; this.battery.setAttribute("role", "status");
     canvas.parentElement!.append(this.modal, this.battery);
     const options = { signal: this.abort.signal };
     this.modal.querySelector("button")!.addEventListener("click", () => this.close(), options);
-    this.modal.addEventListener("pointerdown", e => { if (e.target instanceof HTMLButtonElement) return; this.drag = { x: e.clientX, y: e.clientY }; this.aimed = true; this.modal.setPointerCapture(e.pointerId); }, options);
-    this.modal.addEventListener("pointermove", e => {
-      if (!this.drag) return;
-      this.yaw -= (e.clientX - this.drag.x) * 0.003; this.pitch -= (e.clientY - this.drag.y) * 0.003;
-      this.drag = { x: e.clientX, y: e.clientY };
+    const finder = this.modal.querySelector<HTMLElement>(".bike-viewfinder")!;
+    // Listen across the overlay, rather than trapping input inside the phone.
+    document.addEventListener("pointermove", e => {
+      if (!this.active) return;
+      const rect = finder.getBoundingClientRect();
+      const delta=this.mouse.move(e.clientX,e.clientY,this.modal.getBoundingClientRect(),e.pointerType==="touch");
+      if (delta.x || delta.y) this.aimed = true;
+      this.targetYaw = THREE.MathUtils.clamp(this.targetYaw - delta.x / rect.width * 1.6, -1.3, 1.3);
+      this.targetPitch = THREE.MathUtils.clamp(this.targetPitch - delta.y / rect.height * 1.2, -1, 1);
     }, options);
-    this.modal.addEventListener("pointerup", () => { this.drag = undefined; }, options);
+    document.addEventListener("pointerout",e=>{if(!e.relatedTarget)this.mouse.reset();},options);
+    document.addEventListener("pointercancel",()=>this.mouse.reset(),options);
+    document.addEventListener("pointerup",e=>{if(e.pointerType==="touch")this.mouse.reset();},options);
+    window.addEventListener("resize", () => this.mouse.reset(), options);
     window.addEventListener("keydown", e => {
       if (!this.active) return;
-      if (["Escape", "KeyE"].includes(e.code)) { e.preventDefault(); this.close(); return; }
+      if (["Escape", "KeyE"].includes(e.code)) { e.preventDefault(); e.stopImmediatePropagation(); this.close(); return; }
       if (["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) { e.preventDefault(); this.held.add(e.code); this.aimed = true; }
       if (e.code === "Tab") { e.preventDefault(); this.modal.querySelector<HTMLButtonElement>("button")!.focus(); }
     }, options);
@@ -108,29 +122,37 @@ export class PubliBikeFeature {
     if (document.pointerLockElement === this.canvas) document.exitPointerLock();
     this.modal.querySelector<HTMLButtonElement>("button")!.focus();
     this.savedView = { position: this.camera.position.clone(), quaternion: this.camera.quaternion.clone(), up: this.camera.up.clone(), fov: this.camera.fov };
-    this.camera.fov = 40; this.camera.updateProjectionMatrix();
-    this.yaw = this.lastAim.yaw = 0.18; this.pitch = this.lastAim.pitch = -0.12;
+    this.camera.fov = bikePreviewFov(this.camera.aspect); this.camera.updateProjectionMatrix();
+    this.yaw = this.targetYaw = this.lastAim.yaw = (Math.random() < .5 ? -1 : 1) * (.12 + Math.random() * .06);
+    this.pitch = this.targetPitch = this.lastAim.pitch = (Math.random() < .5 ? -1 : 1) * (.035 + Math.random() * .03);
+    this.mouse.reset();
     this.progress = this.steady = this.stutter = 0; this.stuttered = this.aimed = false;
   }
   close(cancel = true) {
+    const wasActive = this.active;
     if (this.request && cancel && this.net.status === "Connected") this.net.room.send("bikeScanCancel", this.request);
-    this.request = undefined; this.held.clear(); this.drag = undefined; this.modal.hidden = true;
+    this.request = undefined; this.held.clear(); this.mouse.reset(); this.modal.hidden = true;
     if (this.savedView) {
       this.camera.position.copy(this.savedView.position); this.camera.quaternion.copy(this.savedView.quaternion); this.camera.up.copy(this.savedView.up);
       this.camera.fov = this.savedView.fov; this.camera.updateProjectionMatrix(); this.savedView = undefined;
+    }
+    if (wasActive && this.net.canPlay) {
+      this.local.clear(); this.local.enabled = true; this.canvas.focus();
     }
   }
   update(dt: number) {
     const state = this.net.room?.state;
     if (state?.publiBikes) {
-      let available = 0;
+      const dockedBikes = new Map<number, C.PubliBikeState>();
+      for (const [id, bike] of state.publiBikes) {
+        if (C.publiBikeIsDocked(bike, state.vehicles.get(id), this.site.slots)) dockedBikes.set(bike.dock, bike);
+      }
       for (let i = 0; i < 8; i++) {
-        const docked = [...state.publiBikes.values()].find(b => b.dock === i);
-        this.lights.setColorAt(i, new THREE.Color(!docked ? "#efb859" : docked.broken ? "#ef5e58" : docked.reservedBy ? "#efb859" : "#72e3ad"));
+        const docked = dockedBikes.get(i);
+        this.lights.setColorAt(i, new THREE.Color(!docked ? "#efb859" : docked.broken || docked.batteryMs <= 0 ? "#ef5e58" : docked.reservedBy ? "#efb859" : "#72e3ad"));
       }
       this.lights.instanceColor!.needsUpdate = true;
-      for (const b of state.publiBikes.values()) if (!b.broken && !b.reservedBy && b.dock >= 0) available++;
-      const text = `${available} / 8 BIKES AVAILABLE`;
+      const text = `${dockedBikes.size} / ${C.PUBLI_BIKE_COUNT} BIKES AT STATION`;
       if (text !== this.signText) {
         this.signText = text; const ctx = this.signCanvas.getContext("2d")!;
         ctx.fillStyle = "#92246c"; ctx.fillRect(0, 0, 768, 192); ctx.fillStyle = "white"; ctx.textAlign = "center";
@@ -151,16 +173,24 @@ export class PubliBikeFeature {
     if (!visual || !tag) { this.close(); return; }
     const dx = Number(this.held.has("KeyD") || this.held.has("ArrowRight")) - Number(this.held.has("KeyA") || this.held.has("ArrowLeft"));
     const dy = Number(this.held.has("KeyS") || this.held.has("ArrowDown")) - Number(this.held.has("KeyW") || this.held.has("ArrowUp"));
-    this.yaw = THREE.MathUtils.clamp(this.yaw - dx * 0.65 * dt, -1.3, 1.3); this.pitch = THREE.MathUtils.clamp(this.pitch - dy * 0.65 * dt, -1, 1);
+    this.targetYaw = THREE.MathUtils.clamp(this.targetYaw - dx * .65 * dt, -1.3, 1.3);
+    this.targetPitch = THREE.MathUtils.clamp(this.targetPitch - dy * .65 * dt, -1, 1);
+    // At the browser edge, keep turning so every starting cursor position is solvable.
+    const edge=this.mouse.edgeMovement(Math.min(dt,.1));
+    if(edge.x||edge.y){this.aimed=true;this.targetYaw=THREE.MathUtils.clamp(this.targetYaw-edge.x,-1.3,1.3);this.targetPitch=THREE.MathUtils.clamp(this.targetPitch-edge.y,-1,1);}
+    const blend = 1 - Math.exp(-18 * Math.min(dt, .1));
+    this.yaw += (this.targetYaw - this.yaw) * blend; this.pitch += (this.targetPitch - this.pitch) * blend;
+    this.camera.fov = bikePreviewFov(this.camera.aspect); this.camera.updateProjectionMatrix();
     visual.mesh.updateMatrixWorld(true);
     const eye = visual.mesh.localToWorld(new THREE.Vector3(-0.08, 1.4, -2.25)), target = tag.getWorldPosition(new THREE.Vector3());
     this.camera.position.copy(eye); this.camera.up.set(0, 1, 0); this.camera.lookAt(target);
     this.camera.rotateY(this.yaw); this.camera.rotateX(this.pitch); this.camera.updateMatrixWorld(true);
-    const projected = target.clone().project(this.camera), rect = this.canvas.getBoundingClientRect();
+    const projected = target.clone().project(this.camera), point = bikePreviewTarget(projected.x, projected.y, this.camera.aspect);
     const finder = this.modal.querySelector(".bike-viewfinder")!.getBoundingClientRect();
-    const aligned = this.aimed && Math.abs(rect.left + (projected.x + 1) * rect.width / 2 - finder.left - finder.width / 2) < 22 &&
-      Math.abs(rect.top + (1 - projected.y) * rect.height / 2 - finder.top - finder.height / 2) < 22;
-    const moving = !!dx || !!dy || Math.hypot(this.yaw - this.lastAim.yaw, this.pitch - this.lastAim.pitch) > Math.max(0.001, dt * 0.04);
+    const aligned = this.aimed && projected.z >= -1 && projected.z <= 1 &&
+      Math.abs((point.x - .5) * finder.width) < 17 && Math.abs((point.y - .5) * finder.height) < 17;
+    this.modal.dataset.aligned = String(aligned);
+    const moving = !!dx || !!dy || !!edge.x || !!edge.y || Math.hypot(this.yaw - this.lastAim.yaw, this.pitch - this.lastAim.pitch) > Math.max(0.001, dt * 0.04);
     this.lastAim = { yaw: this.yaw, pitch: this.pitch };
     if (!aligned || moving) { this.steady = 0; this.progress = Math.max(0, this.progress - dt * 1.5); this.status.textContent = aligned ? "Hold still." : "Center the rear QR code."; }
     else if ((this.steady += dt) < 0.3) this.status.textContent = "Hold still.";
@@ -173,6 +203,12 @@ export class PubliBikeFeature {
     if (this.progress >= 1 && this.net.now() - request.grantedAt >= C.PUBLI_BIKE_SCAN_MS) {
       request.sent = true; this.status.textContent = "Unlocking…"; this.net.room.send("bikeScanFinish", request);
     }
+  }
+  // MapViewer calls this immediately after its existing render; no extra renderer or loop.
+  renderPreview() {
+    if (!this.active) return;
+    const crop = bikePreviewCrop(this.canvas.width, this.canvas.height);
+    this.preview.getContext("2d")?.drawImage(this.canvas, crop.x, crop.y, crop.w, crop.h, 0, 0, this.preview.width, this.preview.height);
   }
   dispose() {
     this.close(); this.abort.abort(); this.net.onBikeUnlockResult = undefined;

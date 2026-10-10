@@ -43,6 +43,8 @@ export type Player = SchemaType<typeof Player>;
 export const Vehicle = schema(
   {
     kind: t.uint8().default(0),
+    derailStartedAt: t.number().default(0),
+    derailAge: t.number().default(0),
     railDistance: t.number().default(0),
     railLane: t.number().default(0),
     railReverse: t.boolean().default(false),
@@ -110,6 +112,10 @@ export const RaceState = schema(
     finishedAt: t.number().default(0),
     introStartedAt: t.number().default(0),
     introComplete: t.boolean().default(false),
+    devMode: t.boolean().default(false),
+    skipIntro: t.boolean().default(false),
+    goldPubliBikes: t.boolean().default(true),
+    railCrashProtection: t.boolean().default(false),
     members: t.map(RoomMember),
     results: t.map(RoundResult),
     players: t.map(Player),
