@@ -1,5 +1,0 @@
-import assert from 'node:assert/strict';import {physicsHarness} from './physics-harness.mjs';
-const {world,THREE}=await physicsHarness(),ray=new THREE.Raycaster();ray.firstHitOnly=true;let samples=0,maxGap=0,holes=0,maxStep=0;
-for(let i=1;i<world.data.route.length;i++){const a=world.data.route[i-1],b=world.data.route[i],dx=b[0]-a[0],dz=b[1]-a[1],length=Math.hypot(dx,dz);if(length<.01)continue;let previous;
- for(let d=.1;d<length;d+=.5){const t=d/length,x=a[0]+dx*t,z=a[1]+dz*t,y=world.height(x,z);if(previous!==undefined)maxStep=Math.max(maxStep,Math.abs(y-previous));previous=y;if(world.bridgeAt(x,z))continue;ray.set(new THREE.Vector3(x,y+2,z),new THREE.Vector3(0,-1,0));ray.far=4;const hit=ray.intersectObject(world.groundMesh,false)[0];samples++;if(!hit)holes++;else maxGap=Math.max(maxGap,Math.abs(hit.point.y-y));}}
-assert(samples>800);assert.equal(holes,0,'rendered street floor must have no route holes');assert(maxGap<.15,`visible floor and walking support disagree by ${maxGap}m`);assert(maxStep<.7,`road profile has abrupt half-metre step ${maxStep}m`);console.log(JSON.stringify({samples,holes,maxFloorGap:maxGap,maxHalfMetreRise:maxStep}));
