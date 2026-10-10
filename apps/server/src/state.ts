@@ -41,6 +41,10 @@ export type Player = SchemaType<typeof Player>;
 export const Vehicle = schema(
   {
     kind: t.uint8().default(0),
+    railDistance: t.number().default(0),
+    railLane: t.number().default(0),
+    railReverse: t.boolean().default(false),
+    pitch: t.number().default(0),
     x: t.number().default(0),
     y: t.number().default(0),
     z: t.number().default(0),
