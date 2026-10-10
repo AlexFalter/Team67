@@ -12,7 +12,7 @@ Slide animation 4 travels in the existing eight-number movement report. The serv
 
 The owner uses a separate headless rig; the full local third-person rig is hidden in first person, and remote clients retain the full character. Hands remain low on the left/right, follow gaze and camera height, and sway laterally while running. The torso and feet stay in world space. When looking down, the eyes move slightly ahead of the chest so it does not cover the shoes. The camera lowers and tips gently downward during sliding, exposing the leading foot and retains restrained gait bob.
 
-Twelve short peripheral streaks appear only during slides and jumps launched at sprint speed while holding Shift. They reuse one geometry and material and disappear immediately when walking, changing view, riding, falling down or leaving play. Existing ground dust remains visible for other players.
+Twelve short peripheral particles appear only during slides and jumps launched at sprint speed while holding Shift. Jump particles rise vertically; slide particles stream past the edges. The third-person character uses the same slide pose, with a low dust trail visible to all players. They reuse one geometry and material and disappear immediately when walking, changing view, riding, falling down or leaving play. Ground dust accompanies slides and sprint takeoff/landing; ordinary running emits no trail.
 
 ## Preview and checks
 

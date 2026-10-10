@@ -17,7 +17,6 @@ export interface PlayerState {
   knockdownUntil: number;
   simTime: number;
   vehicleKind: number;
-  shoes: boolean;
   attackReadyAt: number;
   mateCount: number;
   mateBoostMs: number;
@@ -100,7 +99,6 @@ export interface Input {
   sprint: boolean;
   jump: boolean;
   slide?: boolean;
-  toggleShoes?: boolean;
   hit?: boolean;
   aim?: boolean;
   facing?: number;

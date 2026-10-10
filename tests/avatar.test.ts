@@ -52,8 +52,7 @@ test("first-person rigs reuse each outfit, hide the head, and show shoes when lo
     const shoe = mesh.getObjectByName("shoe")!; mesh.updateMatrixWorld(true);
     const projected = shoe.getWorldPosition(new Vector3()).project(camera);
     assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1 && projected.z < 1, "feet inside downward view");
-    p.shoes = true; pose(mesh, p);
-    assert.equal(((shoe as Mesh).material as MeshStandardMaterial).color.getHexString(), "86efad");
+    assert.equal(((shoe as Mesh).material as MeshStandardMaterial).color.getHexString(), "e8dfcb");
     disposeAvatar(mesh);
   }
 });

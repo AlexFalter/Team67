@@ -66,7 +66,7 @@ export function GameOverlay({ resolution, onResolutionChange }: {
         <p>Performance reduces rendering resolution for smoother play. High uses more GPU power.</p>
         <p>Mouse / trackpad: look · click to punch.<br />
           WASD run · Shift sprint · Space jump · C slide while sprinting · E ride<br />
-          F hit · R shoes<br />
+          F hit<br />
           F5 / V change view · Esc menu</p>
         <p role="status"></p>
         <button id="leave">Leave room</button>

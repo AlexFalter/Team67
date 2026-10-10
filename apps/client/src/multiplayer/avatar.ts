@@ -170,7 +170,6 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
     leg.joint.rotation.z += (swing * stride * sideways * 0.3 - leg.joint.rotation.z) * blend;
     leg.bend.rotation.x += (knee - leg.bend.rotation.x) * blend;
     leg.tip.rotation.x += ((-knee * 0.3 + Math.max(0, swing * forward) * stride * 0.22) - leg.tip.rotation.x) * blend;
-    (leg.foot!.material as THREE.MeshStandardMaterial).color.set(p.shoes ? "#86efad" : "#e8dfcb");
   });
 }
 export function disposeAvatar(mesh: THREE.Group) {

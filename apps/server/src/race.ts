@@ -59,10 +59,6 @@ export class Race extends Room<{ state: RaceState }> {
       const t = (data as C.Ping)?.clientTime;
       if (Number.isFinite(t)) client.send("pong", { clientTime: t, serverTime: Date.now() });
     });
-    this.onMessage("toggleShoes", client => {
-      const p = this.state.players.get(client.sessionId);
-      if (p && this.rounds.canPlay(client.sessionId)) p.shoes = !p.shoes;
-    });
     this.onMessage("hit", client => this.attack(client));
     this.onMessage("bikeCrash", client => {
       const p = this.state.players.get(client.sessionId), v = p && this.state.vehicles.get(p.vehicleId);

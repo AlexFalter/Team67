@@ -350,7 +350,7 @@ export class Vehicles {
       }
     }
     const riding = this.items.get(body.vehicleId)?.latest;
-    let prompt = `Mouse / trackpad look · WASD run · Shift sprint · Space jump · C sprint slide · click/F hit · R shoes ${body.shoes ? "on" : "off"} · F5/V view · Esc menu`;
+    let prompt = `Mouse / trackpad look · WASD run · Shift sprint · Space jump · C sprint slide · click/F hit · F5/V view · Esc menu`;
     if (riding)
       prompt =
         !C.isPassengerVehicle(riding)

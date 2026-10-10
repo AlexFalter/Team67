@@ -46,3 +46,20 @@ test("remote interpolation follows the delayed timeline and shortest angle, hold
   assert.equal(scene.children.length, 0);
   assert.equal(remotes.players.size, 0);
 });
+
+test("other players see the full third-person slide pose and its recovery", () => {
+  const remotes = new RemotePlayers(new Scene()), remote = createBody(); remote.anim = 4; remote.vz = 10;
+  const state: WorldState = { serverTime: 1000, phase: "Running", hostId: "local", startedAt: 0, endsAt: 0, finishedAt: 0,
+    introStartedAt: 0, introComplete: true, members: new Map(), results: new Map(), vehicles: new Map(), publiBikes: new Map(), mates: new Map(), players: new Map([["remote", remote]]) };
+  remotes.patch(state, "local");
+  for (let i = 0; i < 40; i++) remotes.render(1000);
+  const mesh = remotes.players.get("remote")!.mesh;
+  assert.equal(mesh.visible, true);
+  assert.equal(mesh.getObjectByName("head")!.visible, true);
+  assert.ok(mesh.getObjectByName("torso")!.position.y < 0.3);
+  assert.ok(mesh.getObjectByName("right-knee")!.rotation.x > 1.4);
+  remote.anim = 0; remote.vz = 0; state.serverTime = 2000; remotes.patch(state, "local");
+  for (let i = 0; i < 60; i++) remotes.render(2000);
+  assert.ok(mesh.getObjectByName("torso")!.position.y > 0.74, "stands smoothly after sliding");
+  remotes.dispose();
+});

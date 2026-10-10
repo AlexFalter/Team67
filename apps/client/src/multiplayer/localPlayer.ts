@@ -9,7 +9,6 @@ export class LocalPlayer {
   private jump = false;
   private slide = false;
   private interaction = false;
-  private shoes = false;
   private hit = false;
   private input: Input = { x: 0, z: 0, sprint: false, jump: false };
   private abort = new AbortController();
@@ -22,7 +21,6 @@ export class LocalPlayer {
       if (e.code === "Space" && !e.repeat) this.jump = true;
       if (e.code === "KeyC" && !e.repeat) this.slide = true;
       if (e.code === "KeyE" && !e.repeat) this.interaction = true;
-      if (e.code === "KeyR" && !e.repeat) this.shoes = true;
       if (e.code === "KeyF" && !e.repeat) this.hit = true;
       this.keys.add(e.code);
     }, { signal: this.abort.signal });
@@ -30,7 +28,7 @@ export class LocalPlayer {
     window.addEventListener("blur", () => this.clear(), { signal: this.abort.signal });
   }
   clear() {
-    this.keys.clear(); this.slide = this.jump = this.interaction = this.shoes = this.hit = false;
+    this.keys.clear(); this.slide = this.jump = this.interaction = this.hit = false;
   }
   dispose() { this.abort.abort(); this.enabled = false; this.clear(); }
   punch() { if (this.enabled) this.hit = true; }
@@ -43,8 +41,6 @@ export class LocalPlayer {
     this.input.slide = this.slide; this.slide = false;
     this.input.jump = this.jump;
     this.jump = false;
-    this.input.toggleShoes = this.shoes;
-    this.shoes = false;
     this.input.hit = this.hit;
     this.hit = false;
     this.input.aim = this.enabled;

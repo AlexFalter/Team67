@@ -59,3 +59,44 @@ test("sprint jump effects latch takeoff intent through flight and clear on landi
   C.applyImpulse(p, { from: "hit", ix: 0, iy: 2, iz: 0, knockdown: false }, p.simTime);
   assert.equal(p.sprintJump, false);
 });
+
+test("turns and reversals carry momentum for a few frames but respond promptly", () => {
+  const p = C.createBody(); p.vz = 11;
+  C.stepPlayer(p, { ...C.IDLE_INPUT, x: 1, sprint: true }, dt);
+  assert.ok(p.vx > 0 && p.vz > 9, "first turning frame retains old direction");
+  for (let i = 0; i < 15; i++) C.stepPlayer(p, { ...C.IDLE_INPUT, x: 1, sprint: true }, dt);
+  assert.ok(p.vx > 10 && p.vz < 1.1, "turn settles within a quarter second");
+  const reverse = C.createBody(); reverse.vz = 11;
+  C.stepPlayer(reverse, { ...C.IDLE_INPUT, z: -1, sprint: true }, dt);
+  assert.ok(reverse.vz > 8, "reversal brakes before changing direction");
+  for (let i = 0; i < 9; i++) C.stepPlayer(reverse, { ...C.IDLE_INPUT, z: -1, sprint: true }, dt);
+  assert.ok(reverse.vz < 0, "reverse responds within 170 ms");
+});
+
+test("releasing sprint and airborne steering retain momentum without generating unlimited speed", () => {
+  const p = C.createBody(); p.vz = 11;
+  C.stepPlayer(p, { ...C.IDLE_INPUT, z: 1 }, dt);
+  assert.ok(p.vz > 10 && p.vz < 11, "sprint speed tapers toward walk speed");
+  const air = C.createBody(); air.vz = 11;
+  C.stepPlayer(air, { ...C.IDLE_INPUT, jump: true }, dt);
+  assert.equal(air.vz, 11, "jump at release keeps the launch velocity");
+  const open: C.MovementWorld = { ...C.flatWorld, name: "zurich", height: () => undefined, spawn: { x: 0, y: -1000, z: 0 } };
+  for (let i = 0; i < 180; i++) {
+    const angle = i * 0.2;
+    C.stepPlayer(air, { ...C.IDLE_INPUT, x: Math.sin(angle), z: Math.cos(angle) }, dt, open);
+    assert.ok(Math.hypot(air.vx, air.vz) <= 11 + 1e-8, "air strafing never adds speed above the launch cap");
+  }
+});
+
+test("force integration keeps similar movement and stopping distances at 30, 60 and 120 Hz", () => {
+  const results = [30, 60, 120].map(hz => {
+    const p = C.createBody();
+    for (let i = 0; i < hz / 2; i++) C.stepPlayer(p, { ...C.IDLE_INPUT, z: 1, sprint: true }, 1 / hz);
+    const cruise = p.z;
+    for (let i = 0; i < hz / 2; i++) C.stepPlayer(p, C.IDLE_INPUT, 1 / hz);
+    assert.equal(p.vz, 0, "braking reaches a finite stop");
+    return { cruise, stop: p.z };
+  });
+  assert.ok(Math.max(...results.map(r => r.cruise)) - Math.min(...results.map(r => r.cruise)) < 0.16);
+  assert.ok(Math.max(...results.map(r => r.stop)) - Math.min(...results.map(r => r.stop)) < 0.08);
+});

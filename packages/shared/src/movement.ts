@@ -24,7 +24,6 @@ export function createBody(): Body {
     knockdownUntil: 0,
     simTime: 0,
     vehicleKind: -1,
-    shoes: false,
     attackReadyAt: 0,
     mateCount: 0,
     mateBoostMs: 0,
@@ -49,6 +48,44 @@ export function applyImpulse(p: Body, hit: Impulse, now: number) {
   p.slideUntil = 0; p.sprintJump = false;
   if (hit.knockdown) p.knockdownUntil = Math.max(p.knockdownUntil, now + (hit.durationMs ?? C.KNOCKDOWN_DURATION_MS));
 }
+// Velocity is integrated from acceleration, not replaced by an input target.
+// Ground grip removes lateral slip; airborne control adds bounded directional
+// acceleration while retaining launch momentum and collision impulses.
+function accelerateFoot(p: Body, input: Input, targetSpeed: number, dt: number, takingOff: boolean) {
+  const oldSpeed = Math.hypot(p.vx, p.vz), length = Math.hypot(input.x, input.z);
+  if (length === 0) {
+    if (p.grounded && !takingOff && oldSpeed > 0) {
+      // Exact constant-braking + drag solution; finite stop without a tiny tail.
+      const offset = C.BRAKING_DECELERATION / C.FRICTION;
+      const speed = Math.max(0, (oldSpeed + offset) * Math.exp(-C.FRICTION * dt) - offset);
+      p.vx *= speed / oldSpeed; p.vz *= speed / oldSpeed;
+    }
+    return;
+  }
+  const x = input.x / length, z = input.z / length;
+  const wishSpeed = targetSpeed * Math.min(1, length);
+  const along = p.vx * x + p.vz * z;
+  const boost = targetSpeed / (input.sprint ? C.SPRINT_SPEED : C.WALK_SPEED);
+  if (p.grounded && !takingOff) {
+    const lateralX = p.vx - along * x, lateralZ = p.vz - along * z;
+    const grip = Math.exp(-C.GROUND_GRIP * dt);
+    const rate = along < 0 ? C.REVERSAL_ACCELERATION * boost : along > wishSpeed ? C.OVERSPEED_DECELERATION : C.ACCELERATION * boost;
+    const change = Math.max(-rate * dt, Math.min(rate * dt, wishSpeed - along));
+    p.vx = x * (along + change) + lateralX * grip;
+    p.vz = z * (along + change) + lateralZ * grip;
+  } else {
+    // Do not brake the existing velocity when airborne input is released or
+    // points elsewhere; only add the acceleration needed along the new input.
+    const push = Math.max(0, Math.min(wishSpeed - along, C.AIR_ACCELERATION * boost * dt));
+    p.vx += x * push; p.vz += z * push;
+  }
+  // Turning/air strafing cannot manufacture extra speed. External overspeed
+  // persists in the air and settles gradually on the ground instead of snapping.
+  const limit = Math.max(wishSpeed, p.grounded && !takingOff ? oldSpeed - C.OVERSPEED_DECELERATION * dt : oldSpeed);
+  const speed = Math.hypot(p.vx, p.vz);
+  if (speed > limit && speed > 0) { p.vx *= limit / speed; p.vz *= limit / speed; }
+}
+
 export function stepMovement(p: Body, input: Input, dt: number, now: number, world: MovementWorld = flatWorld) {
   const previous = { x: p.x, y: p.y, z: p.z };
   const down = now < p.knockdownUntil,
@@ -62,20 +99,17 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
   const slideJump = input.jump && now < (p.slideUntil ?? 0);
   if (input.jump) p.slideUntil = 0;
   const sliding = now < (p.slideUntil ?? 0);
-  const targetSpeed = (input.sprint ? C.SPRINT_SPEED : C.WALK_SPEED) * (p.shoes ? C.SHOE_SPEED_MULTIPLIER : 1) * (p.mateBoostMs > 0 ? MATE_SPEED_MULTIPLIER : 1);
-  // Keep takeoff momentum; air steering cannot instantly brake or reverse it.
-  const speed = !p.grounded && !down ? Math.max(targetSpeed, Math.hypot(p.vx, p.vz)) : targetSpeed;
+  const targetSpeed = (input.sprint ? C.SPRINT_SPEED : C.WALK_SPEED) * (p.mateBoostMs > 0 ? MATE_SPEED_MULTIPLIER : 1);
   const moving = !down && length > 0;
-  const rate = down ? 9 : p.grounded ? (moving ? C.ACCELERATION : C.FRICTION) : moving ? C.AIR_ACCELERATION : 0;
-  const blend = 1 - Math.exp(-rate * dt);
   if (sliding || slideJump) {
     const drag = slideJump ? 1 : Math.exp(-C.SLIDE_FRICTION * dt);
     p.vx *= drag; p.vz *= drag;
+  } else if (down) {
+    const drag = Math.exp(-9 * dt);
+    p.vx *= drag; p.vz *= drag;
   } else {
-    p.vx +=
-      ((moving ? (input.x / Math.max(1, length)) * speed : 0) - p.vx) * blend;
-    p.vz +=
-      ((moving ? (input.z / Math.max(1, length)) * speed : 0) - p.vz) * blend;
+    const takingOff = (input.jump || p.jumpUntil > now) && (p.grounded || now - p.groundTime <= C.COYOTE_MS);
+    accelerateFoot(p, input, targetSpeed, dt, takingOff);
   }
   if (!down && input.aim && Number.isFinite(input.facing)) p.rotY = input.facing!;
   else if (moving) p.rotY = Math.atan2(input.x, input.z);
@@ -84,7 +118,7 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
   else if (input.jump) p.jumpUntil = now + C.JUMP_BUFFER_MS;
   if (!down && p.jumpUntil > now && (p.grounded || now - p.groundTime <= C.COYOTE_MS)) {
     p.sprintJump = input.sprint && Math.hypot(p.vx, p.vz) >= C.SLIDE_MIN_SPEED;
-    p.vy = C.JUMP_VELOCITY * (p.shoes ? C.SHOE_JUMP_MULTIPLIER : 1);
+    p.vy = C.JUMP_VELOCITY;
     p.grounded = false;
     p.groundTime = -1e9; p.jumpUntil = 0;
   }
@@ -116,7 +150,6 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
 }
 export function stepPlayer(p: Body, input: Input, dt: number, world: MovementWorld = flatWorld) {
   p.simTime += dt * 1000;
-  if (input.toggleShoes) p.shoes = !p.shoes;
   if (input.hit && !p.vehicleId && p.simTime >= p.knockdownUntil && p.simTime >= p.attackReadyAt)
     p.attackReadyAt = p.simTime + C.ATTACK_COOLDOWN_MS;
   if (p.vehicleId) {
