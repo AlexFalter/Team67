@@ -99,12 +99,16 @@ export interface Input {
   z: number;
   sprint: boolean;
   jump: boolean;
+  slide?: boolean;
   toggleShoes?: boolean;
   hit?: boolean;
   aim?: boolean;
   facing?: number;
 }
 export interface Body extends PlayerState {
+  sprintJump?: boolean;
+  slideUntil?: number;
+  slideReadyAt?: number;
 }
 
 // Main's compact client-owned movement reports, with feature gameplay metadata

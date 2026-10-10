@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { WALK_SPEED, SPRINT_SPEED, TRAM_KIND, POLYBAHN_KIND, type MovementWorld, type PlayerState } from "@race/shared";
+import { WALK_SPEED, SPRINT_SPEED, SLIDE_ANIM, TRAM_KIND, POLYBAHN_KIND, type MovementWorld, type PlayerState } from "@race/shared";
 import { gaitRate } from "./avatar.ts";
 
 export const PERSPECTIVES = ["First person", "Third person — behind", "Third person — front"];
@@ -17,6 +17,7 @@ export class PlayerView {
   private amplitude = 0;
   private eye = 1.6;
   private roll = 0;
+  private slideTilt = 0;
   private landing = 0;
   private grounded = true;
   private verticalSpeed = 0;
@@ -49,11 +50,13 @@ export class PlayerView {
     } else this.railRide = "";
     const blend = 1 - Math.exp(-10 * dt), speed = Math.hypot(p.vx, p.vz);
     const down = p.anim === 3 || p.knockdownUntil > p.simTime;
-    const walking = !p.vehicleId && p.grounded && !down;
+    const sliding = p.anim === SLIDE_ANIM && !down;
+    this.slideTilt += ((sliding ? 0.20 : 0) - this.slideTilt) * blend;
+    const walking = !p.vehicleId && p.grounded && !down && !sliding;
     // Distance-driven steps, but no bone-driven camera or oscillating horizon.
     if (walking) this.phase += gaitRate(speed) * dt;
     this.amplitude += ((this.bob && walking ? Math.min(0.018, speed * 0.0015) : 0) - this.amplitude) * blend;
-    this.eye += ((down ? 0.48 : rail ? 1.58 : p.vehicleId ? 1.05 : 1.6) - this.eye) * blend;
+    this.eye += ((down ? 0.48 : sliding ? 0.82 : rail ? 1.58 : p.vehicleId ? 1.05 : 1.6) - this.eye) * blend;
     const strafe = p.vx * Math.cos(this.yaw) - p.vz * Math.sin(this.yaw);
     this.roll += ((down ? 0.35 : this.bob && walking ? THREE.MathUtils.clamp(-strafe * 0.001, -0.008, 0.008) : 0) - this.roll) * blend;
     this.landing *= Math.exp(-14 * dt);
@@ -66,13 +69,14 @@ export class PlayerView {
     if (this.perspective === 0) {
       this.camera.position.copy(this.origin);
       // Eyes sit in front of the body, not inside the chest when looking down.
-      this.camera.position.x -= Math.sin(this.yaw) * 0.15;
-      this.camera.position.z -= Math.cos(this.yaw) * 0.15;
+      const eyeForward = 0.15 - this.slideTilt * 0.6 + Math.max(0, -Math.sin(this.pitch)) * 0.24;
+      this.camera.position.x -= Math.sin(this.yaw) * eyeForward;
+      this.camera.position.z -= Math.cos(this.yaw) * eyeForward;
       const sway = Math.sin(this.phase) * this.amplitude * 0.35;
       this.camera.position.x += Math.cos(this.yaw) * sway;
       this.camera.position.z -= Math.sin(this.yaw) * sway;
       this.camera.position.y += Math.sin(this.phase * 2) * this.amplitude - this.landing;
-      this.camera.rotation.set(this.pitch, this.yaw, this.roll, "YXZ");
+      this.camera.rotation.set(this.pitch - this.slideTilt, this.yaw, this.roll, "YXZ");
     } else {
       this.direction.set(-Math.sin(this.yaw) * Math.cos(this.pitch), Math.sin(this.pitch), -Math.cos(this.yaw) * Math.cos(this.pitch));
       this.desired.copy(this.direction).multiplyScalar(this.perspective === 1 ? -SPRING_LENGTH : SPRING_LENGTH);

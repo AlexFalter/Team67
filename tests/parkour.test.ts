@@ -46,3 +46,16 @@ test("parkour jump grace state is deterministic across replay", () => {
   }
   assert.deepEqual(a, b); assert.ok(Number.isFinite(a.groundTime));
 });
+
+test("sprint jump effects latch takeoff intent through flight and clear on landing or impact", () => {
+  const p = C.createBody(); p.vz = 11;
+  C.stepPlayer(p, { ...C.IDLE_INPUT, sprint: true, jump: true, z: 1 }, dt);
+  assert.equal(p.sprintJump, true);
+  C.stepPlayer(p, C.IDLE_INPUT, dt); assert.equal(p.sprintJump, true, "releasing Shift mid-flight does not erase the sprint jump");
+  for (let i = 0; i < 60; i++) C.stepPlayer(p, C.IDLE_INPUT, dt);
+  assert.equal(p.sprintJump, false);
+  const walking = C.createBody(); walking.vz = 7.5;
+  C.stepPlayer(walking, { ...C.IDLE_INPUT, jump: true, z: 1 }, dt); assert.equal(walking.sprintJump, false);
+  C.applyImpulse(p, { from: "hit", ix: 0, iy: 2, iz: 0, knockdown: false }, p.simTime);
+  assert.equal(p.sprintJump, false);
+});

@@ -52,3 +52,8 @@ export const CLIENT_SEND_RATE = 20, MAX_POSITION = 100, MAX_VERTICAL_SPEED = 50;
 // Include boosted running, airborne momentum, and collision impulses.
 export const MAX_HORIZONTAL_SPEED = 2 * SPRINT_SPEED * SHOE_SPEED_MULTIPLIER;
 export const VEHICLE_STALE_MS = 500;
+
+// A brief grounded sprint slide; keep the normal collision clearance so
+// standing up cannot trap a player beneath the coarse terrain mask.
+export const SLIDE_ANIM = 4, SLIDE_DURATION_MS = 750, SLIDE_COOLDOWN_MS = 1200,
+  SLIDE_MIN_SPEED = 9, SLIDE_FRICTION = 0.8;

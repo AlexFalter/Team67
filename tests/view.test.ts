@@ -96,3 +96,15 @@ test("looking changes hit facing while stationary or strafing, without rotating 
   C.stepPlayer(p, { ...C.IDLE_INPUT, aim: true, facing: Math.PI / 2, z: -1 }, 1 / 60);
   assert.equal(p.rotY, Math.PI / 2); assert.ok(p.z < 0, "strafe does not change aim");
 });
+
+test("slide smoothly lowers the eyes and looking down reveals torso and shoes without entering the chest", () => {
+  const camera = new PerspectiveCamera(82), view = new PlayerView(camera, []), p = C.createBody();
+  p.anim = C.SLIDE_ANIM; p.vz = 10; view.update(p, 1 / 60);
+  assert.ok(camera.position.y > 1.3);
+  for (let i = 0; i < 60; i++) view.update(p, 1 / 60);
+  assert.ok(Math.abs(camera.position.y - 0.82) < 0.01);
+  p.anim = 0; p.vz = 0; view.pitch = -1.3;
+  for (let i = 0; i < 60; i++) view.update(p, 1 / 60);
+  assert.ok(camera.position.z < -0.35, "eyes move ahead of chest at downward gaze");
+  assert.ok(Math.abs(camera.position.y - 1.6) < 0.01);
+});

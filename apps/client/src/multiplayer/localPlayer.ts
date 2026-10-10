@@ -7,6 +7,7 @@ export class LocalPlayer {
   enabled = false;
   private keys = new Set<string>();
   private jump = false;
+  private slide = false;
   private interaction = false;
   private shoes = false;
   private hit = false;
@@ -16,9 +17,10 @@ export class LocalPlayer {
     window.addEventListener("keydown", (e) => {
       if (!this.enabled) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLButtonElement || e.target instanceof HTMLSelectElement) return;
-      if (["Space", "KeyW", "KeyA", "KeyS", "KeyD"].includes(e.code))
+      if (["Space", "KeyW", "KeyA", "KeyS", "KeyD", "KeyC"].includes(e.code))
         e.preventDefault();
       if (e.code === "Space" && !e.repeat) this.jump = true;
+      if (e.code === "KeyC" && !e.repeat) this.slide = true;
       if (e.code === "KeyE" && !e.repeat) this.interaction = true;
       if (e.code === "KeyR" && !e.repeat) this.shoes = true;
       if (e.code === "KeyF" && !e.repeat) this.hit = true;
@@ -28,7 +30,7 @@ export class LocalPlayer {
     window.addEventListener("blur", () => this.clear(), { signal: this.abort.signal });
   }
   clear() {
-    this.keys.clear(); this.jump = this.interaction = this.shoes = this.hit = false;
+    this.keys.clear(); this.slide = this.jump = this.interaction = this.shoes = this.hit = false;
   }
   dispose() { this.abort.abort(); this.enabled = false; this.clear(); }
   punch() { if (this.enabled) this.hit = true; }
@@ -38,6 +40,7 @@ export class LocalPlayer {
     this.input.x = direction.x; this.input.z = direction.z;
     this.input.sprint =
       this.keys.has("ShiftLeft") || this.keys.has("ShiftRight");
+    this.input.slide = this.slide; this.slide = false;
     this.input.jump = this.jump;
     this.jump = false;
     this.input.toggleShoes = this.shoes;

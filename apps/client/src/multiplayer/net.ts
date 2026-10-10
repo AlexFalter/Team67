@@ -126,7 +126,7 @@ export class Network {
     body.simTime = this.now() - remaining * 1000;
     while (remaining > 0) {
       const step = Math.min(remaining, 1 / 60);
-      impact = Math.max(impact, stepPlayer(body, first ? cmd : { ...cmd, jump: false, toggleShoes: false, hit: false }, step, zurichWorld) ?? 0);
+      impact = Math.max(impact, stepPlayer(body, first ? cmd : { ...cmd, slide: false, jump: false, toggleShoes: false, hit: false }, step, zurichWorld) ?? 0);
       first = false; remaining -= step;
     }
     // Report pose before actions so the server uses the current facing/position.

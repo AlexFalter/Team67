@@ -87,14 +87,16 @@ export class MapGame {
       if (this.local.takeInteraction() && !this.publiBikes.interact()) this.vehicles.interact(this.local.body);
       if (this.local.body.vehicleId) this.vehicles.local(this.local.body, this.net.room.sessionId);
       else this.vehicles.stopDriving();
-      pose(this.mesh, this.local.body, dt); pose(this.firstBody, this.local.body, dt, this.view.pitch);
+      pose(this.mesh, this.local.body, dt);
       this.mesh.visible = this.avatarReady && this.view.perspective !== 0;
       this.firstBody.visible = this.avatarReady && this.view.perspective === 0 && this.local.body.anim !== 3;
       if (this.publiBikes.active) this.mesh.visible = this.firstBody.visible = false;
       this.effects.trail(this.net.room.sessionId, this.local.body, now);
       if (!this.publiBikes.active) this.view.update(this.local.body, dt);
+      pose(this.firstBody, this.local.body, dt, this.view.pitch, this.view.camera);
     }
     if (!this.net.canPlay || this.exam.active) { this.mesh.visible = this.firstBody.visible = false; this.vehicles.stopDriving(); }
+    this.effects.speed(this.local.body, this.view.camera, dt, this.net.canPlay && !this.exam.active && !this.publiBikes.active && this.view.perspective === 0);
     this.roomFlow.update();
     this.vehicles.render(renderTime, dt, "other"); this.remotes.render(renderTime, this.vehicles.items, dt);
     for (const [id, remote] of this.remotes.players) this.effects.trail(id, remote.rendered, now);
