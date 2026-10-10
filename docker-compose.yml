@@ -4,7 +4,7 @@
       context: .
       dockerfile: apps/client/Dockerfile
     ports:
-      - 8080:8080
+      - 80:8080
     depends_on:
       - server
     restart: unless-stopped
