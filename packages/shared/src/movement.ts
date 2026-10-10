@@ -1,118 +1,154 @@
 import * as C from "./constants.ts";
-import type { Body, Input, Impulse } from "./types.ts";
-import { resolveHouses } from "./flatObstacles.ts";
-import { flatWorld, type MovementWorld } from "./world.ts";
-import { createVehicle, stepCart, seatPosition } from "./vehicles.ts";
-export function createBody(): Body {
-  return {
-    x: 0,
-    y: 0,
-    z: 0,
-    rotY: 0,
-    vx: 0,
-    vy: 0,
-    vz: 0,
-    anim: 0,
-    color: "#ffffff",
-    character: 0,
-    vehicleId: "",
-    seat: -1,
-    grounded: true,
-    groundTime: 0,
-    jumpUntil: 0,
-    knockdownUntil: 0,
-    simTime: 0,
-    vehicleKind: -1,
-    shoes: false,
-    attackReadyAt: 0,
-  };
-}
-export function respawn(p: Body, world: MovementWorld = flatWorld) {
-  // Respawns must be deterministic during rollback/replay.
-  Object.assign(p, world.spawn);
-  p.y = world.height(p.x, p.z) ?? p.y;
-  p.vx = p.vy = p.vz = 0;
-  p.grounded = true;
-  p.knockdownUntil = 0;
-  p.groundTime = p.simTime; p.jumpUntil = 0;
-}
-export function applyImpulse(p: Body, hit: Impulse, now: number) {
-  p.vx += hit.ix;
-  p.vy += hit.iy;
-  p.vz += hit.iz;
-  if (hit.iy > 0) p.grounded = false;
-  p.groundTime = -1e9; p.jumpUntil = 0;
-  if (hit.knockdown) p.knockdownUntil = Math.max(p.knockdownUntil, now + (hit.durationMs ?? C.KNOCKDOWN_DURATION_MS));
-}
-export function stepMovement(p: Body, input: Input, dt: number, now: number, world: MovementWorld = flatWorld) {
-  const previous = { x: p.x, y: p.y, z: p.z };
-  const down = now < p.knockdownUntil,
-    length = Math.hypot(input.x, input.z);
-  const targetSpeed = (input.sprint ? C.SPRINT_SPEED : C.WALK_SPEED) * (p.shoes ? C.SHOE_SPEED_MULTIPLIER : 1);
-  // Keep takeoff momentum; air steering cannot instantly brake or reverse it.
-  const speed = !p.grounded && !down ? Math.max(targetSpeed, Math.hypot(p.vx, p.vz)) : targetSpeed;
-  const moving = !down && length > 0;
-  const rate = down ? 9 : p.grounded ? (moving ? C.ACCELERATION : C.FRICTION) : moving ? C.AIR_ACCELERATION : 0;
-  const blend = 1 - Math.exp(-rate * dt);
-  p.vx +=
-    ((moving ? (input.x / Math.max(1, length)) * speed : 0) - p.vx) * blend;
-  p.vz +=
-    ((moving ? (input.z / Math.max(1, length)) * speed : 0) - p.vz) * blend;
-  if (!down && input.aim && Number.isFinite(input.facing)) p.rotY = input.facing!;
-  else if (moving) p.rotY = Math.atan2(input.x, input.z);
-  if (p.grounded) p.groundTime = now;
-  if (down) p.jumpUntil = 0;
-  else if (input.jump) p.jumpUntil = now + C.JUMP_BUFFER_MS;
-  if (!down && p.jumpUntil > now && (p.grounded || now - p.groundTime <= C.COYOTE_MS)) {
-    p.vy = C.JUMP_VELOCITY * (p.shoes ? C.SHOE_JUMP_MULTIPLIER : 1);
-    p.grounded = false;
-    p.groundTime = -1e9; p.jumpUntil = 0;
-  }
-  const previousY = p.y;
-  const oldGround = world.height(p.x, p.z), grounded = p.grounded;
-  p.vy += C.GRAVITY * dt;
-  const canMove = (x: number, z: number) => {
-    const ground = world.height(x, z);
-    return !world.blocked(x, p.y, z, C.CAPSULE_RADIUS, C.CAPSULE_HEIGHT) &&
-      (!grounded || ground === undefined || oldGround === undefined || ground - oldGround <= C.MAX_GROUND_STEP);
-  };
-  const x = p.x + p.vx * dt, z = p.z + p.vz * dt;
-  if (canMove(x, p.z)) p.x = x; else p.vx = 0;
-  if (canMove(p.x, z)) p.z = z; else p.vz = 0;
-  p.y += p.vy * dt;
-  const ground = world.height(p.x, p.z);
-  if (ground !== undefined && p.vy <= 0 &&
-    ((previousY >= ground - 0.05 && p.y <= ground) ||
-      (grounded && oldGround !== undefined && Math.abs(ground - oldGround) <= C.MAX_GROUND_STEP))) {
-    p.y = ground;
-    p.vy = 0;
-    p.grounded = true;
-  } else p.grounded = false;
-  if (world.name === "flat") resolveHouses(p, previous);
-  if (p.y < (ground ?? world.spawn.y) + C.RESPAWN_DEPTH) respawn(p, world);
-  p.anim = down ? 3 : !p.grounded ? 2 : Math.hypot(p.vx, p.vz) > 0.2 ? 1 : 0;
-}
-export function stepPlayer(p: Body, input: Input, dt: number, world: MovementWorld = flatWorld) {
-  p.simTime += dt * 1000;
-  if (input.toggleShoes) p.shoes = !p.shoes;
-  if (input.hit && !p.vehicleId && p.simTime >= p.knockdownUntil && p.simTime >= p.attackReadyAt)
-    p.attackReadyAt = p.simTime + C.ATTACK_COOLDOWN_MS;
-  if (p.vehicleId) {
-    let impact = 0;
-    if (p.vehicleKind === 0 || p.vehicleKind === 2) {
-      const v = createVehicle(p.vehicleKind, p.x, p.z);
-      v.y = p.y - C.CART_SEAT_HEIGHT;
-      v.vx = p.vx; v.vz = p.vz; v.rotY = p.rotY;
-      impact = stepCart(v, input, dt, world);
-      seatPosition(v, p.seat, p);
-      p.vx = v.vx; p.vz = v.vz; p.vy = 0; p.rotY = v.rotY;
-    }
-    p.anim = 0; p.grounded = false;
-    return impact;
-  }
-  stepMovement(p, input, dt, p.simTime, world);
+import type { World } from "./world.ts";
+
+/** Everything the movement step reads and writes. Plain numbers so it copies and serializes cheaply. */
+export interface Body {
+  x: number; y: number; z: number;
+  vx: number; vy: number; vz: number;
+  yaw: number;
+  grounded: boolean;
+  airTime: number; // seconds since last on the ground
+  jumpBuffer: number; // seconds a jump press stays queued
+  jumpHeld: boolean;
+  down: number; // knockdown seconds remaining
+  shoes: boolean;
+  landed: boolean; // touched down during the last step (camera/animation cue)
 }
 
-export function packMove(p: Body): import("./types.ts").Move {
-  return [p.x, p.y, p.z, p.rotY, p.vx, p.vy, p.vz, p.anim];
+/** One tick of input. forward/right in [-1, 1], relative to yaw. */
+export interface Input {
+  forward: number;
+  right: number;
+  yaw: number;
+  jump: boolean;
+  sprint: boolean;
+}
+
+export const ANIM_IDLE = 0, ANIM_RUN = 1, ANIM_AIR = 2, ANIM_DOWN = 3;
+
+export function createBody(x = 0, y = 0, z = 0): Body {
+  return { x, y, z, vx: 0, vy: 0, vz: 0, yaw: 0, grounded: true, airTime: 0, jumpBuffer: 0, jumpHeld: false, down: 0, shoes: false, landed: false };
+}
+
+export function createInput(): Input {
+  return { forward: 0, right: 0, yaw: 0, jump: false, sprint: false };
+}
+
+export function copyBody(from: Body, to: Body) {
+  to.x = from.x; to.y = from.y; to.z = from.z;
+  to.vx = from.vx; to.vy = from.vy; to.vz = from.vz;
+  to.yaw = from.yaw; to.grounded = from.grounded; to.airTime = from.airTime;
+  to.jumpBuffer = from.jumpBuffer; to.jumpHeld = from.jumpHeld; to.down = from.down;
+  to.shoes = from.shoes; to.landed = from.landed;
+  return to;
+}
+
+export function animOf(b: Body) {
+  return b.down > 0 ? ANIM_DOWN : !b.grounded ? ANIM_AIR : b.vx * b.vx + b.vz * b.vz > 0.04 ? ANIM_RUN : ANIM_IDLE;
+}
+
+/** Can a capsule with feet at y occupy (x, z)? Ground must exist and be at most a step above the feet. */
+export function free(world: World, x: number, y: number, z: number) {
+  const g = world.height(x, z);
+  return !Number.isNaN(g) && g <= y + C.STEP_HEIGHT && !world.blocked(x, Math.max(y, g), z, C.RADIUS, C.HEIGHT);
+}
+
+/**
+ * The movement step: pure, allocation-free, deterministic. Same code on client, server checks and bots.
+ * Order matters for feel: jump before friction (bunny hops keep speed), friction only on the ground,
+ * capped air acceleration (air strafing), then axis-separated collision so walls slide.
+ */
+export function step(b: Body, input: Input, dt: number, world: World) {
+  const down = b.down > 0;
+  if (down) b.down = Math.max(0, b.down - dt);
+  b.landed = false;
+  b.yaw = input.yaw;
+
+  // Wish direction in the world, from camera-relative keys.
+  let wx = 0, wz = 0, wish = 0;
+  if (!down) {
+    const sin = Math.sin(input.yaw), cos = Math.cos(input.yaw);
+    wx = -sin * input.forward + cos * input.right;
+    wz = -cos * input.forward - sin * input.right;
+    const len = Math.hypot(wx, wz);
+    if (len > 1e-6) {
+      wx /= len; wz /= len;
+      wish = (input.sprint ? C.SPRINT_SPEED : C.WALK_SPEED) * (b.shoes ? C.SHOE_SPEED : 1) * Math.min(1, len);
+    }
+  }
+
+  // Jump: buffered presses, coyote time, holding re-jumps on landing.
+  const pressed = input.jump && !b.jumpHeld;
+  b.jumpHeld = input.jump;
+  b.jumpBuffer = pressed && !down ? C.JUMP_BUFFER : Math.max(0, b.jumpBuffer - dt);
+  if (!down && (input.jump || b.jumpBuffer > 0) && (b.grounded || b.airTime < C.COYOTE_TIME)) {
+    b.vy = C.JUMP_SPEED * (b.shoes ? C.SHOE_JUMP : 1);
+    b.grounded = false;
+    b.airTime = C.COYOTE_TIME;
+    b.jumpBuffer = 0;
+  }
+
+  if (b.grounded) {
+    const speed = Math.hypot(b.vx, b.vz);
+    if (speed > 0) {
+      const drop = Math.max(speed, C.STOP_SPEED) * (down ? C.DOWN_FRICTION : C.FRICTION) * dt;
+      const k = Math.max(0, speed - drop) / speed;
+      b.vx *= k; b.vz *= k;
+    }
+    accelerate(b, wx, wz, wish, wish, C.GROUND_ACCEL, dt);
+  } else {
+    accelerate(b, wx, wz, Math.min(wish, C.AIR_WISH_CAP), wish, C.AIR_ACCEL, dt);
+    b.vy += C.GRAVITY * dt;
+  }
+  const h = Math.hypot(b.vx, b.vz);
+  if (h > C.MAX_SPEED) { b.vx *= C.MAX_SPEED / h; b.vz *= C.MAX_SPEED / h; }
+
+  const nx = b.x + b.vx * dt;
+  if (free(world, nx, b.y, b.z)) b.x = nx; else b.vx = 0;
+  const nz = b.z + b.vz * dt;
+  if (free(world, b.x, b.y, nz)) b.z = nz; else b.vz = 0;
+
+  const g = world.height(b.x, b.z);
+  if (b.grounded) {
+    // Follow slopes and steps down; a bigger drop means we walked off a ledge.
+    if (b.y - g <= C.STEP_HEIGHT) { b.y = g; b.vy = 0; } else b.grounded = false;
+  }
+  if (!b.grounded) {
+    b.y += b.vy * dt;
+    if (b.y <= g) {
+      b.y = g;
+      if (b.vy <= 0) { b.vy = 0; b.grounded = true; b.landed = true; }
+    }
+  }
+  b.airTime = b.grounded ? 0 : b.airTime + dt;
+}
+
+/** Quake accelerate: add speed along the wish direction until its projection reaches cap. */
+function accelerate(b: Body, wx: number, wz: number, cap: number, wish: number, accel: number, dt: number) {
+  if (wish <= 0) return;
+  const add = cap - (b.vx * wx + b.vz * wz);
+  if (add <= 0) return;
+  const amount = Math.min(add, accel * wish * dt);
+  b.vx += wx * amount; b.vz += wz * amount;
+}
+
+/** Push a body out of another player's capsule (horizontal only). Contact only separates players. */
+export function separate(b: Body, ox: number, oy: number, oz: number, world: World) {
+  if (Math.abs(b.y - oy) >= C.HEIGHT) return false;
+  const dx = b.x - ox, dz = b.z - oz, d2 = dx * dx + dz * dz, min = 2 * C.RADIUS;
+  if (d2 >= min * min) return false;
+  const d = Math.sqrt(d2), push = min - d;
+  const nx = d > 1e-4 ? dx / d : 1, nz = d > 1e-4 ? dz / d : 0;
+  const x = b.x + nx * push, z = b.z + nz * push;
+  if (free(world, x, b.y, b.z)) b.x = x;
+  if (free(world, b.x, b.y, z)) b.z = z;
+  return true;
+}
+
+/** Knockback and knockdown from the server. */
+export function knock(b: Body, ix: number, iy: number, iz: number, downMs: number) {
+  b.vx += ix; b.vy = Math.max(b.vy, iy); b.vz += iz;
+  if (iy > 0) { b.grounded = false; b.airTime = C.COYOTE_TIME; }
+  b.down = Math.max(b.down, downMs / 1000);
+  b.jumpBuffer = 0;
 }
