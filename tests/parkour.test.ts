@@ -3,6 +3,20 @@ import assert from "node:assert/strict";
 import * as C from "../packages/shared/src/index.ts";
 const dt = 1 / 60;
 
+test("brief jump cooldown blocks an early repeat, preserves buffering and resets on respawn", () => {
+  const p = C.createBody();
+  C.stepPlayer(p, { ...C.IDLE_INPUT, jump: true }, dt);
+  const ready = p.jumpReadyAt!;
+  assert.equal(ready, p.simTime + C.JUMP_COOLDOWN_MS);
+  // Simulate an unusually early landing on a higher surface.
+  Object.assign(p, { y: 0, vy: 0, grounded: true, simTime: ready - 60 });
+  C.stepPlayer(p, { ...C.IDLE_INPUT, jump: true }, dt);
+  assert.equal(p.grounded, true, "cooldown blocks another takeoff");
+  for (let i = 0; i < 4; i++) C.stepPlayer(p, C.IDLE_INPUT, dt);
+  assert.ok(!p.grounded && p.vy > 0, "buffered press fires when the short cooldown ends");
+  C.respawn(p); assert.equal(p.jumpReadyAt, 0);
+});
+
 test("running accelerates, sprint is faster, and grounded release brakes promptly", () => {
   const p = C.createBody(), move = { ...C.IDLE_INPUT, z: -1 };
   C.stepPlayer(p, move, dt); assert.ok(p.vz < 0 && p.vz > -C.WALK_SPEED / 2);

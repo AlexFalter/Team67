@@ -20,6 +20,7 @@ export const ACCELERATION = 40,
   AIR_ACCELERATION = 9,
   COYOTE_MS = 90,
   JUMP_BUFFER_MS = 120,
+  JUMP_COOLDOWN_MS = 150,
   RESPAWN_DEPTH = -10;
 
 export const VEHICLE_BOARD_DISTANCE = 3.2,
@@ -59,5 +60,5 @@ export const VEHICLE_STALE_MS = 500;
 
 // A brief grounded sprint slide; keep the normal collision clearance so
 // standing up cannot trap a player beneath the coarse terrain mask.
-export const SLIDE_ANIM = 4, SLIDE_DURATION_MS = 750, SLIDE_COOLDOWN_MS = 1200,
+export const SLIDE_ANIM = 4, SLIDE_DURATION_MS = 750, SLIDE_COOLDOWN_MS = 800,
   SLIDE_MIN_SPEED = 9, SLIDE_FRICTION = 0.8;

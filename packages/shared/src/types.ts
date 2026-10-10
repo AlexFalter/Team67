@@ -104,6 +104,7 @@ export interface Input {
   facing?: number;
 }
 export interface Body extends PlayerState {
+  jumpReadyAt?: number;
   sprintJump?: boolean;
   slideUntil?: number;
   slideReadyAt?: number;

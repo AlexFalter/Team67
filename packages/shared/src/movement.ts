@@ -36,7 +36,7 @@ export function respawn(p: Body, world: MovementWorld = flatWorld) {
   p.vx = p.vy = p.vz = 0;
   p.grounded = true;
   p.knockdownUntil = 0;
-  p.groundTime = p.simTime; p.jumpUntil = 0;
+  p.groundTime = p.simTime; p.jumpUntil = 0; p.jumpReadyAt = 0;
   p.slideUntil = p.slideReadyAt = 0; p.sprintJump = false;
 }
 export function applyImpulse(p: Body, hit: Impulse, now: number) {
@@ -108,7 +108,7 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
     const drag = Math.exp(-9 * dt);
     p.vx *= drag; p.vz *= drag;
   } else {
-    const takingOff = (input.jump || p.jumpUntil > now) && (p.grounded || now - p.groundTime <= C.COYOTE_MS);
+    const takingOff = now >= (p.jumpReadyAt ?? 0) && (input.jump || p.jumpUntil > now) && (p.grounded || now - p.groundTime <= C.COYOTE_MS);
     accelerateFoot(p, input, targetSpeed, dt, takingOff);
   }
   if (!down && input.aim && Number.isFinite(input.facing)) p.rotY = input.facing!;
@@ -116,9 +116,10 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
   if (p.grounded) p.groundTime = now;
   if (down) p.jumpUntil = 0;
   else if (input.jump) p.jumpUntil = now + C.JUMP_BUFFER_MS;
-  if (!down && p.jumpUntil > now && (p.grounded || now - p.groundTime <= C.COYOTE_MS)) {
+  if (!down && now >= (p.jumpReadyAt ?? 0) && p.jumpUntil > now && (p.grounded || now - p.groundTime <= C.COYOTE_MS)) {
     p.sprintJump = input.sprint && Math.hypot(p.vx, p.vz) >= C.SLIDE_MIN_SPEED;
     p.vy = C.JUMP_VELOCITY;
+    p.jumpReadyAt = now + C.JUMP_COOLDOWN_MS;
     p.grounded = false;
     p.groundTime = -1e9; p.jumpUntil = 0;
   }
