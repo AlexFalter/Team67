@@ -1,0 +1,14 @@
+﻿:8080 {
+    handle /matchmake/* {
+        reverse_proxy server:2567
+    }
+    @websocket header Upgrade websocket
+    handle @websocket {
+        reverse_proxy server:2567
+    }
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
+}
