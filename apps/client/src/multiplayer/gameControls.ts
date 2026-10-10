@@ -54,6 +54,11 @@ export class GameControls {
     if (document.pointerLockElement === this.canvas) document.exitPointerLock();
     this.update(); if (this.ready()) document.querySelector<HTMLButtonElement>("#resume")!.focus();
   }
+  suspendForMap() {
+    this.captured = false; this.local.enabled = false; this.local.clear(); this.edge = { x: 0, y: 0 };
+    this.menu.hidden = this.play.hidden = this.crosshair.hidden = true;
+    if (document.pointerLockElement === this.canvas) document.exitPointerLock();
+  }
   update(dt = 0) {
     if (this.ready() && this.suspended()) {
       this.local.clear(); this.edge = { x: 0, y: 0 };

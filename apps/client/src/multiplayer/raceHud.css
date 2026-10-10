@@ -1,0 +1,108 @@
+.game-shell { min-height: 0; background: #12272e; color: #edf4ef; overflow: hidden; }
+.game-shell > p { margin: auto; }
+.game-shell .map-viewer { isolation: isolate; }
+#lobby { align-content: safe center; }
+#lobby #dev-settings label { justify-content: flex-start; margin: 8px 0; font-size: 11px; }
+#lobby #dev-settings input[type=checkbox] { min-height: 16px; height: 16px; width: 16px; padding: 0; }
+.mission-intro { max-width: 420px; color: #c6d9d1; font-size: 16px; line-height: 1.7; margin: 24px 0; }
+.lobby-controls { max-width: 470px; padding: 20px; border: 1px solid #ffffff20; border-top-color: #d7f87a70; border-radius: 10px; background: #0a202bba; }
+.controls-extra { color: #a7bbb2; font-size: 10px; line-height: 2; margin: 18px 0 0; }
+.practice-exam { display: inline-block; margin-top: 16px; }
+.lobby-controls h3 { margin: 0 0 16px; color: #d7f87a; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; }
+.lobby-controls dl { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px; margin: 0; }
+.lobby-controls dl > div { display: flex; align-items: flex-start; gap: 10px; }
+.lobby-controls dt { flex: none; min-width: 60px; }
+.lobby-controls dd { margin: 0; font-size: 12px; font-weight: 600; }
+.lobby-controls dd span { display: block; font-size: 10px; font-weight: 400; color: #a7bbb2; line-height: 1.5; margin-top: 5px; }
+.game-shell kbd { display: inline-block; font: 600 10px/1.4 ui-monospace, monospace; padding: 4px 6px; border: 1px solid #c3ded050; border-bottom-width: 2px; border-radius: 4px; color: #ecf5e8; background: #ffffff0d; white-space: nowrap; }
+.practice-exam { font-size: 11px; color: #b6cfc1; text-decoration: none; }
+.practice-exam:hover { color: #d7f87a; }
+.map-viewer:not([data-dev-mode=true]) .exam-debug-button,
+.map-viewer[data-playing=true]:not([data-dev-mode=true]) > .mode-toggle,
+.map-viewer[data-playing=true] > .map-status:not(.error) { display: none; }
+.map-viewer .game-hud { top: 120px; left: 18px; color: #adcac3; background: #10252de6; border-color: #ffffff25; font-size: 10px; }
+.map-viewer .map-controls { left: 50%; bottom: 72px; transform: translateX(-50%); width: max-content; max-width: min(460px, calc(100% - 36px)); padding: 12px 20px; border: 1px solid #d7f87a80; border-radius: 10px; background: #10272ff2; color: #f1f8e9; box-shadow: 0 4px 24px #0004; font: 650 14px/1.5 system-ui, sans-serif; text-align: center; }
+.map-viewer[data-playing=true] .map-controls:empty { display: none; }
+.map-viewer:has(:is(#play, #pause, #city-map):not([hidden])) .map-controls,
+.map-viewer:has(:is(#npc-hint, #mate-hint):not([hidden])) .map-controls { visibility: hidden; }
+.map-viewer :is(#npc-hint, #mate-hint) { bottom: 72px; padding: 12px 20px; border: 1px solid #d7f87a80; border-radius: 10px; background: #10272ff2; color: #f1f8e9; font: 650 14px/1.5 system-ui, sans-serif; max-width: min(460px, calc(100% - 36px)); width: max-content; box-shadow: 0 4px 24px #0004; }
+#round-timer { top: 18px; z-index: 4; width: 196px; padding: 12px 22px 14px; border: 1px solid #d7f87a70; border-radius: 14px; background: #10272fee; color: #d7f87a; font-family: system-ui, sans-serif; text-align: center; box-shadow: 0 6px 30px #0003; }
+#timer-label { display: block; color: #c9dcd2; font: 700 9px/1.4 system-ui; letter-spacing: 1.7px; }
+#timer-value { display: block; font: 800 44px/1.15 system-ui; font-variant-numeric: tabular-nums; letter-spacing: -2px; margin: 3px 0 9px; }
+.timer-track { height: 4px; border-radius: 4px; overflow: hidden; background: #ffffff20; }
+#timer-fill { display: block; height: 100%; background: currentColor; }
+#round-timer[data-urgent=true] { color: #ffd271; border-color: #ffd271; }
+#round-timer[data-final=true] { top: 18px; transform: translateX(-50%); z-index: 4; width: 196px; padding: 12px 22px 14px; border-radius: 14px; background: #472426f5; color: #ffb3a4; font: inherit; letter-spacing: normal; text-shadow: none; border-color: #ff907e; }
+#round-timer[data-final=true] #timer-label { color: #ffd3c8; }
+#race-leaderboard { position: absolute; top: 18px; right: 18px; width: 242px; padding: 14px; border: 1px solid #ffffff25; border-radius: 12px; background: #10272fe8; color: #edf4ef; pointer-events: none; }
+#race-leaderboard h2 { display: flex; justify-content: space-between; gap: 8px; margin: 0 0 10px; font-size: 10px; letter-spacing: 1px; color: #d7f87a; }
+#race-leaderboard h2 small { color: #aec8bf; font-size: 9px; letter-spacing: .5px; }
+#race-leaders { list-style: none; padding: 0; margin: 0; }
+#race-leaders li { display: flex; align-items: center; gap: 9px; padding: 8px 4px; border-top: 1px solid #ffffff10; font-size: 11px; }
+#race-leaders li[data-you=true] { background: #d7f87a12; color: #d7f87a; border-radius: 5px; }
+.race-place { color: #86a79b; font: 10px ui-monospace, monospace; }
+.race-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#race-leaders b { font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#race-own-rank { color: #d7f87a; margin: 10px 0 0; font-size: 11px; }
+.distance-note { display: block; color: #91aaa1; font-size: 9px; margin: 8px 4px 0; }
+#race-radar { position: absolute; bottom: 18px; left: 18px; width: 180px; padding: 8px; border: 1px solid #ffffff30; border-radius: 13px; background: #10272fed; color: #ecf5e8; box-shadow: 0 4px 24px #0003; }
+.radar-heading { display: flex; align-items: center; justify-content: space-between; margin: 1px 2px 7px; font: 9px ui-monospace, monospace; color: #b0cbbf; }
+.radar-heading b { margin-left: 4px; color: #ffd271; font-variant-numeric: tabular-nums; }
+#race-minimap { width: 100%; height: 150px; border-radius: 6px; }
+#open-city-map { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; background: transparent; border: 0; color: #d7f87a; padding: 8px 2px 0; cursor: pointer; font: 600 11px system-ui; }
+#open-city-map span { margin-left: auto; }
+#city-map { position: absolute; inset: 0; z-index: 35; padding: 22px; background: #081a24c9; backdrop-filter: blur(6px); color: #e9f2e9; }
+.city-map-panel { display: flex; flex-direction: column; width: min(1100px, 100%); height: 100%; margin: auto; padding: 20px; background: #10272f; border: 1px solid #aecab545; border-radius: 18px; box-shadow: 0 20px 100px #0006; }
+.city-map-panel header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 0 0 14px; border-bottom: 1px solid #ffffff20; background: transparent; }
+.city-map-panel header span { color: #d7f87a; font: 9px ui-monospace, monospace; letter-spacing: 1.5px; }
+.city-map-panel h2 { margin: 6px 0 0; font-size: 24px; letter-spacing: -.6px; }
+.city-map-panel button { cursor: pointer; padding: 9px 12px; border: 1px solid #ffffff30; border-radius: 6px; background: #ffffff08; color: #e9f2e9; font: 600 12px system-ui; }
+.city-map-panel button:hover { border-color: #d7f87a; background: #d7f87a15; }
+.game-shell button:focus-visible { outline: 2px solid #d7f87a; outline-offset: 3px; }
+.map-tools { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
+.map-tools output { min-width: 48px; text-align: center; color: #b0cbbf; font: 11px ui-monospace, monospace; }
+.map-tools button:first-child, .map-tools button:nth-child(3) { min-width: 36px; }
+#city-map-canvas { flex: 1; min-height: 100px; height: 0; width: 100%; border: 1px solid #ffffff25; border-radius: 8px; cursor: grab; touch-action: none; }
+#city-map-canvas:active { cursor: grabbing; }
+#map-readout { margin: 10px 0; min-height: 16px; color: #bed0c9; font-size: 11px; }
+.map-legend { display: flex; flex-wrap: wrap; gap: 7px 18px; font-size: 11px; margin-bottom: 10px; }
+.legend-you { color: #74d8ff; }.legend-player { color: #ec9dce; }.legend-route { color: #ffd271; }.legend-tram { color: #75b9ff; }.legend-poly { color: #ff8eaa; }.legend-npc { color: #d7f87a; }
+.city-map-panel > small { color: #8ea89f; font-size: 9px; }
+#activity-feed { top: 275px; right: 18px; max-width: 242px; font: 11px/1.5 system-ui; }
+#publi-bike-battery { left: 212px; bottom: 18px; font-size: 12px; }
+.map-viewer[data-exam-active=true] :is(#race-radar, #race-leaderboard, #city-map),
+.map-viewer:has(:is(#pause, #publibike-scan, #mate-minigame):not([hidden])) :is(#race-radar, #race-leaderboard) { visibility: hidden; pointer-events: none; }
+@media (max-width: 760px) {
+  .map-viewer :is(.map-controls, #npc-hint, #mate-hint) { bottom: 200px; }
+  #round-timer, #round-timer[data-final=true] { width: 155px; padding: 10px 16px; }
+  #timer-value { font-size: 36px; }
+  #race-leaderboard { width: 190px; font-size: 10px; }
+  #race-radar { width: 148px; }
+  #race-minimap { height: 118px; }
+  #activity-feed { max-width: 190px; }
+  #publi-bike-battery { left: 180px; }
+}
+@media (max-width: 540px) {
+  #round-timer, #round-timer[data-final=true] { left: 12px; top: 12px; transform: none; width: 133px; padding: 9px 12px; }
+  #timer-label { font-size: 8px; letter-spacing: 1px; }
+  #race-leaderboard { right: 12px; top: 12px; width: min(190px, calc(100% - 163px)); padding: 10px; }
+  #race-leaders li { gap: 6px; font-size: 10px; padding: 6px 2px; }
+  #race-leaderboard h2 { font-size: 9px; letter-spacing: .3px; }
+  #race-leaderboard h2 small { display: none; }
+  #race-radar { left: 12px; bottom: 12px; width: 130px; padding: 7px; }
+  #race-minimap { height: 102px; }
+  .map-viewer :is(.map-controls, #npc-hint, #mate-hint) { bottom: 184px; font-size: 12px; padding: 10px 14px; }
+  #activity-feed { top: 247px; right: 12px; max-width: 160px; }
+  #publi-bike-battery { left: 154px; bottom: 12px; max-width: calc(100% - 166px); padding: 9px; }
+  #city-map { padding: 8px; }.city-map-panel { padding: 12px; border-radius: 10px; }
+  .city-map-panel h2 { font-size: 19px; }.city-map-panel header span { font-size: 8px; }
+  #close-city-map { font-size: 0; padding: 6px; }#close-city-map kbd { font-size: 9px; }
+  .map-legend { font-size: 10px; gap: 6px 12px; }
+  #lobby { padding-top: 42px; background: linear-gradient(#0c2028b8, #0c202888); }.lobby-controls { padding: 16px 12px; }.lobby-controls dl { gap: 16px 12px; }.lobby-controls dl > div { gap: 7px; }
+  .lobby-controls dt { min-width: 56px; }.lobby-controls dd { font-size: 11px; }
+}
+@media (max-height: 600px) and (min-width: 541px) {
+  #lobby { align-content: start; } .menu-story h2 { font-size: 46px; }
+  #race-radar { width: 135px; }#race-minimap { height: 100px; }
+  #timer-value { font-size: 32px; }#round-timer, #round-timer[data-final=true] { top: 10px; padding: 8px 18px; }
+}

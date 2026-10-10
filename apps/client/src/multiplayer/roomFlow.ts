@@ -15,6 +15,9 @@ export class RoomFlow {
   private restart = this.root.querySelector<HTMLButtonElement>("#room-restart")!;
   private table = this.root.querySelector<HTMLTableElement>("#room-results")!;
   private timer = document.querySelector<HTMLElement>("#round-timer")!;
+  private timerValue = document.querySelector<HTMLElement>("#timer-value")!;
+  private timerFill = document.querySelector<HTMLElement>("#timer-fill")!;
+  private timerLabel = document.querySelector<HTMLElement>("#timer-label")!;
   private finish = document.querySelector<HTMLButtonElement>("#finish-round")!;
   private countdownAnimation?: Animation;
   private signature = "";
@@ -104,16 +107,19 @@ export class RoomFlow {
     const remaining = canPlay ? Math.max(0, this.net.room.state.endsAt - this.net.now()) : 0;
     const finalCountdown = canPlay && remaining > 0 && remaining <= 10000;
     this.timer.dataset.final = String(finalCountdown);
+    this.timer.dataset.urgent = String(canPlay && remaining <= 30000);
     if (!finalCountdown) this.countdownAnimation?.cancel();
     if (canPlay) {
       const seconds = Math.ceil(remaining / 1000);
-      const text = finalCountdown ? String(seconds) : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} remaining`;
-      if (this.timer.textContent !== text) {
-        this.timer.textContent = text;
+      const text = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+      this.timerFill.style.width = `${Math.min(100, 100 * remaining / Math.max(1, this.net.room.state.endsAt - this.net.room.state.startedAt))}%`;
+      this.timerLabel.textContent = finalCountdown ? "RUN! LAST SECONDS" : remaining <= 30000 ? "HURRY TO ETH" : "EXAM STARTS IN";
+      if (this.timerValue.textContent !== text) {
+        this.timerValue.textContent = text;
         this.timer.setAttribute("aria-label", `${seconds} seconds remaining`);
         if (finalCountdown && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
           this.countdownAnimation?.cancel();
-          this.countdownAnimation = this.timer.animate([{ scale: "1.15", opacity: .65 }, { scale: "1", opacity: 1 }],
+          this.countdownAnimation = this.timerValue.animate([{ scale: "1.12" }, { scale: "1" }],
             { duration: 240, easing: "ease-out" });
         }
       }
