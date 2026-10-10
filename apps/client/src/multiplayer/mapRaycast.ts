@@ -1,4 +1,4 @@
-import { Mesh, type BufferGeometry, type Object3D } from "three";
+import { InstancedMesh, Mesh, type BufferGeometry, type Object3D } from "three";
 import { acceleratedRaycast, MeshBVH } from "three-mesh-bvh";
 
 /** Index the static map without changing mesh transforms or triangle order. */
@@ -13,7 +13,7 @@ export function accelerateMapRaycasts(map: Object3D) {
   };
   try {
     map.traverse(object => {
-      if (!(object instanceof Mesh)) return;
+      if (!(object instanceof Mesh) || object instanceof InstancedMesh) return; // instanced decoration (trees) is not collidable
       if (!object.geometry.boundsTree) {
         const tree = new MeshBVH(object.geometry, { indirect: true });
         object.geometry.boundsTree = tree;

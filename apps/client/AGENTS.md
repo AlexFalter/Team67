@@ -38,8 +38,25 @@ The server atomically grants vehicle occupancy and releases it on exit/disconnec
 
 ## Map and deployment
 
-The GLB has combined Buildings and Terrain meshes, not individual building objects. Keep official source credit/CC0 provenance. Explicit `npm run map:import` from `apps/client` can download and regenerate the map; normal loads and builds must not fetch remote GIS data. After a map change regenerate and commit `../../packages/shared/src/zurich-world.json` as well.
+The map is authored in Blender (`assets-src/zurich/zurich.blend`, kept local, not in git; the scripts that build it are in `assets-src/zurich/blender/`, see that README). `blender/export_game.py` writes `public/maps/zurich/zurich.glb` (meshopt-compressed: one `Ground` mesh plus 200 m `City_*` tiles), `trees.glb` + `trees.json` (instanced, not collidable) and `assets-src/zurich/world-grid.json` (2 m ground/obstacle heights). The GLB carries geometry, UVs and material names only: `theme.ts` builds the pixel textures, building colours (`Style` UV = TEXCOORD_1) and lighting from `src/maps/zurich/themes/*.json` (`?theme=summer|autumn`). `npm run world:build` turns `world-grid.json` into `packages/shared/src/zurich-world.json`; regenerate and commit both after a map export. Keep official source credit/CC0 provenance. The legacy `npm run map:import` (raw city surfaces) no longer produces the game map.
 
 Root Compose uses the root workspace build context. Caddy serves the game on 8080, forwards Colyseus matchmaking/WebSocket upgrades to `server:2567`. Root README documents the portal's WebSocket limitation; local success does not prove portal compatibility. Production client URLs derive from the page origin.
+
+## Rendering performance budget
+
+Measured 2026-10-10 on an M1 Pro (14-core GPU), Chrome/ANGLE-Metal, 3024×1890 (full Retina, pixel ratio 2), with the game's lights and 1024² sun shadow. Scene: themed ground (190k tris), 6,395 instanced trees, full LoD2 buildings (650k tris). Frame time = render + GPU sync.
+
+| Buildings | Draw calls | Frame (ms) |
+|---|---|---|
+| none (ground + trees) | 24 | 4.0–5.3 |
+| LoD2 merged into 200 m tiles | 57–90 | 3.7–5.4 |
+| LoD2 as one mesh | 26 | 4.2–5.1 |
+| LoD2, one object per building | 800–2,400 | 7.6–12.9 |
+
+- Triangles are cheap, draw calls are not. Merge static geometry by material into ~200 m tiles (keeps frustum culling for camera and shadow pass); never ship one object per building or prop.
+- A base M1 (7/8-core GPU) is estimated at ~2× these times (~8 ms street, ~11 ms overview) — not measured.
+- Budget: ≤ ~1.5M visible triangles (shadow pass included), ≤ ~300 draw calls, textures tiny (16–32 px pixel art). Repeated props (trees, lamps, benches) must be `InstancedMesh`.
+- Download size is the tighter limit. The shipped `zurich.glb` is meshopt-compressed and deliberately unquantised (~33 MB; no Git LFS, GitHub refuses files over 100 MB). If it must shrink, use ≥16-bit position quantisation (14-bit ≈ 12 cm over the map, causing cracks) and keep the UVs (gltfpack needs `-kv` on texture-less materials).
+- Benchmark harness: renders each variant from street/bridge/overview cameras and logs `BENCH` lines; see `assets-src/zurich/README.md`.
 
 For gameplay/network changes test multiple clients and competing vehicle claims. For world changes check actual geometry, spawn heights and full shuttle route clearance. For lifecycle changes test inspect/play switches and StrictMode remounts. Report only checks actually run.

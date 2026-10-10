@@ -1,11 +1,10 @@
 {
-  "importedAt": "2026-10-09T20:06:14.768Z",
   "license": "CC0-1.0",
   "boundsLV95": [
-    2682950,
-    1247650,
-    2684000,
-    1248350
+    2682750,
+    1246500,
+    2684350,
+    1248400
   ],
   "originLV95": [
     2683475,
@@ -24,7 +23,7 @@
       452
     ]
   },
-  "asset": "maps/zurich/hb-eth.glb",
+  "asset": "maps/zurich/zurich.glb",
   "sources": [
     {
       "name": "Buildings",
@@ -37,18 +36,23 @@
       "catalog": "https://data.stadt-zuerich.ch/dataset/geo_digitales_terrainmodell__tin_",
       "service": "https://www.ogd.stadt-zuerich.ch/wfs/geoportal/Digitales_Terrainmodell__TIN_",
       "typeName": "lod0_gelaende"
-    }
-  ],
-  "layers": [
-    {
-      "name": "Buildings",
-      "sourceFeatures": 1299,
-      "triangles": 151132
     },
     {
-      "name": "Terrain",
-      "sourceFeatures": 74759,
-      "triangles": 48429
+      "name": "Land cover",
+      "catalog": "https://data.stadt-zuerich.ch/dataset/ktzh_av_mopublic__bodenbedeckung__ogd_",
+      "service": "https://maps.zh.ch/wfs/OGDZHWFS",
+      "typeName": "ms:ogd-0401_arv_basis_avzh_bodenbedeckung_f"
+    },
+    {
+      "name": "Trees",
+      "catalog": "https://data.stadt-zuerich.ch/dataset/ktzh_einzelbaeume_2021_2022__ogd_",
+      "service": "https://maps.zh.ch/wfs/OGDZHWFS",
+      "typeName": "ms:ogd-0608_giszhpub_gis_einzelbaeume_2022_f"
     }
-  ]
+  ],
+  "generatedBy": "apps/client/assets-src/zurich/blender/export_game.py (from zurich.blend)",
+  "trees": {
+    "models": "maps/zurich/trees.glb",
+    "placements": "maps/zurich/trees.json"
+  }
 }
