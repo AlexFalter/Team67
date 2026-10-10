@@ -1,6 +1,7 @@
 import { Room, type Client } from "colyseus";
 import * as C from "@race/shared";
 import { GameState, Player, Result } from "./state.ts";
+import { Vehicles } from "./vehicles.ts";
 
 const world = C.zurichWorld;
 const codes = new Set<string>(); // one process: reserve codes synchronously so two creates cannot share one
@@ -13,6 +14,7 @@ class Member {
   lastT = 0; // last accepted pose sample time
   lastCorrection = 0;
   punchReadyAt = 0;
+  grace = 0; // after the server placed the player (vehicle exit): accept a bigger first step
   // Pose history for lag-compensated punches: ring of [t, x, y, z].
   history = new Float64Array(HISTORY * 4);
   head = 0;
@@ -58,6 +60,7 @@ export class GameRoom extends Room<{ state: GameState }> {
   private scores = new Map<string, Score>();
   private code?: string;
   private probe = { x: 0, y: 0, z: 0 };
+  private vehicles = new Vehicles(this);
 
   onCreate(options: { code?: unknown } = {}) {
     if (options.code !== undefined) {
@@ -75,6 +78,18 @@ export class GameRoom extends Room<{ state: GameState }> {
     });
     this.onMessage(C.MOVE, (client, m: unknown) => this.move(client, m));
     this.onMessage(C.PUNCH, (client, m: unknown) => this.punch(client, m));
+    this.onMessage(C.ENTER, (client, vehicleId: unknown) => {
+      const p = this.playing(client.sessionId);
+      if (p) this.vehicles.enter(client.sessionId, p, vehicleId, Date.now());
+    });
+    this.onMessage(C.EXIT, client => {
+      const p = this.playing(client.sessionId);
+      if (p?.vehicle) this.vehicles.exit(client.sessionId, p, Date.now());
+    });
+    this.onMessage(C.CRASH, client => {
+      const p = this.playing(client.sessionId);
+      if (p?.vehicle) this.vehicles.crash(client.sessionId, p, Date.now());
+    });
     this.onMessage(C.SHOES, client => {
       const p = this.playing(client.sessionId);
       if (p) p.shoes = !p.shoes;
@@ -104,7 +119,8 @@ export class GameRoom extends Room<{ state: GameState }> {
   }
 
   onLeave(client: Client) {
-    const id = client.sessionId;
+    const id = client.sessionId, p = this.state.players.get(id);
+    if (p?.vehicle) this.vehicles.disconnect(id, p, Date.now());
     this.state.players.delete(id);
     this.members.delete(id);
     if (this.state.host === id) this.state.host = this.state.players.keys().next().value ?? "";
@@ -136,6 +152,7 @@ export class GameRoom extends Room<{ state: GameState }> {
       m.punchReadyAt = 0;
       this.scores.set(id, { name: p.name, hits: 0, taken: 0 });
     }
+    this.vehicles.reset(now);
     this.state.endsAt = now + roundMs;
     this.state.phase = C.RUNNING;
   }
@@ -153,11 +170,25 @@ export class GameRoom extends Room<{ state: GameState }> {
     for (const p of this.state.players.values()) { p.ready = false; p.waiting = false; }
   }
 
+  /** Rate-limited: point the client back at its last accepted pose (or its vehicle's). */
   private correct(id: string, p: Player) {
-    const m = this.members.get(id)!, now = Date.now();
+    const m = this.members.get(id)!, now = Date.now(), v = this.state.vehicles.get(p.vehicle);
     if (now - m.lastCorrection < 500) return;
     m.lastCorrection = now;
-    m.client.send(C.CORRECT, [p.x, p.y, p.z, 0, 0, 0]);
+    m.client.send(C.CORRECT, v ? [v.x, v.y, v.z, 0, 0, 0] : [p.x, p.y, p.z, 0, 0, 0]);
+  }
+
+  notice(id: string, text: string) {
+    this.members.get(id)?.client.send(C.NOTICE, text);
+  }
+
+  release(id: string, x: number, y: number, z: number) {
+    const p = this.state.players.get(id), m = this.members.get(id);
+    if (!p || !m) return;
+    p.x = x; p.y = y; p.z = z; p.vx = p.vy = p.vz = 0;
+    p.t = Math.max(p.t, Date.now());
+    m.grace = Date.now() + 1500;
+    m.client.send(C.CORRECT, [x, y, z, 0, 0, 0, 1]); // 1: you are on foot now
   }
 
   private move(client: Client, msg: unknown) {
@@ -167,9 +198,14 @@ export class GameRoom extends Room<{ state: GameState }> {
     const [t, x, y, z, yaw, vx, vy, vz, anim] = msg as C.Move, now = Date.now();
     if (t <= m.lastT || t > now + 1000 || t < now - 3000) return; // out of order or nonsense clock
     const dt = Math.min(0.5, (t - m.lastT) / 1000);
-    const g = world.height(x, z);
+    if (p.vehicle) {
+      if (!this.vehicles.drive(id, p, msg as C.Move, m.restamp(t, now), dt)) return this.correct(id, p);
+      m.lastT = t;
+      return;
+    }
+    const g = world.height(x, z), slack = now < m.grace ? 8 : 1;
     const ok =
-      Math.hypot(x - p.x, z - p.z) <= C.MAX_SPEED * dt + 1 && // speed (with slack for jitter)
+      Math.hypot(x - p.x, z - p.z) <= C.MAX_SPEED * dt + slack && // speed (with slack for jitter)
       Math.abs(y - p.y) <= 30 * dt + 1 &&
       !Number.isNaN(g) && y >= g - 0.3 && // on or above the ground
       !world.blocked(x, Math.max(y, g), z, C.RADIUS * 0.8, C.HEIGHT); // not inside a building
@@ -211,7 +247,7 @@ export class GameRoom extends Room<{ state: GameState }> {
     o.downUntil = now + ms;
     o.anim = C.ANIM_DOWN;
     const victim = this.scores.get(targetId), attacker = this.scores.get(fromId);
-    if (victim && fromId !== targetId) victim.taken++;
+    if (victim && fromId !== targetId) victim.taken++; // own bike crashes do not count
     if (attacker && fromId !== targetId) attacker.hits++;
     this.members.get(targetId)?.client.send(C.KNOCK, [ix, iy, iz, ms]);
     this.broadcast(C.HIT, [o.x, o.y + 1, o.z]);
@@ -219,6 +255,8 @@ export class GameRoom extends Room<{ state: GameState }> {
 
   private tick() {
     const now = Date.now();
-    if (this.state.phase === C.RUNNING && now >= this.state.endsAt) this.finish();
+    if (this.state.phase !== C.RUNNING) return;
+    if (now >= this.state.endsAt) return this.finish();
+    this.vehicles.tick(now);
   }
 }

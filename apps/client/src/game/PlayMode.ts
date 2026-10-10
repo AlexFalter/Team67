@@ -7,7 +7,8 @@ import { CameraRig, FAR, VIEWS } from "./camera";
 import { Hud } from "./hud";
 import { Input } from "./input";
 import { LocalPlayer } from "./LocalPlayer";
-import { Remotes } from "./remotes";
+import { Remotes, type Remote } from "./remotes";
+import { Vehicles, type VehicleView } from "./vehicles";
 
 export interface Settings { sensitivity: number; bob: boolean }
 
@@ -32,6 +33,9 @@ export class PlayMode implements Mode {
   readonly avatars: Avatars;
   readonly local: LocalPlayer;
   readonly remotes = new Remotes();
+  readonly vehicles: Vehicles;
+  private myVehicle = ""; // vehicle id I am in (from the server)
+  private crashSent = false;
   private rig = new Rig();
   private me: AvatarState = { x: 0, y: 0, z: 0, yaw: 0, vx: 0, vz: 0, anim: 0, riding: -1, shoes: false, character: 0, color: new Color("#ffcc33") };
   private active: boolean;
@@ -57,6 +61,7 @@ export class PlayMode implements Mode {
     this.camera = new CameraRig(engine.camera, engine.colliders, world);
     engine.setFog(FAR * 0.3, FAR);
     this.avatars = new Avatars(engine.scene);
+    this.vehicles = new Vehicles(engine.scene);
     this.local = new LocalPlayer(world, spawn.x, spawn.y, spawn.z);
     this.local.afterTick = b => {
       for (const r of this.remotes.all.values())
@@ -78,8 +83,9 @@ export class PlayMode implements Mode {
     room.onStateChange(onState);
     if (room.state?.players) this.patch(room.state);
     this.unsubscribe.push(() => room.onStateChange.remove(onState));
-    this.unsubscribe.push(room.onMessage<number[]>(C.CORRECT, ([x, y, z, vx, vy, vz]) => {
+    this.unsubscribe.push(room.onMessage<number[]>(C.CORRECT, ([x, y, z, vx, vy, vz, onFoot]) => {
       if (!this.active) return;
+      if (onFoot && this.myVehicle) this.boardChange(room.state, ""); // may arrive before the patch
       this.local.correct(x, y, z, vx, vy, vz);
       this.corrections++;
     }));
@@ -98,6 +104,7 @@ export class PlayMode implements Mode {
   private patch(state: StateView) {
     const net = this.net!, mine = state.players.get(net.id);
     this.remotes.ingest(state, net.id, net.clock.now());
+    this.vehicles.ingest(state);
     const active = state.phase === C.RUNNING && !!mine && !mine.waiting;
     if (active && !this.active && mine) {
       // Round start: the server placed everyone at a spawn point.
@@ -106,8 +113,12 @@ export class PlayMode implements Mode {
       this.local.body.down = 0;
       this.local.body.shoes = false;
       this.remotes.clear();
+      this.vehicles.clear();
       this.nextPunch = 0;
+      this.local.drive(undefined);
+      this.myVehicle = "";
     }
+    if (active && mine && mine.vehicle !== this.myVehicle) this.boardChange(state, mine.vehicle);
     if (!active && this.active) this.input.unlock();
     this.active = active;
     if (mine) {
@@ -127,6 +138,23 @@ export class PlayMode implements Mode {
     }
   }
 
+  /** The server put me into or took me out of a vehicle. */
+  private boardChange(state: StateView, vehicleId: string) {
+    const v = state.vehicles.get(vehicleId), local = this.local;
+    this.myVehicle = vehicleId;
+    this.crashSent = false;
+    if (v && (v.kind === C.CART || v.kind === C.BIKE)) {
+      local.drive({ kind: v.kind, x: v.x, y: v.y, z: v.z, yaw: v.yaw, vx: 0, vz: 0 });
+      this.input.yaw = v.yaw;
+    } else {
+      // Off a vehicle (or onto the shuttle): stand where we are; the server's exit point follows as a correction.
+      const r = local.render, g = world.height(r.x, r.z);
+      local.drive(undefined);
+      local.place(r.x, Number.isNaN(g) ? r.y : g, r.z);
+      local.snapRender();
+    }
+  }
+
   frame(dt: number, now: number) {
     const { input, local, hud, net } = this;
     net?.clock.update(dt);
@@ -139,31 +167,58 @@ export class PlayMode implements Mode {
         net?.send(C.SHOES);
         hud.notice(b.shoes ? "Running shoes on" : "Running shoes off", 1200);
       }
-      if (input.punch && now >= this.nextPunch && b.down <= 0) {
+      if (input.punch && now >= this.nextPunch && b.down <= 0 && !this.myVehicle) {
         this.nextPunch = now + C.PUNCH_COOLDOWN_MS;
         this.rig.punch = 0;
         net?.send(C.PUNCH, [input.yaw, net.clock.now() - this.remotes.delay]);
       }
     }
+    const serverNow = net ? net.clock.now() : 0;
+    let near: VehicleView | undefined;
+    if (this.active && net) {
+      near = this.myVehicle ? undefined : this.vehicles.nearest(b.x, b.y, b.z, serverNow);
+      if (input.interact) {
+        if (this.myVehicle) net.send(C.EXIT);
+        else if (near) net.send(C.ENTER, near.id);
+      }
+    }
     input.punch = input.shoes = input.interact = false;
 
     this.remotes.adapt(dt);
-    const renderTime = this.renderTime = net ? net.clock.now() - this.remotes.delay : 0;
-    this.remotes.update(renderTime);
+    const renderTime = this.renderTime = net ? serverNow - this.remotes.delay : 0;
+    const riding = this.myVehicle ? this.vehicles.all.get(this.myVehicle) : undefined;
     if (this.active) {
-      local.frame(dt, input.locked ? input : undefined);
-      if (net && now >= this.nextSend) this.send(net, now);
+      if (riding?.kind === C.SHUTTLE) {
+        // Passenger: placed on the seat of the scheduled shuttle, nothing to simulate or send.
+        this.vehicles.update(renderTime, serverNow);
+        C.seatPosition(riding.pose, net!.state.players.get(net!.id)?.seat ?? 0, local.render);
+        local.place(local.render.x, local.render.y, local.render.z);
+      } else {
+        local.frame(dt, input.locked ? input : undefined);
+        if (local.vehicle?.kind === C.BIKE && local.impact >= C.RUN_OVER_SPEED && !this.crashSent) {
+          this.crashSent = true;
+          this.send(net!, now);
+          net?.send(C.CRASH);
+        }
+        if (net && now >= this.nextSend) this.send(net, now);
+      }
+    }
+    if (net) {
+      this.vehicles.update(renderTime, serverNow, local.vehicle && this.myVehicle ? { id: this.myVehicle, pose: local.vehicleRender } : undefined);
+      this.remotes.update(renderTime, this.seat);
     }
     const r = local.render;
     this.avatars.begin();
     if (this.active) {
       if (local.landedSpeed > 0) this.camera.land(local.landedSpeed);
-      this.eye += ((b.down > 0 ? 0.45 : C.EYE_HEIGHT) - this.eye) * (1 - Math.exp(-10 * dt));
+      this.eye += ((b.down > 0 ? 0.45 : riding ? 1.0 : C.EYE_HEIGHT) - this.eye) * (1 - Math.exp(-10 * dt));
       this.camera.update(r.x, r.y, r.z, this.eye, input.yaw, input.pitch, b.grounded ? Math.hypot(b.vx, b.vz) : 0, dt);
       this.engine.focus.copy(r);
       const me = this.me;
       me.x = r.x; me.y = r.y; me.z = r.z; me.yaw = input.yaw;
-      me.vx = b.vx; me.vz = b.vz; me.anim = C.animOf(b); me.shoes = b.shoes;
+      me.vx = b.vx; me.vz = b.vz; me.anim = riding ? C.ANIM_IDLE : C.animOf(b); me.shoes = b.shoes;
+      me.riding = riding ? riding.kind : -1;
+      if (riding) me.yaw = riding.kind === C.SHUTTLE ? riding.pose.yaw : local.vehicleRender.yaw;
       this.avatars.draw(me, this.rig, dt, this.camera.view === 0 ? this.engine.camera : undefined);
     } else this.spectate(dt);
     this.remotes.draw(this.avatars, dt);
@@ -171,15 +226,48 @@ export class PlayMode implements Mode {
 
     hud.crosshair.hidden = !this.active || this.camera.view !== 0 || !input.locked;
     hud.tick(now);
-    if (now - this.hudTime > 100) this.writeHud(now, renderTime);
+    if (now - this.hudTime > 100) {
+      this.writeHud(now, renderTime);
+      hud.set(hud.prompt, this.active ? this.prompt(near, riding, serverNow) : "");
+    }
   }
 
+  private prompt(near: VehicleView | undefined, riding: VehicleView | undefined, serverNow: number) {
+    if (riding?.kind === C.SHUTTLE) {
+      if (riding.tripStart) return `Riding to ${riding.dir ? "HB" : "ETH"}…`;
+      return riding.departAt ? `Departure in ${Math.max(0, Math.ceil((riding.departAt - serverNow) / 1000))} s · E to get off` : "E to get off";
+    }
+    if (riding) return "E to get off";
+    if (!near) return "";
+    if (near.kind === C.SHUTTLE) {
+      if (near.tripStart) return "The shuttle is on its way";
+      let seats = 0;
+      for (const p of this.net!.state.players.values()) if (p.vehicle === near.id) seats++;
+      return `E to board the shuttle to ${near.dir ? "HB" : "ETH"} (${seats}/${C.SHUTTLE_SEATS})${near.departAt ? ` · leaves in ${Math.max(0, Math.ceil((near.departAt - serverNow) / 1000))} s` : ""}`;
+    }
+    return near.driver ? "" : `E to ${near.kind === C.BIKE ? "ride the bike" : "drive the cart"}`;
+  }
+
+  /** Put a remote rider on their seat. */
+  private seat = (r: Remote) => {
+    const v = this.vehicles.all.get(r.vehicle);
+    if (!v) return false;
+    const a = r.avatar;
+    C.seatPosition(v.pose, Math.max(0, r.seat), a);
+    a.yaw = v.pose.yaw; a.vx = v.pose.vx; a.vz = v.pose.vz;
+    a.riding = v.kind;
+    return true;
+  };
+
   private send(net: Net, now: number) {
-    const b = this.local.body, m = this.move;
+    const b = this.local.body, v = this.local.vehicle, m = this.move;
     this.nextSend = Math.max(this.nextSend + 1000 / C.SEND_HZ, now - 100);
     m[0] = net.clock.now() - this.local.pending * 1000; // server time of the latest tick
-    m[1] = b.x; m[2] = b.y; m[3] = b.z; m[4] = b.yaw;
-    m[5] = b.vx; m[6] = b.vy; m[7] = b.vz; m[8] = C.animOf(b);
+    if (v) { // driving: report the vehicle
+      m[1] = v.x; m[2] = v.y; m[3] = v.z; m[4] = v.yaw; m[5] = v.vx; m[6] = 0; m[7] = v.vz; m[8] = 0;
+    } else {
+      m[1] = b.x; m[2] = b.y; m[3] = b.z; m[4] = b.yaw; m[5] = b.vx; m[6] = b.vy; m[7] = b.vz; m[8] = C.animOf(b);
+    }
     net.send(C.MOVE, m);
   }
 
@@ -221,6 +309,7 @@ export class PlayMode implements Mode {
     this.unsubscribe.forEach(u => u());
     this.input.dispose();
     this.avatars.dispose();
+    this.vehicles.dispose();
     this.hud.dispose();
   }
 }

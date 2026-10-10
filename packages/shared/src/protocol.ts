@@ -18,7 +18,8 @@ export const PING = "ping"; // client time
 
 /** server → client */
 export const PONG = "pong"; // [clientTime, serverTime]
-export const CORRECT = "c"; // [x, y, z, vx, vy, vz]: authoritative position, blended out on the client
+export const CORRECT = "c"; // [x, y, z, vx, vy, vz, onFoot?]: authoritative position, blended out on the client;
+// onFoot = 1 when the server took the player off a vehicle
 export const KNOCK = "k"; // [ix, iy, iz, downMs]
 export const NOTICE = "n"; // short text for the HUD
 export const HIT = "hit"; // [x, y, z] punch/run-over impact, for effects

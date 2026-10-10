@@ -146,3 +146,29 @@ test("rounds end on their own after ROUND_DURATION_MS", { timeout: 30000 }, asyn
     await until(() => a.state.phase === C.FINISHED, "timer finished the round", 3000);
   }, { ROUND_DURATION_MS: "800" });
 });
+
+test("vehicles: two players claiming one cart at once, exactly one drives", { timeout: 30000 }, async () => {
+  await withServer(async (client, rooms) => {
+    const a = await client.create("game", { name: "Ann", code: "CARTS" }) as unknown as GameRoom;
+    const b = await client.joinById("CARTS", { name: "Bob" }) as unknown as GameRoom;
+    rooms.push(a, b);
+    await until(() => a.state.players?.size === 2, "joined");
+    a.send(C.READY, true); b.send(C.READY, true);
+    await until(() => a.state.phase === C.RUNNING && a.state.vehicles.size > 0, "running with vehicles");
+    await delay(700);
+    const cart = a.state.vehicles.get("cart-1")!;
+    for (const r of [a, b]) move(r, cart.x, cart.y, cart.z);
+    await until(() => [a, b].every(r => Math.abs(a.state.players.get(r.sessionId)!.x - cart.x) < 1e-3), "both next to the cart");
+    a.send(C.ENTER, "cart-1");
+    b.send(C.ENTER, "cart-1");
+    await until(() => a.state.vehicles.get("cart-1")!.driver !== "", "claimed");
+    await delay(200);
+    const riders = [a, b].filter(r => a.state.players.get(r.sessionId)!.vehicle === "cart-1");
+    assert.equal(riders.length, 1);
+    assert.equal(a.state.vehicles.get("cart-1")!.driver, riders[0].sessionId);
+    // The driver leaves the room: the cart is free again.
+    const driver = riders[0], other = driver === a ? b : a;
+    await driver.leave();
+    await until(() => other.state.vehicles.get("cart-1")!.driver === "", "released on disconnect");
+  });
+});
