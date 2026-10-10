@@ -15,7 +15,7 @@ if not sun:
     sun = bpy.data.objects.new('Sun', bpy.data.lights.new('Sun', 'SUN'))
     bpy.context.scene.collection.objects.link(sun)
 sun.data.color = lin(L['sun'])
-sun.data.energy = L['sunIntensity'] * 1.6          # W/m2; the game divides by pi (three.js punctual light units)
+sun.data.energy = L['sunIntensity'] * 1.6          # W/m2; the game uses the same number (both: albedo / pi)
 sun.data.angle = math.radians(2.0)                 # slightly soft shadows
 el, az = math.radians(L['sunElevation']), math.radians(L['sunAzimuth'])
 # the lamp points down -Z of its object: rotate so it shines FROM azimuth/elevation (azimuth from north, clockwise)

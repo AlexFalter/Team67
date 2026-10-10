@@ -80,7 +80,7 @@
     }
   },
   "lighting": {
-    "$comment": "Sun + world light, identical in Blender (scene_light.py) and the game (theme.ts themeLights): sun strength = sunIntensity*1.6 W/m2 in Blender (/pi in three.js), uniform sky colour = hemiIntensity*0.55 (groundLight unused). AgX tone mapping at exposure; environment = optional neutral studio fill (0 = off, like Blender).",
+    "$comment": "Sun + world light, identical in Blender (scene_light.py) and the game (theme.ts themeLights): sun strength = sunIntensity*1.6 (same number in Blender W/m2 and three.js: both use albedo/pi), uniform sky colour = hemiIntensity*0.55 (groundLight unused). AgX tone mapping at exposure; environment = optional neutral studio fill (0 = off, like Blender).",
     "sun": "#fff2dc",
     "sunIntensity": 2.6,
     "sunElevation": 40,

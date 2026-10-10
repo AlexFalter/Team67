@@ -16,7 +16,7 @@ import { MapGame } from "../multiplayer/MapGame";
 import { ExamOverlay } from "../exam/ExamOverlay";
 import { ExamDebugButton } from "../exam/ExamDebugButton";
 import { emptyExamSession, type ExamSession } from "../exam/ExamSequence";
-import { activeTheme, applyRendererLook, themeLights } from "../maps/zurich/theme";
+import { activeTheme, applyRendererLook, sharpenMapTextures, themeLights } from "../maps/zurich/theme";
 import { createSky } from "../maps/zurich/sky";
 
 export function MapViewer() {
@@ -104,6 +104,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
         renderer = new WebGLRenderer({ canvas: canvas!, antialias: true,
           powerPreference: "high-performance" });
         disposeLook = applyRendererLook(renderer, scene, theme);
+        sharpenMapTextures(map, renderer);
         renderer.shadowMap.enabled = playing;
         renderer.shadowMap.type = PCFShadowMap;
         const light = theme.lighting;
