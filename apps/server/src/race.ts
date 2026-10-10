@@ -29,9 +29,15 @@ export class Race extends Room<{ state: RaceState }> {
     this.vehicles = new VehicleManager(this.state, this.world);
     const configuredDuration = Number(process.env.ROUND_DURATION_MS ?? C.ROUND_DURATION_MS);
     const duration = Number.isFinite(configuredDuration) && configuredDuration > 0 ? configuredDuration : C.ROUND_DURATION_MS;
+    const introDuration = Number(process.env.BATTLE_BUS_INTRO_MS ?? C.BATTLE_BUS_DURATION_MS);
+    const introLead = Number(process.env.BATTLE_BUS_LEAD_MS ?? C.BATTLE_BUS_LEAD_MS);
     this.rounds = new RoundManager(this.state, duration, () => {
       for (const id of this.state.players.keys()) this.lastMoves.set(id, Date.now());
-    }, () => this.resetRound());
+    }, () => this.resetRound(), {
+      durationMs: Number.isFinite(introDuration) && introDuration > 0 ? introDuration : C.BATTLE_BUS_DURATION_MS,
+      leadMs: Number.isFinite(introLead) && introLead >= 0 ? introLead : C.BATTLE_BUS_LEAD_MS,
+      onArrival: () => this.arriveFromBus(),
+    });
     this.onMessage("ready", (client, ready: unknown) => this.rounds.ready(client.sessionId, ready));
     this.onMessage("restartRound", client => this.rounds.restart(client.sessionId));
     this.onMessage("finishRound", client => {
@@ -85,6 +91,16 @@ export class Race extends Room<{ state: RaceState }> {
     this.physics.sync(new Map(), new Map());
     this.vehicles = new VehicleManager(this.state, this.world);
     for (const [id, member] of this.state.members) this.spawnPlayer(id, member.character, colors.get(id));
+  }
+  private arriveFromBus() {
+    const points = this.world.name === "zurich" ? C.battleBusDropoffs(this.world, this.maxClients) : undefined;
+    for (const [id, p] of this.state.players) {
+      const seat = this.state.members.get(id)!.introSeat;
+      if (points) Object.assign(p, points[seat], { rotY: C.BATTLE_BUS_HEADING + Math.PI });
+      p.vx = p.vy = p.vz = 0; p.grounded = true; p.anim = 0;
+      p.simTime = Date.now();
+      this.lastMoves.set(id, p.simTime);
+    }
   }
   onLeave(client: Client) {
     this.vehicles.disconnect(client.sessionId);
@@ -175,7 +191,7 @@ export class Race extends Room<{ state: RaceState }> {
   private tick() {
     const now = this.state.serverTime = Date.now(), vehicleHit = this.vehicleHit;
     this.rounds.tick(now);
-    if (this.state.phase !== C.RoomPhase.Running) return;
+    if (this.state.phase !== C.RoomPhase.Running || !this.state.introComplete) return;
     const positions = new Map([...this.state.players].map(([id, p]) => [id, this.correction(p)]));
     for (const p of this.state.players.values()) p.simTime = now;
     this.vehicles.tick(now, vehicleHit);

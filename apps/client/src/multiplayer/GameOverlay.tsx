@@ -45,6 +45,7 @@ export function GameOverlay({ resolution, onResolutionChange }: {
       </div>
     </section>
     <div id="round-timer" hidden aria-live="off"></div>
+    <div id="battle-bus-intro" hidden role="status" aria-live="polite"></div>
     <button id="play" hidden>Click to play<br /><small>Mouse / trackpad look · WASD run · Space jump · Esc menu</small></button>
     <div id="crosshair" hidden aria-hidden="true">+</div>
     <section id="pause" hidden aria-label="Game menu">

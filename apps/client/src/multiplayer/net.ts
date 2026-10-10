@@ -15,6 +15,7 @@ export class Network {
   room!: Room<object, WorldState>;
   private disposed = false;
   private phase = "";
+  private introComplete = false;
   offset = 0;
   rtt = 0;
   collisions = 0;
@@ -52,7 +53,7 @@ export class Network {
     this.room.onStateChange((state) => {
       if (this.disposed) return;
       const own = state.players.get(this.room.sessionId);
-      if (own && (!this.initialized || own.vehicleId !== body.vehicleId ||
+      if (own && (!this.initialized || (!this.introComplete && state.introComplete) || own.vehicleId !== body.vehicleId ||
         (this.phase !== state.phase && state.phase !== RoomPhase.Finished))) {
         if (!this.initialized) this.offset = state.serverTime - Date.now();
         snapshot(own, body);
@@ -68,6 +69,7 @@ export class Network {
         body.knockdownUntil = Math.max(body.knockdownUntil, own.knockdownUntil);
       }
       this.phase = state.phase;
+      this.introComplete = state.introComplete;
       onPatch(state, this.room.sessionId);
     });
     this.room.onMessage<PlayerCorrection>("playerCorrection", correction => {
@@ -132,7 +134,8 @@ export class Network {
     }
   }
   get canPlay() {
-    return this.initialized && this.room?.state?.phase === RoomPhase.Running && this.now() < this.room.state.endsAt &&
+    return this.initialized && this.room?.state?.phase === RoomPhase.Running && this.room.state.introComplete &&
+      this.now() >= this.room.state.startedAt && this.now() < this.room.state.endsAt &&
       !!this.room.state.players.get(this.room.sessionId) && !!this.room.state.members.get(this.room.sessionId) &&
       !this.room.state.members.get(this.room.sessionId)!.spectator;
   }

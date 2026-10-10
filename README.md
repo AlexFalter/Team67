@@ -77,3 +77,15 @@ Networking follows main's client-owned movement: compact movement/vehicle report
 The map keeps its original LV95 conversion: **X = E − 2683475**, **Y = elevation − 400**, **Z = 1248000 − N**, in metres. Shared terrain uses bilinear heights on a **2 m grid**, and buildings use a sampled roof/footprint obstruction mask. This is a deliberately approximate hackathon collision surface: it blocks ordinary buildings and follows hills, but does not model doors, tunnels, bridges, rooftop walking, water, or detailed wall geometry. The shuttle route avoids sampled building footprints; it is not an imported road network. The original 60 × 60 plane is only used in regression tests.
 
 The official GLB and source credit are preserved. Builds do not fetch GIS data. See [apps/client/README.md](apps/client/README.md) for provenance and explicit map re-import instructions. If the GLB changes, run `npm run world:build` and commit its generated JSON too.
+
+## Late for ETH mini-games prototype
+
+The complete modular single-player prototype is in [`mini-games/`](mini-games/README.md). Run it independently:
+
+```sh
+cd mini-games
+npm ci
+npm run dev
+```
+
+See its [module guide](mini-games/src/README.md), [feature export guide](mini-games/docs/feature-modules.md), and [map placement guide](mini-games/src/world/placements/README.md). Features include NPC encounters, bike and scooter interactions, ticket and Mate machines, phone tasks, and vehicle passenger systems. This prototype is available alongside the multiplayer app; the feature modules are not yet wired into multiplayer.

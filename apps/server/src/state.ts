@@ -1,6 +1,7 @@
 import { schema, t, type SchemaType } from "@colyseus/schema";
 import { RoomPhase } from "@race/shared";
 export const RoomMember = schema({
+  introSeat: t.int8().default(-1),
   name: t.string().default(""),
   character: t.uint8().default(0),
   ready: t.boolean().default(false),
@@ -69,6 +70,8 @@ export const RaceState = schema(
     startedAt: t.number().default(0),
     endsAt: t.number().default(0),
     finishedAt: t.number().default(0),
+    introStartedAt: t.number().default(0),
+    introComplete: t.boolean().default(false),
     members: t.map(RoomMember),
     results: t.map(RoundResult),
     players: t.map(Player),
