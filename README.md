@@ -89,3 +89,5 @@ npm run dev
 ```
 
 See its [module guide](mini-games/src/README.md), [feature export guide](mini-games/docs/feature-modules.md), and [map placement guide](mini-games/src/world/placements/README.md). Features include NPC encounters, bike and scooter interactions, ticket and Mate machines, phone tasks, and vehicle passenger systems. This prototype is available alongside the multiplayer app; the feature modules are not yet wired into multiplayer.
+
+Dev mode is available under **Testing** before creating a room. Enable **Dev mode → Skip starting bus animation** to start everyone directly at the normal bus drop-off when the host starts the match. These preferences are saved on the browser and belong to the room creator; joining a room follows that room’s settings. Dev mode can also keep the intro enabled. The skip persists for subsequent rounds in the same room.

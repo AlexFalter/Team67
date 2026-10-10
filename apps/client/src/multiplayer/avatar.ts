@@ -1,5 +1,11 @@
 import * as THREE from "three";
-import { ATTACK_COOLDOWN_MS, type PlayerState } from "@race/shared";
+import { ATTACK_COOLDOWN_MS, TRAM_KIND, POLYBAHN_KIND, type PlayerState } from "@race/shared";
+
+// The seated owner can turn through their torso; show the body in third person
+// and to other players, while keeping the owning rail camera clear.
+export function firstPersonBodyVisible(p: Pick<PlayerState, "anim" | "vehicleId" | "vehicleKind">, perspective: number) {
+  return perspective === 0 && p.anim !== 3 && !(p.vehicleId && (p.vehicleKind === TRAM_KIND || p.vehicleKind === POLYBAHN_KIND));
+}
 
 // Original articulated models: all outfits share geometry, joints and motion.
 export const CHARACTERS = ["CS Student", "Student Athlete", "Albert Einstein"];

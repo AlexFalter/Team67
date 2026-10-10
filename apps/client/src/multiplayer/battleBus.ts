@@ -7,8 +7,14 @@ import { disposeMap } from "../maps/zurich/loadZurichMap.ts";
 import { loadBattleBusModel } from "./battleBusModel.ts";
 import { busCurve, busFlightProgress, busParkingHeading, busPathPose, battleBusPaths } from "./battleBusPath";
 
+import { BusRideControls } from "./busRideControls.ts";
+import { ActivityFeed } from "./activityFeed.ts";
+
 export class BattleBusIntro {
   readonly ready: Promise<void>;
+  private ride = new BusRideControls();
+  private feed = new ActivityFeed();
+  private rideRun = 0;
   private abort = new AbortController();
   private model?: Awaited<ReturnType<typeof loadBattleBusModel>>;
   private overlay = document.querySelector<HTMLElement>("#battle-bus-intro")!;
@@ -26,7 +32,29 @@ export class BattleBusIntro {
   private departure: THREE.Curve<THREE.Vector3>;
   private dropoffs = C.battleBusDropoffs(C.zurichWorld, 40);
 
-  constructor(private scene: THREE.Scene, private camera: THREE.PerspectiveCamera, private net: Network) {
+  constructor(private scene: THREE.Scene, private camera: THREE.PerspectiveCamera, private net: Network, private canvas: HTMLCanvasElement, sensitivity: () => number) {
+    const syncRide = () => {
+      const run = this.net.room?.state.introStartedAt ?? 0;
+      if (run !== this.rideRun) { this.rideRun = run; this.ride.begin(run); this.feed.clear(); }
+    };
+    canvas.addEventListener("mousemove", e => {
+      if (!this.active) return;
+      syncRide();
+      const elapsed = C.battleBusElapsed(this.net.room.state, this.net.now());
+      if (elapsed >= 1.2 && elapsed < 7) this.ride.look(e.movementX, e.movementY, sensitivity());
+    }, { signal: this.abort.signal });
+    window.addEventListener("keydown", e => {
+      if (e.code !== "Space" || e.repeat || !this.active) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, button, [contenteditable=true]")) return;
+      const state = this.net.room.state;
+      if (this.net.now() < state.introStartedAt || C.battleBusElapsed(state, this.net.now()) >= 7) return;
+      e.preventDefault(); syncRide();
+      if (this.ride.thank()) {
+        const name = state.members.get(this.net.room.sessionId)?.name || "You";
+        this.feed.add(`${name} thanked the bus driver.`);
+      }
+    }, { signal: this.abort.signal });
     this.origin.y = C.zurichWorld.height(this.origin.x, this.origin.z) ?? this.start.y;
     const paths = battleBusPaths(this.origin);
     this.entry = busCurve(paths.arrival); this.departure = busCurve(paths.departure);
@@ -65,11 +93,14 @@ export class BattleBusIntro {
   update(dt: number, local: THREE.Group, remotes: RemotePlayers) {
     const active = this.active, model = this.model, state = this.net.room?.state;
     this.overlay.hidden = !active;
+    if (active && this.rideRun !== state!.introStartedAt) {
+      this.rideRun = state!.introStartedAt; this.ride.begin(this.rideRun); this.feed.clear(); this.canvas.focus();
+    }
     if (!model) return;
     if (!active) {
       this.audio.pause();
       const age = state ? (this.net.now() - state.startedAt) / 1000 : -1;
-      model.bus.visible = !!state && state.phase === C.RoomPhase.Running && state.introComplete && age >= 0 && age < 6;
+      model.bus.visible = !!state && !state.skipIntro && state.phase === C.RoomPhase.Running && state.introComplete && age >= 0 && age < 6;
       if (model.bus.visible) { model.setDoor(0); this.entryPose(age / 6, true); }
       return;
     }
@@ -83,7 +114,7 @@ export class BattleBusIntro {
       id => id === this.net.room.sessionId ? local : remotes.players.get(id)?.mesh,
       this.net.room.sessionId, elapsed, this.net.now());
     this.overlay.textContent = this.net.now() < state!.introStartedAt ? "Match started. The battle bus is departing…"
-      : elapsed < 7 ? "Arriving on the battle bus…" : "Disembarking together…";
+      : elapsed < 7 ? `Mouse / trackpad: look around · ${this.ride.hasThanked ? "Driver thanked!" : "Space: thank the bus driver"}` : "Disembarking together…";
   }
   private renderIntro(dt: number, players: Iterable<[string, C.PlayerState]>,
     members: ReadonlyMap<string, Pick<C.RoomMember, "introSeat" | "spectator">>,
@@ -126,7 +157,8 @@ export class BattleBusIntro {
       const seat = C.battleBusSeat(members.get(localId)!.introSeat);
       this.camera.position.copy(model.bus.localToWorld(new THREE.Vector3(seat.x, seat.eyeY, seat.z)));
       this.camera.up.set(0, 1, 0).applyQuaternion(model.bus.quaternion);
-      this.camera.lookAt(model.bus.localToWorld(new THREE.Vector3(seat.x, seat.eyeY, seat.z - 4)));
+      this.ride.begin(this.rideRun);
+      this.camera.quaternion.copy(this.ride.orientation(model.bus.quaternion));
     } else {
       this.camera.up.set(0, 1, 0);
       this.camera.position.copy(this.start).addScaledVector(this.right, 6.5).addScaledVector(this.forward, 6);
@@ -135,7 +167,7 @@ export class BattleBusIntro {
     }
   }
   dispose() {
-    this.abort.abort(); this.audio.pause(); this.audio.removeAttribute("src"); this.audio.load(); this.overlay.hidden = true;
+    this.abort.abort(); this.feed.dispose(); this.audio.pause(); this.audio.removeAttribute("src"); this.audio.load(); this.overlay.hidden = true;
     if (this.model) { disposeAvatar(this.model.driver); disposeMap(this.model.bus); this.model.bus.removeFromParent(); }
   }
 }

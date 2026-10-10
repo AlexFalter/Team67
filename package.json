@@ -12,14 +12,15 @@
   ],
   "scripts": {
     "dev": "concurrently -k -n server,client \"npm run dev -w @race/server\" \"npm run dev:client -w @race/client\"",
-    "build": "npm run world:build && npm run check && npm run build -w @race/client",
+    "build": "npm run world:build && npm run transit:build && npm run check && npm run build -w @race/client",
     "check": "tsc --noEmit && npm run check -w @race/client",
     "lint": "npm run lint -w @race/client",
     "start": "npm start -w @race/server",
     "bots": "tsx apps/server/src/bots.ts",
     "test": "tsx --test tests/*.test.ts",
     "world:build": "tsx scripts/build-world.ts",
-    "transit:build": "tsx scripts/build-transit.ts"
+    "transit:build": "tsx scripts/build-transit.ts",
+    "transit:check": "tsx scripts/check-tram-clearance.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

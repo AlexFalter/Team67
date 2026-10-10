@@ -32,6 +32,10 @@ export interface WorldState {
   finishedAt: number;
   introStartedAt: number;
   introComplete: boolean;
+  devMode: boolean;
+  skipIntro: boolean;
+  goldPubliBikes: boolean;
+  railCrashProtection: boolean;
   members: Map<string, RoomMember>;
   results: Map<string, RoundResult>;
   players: Map<string, PlayerState>;
@@ -53,6 +57,8 @@ export interface RoundResult {
 }
 export interface VehicleState {
   kind: number; // 0 cart, 1 shuttle, 2 bike, 3 NPC car, 4 ball, 5 tram, 6 Polybahn
+  derailStartedAt: number;
+  derailAge: number;
   railDistance: number;
   railLane: number;
   railReverse: boolean;

@@ -10,6 +10,7 @@ export function vehicleSpeed(v: Pick<VehicleState, "kind">) { return v.kind === 
 export function createVehicle(kind = 0, x = 0, z = 0): VehicleState {
   return {
     kind,
+    derailStartedAt: 0, derailAge: 0,
     railDistance: 0, railLane: 0, railReverse: false, pitch: 0,
     x,
     y: 0,
