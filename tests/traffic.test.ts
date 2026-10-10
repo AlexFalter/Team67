@@ -24,7 +24,7 @@ test("parked vehicles block players; bikes and NPC cars knock down with differen
   assert.ok((hits[1][5] as number) > weak);
 });
 test("driver prediction uses identical shared steps and obeys house bounds", () => {
-  const p = C.createBody(); p.vehicleId = "bike-1"; p.vehicleKind = 2; p.seat = 0; p.y = C.CART_SEAT_HEIGHT;
+  const p = C.createBody(); p.vehicleId = "bike-1"; p.vehicleKind = 2; p.seat = 0; p.y = C.BIKE_SEAT_HEIGHT;
   for (let i = 0; i < 20; i++) C.stepPlayer(p, { ...C.IDLE_INPUT, x: 1 }, 1 / 30);
-  assert.ok(p.x > 1); assert.ok(p.vx <= C.BIKE_SPEED); assert.equal(p.y, C.CART_SEAT_HEIGHT);
+  assert.ok(p.x > 1); assert.ok(p.vx <= C.BIKE_SPEED); assert.equal(p.y, C.BIKE_SEAT_HEIGHT);
 });

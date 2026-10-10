@@ -16,7 +16,7 @@
   <nav>
     <select id="motion" aria-label="Animation">
       <option value="run">Run</option><option value="sprint" selected>Sprint</option>
-      <option value="jump">Sprint jump</option><option value="slide">Slide</option><option value="idle">Idle</option>
+      <option value="jump">Sprint jump</option><option value="slide">Slide</option><option value="idle">Idle</option><option value="hit">Knockdown &amp; get up</option><option value="punch">Right hook</option>
     </select>
     <select id="view" aria-label="Camera view">
       <option>Third person</option><option>First person</option><option>Look down</option>
@@ -25,15 +25,16 @@
       <option>CS Student Boy</option><option>CS Student Girl</option><option>Einstein</option><option>Rector Dissertori</option>
     </select>
     <label><input id="slow" type="checkbox" /> Slow motion</label>
-    <p>Same character · sprint, airborne kicks and slide · <a href="/">Play the game</a></p>
+    <label><input id="hold" type="checkbox" /> Hold hook pose</label>
+    <p>Same character · sprint, jump, slide and knockdown · <a href="/">Play the game</a></p>
   </nav>
   <script type="module">
     import * as T from 'three';
     import { avatar, pose, disposeAvatar, CHARACTERS } from '/src/multiplayer/avatar.ts';
     import { decoratePlayer } from '/src/multiplayer/playerIdentity.ts';
-    import { SpeedParticles } from '/src/multiplayer/effects.ts';
+    import { Effects } from '/src/multiplayer/effects.ts';
     import { PlayerView } from '/src/multiplayer/view.ts';
-    import { createBody } from '@race/shared';
+    import { createBody, ATTACK_COOLDOWN_MS } from '@race/shared';
 
     const scene = new T.Scene(); scene.background = new T.Color('#243544');
     const camera = new T.PerspectiveCamera(82, innerWidth / innerHeight, 0.05, 100);
@@ -46,7 +47,7 @@
     const grid = new T.GridHelper(100, 100, 0x455d58, 0x6a807b); scene.add(grid);
     let full = avatar('#ffc978'), first = avatar('#ffc978', 0, true); scene.add(full, first);
     decoratePlayer(full, CHARACTERS[0], true);
-    const p = createBody(), view = new PlayerView(camera, []), speed = new SpeedParticles(scene);
+    const p = createBody(), view = new PlayerView(camera, []), effects = new Effects(scene);
     view.yaw = Math.PI;
     const motion = document.querySelector('#motion'), perspective = document.querySelector('#view');
     const slow = document.querySelector('#slow');
@@ -69,12 +70,25 @@
       }
       if (motion.value === 'slide') p.anim = 4;
       if (motion.value === 'idle') { p.anim = 0; p.vz = 0; }
+      p.attackReadyAt = 0;
+      if (motion.value === "punch") {
+        p.anim = 0; p.vz = 0;
+        const age = document.querySelector("#hold").checked ? .21 : t % 1.7;
+        p.attackReadyAt = age < .42 ? p.simTime + ATTACK_COOLDOWN_MS - age * 1000 : 0;
+      }
+      p.impactStartedAt = p.impactStrength = p.knockdownUntil = 0;
+      if (motion.value === 'hit') {
+        const cycle = Math.floor(t / 4.4), age = t % 4.4;
+        p.impactStartedAt = cycle * 4400 + 500; p.knockdownUntil = p.impactStartedAt + 2800;
+        p.impactStrength = 14; p.impactX = 8; p.impactZ = -9;
+        p.anim = age >= .5 && age < 3.3 ? 3 : 0; p.vz = 0;
+      }
       const firstPerson = perspective.selectedIndex !== 0;
       full.visible = !firstPerson; first.visible = firstPerson; pose(full, p, dt);
       if (!firstPerson) { camera.position.set(2.5, 1.4 + p.y, 3); camera.lookAt(0, p.y + 0.8, 0); }
       else { view.pitch = perspective.selectedIndex === 2 ? -1.25 : 0; view.update(p, dt); pose(first, p, dt, view.pitch, camera); }
       distance += p.vz * dt; grid.position.z = -(distance % 1);
-      speed.update(p, camera, dt, firstPerson); renderer.render(scene, camera); requestAnimationFrame(frame);
+      effects.speed(p, camera, dt, firstPerson); renderer.render(scene, camera); requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);
     onresize = () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); };

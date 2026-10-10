@@ -146,21 +146,25 @@ export class Race extends Room<{ state: RaceState }> {
   private hit(target: string, hit: C.Impulse) {
     const p = this.state.players.get(target);
     if (p && this.rounds.canPlay(target) && !this.npcs.busy(target)) {
+      if (hit.knockdown && p.knockdownUntil > Date.now()) return;
       this.rounds.hit(hit.from, target);
       p.simTime = Date.now();
       const correction = this.correction(p);
+      hit.at = p.simTime;
       C.applyImpulse(p, hit, p.simTime);
       const client = this.clients.find(c => c.sessionId === target);
       client?.send("playerCorrection", correction);
       client?.send("impulse", hit);
+      return true;
     }
+    return false;
   }
   private bump(a: string, b: string, x: number, y: number, z: number) {
     this.broadcast("bump", { a, b, x, y, z, t: this.state.serverTime } satisfies C.Bump);
   }
-  private vehicleHit: Parameters<VehicleManager["tick"]>[1] = (from, target, x, y, z, ix, iy, iz, knockdown) => {
-    this.hit(target, { from, ix, iy, iz, knockdown, durationMs: 2500 });
-    this.bump(from, target, x, y, z);
+  private vehicleHit: Parameters<VehicleManager["tick"]>[1] = (from, target, x, y, z, ix, iy, iz, knockdown, kind) => {
+    if (this.hit(target, C.collisionImpact(from, ix, iy, iz, kind === 2 ? "bike" : "vehicle", knockdown)))
+      this.bump(from, target, x, y, z);
   };
   private correction(p: C.PlayerState): C.PlayerCorrection {
     return { x: p.x, y: p.y, z: p.z, vx: p.vx, vy: p.vy, vz: p.vz, grounded: p.grounded,
@@ -219,9 +223,9 @@ export class Race extends Room<{ state: RaceState }> {
     if (!p || p.vehicleId || now < p.knockdownUntil || now < p.attackReadyAt) return;
     p.simTime = now; p.attackReadyAt = now + C.ATTACK_COOLDOWN_MS;
     for (const [target, other] of this.state.players) if (target !== client.sessionId && !other.vehicleId && C.inHitCone(p, other, this.world)) {
-      this.hit(target, { from: client.sessionId, ix: Math.sin(p.rotY) * 8, iy: 1.5, iz: Math.cos(p.rotY) * 8,
-        knockdown: true, durationMs: C.ATTACK_KNOCKDOWN_MS });
-      this.bump(client.sessionId, target, other.x, other.y + 0.9, other.z);
+      if (this.hit(target, { from: client.sessionId, ix: Math.sin(p.rotY) * 8, iy: 1.5, iz: Math.cos(p.rotY) * 8,
+        knockdown: true, durationMs: C.ATTACK_KNOCKDOWN_MS }))
+        this.bump(client.sessionId, target, other.x, other.y + 0.9, other.z);
     }
   }
   private tick() {
@@ -232,7 +236,11 @@ export class Race extends Room<{ state: RaceState }> {
     this.npcs.tick(now);
     if (this.state.phase !== C.RoomPhase.Running || !this.state.introComplete) return;
     const positions = new Map([...this.state.players].map(([id, p]) => [id, this.correction(p)]));
-    for (const p of this.state.players.values()) p.simTime = now;
+    for (const p of this.state.players.values()) {
+      p.simTime = now;
+      if (p.anim === 3 && now >= p.knockdownUntil)
+        p.anim = !p.grounded ? 2 : Math.hypot(p.vx, p.vz) > 0.2 ? 1 : 0;
+    }
     this.vehicles.tick(now, vehicleHit);
     this.vehicles.bikeContacts(now, vehicleHit);
     // Docked bikes and bikes currently being scanned remain held in place.

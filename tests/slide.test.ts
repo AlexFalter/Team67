@@ -6,8 +6,8 @@ import { withServer, startRound, until } from "./fixture.ts";
 const dt = 1 / 60;
 const slide = { ...C.IDLE_INPUT, z: 1, sprint: true, slide: true };
 
-test("slide requires a grounded sprint, carries momentum without steering, expires and has a cooldown", () => {
-  for (const overrides of [{} as Partial<C.Body>, { vz: 11, grounded: false }, { vz: 11, knockdownUntil: 5000 }]) {
+test("slide starts with sprint speed on the ground or landing, carries momentum without steering, expires and has a cooldown", () => {
+  for (const overrides of [{} as Partial<C.Body>, { vz: 11, grounded: false, y: 1 }, { vz: 11, knockdownUntil: 5000 }]) {
     const p = Object.assign(C.createBody(), overrides);
     C.stepPlayer(p, slide, dt); assert.notEqual(p.anim, C.SLIDE_ANIM);
   }

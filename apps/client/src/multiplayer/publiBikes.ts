@@ -162,7 +162,7 @@ export class PubliBikeFeature {
     }
     const bike = state?.publiBikes?.get(this.local.body.vehicleId);
     this.battery.hidden = !this.net.canPlay || !bike;
-    if (bike) this.battery.textContent = `PUBLIBIKE BATTERY · ${(bike.batteryMs / 1000).toFixed(1)}s`;
+    if (bike) this.battery.textContent = "PUBLIBIKE · E to get off";
     const request = this.request; if (!request) return;
     if (!this.net.canPlay || this.local.body.knockdownUntil > this.net.now()) { this.close(); return; }
     if (!request.token || request.sent) return;

@@ -10,6 +10,7 @@ export class NpcFeature {
   readonly root: THREE.Group;
   readonly active: boolean;
   readonly hideAvatar: boolean;
+  readonly nearbyInteraction: boolean;
   interact(): boolean;
   update(dt: number, available: boolean): void;
   afterRender(): void;

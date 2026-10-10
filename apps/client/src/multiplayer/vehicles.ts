@@ -295,6 +295,12 @@ export class Vehicles {
     }
     v.mesh.position.set(v.rendered.x, v.rendered.y, v.rendered.z);
     v.mesh.rotation.y = v.rendered.rotY;
+    if (v.rendered.kind === 2) {
+      const speed = v.rendered.vx * Math.sin(v.rendered.rotY) + v.rendered.vz * Math.cos(v.rendered.rotY);
+      for (const name of ["PubliBike FrontWheel", "PubliBike RearWheel"]) {
+        const wheel = v.mesh.getObjectByName(name); if (wheel) wheel.rotation.x += speed * dt / (0.62 * 0.68);
+      }
+    }
     const fallen = v.rendered.kind === 2 && v.rendered.fallenUntil > t;
     v.mesh.rotation.z = THREE.MathUtils.lerp(v.mesh.rotation.z, fallen ? -1.42 : 0, 1 - Math.exp(-9 * dt));
     // Rotate about the tyre contact rather than burying the frame underground.
@@ -309,7 +315,7 @@ export class Vehicles {
     }
     if (!C.isPassengerVehicle(visual.latest) && visual.latest.driver === sessionId) {
       this.drivenId = body.vehicleId;
-      Object.assign(this.prediction, visual.latest, { x: body.x, y: body.y - C.CART_SEAT_HEIGHT, z: body.z, rotY: body.rotY, vx: body.vx, vz: body.vz });
+      Object.assign(this.prediction, visual.latest, { x: body.x, y: body.y - (body.vehicleKind === 2 ? C.BIKE_SEAT_HEIGHT : C.CART_SEAT_HEIGHT), z: body.z, rotY: body.rotY, vx: body.vx, vz: body.vz });
       Object.assign(visual.rendered, this.prediction);
     } else this.drivenId = "";
     if (!this.drivenId) C.seatPosition(visual.rendered, body.seat, body);
@@ -325,9 +331,11 @@ export class Vehicles {
   }
   private nearest(body: C.Body) {
     let closest = "",
-      distance = C.VEHICLE_BOARD_DISTANCE;
+      distance = Infinity;
     for (const [id, v] of this.items) {
       if (C.isRail(v.latest) && (v.latest.traveling || (v.latest.departureAt && this.net.now()>=v.latest.departureAt))) continue;
+      if (v.latest.fallenUntil > this.net.now() || (!C.isPassengerVehicle(v.latest) && v.latest.driver)) continue;
+      if (this.net.room?.state.publiBikes.get(id)?.reservedBy) continue;
       const boarding = C.isRail(v.latest) ? C.railBoardingPoint(v.rendered) : v.rendered;
       const d = Math.hypot(body.x - boarding.x, body.z - boarding.z);
       if (!C.isRideable(v.latest) || Math.abs(body.y - boarding.y) > C.VEHICLE_BOARD_HEIGHT) continue;
@@ -344,6 +352,10 @@ export class Vehicles {
       const id = this.nearest(body);
       if (id) this.net.room.send("vehicleEnter", id);
     }
+  }
+  interactionKind(body: C.Body) {
+    const v = this.items.get(body.vehicleId || this.nearest(body))?.latest;
+    return v ? v.kind === 2 ? "bike" : v.kind === C.POLYBAHN_KIND ? "polybahn" : C.isPassengerVehicle(v) ? "tram" : "cart" : undefined;
   }
   nearestId(body: C.Body) { return this.nearest(body); }
   updateLabels(body: C.Body, now: number) {

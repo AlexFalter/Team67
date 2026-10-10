@@ -1,3 +1,4 @@
+import { ActionHud, type ContextAction } from "./actionHud.ts";
 import { LocalPlayer } from "./localPlayer.ts";
 import { PlayerView, PERSPECTIVES } from "./view.ts";
 
@@ -7,10 +8,12 @@ export class GameControls {
   private crosshair = document.querySelector<HTMLElement>("#crosshair")!;
   private abort = new AbortController();
   private captured = false;
+  private actions: ActionHud;
   private edge = { x: 0, y: 0 };
-  constructor(private canvas: HTMLCanvasElement, private local: LocalPlayer, private view: PlayerView, private ready: () => boolean, private suspended: () => boolean = () => false) {
+  constructor(private canvas: HTMLCanvasElement, private local: LocalPlayer, private view: PlayerView, private ready: () => boolean, private suspended: () => boolean = () => false, now: () => number = () => Date.now(), context: () => ContextAction[] = () => []) {
     const options = { signal: this.abort.signal };
     canvas.tabIndex = 0;
+    this.actions = new ActionHud(local, now, () => canvas.focus(), context);
     this.play.addEventListener("click", () => void this.resume(), options);
     document.querySelector("#resume")!.addEventListener("click", () => void this.resume(), options);
     document.querySelector("#perspective")!.addEventListener("click", () => { view.cycle(); this.update(); }, options);
@@ -38,7 +41,7 @@ export class GameControls {
       if (local.enabled && ["F5", "KeyV"].includes(e.code)) { e.preventDefault(); if (!e.repeat) view.cycle(); this.update(); }
     }, options);
   }
-  dispose() { this.abort.abort(); this.local.enabled = false; if (document.pointerLockElement === this.canvas) document.exitPointerLock(); }
+  dispose() { this.actions.dispose(); this.abort.abort(); this.local.enabled = false; if (document.pointerLockElement === this.canvas) document.exitPointerLock(); }
   private fallback() {
     if (this.abort.signal.aborted) return;
     this.menu.querySelector<HTMLElement>("[role=status]")!.textContent = "Your browser rejected cursor capture. Move over the game to look; holding at an edge keeps turning.";
@@ -55,6 +58,7 @@ export class GameControls {
     this.update(); if (this.ready()) document.querySelector<HTMLButtonElement>("#resume")!.focus();
   }
   update(dt = 0) {
+    this.actions?.update(this.ready() && !this.suspended() && this.local.enabled && this.menu.hidden === true);
     if (this.ready() && this.suspended()) {
       this.local.clear(); this.edge = { x: 0, y: 0 };
       this.play.hidden = this.crosshair.hidden = true;

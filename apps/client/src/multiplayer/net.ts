@@ -72,6 +72,10 @@ export class Network {
         body.mateCount = own.mateCount; body.mateBoostMs = own.mateBoostMs;
         body.attackReadyAt = Math.max(body.attackReadyAt, own.attackReadyAt);
         body.knockdownUntil = Math.max(body.knockdownUntil, own.knockdownUntil);
+        if ((own.impactStartedAt ?? 0) > (body.impactStartedAt ?? 0)) {
+          body.impactStartedAt = own.impactStartedAt; body.impactX = own.impactX;
+          body.impactZ = own.impactZ; body.impactStrength = own.impactStrength;
+        }
       }
       this.phase = state.phase;
       this.introComplete = state.introComplete;

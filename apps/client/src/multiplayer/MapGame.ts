@@ -1,3 +1,4 @@
+import type { ContextAction } from "./actionHud.ts";
 import { decoratePlayer } from "./playerIdentity.ts";
 import * as THREE from "three";
 import { BATTLE_BUS_HEADING, INTERP_DELAY_MS, IDLE_INPUT, zurichWorld, isRail, railFrame, railSeat, tramDerailFrame, examSecondsRemaining, RoomPhase } from "@race/shared";
@@ -66,7 +67,7 @@ export class MapGame {
     this.bus = new BattleBusIntro(scene, camera, this.net, canvas, () => this.view.sensitivity);
     this.ready = Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready, this.npcs.ready]).then(() => {});
     this.roomFlow = new RoomFlow(this.net, this.ready, () => this.bus.unlockAudio());
-    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active, () => this.net.now()<this.derailUntil);
+    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active, () => this.net.now()<this.derailUntil, () => this.net.now(), () => this.contextActions());
     Object.assign(this.local.body, zurichWorld.spawn);
     camera.near = 0.05;
     camera.position.set(zurichWorld.spawn.x, zurichWorld.spawn.y + 1.6, zurichWorld.spawn.z);
@@ -91,11 +92,18 @@ export class MapGame {
           scene.add(this.mesh, this.firstBody); this.avatarReady = true;
         }
         if (p && this.avatarReady) decoratePlayer(this.mesh, state.members.get(id)?.name ?? "Player");
-      }, hit => this.effects.enqueue(hit), selection);
+      }, hit => this.effects.enqueue(hit, this.net.room.sessionId), selection);
     });
   }
   get examScreenVisible() { return this.exam.screenVisible; }
   get focus() { return this.net.room?.state?.phase === RoomPhase.Lobby ? this.menuScene.focus : this.bus.active ? this.bus.focus : this.local.body; }
+  private contextActions(): ContextAction[] {
+    const p = this.local.body, actions: ContextAction[] = [];
+    const icon = this.npcs.nearbyInteraction ? "person" : this.mate.nearby ? "mate" : this.vehicles.interactionKind(p);
+    if (icon) actions.push({ icon, key: "E", label: icon === "person" ? "Talk / interact" : icon === "mate" ? "Use Mate machine" : p.vehicleId ? "Get off" : icon === "bike" ? "Ride / scan bike" : "Board transport", enabled: p.knockdownUntil <= this.net.now(), run: () => this.local.requestInteraction() });
+    if (p.mateCount > 0) actions.push({ icon: "mate", key: "1", label: "Drink Mate", enabled: this.mate.canConsume, run: () => this.mate.consume() });
+    return actions;
+  }
   update(elapsed: number, now: number) {
     const dt = Math.min(0.1, elapsed), renderTime = this.net.now() - INTERP_DELAY_MS;
     const state = this.net.room?.state;

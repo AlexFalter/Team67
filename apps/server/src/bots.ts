@@ -17,9 +17,11 @@ process.on("SIGINT", () => void stop());
 process.on("SIGTERM", () => void stop());
 try {
   for (let i = 0; i < count; i++) {
-    const room = await new Client(
-      process.env.COLYSEUS_URL || "ws://localhost:2567",
-    ).joinOrCreate<C.WorldState>("race", { name: `Bot ${i + 1}` });
+    const client = new Client(process.env.COLYSEUS_URL || "ws://localhost:2567");
+    const options = { name: `Bot ${i + 1}`, character: (i + 1) % 4 };
+    const room = process.env.ROOM_CODE
+      ? await client.joinById<C.WorldState>(process.env.ROOM_CODE, options)
+      : await client.joinOrCreate<C.WorldState>("race", options);
     room.reconnection.enabled = false;
     rooms.push(room);
     const body = C.createBody();
@@ -65,13 +67,27 @@ try {
         }
         if (sprint && nearest)
           angle = Math.atan2(nearest.x - body.x, nearest.z - body.z);
-        if (Math.hypot(body.x - world.spawn.x, body.z - world.spawn.z) > 70)
+        if (Math.hypot(body.x - world.spawn.x, body.z - world.spawn.z) > (process.env.ROOM_CODE ? 8 : 70))
           angle = Math.atan2(world.spawn.x - body.x, world.spawn.z - body.z);
       }
       input.x = Math.sin(angle);
       input.z = Math.cos(angle);
       input.sprint = sprint;
       input.jump = Math.random() < 0.005;
+      if (process.env.COLLISION_TEST === "1" && i === 0) {
+        const human = [...room.state.players].find(([id]) => !room.state.members.get(id)?.name.startsWith("Bot "))?.[1];
+        if (human) {
+          const dx = human.x - body.x, dz = human.z - body.z, distance = Math.hypot(dx, dz);
+          const facing = Math.atan2(dx, dz);
+          input.x = distance > 1.7 ? dx / Math.max(1, distance) : 0;
+          input.z = distance > 1.7 ? dz / Math.max(1, distance) : 0;
+          input.sprint = input.jump = false; input.aim = true; input.facing = facing;
+          if (distance < 2.2 && now >= body.knockdownUntil && now >= body.attackReadyAt && human.knockdownUntil <= now) {
+            room.send("move", C.packMove({ ...body, rotY: facing }));
+            room.send("hit"); body.attackReadyAt = now + C.ATTACK_COOLDOWN_MS + 500;
+          }
+        }
+      }
       C.stepPlayer(body, input, dt, world);
     }, 1000 / 60);
     const send = setInterval(() => {
@@ -85,7 +101,7 @@ try {
   }
   joinedAll = true;
   for (const room of rooms) room.send("ready", true);
-  console.log(`${count} bots connected. Ctrl+C to stop.`);
+  console.log(`${count} bots connected to ${rooms[0]?.roomId}. Ctrl+C to stop.`);
 } catch (error) {
   console.error(error);
   await stop();

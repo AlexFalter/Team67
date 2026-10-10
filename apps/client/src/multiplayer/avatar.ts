@@ -1,11 +1,11 @@
 import * as THREE from "three";
 import { updatePlayerIdentity, disposePlayerIdentity } from "./playerIdentity.ts";
-import { ATTACK_COOLDOWN_MS, SLIDE_ANIM, TRAM_KIND, POLYBAHN_KIND, type PlayerState } from "@race/shared";
+import { ATTACK_COOLDOWN_MS, impactPose, SLIDE_ANIM, TRAM_KIND, POLYBAHN_KIND, type PlayerState } from "@race/shared";
 
 // The seated owner can turn through their torso; show the body in third person
 // and to other players, while keeping the owning rail camera clear.
 export function firstPersonBodyVisible(p: Pick<PlayerState, "anim" | "vehicleId" | "vehicleKind">, perspective: number) {
-  return perspective === 0 && p.anim !== 3 && !(p.vehicleId && (p.vehicleKind === TRAM_KIND || p.vehicleKind === POLYBAHN_KIND));
+  return perspective === 0 && !(p.vehicleId && (p.vehicleKind === TRAM_KIND || p.vehicleKind === POLYBAHN_KIND));
 }
 
 // Original articulated models: all outfits share geometry, joints and motion.
@@ -13,9 +13,9 @@ export const CHARACTERS = ["CS Student Boy", "CS Student Girl", "Albert Einstein
 const cube = new THREE.BoxGeometry(1, 1, 1), facet = new THREE.DodecahedronGeometry(1, 0);
 const tapered = new THREE.CylinderGeometry(0.5, 0.42, 1, 8);
 const shoeShape = new THREE.CapsuleGeometry(0.5, 0.45, 1, 6).rotateX(Math.PI / 2);
-interface Limb { joint: THREE.Group; bend: THREE.Group; tip: THREE.Group; foot?: THREE.Mesh }
+interface Limb { joint: THREE.Group; bend: THREE.Group; tip: THREE.Group; foot?: THREE.Mesh; toe?: THREE.Group }
 interface Rig {
-  torso: THREE.Group; chest: THREE.Group; head: THREE.Group; arms: Limb[]; legs: Limb[];
+  torso: THREE.Group; chest: THREE.Group; head: THREE.Group; neck: THREE.Group; arms: Limb[]; legs: Limb[];
   viewArms?: THREE.Group;
   phase: number; fall: number; speed: number; grounded: boolean; landing: number; air: number; firstPerson: boolean; slide: number; airPhase: number;
 }
@@ -52,7 +52,8 @@ export function avatar(color: string, character = 0, firstPerson = false) {
     for (const y of [0.18, 0.25]) part(torso, [0.018, 0.018, 0.025], [0.025, y, 0.165], "#1f2630");
   }
   part(torso, [rector ? 0.055 : 0.10, rector ? 0.025 : 0.085, 0.018], [-0.14, 0.40, rector ? 0.182 : 0.152], color);
-  torso.add(head); head.position.y = 0.82;
+  const neck = new THREE.Group(); neck.name = "neck"; neck.position.y = 0.66;
+  torso.add(neck); neck.add(head); head.position.y = 0.16;
   head.visible = !firstPerson; // The owning camera must never see inside its head/hair.
   part(head, [0.22, 0.265, 0.20], [0, 0, 0], skin, true);
   part(head, [0.045, 0.06, 0.07], [0, -0.03, 0.20], skin, true);
@@ -105,7 +106,9 @@ export function avatar(color: string, character = 0, firstPerson = false) {
     tip.position.y = -length * 0.95; bend.add(tip);
     const foot = part(tip, leg ? [0.19, 0.11, 0.22] : [0.055, 0.065, 0.065], [0, 0, leg ? 0.07 : 0], leg ? rector ? "#20252b" : "#e8dfcb" : skin, !leg, leg ? shoeShape : facet);
     foot.name = leg ? "shoe" : "hand";
-    return { joint, bend, tip, foot: leg ? foot : undefined };
+    let toe: THREE.Group | undefined;
+    if (leg) { toe = new THREE.Group(); toe.position.z = 0.07; tip.add(toe); toe.add(foot); foot.position.z = 0; }
+    return { joint, bend, tip, foot: leg ? foot : undefined, toe };
   };
   const arms = [1, -1].map(side => limb(side * (firstPerson ? 0.25 : female ? 0.28 : 0.30), firstPerson ? 0.56 : 0.50, 0.24, 0.14, shirt, rector ? shirt : skin));
   const legs = [1, -1].map(side => limb(side * 0.13, 0, 0.33, 0.17, pants, pants, true));
@@ -114,11 +117,12 @@ export function avatar(color: string, character = 0, firstPerson = false) {
     limb.joint.name = `${name}-${i ? "leg" : "arm"}`;
     limb.bend.name = `${name}-${i ? "knee" : "elbow"}`;
     limb.tip.name = `${name}-${i ? "ankle" : "wrist"}`;
+    if (limb.toe) limb.toe.name = `${name}-toe`;
   }));
   // Split at the waist without changing any of the original mesh pieces.
   chest.name = "chest"; torso.add(chest);
   for (const child of [...torso.children]) {
-    if (child === head || arms.some(arm => arm.joint === child) ||
+    if (child === neck || arms.some(arm => arm.joint === child) ||
       (child instanceof THREE.Mesh && child.position.y > 0.1)) chest.add(child);
   }
   let viewArms: THREE.Group | undefined;
@@ -128,7 +132,7 @@ export function avatar(color: string, character = 0, firstPerson = false) {
     viewArms = new THREE.Group(); viewArms.name = "view-arms"; viewArms.position.set(0, 1.6, 0.15); root.add(viewArms);
     for (const arm of arms) { arm.joint.position.set(arm.joint.position.x < 0 ? -0.34 : 0.34, -0.32, 0.12); viewArms.add(arm.joint); }
   }
-  rigs.set(root, { torso, chest, head, arms, legs, viewArms, slide: 0, airPhase: 0, phase: 0, fall: 0, speed: 0, grounded: true, landing: 0, air: 0, firstPerson });
+  rigs.set(root, { torso, chest, head, neck, arms, legs, viewArms, slide: 0, airPhase: 0, phase: 0, fall: 0, speed: 0, grounded: true, landing: 0, air: 0, firstPerson });
   return root;
 }
 
@@ -138,12 +142,13 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
   const r = rigs.get(mesh)!;
   const blend = 1 - Math.exp(-14 * Math.min(dt, 0.1));
   const down = p.anim === 3 || p.knockdownUntil > p.simTime;
+  const impact = impactPose(p);
   const sliding = p.anim === SLIDE_ANIM && !down;
   r.slide += ((sliding ? 1 : 0) - r.slide) * blend;
   const riding = !!p.vehicleId, bike = riding && p.vehicleKind === 2;
   r.speed += ((down || riding ? 0 : Math.hypot(p.vx, p.vz)) - r.speed) * blend;
-  if ((p.grounded && !sliding) || bike) r.phase += (bike ? Math.hypot(p.vx, p.vz) * 2 : gaitRate(r.speed)) * dt;
-  r.fall += ((down ? 1 : 0) - r.fall) * (1 - Math.exp(-(down ? 9 : 5) * dt));
+  if ((p.grounded && !sliding) || bike) r.phase += (bike ? Math.hypot(p.vx, p.vz) * 0.85 : gaitRate(r.speed)) * dt;
+  r.fall += ((impact.active ? impact.fall : down ? 1 : 0) - r.fall) * (1 - Math.exp(-(down ? 9 : 5) * dt));
   if (p.grounded && !r.grounded && !down && !riding) r.landing = 1;
   r.grounded = p.grounded; r.landing *= Math.exp(-10 * dt);
   const run = Math.min(1, r.speed / 9), airborne = !p.grounded && !riding && !down;
@@ -154,10 +159,12 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
   const forward = (p.vx * Math.sin(p.rotY) + p.vz * Math.cos(p.rotY)) / Math.max(0.1, Math.hypot(p.vx, p.vz));
   const sideways = (p.vx * Math.cos(p.rotY) - p.vz * Math.sin(p.rotY)) / Math.max(0.1, Math.hypot(p.vx, p.vz));
   const attack = Math.max(0, p.attackReadyAt - p.simTime - ATTACK_COOLDOWN_MS + 420) / 420;
-  const punch = Math.sin(Math.min(1, attack) * Math.PI);
+  const punch = !down && !riding ? Math.sin(Math.min(1, attack) * Math.PI) : 0;
+  const hookSweep = THREE.MathUtils.clamp((1 - attack - 0.15) / 0.55, 0, 1);
   mesh.position.set(p.x, p.y, p.z); mesh.rotation.set(0, p.rotY, 0);
   if (r.viewArms) {
     r.viewArms.rotation.x = -(camera?.rotation.x ?? pitch);
+    r.viewArms.rotation.z = camera?.rotation.z ?? 0;
     if (camera) {
       mesh.updateMatrixWorld(true);
       r.viewArms.position.copy(camera.position);
@@ -165,14 +172,14 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
     } else r.viewArms.position.set(0, 1.6 - r.slide * 0.78, 0.15);
   }
   r.torso.position.y = (riding ? 0.25 : 0.75) - r.fall * 0.47 - r.slide * 0.49 - r.landing * 0.09 + Math.sin(r.phase * 2) * stride * 0.025;
-  r.torso.rotation.set(-r.fall * 1.52 + stride * forward * 0.14 - r.slide * 0.42 + (bike ? 0.25 : 0), 0, Math.cos(r.phase) * stride * 0.025);
-  r.chest.rotation.set(r.air * rise * 0.07 + r.landing * 0.12, Math.sin(r.phase) * stride * 0.06, 0);
+  r.torso.rotation.set(-r.fall * 1.52 + stride * forward * 0.14 - r.slide * 0.42 + (bike ? 0.30 : 0), 0, Math.cos(r.phase) * (bike ? Math.min(1, Math.hypot(p.vx, p.vz) / 8) * 0.025 : stride * 0.025));
+  r.chest.rotation.set(r.air * rise * 0.07 + r.landing * 0.12, Math.sin(r.phase) * stride * 0.06 + punch * (-0.20 + hookSweep * 0.55), 0);
   r.head.rotation.set(0, punch * -0.15, Math.sin(p.simTime / 1100) * 0.018);
   r.arms.forEach((arm, i) => {
     const swing = Math.sin(r.phase + i * Math.PI);
     const gait = -swing * stride * (r.firstPerson ? 0.16 : 0.72);
-    let upper = bike ? -0.95 : riding ? -0.8 : r.firstPerson ? gait - 0.62 - run * 0.22 - r.air * rise * 0.20 : gait - r.air * (0.25 + rise * 0.55 - descend * 0.15);
-    let elbow = r.firstPerson ? -(0.85 + run * 0.25 + swing * stride * 0.12) : -(0.20 + run * 0.85 + Math.max(0, swing) * stride * 0.25 + r.air * rise * 0.4);
+    let upper = bike ? -1.05 : riding ? -0.8 : r.firstPerson ? gait - 0.62 - run * 0.22 - r.air * rise * 0.20 : gait - r.air * (0.25 + rise * 0.55 - descend * 0.15);
+    let elbow = bike ? -0.42 : r.firstPerson ? -(0.85 + run * 0.25 + swing * stride * 0.12) : -(0.20 + run * 0.85 + Math.max(0, swing) * stride * 0.25 + r.air * rise * 0.4);
     upper = upper * (1 - r.slide) + (r.firstPerson ? -0.55 : -0.4) * r.slide;
     elbow = elbow * (1 - r.slide) - r.slide * 0.85;
     if (r.firstPerson) {
@@ -180,10 +187,20 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
       const spread = camera ? THREE.MathUtils.clamp(camera.aspect, 0.65, 1.6) : 1;
       arm.joint.position.x = side * (0.43 + Math.sin(r.phase + i * Math.PI) * stride * 0.055) * spread;
       arm.joint.position.y = -0.40;
-      arm.joint.rotation.y = side * Math.sin(r.phase + i * Math.PI) * stride * 0.16;
     }
     const action = i ? punch : 0;
-    if (!down && !riding) { upper -= action * 1.5; elbow *= 1 - action; }
+    if (r.firstPerson) {
+      arm.joint.position.y += punch * (i ? 0.30 : 0.14);
+      if (i) arm.joint.position.x += action * 0.12 * (camera ? THREE.MathUtils.clamp(camera.aspect, 0.65, 1.6) : 1);
+    }
+    // Raise the right elbow, sweep the shoulder across the chest and keep
+    // the forearm bent sideways instead of extending a straight jab.
+    upper += (-1.4 - upper) * action;
+    elbow += (-0.20 - elbow) * action;
+    if (i === 0) { upper -= punch * 0.45; elbow -= punch * 0.35; }
+    const swayYaw = r.firstPerson ? (i ? -1 : 1) * Math.sin(r.phase + i * Math.PI) * stride * 0.16 : 0;
+    arm.joint.rotation.y += (swayYaw + action * (-0.9 + hookSweep * 1.9) - arm.joint.rotation.y) * blend;
+    arm.bend.rotation.z += (action * 1.35 - arm.bend.rotation.z) * blend;
     arm.joint.rotation.x += (upper - arm.joint.rotation.x) * blend;
     arm.joint.rotation.z += ((i === 0 ? 1 : -1) * (-0.10 + r.fall * 0.55 - (r.firstPerson ? 0.12 + Math.cos(r.phase + i * Math.PI) * stride * 0.08 : 0)) - arm.joint.rotation.z) * blend;
     arm.bend.rotation.x += (elbow - arm.bend.rotation.x) * blend;
@@ -192,13 +209,46 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
   r.legs.forEach((leg, i) => {
     const swing = Math.sin(r.phase + i * Math.PI);
     const flail = Math.sin(r.airPhase + i * Math.PI) * r.air * (0.40 + rise * 0.35);
-    const upper = bike ? -0.8 + swing * 0.35 : riding ? -1.35 : swing * stride * forward * 0.85 - r.air * ((0.22 + i * 0.20) * rise + 0.08 * descend) - r.slide * (i ? 1.5 : 0.98) + flail;
-    const knee = bike ? 1.2 - swing * 0.45 : riding ? 1.3 : Math.pow(Math.max(0, -swing * forward), 1.5) * stride * 1.55 + r.air * (0.20 + rise * 0.75 - descend * 0.12) + r.landing * 0.45 + r.slide * (i ? 1.6 : 0.18) + Math.max(0, -flail) * 1.4;
+    const upper = bike ? -0.85 + swing * 0.48 : riding ? -1.35 : swing * stride * forward * 0.85 - r.air * ((0.22 + i * 0.20) * rise + 0.08 * descend) - r.slide * (i ? 1.5 : 0.98) + flail;
+    const knee = bike ? 1.35 - swing * 0.62 : riding ? 1.3 : Math.pow(Math.max(0, -swing * forward), 1.5) * stride * 1.55 + r.air * (0.20 + rise * 0.75 - descend * 0.12) + r.landing * 0.45 + r.slide * (i ? 1.6 : 0.18) + Math.max(0, -flail) * 1.4;
     leg.joint.rotation.x += (upper - leg.joint.rotation.x) * blend;
     leg.joint.rotation.z += (swing * stride * sideways * 0.3 - leg.joint.rotation.z) * blend;
     leg.bend.rotation.x += (knee - leg.bend.rotation.x) * blend;
-    leg.tip.rotation.x += ((-knee * 0.3 + Math.max(0, swing * forward) * stride * 0.22) - leg.tip.rotation.x) * blend;
+    leg.tip.rotation.x += ((bike ? -upper - knee - 0.30 : -knee * 0.3 + Math.max(0, swing * forward) * stride * 0.22) - leg.tip.rotation.x) * blend;
   });
+  if (impact.active || r.fall > 0.015) {
+    const force = Math.hypot(p.impactX ?? 0, p.impactZ ?? 0);
+    const forwardHit = force ? ((p.impactX ?? 0) * Math.sin(p.rotY) + (p.impactZ ?? 0) * Math.cos(p.rotY)) / force : -1;
+    const sideHit = force ? ((p.impactX ?? 0) * Math.cos(p.rotY) - (p.impactZ ?? 0) * Math.sin(p.rotY)) / force : 0;
+    const support = Math.sin(impact.rise * Math.PI), f = r.fall;
+    const tilt = f * 1.52;
+    r.torso.rotation.x = Math.atan2(forwardHit * Math.sin(tilt), Math.cos(tilt));
+    r.torso.rotation.z = -Math.asin(sideHit * Math.sin(tilt));
+    r.torso.position.y = 0.75 - f * 0.43 - support * 0.14;
+    r.chest.rotation.x = support * 0.55 - impact.recoil * 0.18;
+    r.neck.rotation.x = -support * 0.35 + impact.recoil * 0.20;
+    r.arms.forEach((arm, i) => {
+      const reach = r.firstPerson ? -1.2 - support * 0.4 : -0.3 - support * 1.1;
+      if (r.firstPerson) {
+        const spread = camera ? THREE.MathUtils.clamp(camera.aspect, 0.65, 1.6) : 1;
+        arm.joint.position.x = (i ? -1 : 1) * (0.43 - f * 0.14) * spread;
+        arm.joint.position.y = -0.40 + f * 0.18;
+      }
+      arm.joint.rotation.x += (reach - arm.joint.rotation.x) * blend * f;
+      arm.joint.rotation.z += (((i ? -1 : 1) * (0.38 * f + 0.25 * impact.recoil)) - arm.joint.rotation.z) * blend;
+      arm.bend.rotation.x += ((-0.5 - support * 0.75) - arm.bend.rotation.x) * blend;
+      arm.tip.rotation.x += ((support * 0.5) - arm.tip.rotation.x) * blend;
+    });
+    r.legs.forEach((leg, i) => {
+      leg.joint.rotation.x += ((-support * (i ? 1.1 : 0.6) - f * 0.12) - leg.joint.rotation.x) * blend;
+      leg.bend.rotation.x += ((support * (i ? 1.6 : 1.1) + f * 0.15) - leg.bend.rotation.x) * blend;
+      leg.tip.rotation.x += ((-support * 0.4) - leg.tip.rotation.x) * blend;
+      if (leg.toe) leg.toe.rotation.x = support * 0.45;
+    });
+  } else {
+    r.neck.rotation.x *= 1 - blend;
+    for (const leg of r.legs) if (leg.toe) leg.toe.rotation.x *= 1 - blend;
+  }
   updatePlayerIdentity(mesh, p);
 }
 export function disposeAvatar(mesh: THREE.Group) {

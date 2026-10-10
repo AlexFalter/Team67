@@ -32,6 +32,9 @@ export class LocalPlayer {
   }
   dispose() { this.abort.abort(); this.enabled = false; this.clear(); }
   punch() { if (this.enabled) this.hit = true; }
+  requestInteraction() { if (this.enabled) this.interaction = true; }
+  requestSlide() { if (this.enabled) this.slide = true; }
+  get sprinting() { return this.keys.has("ShiftLeft") || this.keys.has("ShiftRight"); }
   controls(yaw: number) {
     if (!this.enabled) this.clear();
     const direction = keyboardMovement(this.keys, yaw);

@@ -83,7 +83,7 @@ export function seatPosition(
   const x = v.kind !== 1 ? 0 : seat % 2 === 0 ? -0.65 : 0.65;
   const z = v.kind !== 1 ? 0 : (Math.floor(seat / 2) - 1) * 1.25;
   out.x = v.x + x * Math.cos(v.rotY) + z * Math.sin(v.rotY);
-  out.y = v.y + (v.kind !== 1 ? C.CART_SEAT_HEIGHT : C.SHUTTLE_SEAT_HEIGHT);
+  out.y = v.y + (v.kind === 2 ? C.BIKE_SEAT_HEIGHT : v.kind !== 1 ? C.CART_SEAT_HEIGHT : C.SHUTTLE_SEAT_HEIGHT);
   out.z = v.z - x * Math.sin(v.rotY) + z * Math.cos(v.rotY);
 }
 

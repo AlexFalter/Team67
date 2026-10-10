@@ -48,6 +48,7 @@ export class RemotePlayers {
         groundTime: p.groundTime,
         jumpUntil: p.jumpUntil,
         knockdownUntil: p.knockdownUntil,
+        impactStartedAt: p.impactStartedAt, impactX: p.impactX, impactZ: p.impactZ, impactStrength: p.impactStrength,
         simTime: p.simTime,
         vehicleKind: p.vehicleKind,
         attackReadyAt: p.attackReadyAt,
@@ -98,6 +99,8 @@ export class RemotePlayers {
       p.vehicleKind = membership.vehicleKind;
       p.grounded = membership.grounded;
       p.knockdownUntil = membership.knockdownUntil;
+      p.impactStartedAt = membership.impactStartedAt; p.impactX = membership.impactX;
+      p.impactZ = membership.impactZ; p.impactStrength = membership.impactStrength;
       const vehicle = vehicles?.get(p.vehicleId);
       if (vehicle) {
         seatPosition(vehicle.rendered, p.seat, p);
