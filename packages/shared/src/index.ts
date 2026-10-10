@@ -10,6 +10,7 @@ export * from "./snapshot.ts";
 export * from "./mechanics.ts";
 export * from "./roomCode.ts";
 export * from "./room.ts";
+export * from "./finalExam.ts";
 export * from "./battleBus.ts";
 export * from "./publiBike.ts";
 export * from "./transit.ts";

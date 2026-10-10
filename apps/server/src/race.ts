@@ -3,6 +3,7 @@ import * as C from "@race/shared";
 import { Player, RaceState } from "./state.ts";
 import { VehicleManager } from "./vehicles.ts";
 import { ContactWorld } from "./physics.ts";
+import { registerExamDebug } from "./examDebug.ts";
 import { RoundManager } from "./round.ts";
 import { PubliBikes } from "./publiBikes.ts";
 import { MateMachine } from "./mate.ts";
@@ -47,6 +48,7 @@ export class Race extends Room<{ state: RaceState }> {
       leadMs: Number.isFinite(introLead) && introLead >= 0 ? introLead : C.BATTLE_BUS_LEAD_MS,
       onArrival: () => this.arriveFromBus(),
     });
+    registerExamDebug(this, this.world, this.lastMoves, id => this.rounds.canPlay(id));
     this.onMessage("ready", (client, ready: unknown) => this.rounds.ready(client.sessionId, ready));
     this.onMessage("restartRound", client => this.rounds.restart(client.sessionId));
     this.onMessage("finishRound", client => {
