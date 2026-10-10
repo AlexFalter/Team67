@@ -6,6 +6,7 @@ import {
   seatPosition,
   snapshot,
   createBody,
+  passengerYaw,
 } from "@race/shared";
 import { avatar, pose, disposeAvatar } from "./avatar.ts";
 interface Snapshot extends PlayerState {
@@ -49,6 +50,8 @@ export class RemotePlayers {
         vehicleKind: p.vehicleKind,
         shoes: p.shoes,
         attackReadyAt: p.attackReadyAt,
+        mateCount: p.mateCount,
+        mateBoostMs: p.mateBoostMs,
         t: state.serverTime,
       };
       if (r.snapshots.at(-1)?.t === s.t)
@@ -98,7 +101,7 @@ export class RemotePlayers {
       const vehicle = vehicles?.get(p.vehicleId);
       if (vehicle) {
         seatPosition(vehicle.rendered, p.seat, p);
-        p.rotY = vehicle.rendered.rotY;
+        p.rotY = passengerYaw(vehicle.rendered, p.seat);
         p.anim = 0;
       }
       pose(r.mesh, p, dt);

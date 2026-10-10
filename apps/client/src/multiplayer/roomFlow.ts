@@ -25,7 +25,7 @@ export class RoomFlow {
       this.prepared = true; this.ready.disabled = false;
       if (this.net.room?.state.phase === RoomPhase.Lobby) this.message.textContent = "The round starts when everyone is ready.";
     } })
-      .catch(error => { if (!this.abort.signal.aborted) this.preparationError = `${String(error)} Reload to retry the battle bus download.`; });
+      .catch(error => { if (!this.abort.signal.aborted) this.preparationError = `${String(error)} Reload to retry loading the game.`; });
     const options = { signal: this.abort.signal };
     this.ready.addEventListener("click", () => {
       const member = net.room?.state.members.get(net.room.sessionId);

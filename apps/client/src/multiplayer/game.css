@@ -58,3 +58,16 @@ button:disabled { cursor: wait; opacity: 0.6; }
 .map-viewer:has(#room-screen:not([hidden])) .mode-toggle { display: block; }
 
 #lobby, #room-screen { align-items: safe center; }
+
+#publibike-scan { position:absolute; inset:0; z-index:15; display:grid; place-items:center; touch-action:none; }
+#publibike-scan[hidden], #publi-bike-battery[hidden] { display:none; }
+.bike-phone { width:300px; max-width:80vw; border:8px solid #171b26; border-radius:28px; color:#edf4fc; box-shadow:0 0 0 2px #697081,0 0 0 100vmax #0008; overflow:hidden; background:linear-gradient(#171b26 46px,transparent 46px,transparent 306px,#171b26 306px); }
+.bike-phone h2 { font:600 16px/18px Arial; padding:14px; margin:0; }
+.bike-viewfinder { height:260px; display:grid; place-items:center; background:#ffffff08; }
+.bike-viewfinder i { width:68px; height:44px; border:3px solid #ffd174; }
+.bike-phone p { margin:12px; font:13px/1.4 Arial; }
+.bike-phone button { display:block; margin:12px auto; padding:8px 16px; border-radius:10px; cursor:pointer; }
+.bike-scan-progress { height:4px; background:#ffffff20; margin:12px; }
+.bike-scan-progress i { display:block; height:100%; width:0; background:#ed9ad8; }
+#publi-bike-battery { position:absolute; bottom:64px; left:16px; padding:12px; background:#142333dd; color:#edf4fc; border-radius:8px; font:14px monospace; pointer-events:none; }
+.map-viewer:has(#publibike-scan:not([hidden])) :is(.mode-toggle, #play, #crosshair, #pause) { display:none; }

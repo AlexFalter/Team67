@@ -1,6 +1,9 @@
 import * as THREE from "three";
 import * as C from "@race/shared";
 import type { Network } from "./net.ts";
+import { loadPubliBikeModel } from "./publiBikeModel.ts";
+import { disposeMap } from "../maps/zurich/loadZurichMap.ts";
+import { loadTransitModels } from "./transitModels.ts";
 interface Snapshot extends C.VehicleState {
   t: number;
 }
@@ -12,8 +15,14 @@ interface Visual {
   label: THREE.Sprite;
   canvas: HTMLCanvasElement;
   labelText: string;
+  railCars?: THREE.Group[];
 }
 export class Vehicles {
+  readonly publiReady: Promise<void>;
+  readonly transitReady: Promise<void>;
+  private abort = new AbortController();
+  private publiModel?: Awaited<ReturnType<typeof loadPubliBikeModel>>;
+  private transitModels?: Awaited<ReturnType<typeof loadTransitModels>>;
   items = new Map<string, Visual>();
   private prediction = C.createVehicle();
   private drivenId = "";
@@ -26,6 +35,16 @@ export class Vehicles {
     private net: Network,
     private controls: HTMLDivElement,
   ) {
+    this.transitReady = loadTransitModels(this.abort.signal).then(models => {
+      if (this.abort.signal.aborted) { models.dispose(); return; }
+      this.transitModels = models;
+      for (const visual of this.items.values()) if (C.isRail(visual.latest)) this.replaceRail(visual);
+    });
+    this.publiReady = loadPubliBikeModel(this.abort.signal).then(model => {
+      if (this.abort.signal.aborted) { model.dispose(); return; }
+      this.publiModel = model;
+      for (const [id, visual] of this.items) if (id.startsWith("publibike-")) this.replacePubliBike(id, visual);
+    });
     net.vehicleMove = () => this.drivenId ? [this.drivenId, this.prediction.x, this.prediction.z,
       this.prediction.rotY, this.prediction.vx, this.prediction.vz] : undefined;
     net.onVehicleResult = (result) => {
@@ -51,10 +70,20 @@ export class Vehicles {
       let visual = this.items.get(id);
       if (!visual) {
         visual = this.create(v);
+        if (C.isRail(v) && this.transitModels) this.replaceRail(visual);
+        if (state.publiBikes.has(id) && this.publiModel) this.replacePubliBike(id, visual);
         this.items.set(id, visual);
         this.scene.add(visual.mesh);
       }
       C.snapshot(v, visual.latest);
+      const bike = state.publiBikes.get(id);
+      if (bike) visual.mesh.traverse(object => {
+        if (!(object instanceof THREE.Mesh)) return;
+        for (const mat of Array.isArray(object.material) ? object.material : [object.material]) {
+          if (mat instanceof THREE.MeshStandardMaterial && mat.name.includes("berry enamel"))
+            mat.color.copy(bike.broken ? mat.userData.originalColor ?? mat.color : new THREE.Color("#ffd174"));
+        }
+      });
       const snapshot: Snapshot = {
         ...C.snapshot(v, C.createVehicle()),
         t: state.serverTime,
@@ -70,17 +99,21 @@ export class Vehicles {
     }
     for (const [id, v] of this.items)
       if (!state.vehicles.has(id)) {
-        v.mesh.traverse((object) => {
-          if (object instanceof THREE.Mesh) {
-            object.geometry.dispose();
-            (object.material as THREE.Material).dispose();
-          }
-        });
+        disposeMap(v.mesh);
         (v.label.material as THREE.SpriteMaterial).map?.dispose();
         v.label.material.dispose();
         v.mesh.removeFromParent();
         this.items.delete(id);
       }
+  }
+  private replacePubliBike(id: string, visual: Visual) {
+    for (const child of [...visual.mesh.children]) if (child !== visual.label) { disposeMap(child); child.removeFromParent(); }
+    visual.mesh.add(this.publiModel!.create(Number(id.split("-")[1])));
+  }
+  private replaceRail(visual: Visual) {
+    for (const child of [...visual.mesh.children]) if (child !== visual.label) { disposeMap(child); child.removeFromParent(); }
+    visual.railCars = Array.from({ length: visual.latest.kind === C.TRAM_KIND ? 3 : 1 }, () => this.transitModels!.create(visual.latest.kind === C.TRAM_KIND));
+    visual.mesh.add(...visual.railCars); visual.label.scale.set(3.5, .5, 1);
   }
   private create(v: C.VehicleState): Visual {
     const mesh = new THREE.Group(),
@@ -175,8 +208,9 @@ export class Vehicles {
       labelText: "",
     };
   }
-  render(t: number, dt = 1 / 60) {
+  render(t: number, dt = 1 / 60, filter: "all" | "rail" | "other" = "all") {
     for (const [id, v] of this.items) {
+      if ((filter === "rail" && !C.isRail(v.latest)) || (filter === "other" && C.isRail(v.latest))) continue;
       if (id === this.drivenId) Object.assign(v.rendered, this.prediction);
       else {
         let a = v.snapshots[0],
@@ -195,11 +229,37 @@ export class Vehicles {
         v.rendered.rotY =
           a.rotY +
           Math.atan2(Math.sin(b.rotY - a.rotY), Math.cos(b.rotY - a.rotY)) * f;
+        v.rendered.railDistance = a.railDistance + (b.railDistance - a.railDistance) * f;
+        if (C.isRail(v.rendered)) {
+          if (v.rendered.traveling && this.net.room?.state.phase !== C.RoomPhase.Finished) C.railMotion(v.rendered, t);
+          else Object.assign(v.rendered, C.railFrame(v.rendered));
+        }
       }
       this.pose(v, t, dt);
     }
   }
   private pose(v: Visual, t: number, dt: number) {
+    if (C.isRail(v.rendered)) {
+      const frame = C.railFrame(v.rendered);
+      v.mesh.position.set(frame.x, frame.y, frame.z); v.mesh.rotation.set(0, 0, 0);
+      for (const [part, car] of (v.railCars ?? []).entries()) {
+        const f = C.railFrame(v.rendered, part); car.position.set(f.x - frame.x, f.y - frame.y, f.z - frame.z);
+        car.rotation.set(-f.pitch, f.rotY + Math.PI, 0, "YXZ");
+        if (v.rendered.kind === C.POLYBAHN_KIND) {
+          const latest = v.latest;
+          const clock = this.net.room?.state.phase === C.RoomPhase.Finished ? this.net.room.state.finishedAt : t;
+          const open = !latest.traveling ? (latest.departureAt ? THREE.MathUtils.clamp((latest.departureAt + C.TRANSIT_DOOR_MS - clock) / C.TRANSIT_DOOR_MS, 0, 1) : 1)
+            : clock < latest.tripStartedAt ? THREE.MathUtils.clamp((latest.tripStartedAt - clock) / C.TRANSIT_DOOR_MS, 0, 1)
+            : THREE.MathUtils.clamp((clock - (latest.arrivalAt - C.TRANSIT_DOOR_MS)) / C.TRANSIT_DOOR_MS, 0, 1);
+          for (const side of [-1, 1]) for (const leaf of [-1, 1]) {
+            const door = car.getObjectByName(`Door_${side}_${leaf}`); if (door) door.position.z = leaf * open * .52;
+          }
+          for (const name of ["Axle_front", "Axle_rear"]) { const axle = car.getObjectByName(name); if (axle) axle.rotation.x = -v.rendered.railDistance / .24; }
+        }
+      }
+      const boarding = C.railBoardingPoint(v.rendered); v.label.position.set(boarding.x - frame.x, boarding.y - frame.y + 3, boarding.z - frame.z);
+      return;
+    }
     v.mesh.position.set(v.rendered.x, v.rendered.y, v.rendered.z);
     v.mesh.rotation.y = v.rendered.rotY;
     const fallen = v.rendered.kind === 2 && v.rendered.fallenUntil > t;
@@ -214,13 +274,13 @@ export class Vehicles {
       this.drivenId = "";
       return;
     }
-    if (visual.latest.kind !== 1 && visual.latest.driver === sessionId) {
+    if (!C.isPassengerVehicle(visual.latest) && visual.latest.driver === sessionId) {
       this.drivenId = body.vehicleId;
       Object.assign(this.prediction, visual.latest, { x: body.x, y: body.y - C.CART_SEAT_HEIGHT, z: body.z, rotY: body.rotY, vx: body.vx, vz: body.vz });
       Object.assign(visual.rendered, this.prediction);
     } else this.drivenId = "";
     if (!this.drivenId) C.seatPosition(visual.rendered, body.seat, body);
-    body.rotY = visual.rendered.rotY;
+    body.rotY = C.passengerYaw(visual.rendered, body.seat);
     body.vx = visual.rendered.vx;
     body.vy = 0;
     body.vz = visual.rendered.vz;
@@ -234,8 +294,9 @@ export class Vehicles {
     let closest = "",
       distance = C.VEHICLE_BOARD_DISTANCE;
     for (const [id, v] of this.items) {
-      const d = Math.hypot(body.x - v.rendered.x, body.z - v.rendered.z);
-      if (v.latest.kind >= 3) continue;
+      const boarding = C.isRail(v.latest) ? C.railBoardingPoint(v.rendered) : v.rendered;
+      const d = Math.hypot(body.x - boarding.x, body.z - boarding.z);
+      if (!C.isRideable(v.latest) || Math.abs(body.y - boarding.y) > C.VEHICLE_BOARD_HEIGHT) continue;
       if (d < distance) {
         closest = id;
         distance = d;
@@ -250,6 +311,7 @@ export class Vehicles {
       if (id) this.net.room.send("vehicleEnter", id);
     }
   }
+  nearestId(body: C.Body) { return this.nearest(body); }
   updateLabels(body: C.Body, now: number) {
     if (now - this.lastLabels < 250) return;
     this.lastLabels = now;
@@ -268,6 +330,9 @@ export class Vehicles {
         ),
       );
       const text =
+        C.isRail(v) ? `${C.transitName(v).toUpperCase()} ${count}/${v.capacity} · ${v.traveling ? "arriving " + seconds + "s" : v.departureAt ? "leaving " + seconds + "s" : "E to board"}` :
+        state?.publiBikes?.has(id)
+          ? `PUBLIBIKE · ${state.publiBikes.get(id)!.broken ? "out of service" : v.driver ? "occupied" : state.publiBikes.get(id)!.reservedBy ? "being unlocked" : "E to scan"}` :
         v.kind !== 1
           ? `${v.kind === 2 ? "BIKE" : v.kind === 3 ? "NPC CAR" : v.kind === 4 ? "LOOSE BALL" : "CART"} · ${v.kind >= 3 ? "watch out" : v.fallenUntil > this.net.now() ? "recovering" : v.driver ? "occupied" : "E to ride"}`
           : `TRAM ${count}/${v.capacity} · ${v.traveling ? "arriving " + seconds + "s" : v.departureAt ? "leaving " + seconds + "s" : "E to board"}`;
@@ -288,11 +353,11 @@ export class Vehicles {
     let prompt = `Mouse / trackpad look · WASD run · Shift sprint · Space jump · click/F hit · R shoes ${body.shoes ? "on" : "off"} · F5/V view · Esc menu`;
     if (riding)
       prompt =
-        riding.kind !== 1
+        !C.isPassengerVehicle(riding)
           ? "WASD drive · E exit · mouse / trackpad look · F5/V view · Esc menu"
           : riding.traveling
-            ? "Riding tram · exit at the next stop"
-            : "E leave tram · departure countdown is above the tram";
+            ? `Riding ${C.transitName(riding)} · mouse / trackpad look · F5/V view · exit at next stop`
+            : `E leave ${C.transitName(riding)} · shared departure countdown above the vehicle`;
     else {
       const near = this.items.get(this.nearest(body))?.latest;
       if (near)
@@ -304,23 +369,20 @@ export class Vehicles {
               ? " · Cart occupied"
               : " · E ride cart"
             : near.traveling
-              ? " · Tram moving"
-              : " · E board tram";
+              ? ` · ${C.transitName(near)} moving`
+              : ` · E board ${C.transitName(near)}`;
     }
     this.controls.textContent =
       this.messageUntil > Date.now() ? `${prompt} · ${this.message}` : prompt;
   }
   dispose() {
+    this.abort.abort(); this.publiModel?.dispose();
+    this.transitModels?.dispose();
     this.drivenId = "";
     this.net.onVehicleResult = undefined;
     this.net.vehicleMove = undefined;
     for (const v of this.items.values()) {
-      v.mesh.traverse((object) => {
-        if (object instanceof THREE.Mesh) {
-          object.geometry.dispose();
-          (object.material as THREE.Material).dispose();
-        }
-      });
+      disposeMap(v.mesh);
       (v.label.material as THREE.SpriteMaterial).map?.dispose();
       v.label.material.dispose();
       v.mesh.removeFromParent();

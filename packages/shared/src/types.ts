@@ -19,6 +19,8 @@ export interface PlayerState {
   vehicleKind: number;
   shoes: boolean;
   attackReadyAt: number;
+  mateCount: number;
+  mateBoostMs: number;
 }
 export interface WorldState {
   serverTime: number;
@@ -33,6 +35,8 @@ export interface WorldState {
   results: Map<string, RoundResult>;
   players: Map<string, PlayerState>;
   vehicles: Map<string, VehicleState>;
+  publiBikes: Map<string, import("./publiBike.ts").PubliBikeState>;
+  mates: Map<string, import("./mate.ts").MateState>;
 }
 export interface RoomMember {
   introSeat: number;
@@ -47,7 +51,11 @@ export interface RoundResult {
   hitsReceived: number;
 }
 export interface VehicleState {
-  kind: number; // 0: cart, 1: shared shuttle, 2: bicycle, 3: NPC car
+  kind: number; // 0 cart, 1 shuttle, 2 bike, 3 NPC car, 4 ball, 5 tram, 6 Polybahn
+  railDistance: number;
+  railLane: number;
+  railReverse: boolean;
+  pitch: number;
   x: number;
   y: number;
   z: number;

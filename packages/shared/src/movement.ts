@@ -3,6 +3,7 @@ import type { Body, Input, Impulse } from "./types.ts";
 import { resolveHouses } from "./flatObstacles.ts";
 import { flatWorld, type MovementWorld } from "./world.ts";
 import { createVehicle, stepCart, seatPosition } from "./vehicles.ts";
+import { MATE_SPEED_MULTIPLIER } from "./mate.ts";
 export function createBody(): Body {
   return {
     x: 0,
@@ -25,6 +26,8 @@ export function createBody(): Body {
     vehicleKind: -1,
     shoes: false,
     attackReadyAt: 0,
+    mateCount: 0,
+    mateBoostMs: 0,
   };
 }
 export function respawn(p: Body, world: MovementWorld = flatWorld) {
@@ -48,7 +51,7 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
   const previous = { x: p.x, y: p.y, z: p.z };
   const down = now < p.knockdownUntil,
     length = Math.hypot(input.x, input.z);
-  const targetSpeed = (input.sprint ? C.SPRINT_SPEED : C.WALK_SPEED) * (p.shoes ? C.SHOE_SPEED_MULTIPLIER : 1);
+  const targetSpeed = (input.sprint ? C.SPRINT_SPEED : C.WALK_SPEED) * (p.shoes ? C.SHOE_SPEED_MULTIPLIER : 1) * (p.mateBoostMs > 0 ? MATE_SPEED_MULTIPLIER : 1);
   // Keep takeoff momentum; air steering cannot instantly brake or reverse it.
   const speed = !p.grounded && !down ? Math.max(targetSpeed, Math.hypot(p.vx, p.vz)) : targetSpeed;
   const moving = !down && length > 0;

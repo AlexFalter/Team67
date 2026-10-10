@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { WALK_SPEED, SPRINT_SPEED, type MovementWorld, type PlayerState } from "@race/shared";
+import { WALK_SPEED, SPRINT_SPEED, TRAM_KIND, POLYBAHN_KIND, type MovementWorld, type PlayerState } from "@race/shared";
 import { gaitRate } from "./avatar.ts";
 
 export const PERSPECTIVES = ["First person", "Third person — behind", "Third person — front"];
@@ -26,6 +26,8 @@ export class PlayerView {
   private desired = new THREE.Vector3();
   private intersections: THREE.Intersection[] = [];
   private springLength = SPRING_LENGTH;
+  private railRide = "";
+  private railYaw = 0;
   constructor(readonly camera: THREE.PerspectiveCamera, private walls: THREE.Object3D[], private world?: MovementWorld) {
     this.ray.firstHitOnly = true;
   }
@@ -39,13 +41,19 @@ export class PlayerView {
     if (previous === 0 && this.perspective !== 0) this.springLength = 0;
   }
   update(p: PlayerState, dt: number) {
+    const rail = p.vehicleKind === TRAM_KIND || p.vehicleKind === POLYBAHN_KIND;
+    if (rail && p.vehicleId) {
+      if (this.railRide === p.vehicleId) this.yaw += Math.atan2(Math.sin(p.rotY - this.railYaw), Math.cos(p.rotY - this.railYaw));
+      else this.yaw = p.rotY + Math.PI;
+      this.railRide = p.vehicleId; this.railYaw = p.rotY;
+    } else this.railRide = "";
     const blend = 1 - Math.exp(-10 * dt), speed = Math.hypot(p.vx, p.vz);
     const down = p.anim === 3 || p.knockdownUntil > p.simTime;
     const walking = !p.vehicleId && p.grounded && !down;
     // Distance-driven steps, but no bone-driven camera or oscillating horizon.
     if (walking) this.phase += gaitRate(speed) * dt;
     this.amplitude += ((this.bob && walking ? Math.min(0.018, speed * 0.0015) : 0) - this.amplitude) * blend;
-    this.eye += ((down ? 0.48 : p.vehicleId ? 1.05 : 1.6) - this.eye) * blend;
+    this.eye += ((down ? 0.48 : rail ? 1.58 : p.vehicleId ? 1.05 : 1.6) - this.eye) * blend;
     const strafe = p.vx * Math.cos(this.yaw) - p.vz * Math.sin(this.yaw);
     this.roll += ((down ? 0.35 : this.bob && walking ? THREE.MathUtils.clamp(-strafe * 0.001, -0.008, 0.008) : 0) - this.roll) * blend;
     this.landing *= Math.exp(-14 * dt);

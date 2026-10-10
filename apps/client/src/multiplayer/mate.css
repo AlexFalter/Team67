@@ -1,0 +1,32 @@
+#mate-minigame[hidden], #mate-inventory[hidden], #mate-hint[hidden], #mate-speed-effects[hidden] { display: none; }
+#mate-minigame { position: absolute; inset: 0; z-index: 100; pointer-events: none; }
+#mate-minigame .mate-cabinet { position: fixed; box-sizing: border-box; overflow: auto; padding: 9px; pointer-events: auto; color: #eef1fb; font: 12px Arial, sans-serif; }
+#mate-minigame button { cursor: pointer; color: inherit; font: inherit; }
+#mate-minigame button:focus-visible, #mate-card:focus-visible { outline: 2px solid white; outline-offset: 2px; }
+#mate-minigame .mate-message { background: #071c26; color: #b5e773; padding: 9px; margin: 0 0 5px; font-weight: bold; }
+#mate-minigame .mate-detail { display: block; min-height: 15px; background: #071c26; font-size: 10px; }
+#mate-minigame .mate-loading-track { height: 3px; background: #31432a; margin-bottom: 8px; }
+#mate-minigame .mate-loading-track i { display: block; height: 100%; background: #c3ed82; }
+#mate-minigame .mate-selections { display: flex; flex-direction: column; gap: 6px; }
+#mate-minigame .mate-selection { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 44px; padding: 6px; text-align: left; background: #152c5d; border: 1px solid #5274a9; border-bottom: 3px solid #0b1e45; border-radius: 4px; }
+#mate-minigame .mate-selection small { display: block; font-size: 9px; margin-top: 3px; }
+#mate-minigame .mate-selection img { width: 20px; height: 34px; object-fit: contain; }
+#mate-minigame .mate-selection.selected { border-color: #e8ce81; }
+#mate-minigame .mate-selection[data-tried=true] { opacity: .55; }
+#mate-minigame .mate-payment-slot { display: flex; flex-direction: column; gap: 6px; padding: 8px; margin-top: 8px; background: #0b1a2d; border: 1px solid #587f95; font-size: 10px; }
+#mate-card { appearance: none; width: 100%; margin: 4px 0; height: 40px; cursor: grab; touch-action: none; background: linear-gradient(#070f24 45%, #748bab 46%, #748bab 53%, #070f24 54%); }
+#mate-card:disabled { opacity: .4; }
+#mate-card::-webkit-slider-thumb { appearance: none; width: 65px; height: 38px; border-radius: 5px; border: 2px solid #f2d47c; background: linear-gradient(#223e74 25%, #111c34 26% 43%, #223e74 44% 86%, #e4cb8b 87%); }
+#mate-card::-moz-range-thumb { width: 65px; height: 38px; border-radius: 5px; border: 2px solid #f2d47c; background: #223e74; }
+#mate-minigame .mate-close, #mate-minigame .mate-collect-back { display: block; margin: 8px auto 0; padding: 7px; border: 1px solid #587f95; background: #0b1a2d; font-size: 10px; }
+#mate-minigame .mate-collection-hint { padding: 8px; background: #112732; border: 1px solid #6ea47b; }
+#mate-minigame .mate-collection-hint small { display: block; margin-top: 6px; }
+#mate-minigame .mate-collection-hint[hidden] { display: none; }
+#mate-minigame:is([data-phase=dropping], [data-phase=collect]) :is(.mate-selections, .mate-payment-slot, .mate-close) { display: none; }
+#mate-inventory { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 20; padding: 8px; background: #112732e8; color: white; border: 1px solid #6ea47b; font: 12px Arial, sans-serif; }
+#mate-inventory button { display: flex; align-items: center; gap: 10px; border: 0; padding: 5px; background: transparent; color: inherit; cursor: pointer; text-align: left; }
+#mate-inventory button:disabled { cursor: default; }
+#mate-inventory img { width: 24px; height: 42px; object-fit: contain; }
+#mate-inventory small { display: block; margin-top: 4px; }
+#mate-hint { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); padding: 6px 12px; background: #112732dc; color: white; font: 13px Arial, sans-serif; pointer-events: none; }
+#mate-speed-effects { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 45px #b4ed6740; }

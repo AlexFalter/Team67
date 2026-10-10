@@ -15,6 +15,8 @@ test("remote interpolation follows the delayed timeline and shortest angle, hold
     introStartedAt: 0, introComplete: true,
     members: new Map(), results: new Map(),
     vehicles: new Map(),
+    publiBikes: new Map(),
+    mates: new Map(),
     players: new Map([
       ["local", local],
       ["remote", remote],
