@@ -44,6 +44,28 @@ test("perspective cycles first/rear/front; third-person camera cannot see throug
   assert.ok(camera.position.z < 0);
   view.cycle(); assert.equal(view.perspective, 0);
 });
+test("third-person spring arm retracts safely and returns smoothly", () => {
+  const camera = new PerspectiveCamera(75), wall = new Mesh(new BoxGeometry(6, 4, 0.5), new MeshBasicMaterial());
+  wall.position.set(0, 2, 2); wall.updateMatrixWorld(true);
+  const view = new PlayerView(camera, [wall]), p = C.createBody();
+  view.update(p, 1 / 60); view.cycle();
+  for (let i = 0; i < 90; i++) view.update(p, 1 / 60);
+  assert.ok(camera.position.z > 0 && camera.position.z < 1.75);
+
+  wall.position.z = 20; wall.updateMatrixWorld(true);
+  view.update(p, 1 / 60);
+  assert.ok(camera.position.z < 2.2, "arm does not pop out when obstruction clears");
+  for (let i = 0; i < 90; i++) view.update(p, 1 / 60);
+  assert.ok(camera.position.z > 4.4, "arm returns to its requested length");
+
+  wall.position.z = 2; wall.updateMatrixWorld(true);
+  view.update(p, 1 / 60);
+  assert.ok(camera.position.z < 1.75, "arm retracts before the camera enters the wall");
+
+  wall.position.z = 0.15; wall.scale.z = 0.2; wall.updateMatrixWorld(true);
+  view.update(p, 1 / 60);
+  assert.ok(camera.position.z < 0.1, "arm can collapse fully when a wall is next to the pivot");
+});
 test("WASD is camera-relative, stops when released and cannot run faster diagonally", () => {
   assert.deepEqual(keyboardMovement(new Set(["KeyW"]), 0), { x: 0, z: -1 });
   const turned = keyboardMovement(new Set(["KeyW"]), Math.PI / 2);

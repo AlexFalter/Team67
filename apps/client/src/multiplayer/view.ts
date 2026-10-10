@@ -3,6 +3,9 @@ import { WALK_SPEED, SPRINT_SPEED, type MovementWorld, type PlayerState } from "
 import { gaitRate } from "./avatar.ts";
 
 export const PERSPECTIVES = ["First person", "Third person — behind", "Third person — front"];
+const SPRING_LENGTH = 4.5;
+const SPRING_CLEARANCE = 0.2;
+const SPRING_RETURN_RATE = 8;
 // Presentation only: predicted player positions remain the movement authority.
 export class PlayerView {
   yaw = 0;
@@ -22,6 +25,7 @@ export class PlayerView {
   private direction = new THREE.Vector3();
   private desired = new THREE.Vector3();
   private intersections: THREE.Intersection[] = [];
+  private springLength = SPRING_LENGTH;
   constructor(readonly camera: THREE.PerspectiveCamera, private walls: THREE.Object3D[], private world?: MovementWorld) {
     this.ray.firstHitOnly = true;
   }
@@ -29,7 +33,11 @@ export class PlayerView {
     this.yaw -= dx * this.sensitivity;
     this.pitch = THREE.MathUtils.clamp(this.pitch - dy * this.sensitivity, -1.45, 1.45);
   }
-  cycle() { this.perspective = (this.perspective + 1) % PERSPECTIVES.length; }
+  cycle() {
+    const previous = this.perspective;
+    this.perspective = (this.perspective + 1) % PERSPECTIVES.length;
+    if (previous === 0 && this.perspective !== 0) this.springLength = 0;
+  }
   update(p: PlayerState, dt: number) {
     const blend = 1 - Math.exp(-10 * dt), speed = Math.hypot(p.vx, p.vz);
     const down = p.anim === 3 || p.knockdownUntil > p.simTime;
@@ -59,16 +67,20 @@ export class PlayerView {
       this.camera.rotation.set(this.pitch, this.yaw, this.roll, "YXZ");
     } else {
       this.direction.set(-Math.sin(this.yaw) * Math.cos(this.pitch), Math.sin(this.pitch), -Math.cos(this.yaw) * Math.cos(this.pitch));
-      this.desired.copy(this.origin).addScaledVector(this.direction, this.perspective === 1 ? -4.5 : 4.5);
+      this.desired.copy(this.direction).multiplyScalar(this.perspective === 1 ? -SPRING_LENGTH : SPRING_LENGTH);
       this.desired.y += 0.3;
-      this.camera.position.lerp(this.desired, blend);
-      this.direction.copy(this.camera.position).sub(this.origin);
-      const distance = this.direction.length();
-      this.ray.set(this.origin, this.direction.normalize());
-      this.ray.far = distance;
+      const desiredLength = this.desired.length();
+      this.direction.copy(this.desired).normalize();
+      this.ray.set(this.origin, this.direction);
+      this.ray.far = desiredLength;
       this.intersections.length = 0;
       const hit = this.ray.intersectObjects(this.walls, true, this.intersections)[0];
-      if (hit && hit.distance < distance) this.camera.position.copy(this.origin).addScaledVector(this.direction, Math.max(0.15, hit.distance - 0.2));
+      const availableLength = hit
+        ? Math.max(0, hit.distance - SPRING_CLEARANCE)
+        : desiredLength;
+      if (availableLength < this.springLength) this.springLength = availableLength;
+      else this.springLength += (availableLength - this.springLength) * (1 - Math.exp(-SPRING_RETURN_RATE * dt));
+      this.camera.position.copy(this.origin).addScaledVector(this.direction, this.springLength);
       const ground = this.world?.height(this.camera.position.x, this.camera.position.z);
       if (ground !== undefined) this.camera.position.y = Math.max(this.camera.position.y, ground + 0.25);
       this.camera.lookAt(this.origin);
