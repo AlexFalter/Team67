@@ -238,7 +238,11 @@ pts = sorted((c.x, -c.y) for o, me, polys, tag in walk if tag == 'Polybahn_halls
              for c in (o.matrix_world @ p.center for p in polys))
 cut = max(range(1, len(pts)), key=lambda k: pts[k][0] - pts[k - 1][0]) if len(pts) > 1 else len(pts)
 patches, patch_report = [], {}
-for name, cl in (('bottom', pts[:cut]), ('top', pts[cut:])):
+# narrow ramps from the hand-drawn edit areas (edit-areas.json): area 2, area 3 (terrace ramp), area 5
+EXTRA_PATCHES = {'area2 ramp': [(53.0, 86.0), (80.0, 138.0)], 'area3 terrace ramp': [(194.0, 59.0), (212.0, 82.0)],
+                 'area5 corridor': [(-30.0, -153.0), (2.0, -143.0)]}
+groups = [('bottom', pts[:cut]), ('top', pts[cut:])] + [(k, v) for k, v in EXTRA_PATCHES.items()]
+for name, cl in groups:
     if not cl: continue
     snap = lambda v, f: f(v / PATCH_STEP) * PATCH_STEP
     px0, px1 = snap(min(x for x, _ in cl) - PATCH_MARGIN, math.floor), snap(max(x for x, _ in cl) + PATCH_MARGIN, math.ceil)

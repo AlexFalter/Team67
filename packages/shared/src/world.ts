@@ -80,6 +80,10 @@ function gridHeight(g: HeightGrid, x: number, z: number) {
     d = g.ground[(iz + 1) * g.width + ix + 1];
   if (a === 65535 || b === 65535 || c === 65535 || d === 65535)
     return undefined;
+  // Across a cliff (terrace or quay wall, > 1 m between corners) blending would sag the upper ground
+  // towards the lower one and sink players into the wall: use the nearest corner instead.
+  if (Math.max(a, b, c, d) - Math.min(a, b, c, d) > 100)
+    return (fz < 0.5 ? (fx < 0.5 ? a : b) : (fx < 0.5 ? c : d)) / 100;
   return ((a + (b - a) * fx) * (1 - fz) + (c + (d - c) * fx) * fz) / 100;
 }
 function groundHeight(x: number, z: number) {
