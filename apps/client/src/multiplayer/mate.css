@@ -13,7 +13,16 @@
 #mate-minigame .mate-selection small { display: block; font-size: 9px; margin-top: 3px; }
 #mate-minigame .mate-selection img { width: 20px; height: 34px; object-fit: contain; }
 #mate-minigame .mate-selection.selected { border-color: #e8ce81; }
-#mate-minigame .mate-selection[data-tried=true] { opacity: .55; }
+#mate-minigame .mate-selection[data-sold-out=true] { color: #a0aec3; }
+#mate-minigame .mate-selection[data-sold-out=true] img { opacity: .55; }
+#mate-minigame .mate-selection[data-sold-out=true] small { color: #ff7474; }
+#mate-minigame .mate-message.mate-message-failure,
+#mate-minigame[data-phase=failure] .mate-selection.selected[data-sold-out=true] small { color: #ff7474; animation: mate-sold-out-blink 1.2s ease-in-out 3; }
+@keyframes mate-sold-out-blink { 0%, 100% { color: #ff7474; } 50% { color: #ff747473; } }
+@media (prefers-reduced-motion: reduce) {
+  #mate-minigame .mate-message.mate-message-failure,
+  #mate-minigame[data-phase=failure] .mate-selection.selected[data-sold-out=true] small { animation: none; }
+}
 #mate-minigame .mate-payment-slot { display: flex; flex-direction: column; gap: 6px; padding: 8px; margin-top: 8px; background: #0b1a2d; border: 1px solid #587f95; font-size: 10px; }
 #mate-minigame .mate-payment-slot[hidden], #mate-minigame .mate-selection-required[hidden] { display: none; }
 #mate-minigame .mate-selection-required { padding: 8px; margin: 8px 0 0; color: #b9c2cb; background: #0b1a2d; font-size: 10px; }

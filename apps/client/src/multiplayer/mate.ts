@@ -134,11 +134,18 @@ export class MateFeature {
     this.effects.hidden = !this.net.canPlay || this.active || !!p.vehicleId || p.mateBoostMs <= 0 || Math.hypot(p.vx, p.vz) < .2;
     if (!this.active || !state) return;
     this.modal.dataset.phase = state.phase;
-    this.buttons.forEach((button, i) => { const tried = !!(state.tried & (1 << i)); button.disabled = this.pending || !["idle", "failure"].includes(state.phase) || tried || now < state.retryAt; button.dataset.tried = String(tried); button.classList.toggle("selected", state.phase !== "idle" && i === state.selected); button.querySelector("small")!.textContent = tried ? "Unavailable · try another" : "330 ml · CHF 3.50"; });
+    this.buttons.forEach((button, i) => {
+      const tried = !!(state.tried & (1 << i));
+      const soldOut = tried && (i !== state.selected || state.phase === "failure");
+      button.disabled = this.pending || !["idle", "failure"].includes(state.phase) || tried || now < state.retryAt;
+      button.dataset.soldOut = String(soldOut);
+      button.classList.toggle("selected", state.phase !== "idle" && i === state.selected);
+      button.querySelector("small")!.textContent = soldOut ? "Sold out · try another" : "330 ml · CHF 3.50";
+    });
     if (state.phase !== this.lastPhase) { this.card.value = "0"; this.lastPhase = state.phase; }
     this.card.disabled = this.pending || state.phase !== "payment";
     this.message.classList.toggle("mate-message-failure", state.phase === "failure" && !this.pending);
-    this.message.textContent = this.pending ? "Please wait…" : ({ idle: "Select your Mate", payment: "Swipe to pay", loading: "Please wait", failure: "Not available", dropping: "Dispensing can", collect: "Take your can", success: "Mate acquired" } as Record<string, string>)[state.phase];
+    this.message.textContent = this.pending ? "Please wait…" : ({ idle: "Select your Mate", payment: "Swipe to pay", loading: "Please wait", failure: "Sold out · try another", dropping: "Dispensing can", collect: "Take your can", success: "Mate acquired" } as Record<string, string>)[state.phase];
     this.modal.querySelector(".mate-detail")!.textContent = now < state.retryAt ? `Retry in ${((state.retryAt - now) / 1000).toFixed(1)}s · payment refunded` : state.phase === "payment" ? `${C.MATE_FLAVORS[state.selected]} · CHF 3.50` : physical ? "Collect from the tray below" : "";
     this.modal.querySelector<HTMLElement>(".mate-loading-track i")!.style.width = state.phase === "loading" ? `${Math.max(0, Math.min(100, (1 - (state.readyAt - now) / C.MATE_LOADING_MS) * 100))}%` : "0%";
     this.modal.querySelector(".mate-card-status")!.textContent = state.phase === "payment" ? "Drag the card all the way right" : state.phase === "failure" ? "Payment refunded" : "Select a flavor first";
