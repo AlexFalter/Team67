@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 in multiple tabs. Click the scene, then WASD to move, Shift to sprint, Space to jump, E to ride/exit, drag to turn and scroll to zoom. Inspect map switches to the original orbit/pan viewer and leaves multiplayer. Join multiplayer reconnects. Root `npm run build && npm start` serves the game and Colyseus together on http://localhost:2567.
+Open http://localhost:5173 in multiple tabs. Click the scene, then WASD to move, Shift to sprint, Space to jump, E to ride/exit, drag to turn and scroll to zoom. Inspect map switches to the original orbit/pan viewer and leaves multiplayer. Join multiplayer reconnects. Docker deployment serves the game over HTTPS; Node runs internally behind Caddy.
 
 Use the **root lockfile**. From `apps/client/`, `npm run dev` also starts both services; `npm run dev:client` starts Vite alone. `npm run lint` checks the frontend. `npm run preview` does not start Colyseus; use root production start to test the complete game. For development on a second device, set `VITE_COLYSEUS_URL` in `apps/client/.env.local` to the server's LAN address. Production uses the page's own host/port automatically.
 
@@ -91,6 +91,7 @@ provenance alongside any bounds/origin changes.
 
 ## Deployment
 
-Root `docker-compose.yml` builds from the npm workspace root, serves this build via Caddy on 8080, and runs Colyseus as its second service. No Python backend or `/api` proxy is required. Matchmaking and WebSocket upgrade requests route to the multiplayer service. The root README documents the hackathon portal's WebSocket limitation; test a direct endpoint supporting WebSockets for multiplayer.
+Root `docker-compose.yml` builds from the npm workspace root, serves this build via Caddy over HTTPS on 443, and runs Colyseus as its second service. No Python backend or `/api` proxy is required. Matchmaking and WebSocket upgrade requests route to the multiplayer service. The root README documents the hackathon portal's WebSocket limitation; test a direct endpoint supporting WebSockets for multiplayer.
 
 After changing/re-importing the map, run `npm run world:build` from the root and commit the generated shared JSON together with the GLB/provenance. Root production builds regenerate this data offline; they never contact GIS services.
+For HTTPS deployment, use the root README instructions. Set SITE_ADDRESS to the direct DNS hostname and open TCP 80/443. Caddy certificate storage persists across container replacement. Local Docker uses SITE_ADDRESS=localhost and https://localhost, with a local CA that your browser must trust.

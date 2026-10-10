@@ -1,4 +1,4 @@
-﻿:8080 {
+https://{$SITE_ADDRESS} {
     handle /matchmake/* {
         reverse_proxy server:2567
     }

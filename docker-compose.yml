@@ -1,10 +1,16 @@
-﻿services:
+services:
   client:
     build:
       context: .
       dockerfile: apps/client/Dockerfile
     ports:
-      - 8080:8080
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?Set SITE_ADDRESS to the DNS hostname pointing directly at your VM}
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
     depends_on:
       - server
     restart: unless-stopped
@@ -13,3 +19,7 @@
       context: .
       dockerfile: apps/server/Dockerfile
     restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

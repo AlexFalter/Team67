@@ -48,15 +48,30 @@ npm run build
 npm start
 ```
 
-Open **http://localhost:2567**. On another device on the same LAN, open `http://<server-LAN-IP>:2567` and allow that port through the host firewall. Production derives its WebSocket URL from the page's host and port, using `wss:` with HTTPS. No client environment override is required in production. For Vite development from another device, set `VITE_COLYSEUS_URL=ws://<server-LAN-IP>:2567` and restart Vite; otherwise its default points at that device's own localhost.
+`npm start` is the internal HTTP/WS service on port 2567. Production access goes through Caddy using HTTPS/WSS. For Vite development from another device, set `VITE_COLYSEUS_URL=ws://<server-LAN-IP>:2567` and restart Vite.
 
-Docker Compose runs two services: `client` (Caddy) and `server` (Colyseus). Caddy on **8080** forwards `/matchmake/*` and WebSocket upgrade requests to Colyseus and serves the frontend:
+### Docker deployment — HTTPS
+
+Docker Compose runs `client` (Caddy) and `server` (Colyseus). Set a DNS hostname pointing directly at the VM's public IP and allow inbound TCP ports **80 and 443** through the VM and upstream network firewalls.
+
+From the project directory on the VM:
 
 ```sh
+cp .env.example .env
+# Edit .env: replace game.example.com with your direct VM hostname.
 docker compose up -d --build --remove-orphans
+docker compose logs -f client server
 ```
 
-Open http://localhost:8080. No `.env` file or API key is required. The service names have changed; `--remove-orphans` removes containers from the previous layout. View logs with `docker compose logs -f client server` and stop the game with `docker compose down`.
+Preserve an existing `.env` file and add/update `SITE_ADDRESS` instead of overwriting it. Set it to the hostname only, without a protocol or port. Open `https://<your-hostname>`. Caddy obtains and renews the TLS certificate, redirects HTTP to HTTPS, and forwards matchmaking and WebSocket upgrades to Colyseus. The client uses WSS when accessing the HTTPS page. Node's HTTP/WS port remains internal to Docker.
+
+There is one Compose file and no HTTP deployment mode. A hostname is required. For local Docker testing, use `SITE_ADDRESS=localhost` and open `https://localhost`; Caddy uses a local certificate authority, which must be trusted by your browser. `npm run dev` remains the HTTP development workflow on port 5173.
+
+Certificate state persists in `caddy_data` and `caddy_config`; do not remove these volumes during ordinary redeployment. Public certificate issuance needs working DNS and direct inbound port access. No separate certificate files or host-level Caddy installation are required.
+
+```sh
+docker compose down
+```
 
 The original hackathon template documents that the **portal proxy rejects WebSockets with 502**. Caddy routing cannot fix a proxy upstream of it. Use direct LAN access, an SSH tunnel, or a deployment endpoint that supports WebSockets; portal compatibility must be verified separately. Inspection mode still works without a multiplayer connection.
 
