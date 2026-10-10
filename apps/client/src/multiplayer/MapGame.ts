@@ -101,7 +101,7 @@ export class MapGame {
     // Encounters keep camera ownership until they finish; vehicles also block exam entry.
     this.exam.update(this.local.body, this.net.canPlay, this.local.enabled && !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now()>=this.derailUntil, state?.startedAt ?? 0, remaining, now);
     this.vehicles.render(renderTime, dt, "rail");
-    this.transitScenery.update(this.net.room?.state.vehicles.values() ?? [], this.net.now(), this.net.canPlay);
+    this.transitScenery.update(state?.vehicles?.values() ?? [], this.net.now(), this.net.canPlay);
     const riding=this.vehicles.items.get(this.local.body.vehicleId)?.latest;
     if(riding?.derailStartedAt&&this.derailRun!==riding.derailStartedAt){
       this.derailRun=riding.derailStartedAt;this.derailVehicle=this.local.body.vehicleId;this.derailUntil=riding.derailStartedAt+3200;

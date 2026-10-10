@@ -127,7 +127,7 @@ export class Vehicles {
     visual.railCars = Array.from({ length: visual.latest.kind === C.TRAM_KIND ? 3 : 1 }, () => this.transitModels!.create(visual.latest.kind === C.TRAM_KIND));
     visual.mesh.add(...visual.railCars); visual.label.scale.set(3.5, .5, 1);
     visual.railConnectors = visual.latest.kind === C.TRAM_KIND ? visual.railCars.slice(1).map(() => createTramConnector()) : [];
-    visual.mesh.add(...visual.railConnectors);
+    if (visual.railConnectors.length) visual.mesh.add(...visual.railConnectors);
     visual.explosions=visual.latest.kind===C.TRAM_KIND?new TramExplosions():undefined;
     if(visual.explosions)visual.mesh.add(visual.explosions);
     if (C.isRail(visual.latest)) {
