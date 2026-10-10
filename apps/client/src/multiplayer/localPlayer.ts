@@ -32,6 +32,8 @@ export class LocalPlayer {
   }
   dispose() { this.abort.abort(); this.enabled = false; this.clear(); }
   punch() { if (this.enabled) this.hit = true; }
+  /** Movement keys are held (used to tell a wall bump from simply letting go). */
+  get pushing() { return this.enabled && ["KeyW", "KeyA", "KeyS", "KeyD"].some(code => this.keys.has(code)); }
   controls(yaw: number) {
     if (!this.enabled) this.clear();
     const direction = keyboardMovement(this.keys, yaw);
