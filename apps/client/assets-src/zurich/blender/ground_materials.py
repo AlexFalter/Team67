@@ -80,6 +80,11 @@ def pattern_index(spec, x, y, rnd):
             if x in (x0, x1 - 1) or y == y0 or x == N // 2: return 1
             return 3 if (x - x0) == (y - y0) and x - x0 < 3 else 2
         return 4 if y == y0 - 1 else 0
+    if p == 'flag_ch':  # white cross on red (palette 0 red, 1 white); same as theme.ts
+        w, h = spec['size']; cx, cy = abs(x + 0.5 - w / 2), abs(y + 0.5 - h / 2); arm, half = w * 0.31, w * 0.1
+        return 1 if (cx < half and cy < arm) or (cy < half and cx < arm) else 0
+    if p == 'flag_zh':  # white upper-right, blue lower-left
+        return 1 if x >= y else 0
     if p == 'text':
         w, h = spec['size']
         if 'mask' not in spec: spec['mask'] = text_mask(spec['text'], w, h)
