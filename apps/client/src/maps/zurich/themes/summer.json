@@ -48,7 +48,11 @@
     "Leaves": { "palette": ["#d2d2d2", "#ffffff", "#9c9c9c", "#6e6e6e", "#ececec"], "pattern": "leaves" },
     "Bark": { "palette": ["#6b4a2f", "#4a3220", "#7e5a3a", "#3a2617", "#5c3f27"], "pattern": "bark" },
     "CoopSign": { "palette": ["#ffffff", "#f06400"], "pattern": "text", "text": "coop", "size": [24, 8] },
-    "Footprint": { "palette": ["#7a7d82", "#74777c"], "pattern": "noise", "weights": [80, 20] }
+    "Footprint": { "palette": ["#7a7d82", "#74777c"], "pattern": "noise", "weights": [80, 20] },
+    "LampIron": { "palette": ["#34433f", "#2a3633", "#405049"], "pattern": "noise", "weights": [70, 20, 10] },
+    "LampGlass": { "palette": ["#f6e7bd", "#fff3d2", "#e7d39f"], "pattern": "noise", "weights": [70, 20, 10] },
+    "BinSteel": { "palette": ["#bcc2c6", "#ccd1d4", "#a9afb3"], "pattern": "noise", "weights": [65, 20, 15] },
+    "BinSlot": { "palette": ["#1f2427", "#2b3135"], "pattern": "noise", "weights": [80, 20] }
   },
   "trees": {
     "$comment": "Leaf colours tint the greyscale Leaves texture per tree (plus a small brightness jitter); trunks use the Bark texture.",
