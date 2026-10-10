@@ -18,8 +18,10 @@ EDITS = {
     2: ('ramp', (56.6, 88.6), (77.0, 135.6), 'G_Road'),     # footpath under the Polybahn bridge
     5: ('ramp', (-27.5, -147.5), (-0.5, -148.8), 'G_Road'),   # corridor between the lower and upper street
     3: ('even', 'G_Paved'),                                 # around the Polyterrasse ramp (polyterrasse.py)
-    8: ('even', 'G_Road'), 10: ('even', 'G_Road'), 11: ('even', 'G_Road'), 12: ('even', 'G_Road'),
+    8: ('even', 'G_Road'), 10: ('even', 'G_Road'), 11: ('even', 'G_Road'),
+    12: ('even', 'G_Road', ()),                             # Bahnhofplatz: the small water pond becomes street too
 }
+ONLY = globals().get('ONLY')  # e.g. ONLY = {12} to apply a single edit to the current ground
 KEEP = {'G_Water', 'G_Quay'}
 SLICE, SMOOTH_ITERS, END, BLEND = 1.5, 40, 1.6, 3.0  # END: outline vertices this close to an end keep their height
 
@@ -63,6 +65,7 @@ bm = bmesh.new(); bm.from_mesh(me)
 uv = bm.loops.layers.uv['UVMap']
 report = {}
 for aid, op in EDITS.items():
+    if ONLY and aid not in ONLY: continue
     pts = AREAS[aid]
     ring = pts + [pts[0]]
     for (x0, z0), (x1, z1) in zip(ring, ring[1:]): cut_segment(bm, B(x0, z0), B(x1, z1))
@@ -101,14 +104,14 @@ for aid, op in EDITS.items():
         e0, e1 = t0, t1
         report[aid] = f'ramp {h0:.2f} -> {h1:.2f} m over {e1 - e0:.1f} m ({100 * (h1 - h0) / max(1e-6, e1 - e0):.0f}%), {len(fs)} faces'
     else:
-        _, mat = op
-        fs = [f for f in faces_in(bm, pts) if names[f.material_index] not in KEEP]
+        mat, keep = op[1], (set(op[2]) if len(op) > 2 else KEEP)
+        fs = [f for f in faces_in(bm, pts) if names[f.material_index] not in keep]
         mi = mat_index(mat)
         for f in fs: f.material_index = mi
         fset = set(fs)
         inner = [v for v in {v for f in fs for v in f.verts} if all(lf in fset for lf in v.link_faces)]
         zs0 = {v: v.co.z for v in inner}
-        for _ in range(SMOOTH_ITERS):  # Laplacian smoothing of heights, outline vertices fixed
+        for _ in range(SMOOTH_ITERS if keep else 400):  # Laplacian smoothing of heights, outline vertices fixed
             new = {v: sum(e.other_vert(v).co.z for e in v.link_edges) / max(1, len(v.link_edges)) for v in inner}
             for v, z in new.items(): v.co.z = z
         moved = max((abs(v.co.z - zs0[v]) for v in inner), default=0)
