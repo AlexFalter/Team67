@@ -4,6 +4,7 @@
 #mate-minigame button { cursor: pointer; color: inherit; font: inherit; }
 #mate-minigame button:focus-visible, #mate-card:focus-visible { outline: 2px solid white; outline-offset: 2px; }
 #mate-minigame .mate-message { background: #071c26; color: #b5e773; padding: 9px; margin: 0 0 5px; font-weight: bold; }
+#mate-minigame .mate-message.mate-message-failure { background: #321315; color: #ff7777; }
 #mate-minigame .mate-detail { display: block; min-height: 15px; background: #071c26; font-size: 10px; }
 #mate-minigame .mate-loading-track { height: 3px; background: #31432a; margin-bottom: 8px; }
 #mate-minigame .mate-loading-track i { display: block; height: 100%; background: #c3ed82; }
@@ -14,6 +15,8 @@
 #mate-minigame .mate-selection.selected { border-color: #e8ce81; }
 #mate-minigame .mate-selection[data-tried=true] { opacity: .55; }
 #mate-minigame .mate-payment-slot { display: flex; flex-direction: column; gap: 6px; padding: 8px; margin-top: 8px; background: #0b1a2d; border: 1px solid #587f95; font-size: 10px; }
+#mate-minigame .mate-payment-slot[hidden], #mate-minigame .mate-selection-required[hidden] { display: none; }
+#mate-minigame .mate-selection-required { padding: 8px; margin: 8px 0 0; color: #b9c2cb; background: #0b1a2d; font-size: 10px; }
 #mate-card { appearance: none; width: 100%; margin: 4px 0; height: 40px; cursor: grab; touch-action: none; background: linear-gradient(#070f24 45%, #748bab 46%, #748bab 53%, #070f24 54%); }
 #mate-card:disabled { opacity: .4; }
 #mate-card::-webkit-slider-thumb { appearance: none; width: 65px; height: 38px; border-radius: 5px; border: 2px solid #f2d47c; background: linear-gradient(#223e74 25%, #111c34 26% 43%, #223e74 44% 86%, #e4cb8b 87%); }

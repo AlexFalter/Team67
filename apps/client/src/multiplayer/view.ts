@@ -4,6 +4,8 @@ import { gaitRate } from "./avatar.ts";
 
 export const PERSPECTIVES = ["First person", "Third person — behind", "Third person — front"];
 const SPRING_LENGTH = 4.5;
+const POLYBAHN_SPRING_LENGTH = 10;
+const TRAM_SPRING_LENGTH = 18;
 const SPRING_CLEARANCE = 0.2;
 const SPRING_RETURN_RATE = 8;
 // Presentation only: predicted player positions remain the movement authority.
@@ -40,7 +42,7 @@ export class PlayerView {
     this.perspective = (this.perspective + 1) % PERSPECTIVES.length;
     if (previous === 0 && this.perspective !== 0) this.springLength = 0;
   }
-  update(p: PlayerState, dt: number) {
+  update(p: PlayerState, dt: number, railFrame?: { rotY: number; pitch: number }) {
     const rail = p.vehicleKind === TRAM_KIND || p.vehicleKind === POLYBAHN_KIND;
     if (rail && p.vehicleId) {
       if (this.railRide === p.vehicleId) this.yaw += Math.atan2(Math.sin(p.rotY - this.railYaw), Math.cos(p.rotY - this.railYaw));
@@ -53,21 +55,30 @@ export class PlayerView {
     // Distance-driven steps, but no bone-driven camera or oscillating horizon.
     if (walking) this.phase += gaitRate(speed) * dt;
     this.amplitude += ((this.bob && walking ? Math.min(0.018, speed * 0.0015) : 0) - this.amplitude) * blend;
-    this.eye += ((down ? 0.48 : rail ? 1.58 : p.vehicleId ? 1.05 : 1.6) - this.eye) * blend;
+    this.eye += ((down ? 0.48 : p.vehicleKind === TRAM_KIND ? 1.65 : rail ? 1.4 : p.vehicleId ? 1.05 : 1.6) - this.eye) * blend;
     const strafe = p.vx * Math.cos(this.yaw) - p.vz * Math.sin(this.yaw);
     this.roll += ((down ? 0.35 : this.bob && walking ? THREE.MathUtils.clamp(-strafe * 0.001, -0.008, 0.008) : 0) - this.roll) * blend;
     this.landing *= Math.exp(-14 * dt);
+    if(rail && p.vehicleId && !down){this.amplitude=0;this.roll=0;this.landing=0;}
     if (this.bob && !down && !p.vehicleId) {
       if (p.grounded && !this.grounded) this.landing = Math.min(0.075, Math.max(0, -this.verticalSpeed) * 0.004);
       else if (!p.grounded && this.grounded && p.vy > 0) this.landing = 0.025;
     }
     this.grounded = p.grounded; this.verticalSpeed = p.vy;
     this.origin.set(p.x, p.y + this.eye, p.z);
+    if (railFrame && rail) {
+      // Eye offset follows the inclined cabin, while the horizon stays level.
+      const forward = this.eye * Math.sin(railFrame.pitch);
+      this.origin.set(p.x + Math.sin(railFrame.rotY) * forward, p.y + this.eye * Math.cos(railFrame.pitch), p.z + Math.cos(railFrame.rotY) * forward);
+    }
     if (this.perspective === 0) {
       this.camera.position.copy(this.origin);
       // Eyes sit in front of the body, not inside the chest when looking down.
-      this.camera.position.x -= Math.sin(this.yaw) * 0.15;
-      this.camera.position.z -= Math.cos(this.yaw) * 0.15;
+      // Seated mouse look pivots at the head rather than orbiting into the window.
+      const headYaw=rail && p.vehicleId ? p.rotY+Math.PI : this.yaw;
+      const headOffset=rail && p.vehicleId ? .07 : .15;
+      this.camera.position.x -= Math.sin(headYaw) * headOffset;
+      this.camera.position.z -= Math.cos(headYaw) * headOffset;
       const sway = Math.sin(this.phase) * this.amplitude * 0.35;
       this.camera.position.x += Math.cos(this.yaw) * sway;
       this.camera.position.z -= Math.sin(this.yaw) * sway;
@@ -75,8 +86,12 @@ export class PlayerView {
       this.camera.rotation.set(this.pitch, this.yaw, this.roll, "YXZ");
     } else {
       this.direction.set(-Math.sin(this.yaw) * Math.cos(this.pitch), Math.sin(this.pitch), -Math.cos(this.yaw) * Math.cos(this.pitch));
-      this.desired.copy(this.direction).multiplyScalar(this.perspective === 1 ? -SPRING_LENGTH : SPRING_LENGTH);
-      this.desired.y += 0.3;
+      const polybahn = p.vehicleKind === POLYBAHN_KIND && !!p.vehicleId;
+      const tram = p.vehicleKind === TRAM_KIND && !!p.vehicleId;
+      const distance = tram ? TRAM_SPRING_LENGTH : polybahn ? POLYBAHN_SPRING_LENGTH : SPRING_LENGTH;
+      if (rail) this.origin.y += .65;
+      this.desired.copy(this.direction).multiplyScalar(this.perspective === 1 ? -distance : distance);
+      this.desired.y += tram ? 5 : polybahn ? 3 : .3;
       const desiredLength = this.desired.length();
       this.direction.copy(this.desired).normalize();
       this.ray.set(this.origin, this.direction);
@@ -94,7 +109,7 @@ export class PlayerView {
       this.camera.lookAt(this.origin);
     }
     const sprint = THREE.MathUtils.clamp((speed - WALK_SPEED) / (SPRINT_SPEED - WALK_SPEED), 0, 1);
-    this.camera.fov += ((82 + (!down && !p.vehicleId ? sprint * 6 : 0)) - this.camera.fov) * blend;
+    this.camera.fov += (((rail && this.perspective === 0 ? 72 : 82) + (!down && !p.vehicleId ? sprint * 6 : 0)) - this.camera.fov) * blend;
     this.camera.updateProjectionMatrix();
   }
 }

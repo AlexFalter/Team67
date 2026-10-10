@@ -161,6 +161,7 @@ function MapCanvas({ playing, resolution, onResolutionChange }: {
             sun.target.updateMatrixWorld();
           }
           renderer!.render(scene, camera);
+          game?.afterRender();
         });
         setStatus("Map loaded");
       } catch (error) {

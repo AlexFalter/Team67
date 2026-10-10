@@ -106,6 +106,8 @@ async function template(name: "tram" | "polybahn", signal: AbortSignal, baseUrl:
   interior(car, name === "tram");
   const oldMaterials = batch(car);
   for (const node of articulated) for (const material of batch(node)) oldMaterials.add(material);
+  // Authored map gauge is 1 m; the prototype wheels were spaced 1.6 m apart.
+  for (const node of articulated) if (node.name.startsWith("Axle_")) node.scale.x *= 1 / 1.6;
   if (articulated.length) car.add(...articulated);
   oldMaterials.forEach(material => material.dispose());
   return car;

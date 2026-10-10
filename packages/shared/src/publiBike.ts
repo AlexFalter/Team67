@@ -38,3 +38,11 @@ export function publiBikeStation(world: MovementWorld) {
   }
   throw new Error("No clear PubliBike station site near the prototype route.");
 }
+
+// Dock metadata alone is insufficient: physics can push a parked bike away.
+export function publiBikeIsDocked(bike: Pick<PubliBikeState, "dock">, vehicle: { x: number; y: number; z: number; driver: string } | undefined,
+  slots: readonly { x: number; y: number; z: number }[]) {
+  const slot = slots[bike.dock];
+  return !!slot && !!vehicle && !vehicle.driver &&
+    Math.hypot(vehicle.x - slot.x, vehicle.z - slot.z) <= .65 && Math.abs(vehicle.y - slot.y) <= .5;
+}

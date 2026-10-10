@@ -20,6 +20,14 @@ export function GameOverlay({ resolution, onResolutionChange }: {
         </select>
         <label htmlFor="room-code">Room code</label>
         <input id="room-code" autoComplete="off" maxLength={12} placeholder="e.g. TEAM67" />
+        <fieldset id="dev-settings">
+          <legend>Testing</legend>
+          <label><input id="dev-mode" type="checkbox" /> Dev mode</label>
+          <label id="skip-intro-option" hidden><input id="skip-intro" type="checkbox" defaultChecked /> Skip starting bus animation</label>
+          <label id="gold-bikes-option" hidden><input id="gold-bikes" type="checkbox" defaultChecked /> Gold working PubliBikes</label>
+          <label id="rail-protection-option" hidden><input id="rail-protection" type="checkbox" /> Prevent tram derailment</label>
+          <p className="hint">Saved on this browser. Applies to rooms you create; everyone in the room starts together.</p>
+        </fieldset>
         <div className="buttons">
           <button type="submit" value="create">Create room</button>
           <button type="submit" value="join">Join room</button>
@@ -46,6 +54,7 @@ export function GameOverlay({ resolution, onResolutionChange }: {
     </section>
     <div id="round-timer" hidden aria-live="off"></div>
     <div id="battle-bus-intro" hidden role="status" aria-live="polite"></div>
+    <div id="activity-feed" hidden role="log" aria-live="polite" aria-label="Activity feed"></div>
     <button id="play" hidden>Click to play<br /><small>Mouse / trackpad look · WASD run · Space jump · Esc menu</small></button>
     <div id="crosshair" hidden aria-hidden="true">+</div>
     <section id="pause" hidden aria-label="Game menu">

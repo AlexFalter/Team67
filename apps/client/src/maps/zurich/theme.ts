@@ -197,6 +197,8 @@ export function surfaceTexture(name: string, style: SurfaceStyle, pixels: number
   context.putImageData(image, 0, 0);
   const texture = new CanvasTexture(canvas);
   texture.colorSpace = SRGBColorSpace;
+  // Text signs use the authored glTF UV orientation, unlike repeating ground patterns.
+  if (style.pattern === "text") texture.flipY = false;
   texture.magFilter = NearestFilter;
   texture.wrapS = texture.wrapT = RepeatWrapping;
   return texture;

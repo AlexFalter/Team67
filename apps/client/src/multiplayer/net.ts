@@ -42,7 +42,7 @@ export class Network {
       : `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}`;
     const client = new Client(url);
     const room = selection.mode === "create"
-      ? await client.create<WorldState>("race", { code: selection.code, character: selection.character, name: selection.name })
+      ? await client.create<WorldState>("race", { code: selection.code, character: selection.character, name: selection.name, devMode: selection.devMode, skipIntro: selection.skipIntro, goldPubliBikes: selection.goldPubliBikes, railCrashProtection: selection.railCrashProtection })
       : await client.joinById<WorldState>(selection.code, { character: selection.character, name: selection.name });
     // This prototype releases seats on disconnect and has no server reconnection grace.
     room.reconnection.enabled = false;

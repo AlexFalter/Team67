@@ -36,7 +36,7 @@ export class RoomFlow {
     this.root.querySelector("#room-leave")!.addEventListener("click", () => location.reload(), options);
   }
   patch(state: WorldState, id: string) {
-    const signature = JSON.stringify([state.phase, state.introComplete, state.hostId, id,
+    const signature = JSON.stringify([state.phase, state.introComplete, state.devMode, state.skipIntro, state.hostId, id,
       [...state.members].map(([key, m]) => [key, m.name, m.ready, m.spectator]),
       [...state.results].map(([key, r]) => [key, r.name, r.hitsLanded, r.hitsReceived])]);
     if (signature === this.signature) return;
@@ -52,7 +52,7 @@ export class RoomFlow {
     this.roster.hidden = state.phase === RoomPhase.Finished;
     this.table.hidden = state.phase !== RoomPhase.Finished;
     this.message.textContent = state.phase === RoomPhase.Lobby
-      ? "The round starts when everyone is ready."
+      ? state.devMode ? `Dev mode${state.skipIntro ? " · bus intro skipped" : ""}. The round starts when everyone is ready.` : "The round starts when everyone is ready."
       : state.phase === RoomPhase.Running
         ? "You joined during a round. Wait here; you can play in the next round."
         : host ? "Everyone can see these results. Return to the lobby to play again."

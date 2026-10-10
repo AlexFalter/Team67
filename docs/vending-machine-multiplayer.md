@@ -69,3 +69,5 @@ Completed checks:
   exactly one feature UI without browser page errors.
 - All 490 restored prototype files match the source branch after Git's normal
   line-ending conversion. `git diff --check` passed.
+
+The shared `MATE_POSITION` places the cabinet at (-130, 83), on the pavement in front of the Coop beside Bahnhofbrücke. Its controls face the bridge (-Z). Rendering, interaction distance and collision all use this same placement.

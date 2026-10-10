@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { PerspectiveCamera } from "three";
 import { createBody, type BikeUnlockResult } from "../packages/shared/src/index.ts";
+import { PhoneAimInput } from "../apps/client/src/multiplayer/phoneAimInput.ts";
 import { PubliBikeFeature } from "../apps/client/src/multiplayer/publiBikes.ts";
 
 // Exercise the interaction/response boundary without loading the city or GPU assets.
@@ -15,7 +16,7 @@ function setup() {
     room: { sessionId: "a", state: { publiBikes: new Map([["publibike-1", bike]]), vehicles: new Map([["publibike-1", vehicle]]) },
       send: (type: string, data: unknown) => sent.push({ type, data }) } };
   const feature: PubliBikeFeature = Object.assign(Object.create(PubliBikeFeature.prototype), {
-    local, camera, modal, net, vehicles: { nearestId: () => "publibike-1" },
+    mouse: new PhoneAimInput(), canvas: { focus() {} }, local, camera, modal, net, vehicles: { nearestId: () => "publibike-1" },
     status: { textContent: "" }, bar: { style: { width: "" } }, held: new Set(), lastAim: {},
   });
   const reply = (ok: boolean, token?: string) => {
@@ -51,11 +52,19 @@ test("only the current server grant opens the phone; cancelled grants are ignore
   try {
     const s = setup(); s.feature.interact(); s.reply(true, "server-token");
     assert.equal(s.feature.active, true); assert.equal(s.modal.hidden, false); assert.equal(s.local.enabled, false);
-    assert.equal(s.camera.fov, 40);
+    assert(s.camera.fov >= 65, "portrait scanner keeps the bike and QR code in view");
+    s.feature.close();assert.equal(s.local.enabled, true, "scanner dismissal resumes gameplay without Click to play");assert.equal(s.camera.fov, 50, "closing restores the gameplay lens");
     const cancelled = setup(); cancelled.feature.interact(); cancelled.feature.close(); cancelled.reply(true, "late-token");
     assert.equal(cancelled.feature.active, false); assert.equal(cancelled.modal.hidden, true); assert.equal(cancelled.local.enabled, true);
   } finally {
     if (original) Object.defineProperty(globalThis, "document", original);
     else Reflect.deleteProperty(globalThis, "document");
   }
+});
+
+
+test("closing the scanner after the round ends does not enable player input", () => {
+  const s = setup();s.modal.hidden = false;s.local.enabled = false;
+  (s.feature as unknown as { net: { canPlay: boolean } }).net.canPlay = false;
+  s.feature.close(false);assert.equal(s.local.enabled, false);
 });
