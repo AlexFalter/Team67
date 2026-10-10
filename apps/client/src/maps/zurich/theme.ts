@@ -296,8 +296,10 @@ export function applyRendererLook(renderer: WebGLRenderer, scene: Scene, theme: 
   return () => { if (scene.environment === target.texture) scene.environment = null; target.dispose(); };
 }
 
-/** The sun lamp of the Blender preview (blender/scene_light.py): strength sunIntensity * 1.6. Position it
- * from theme sunElevation / sunAzimuth. The world light comes from applyRendererLook. */
+/** The sun lamp of the Blender preview (blender/scene_light.py): strength sunIntensity * 1.6 W/m². Blender's
+ * diffuse is albedo * E / π while three.js folds the π into punctual lights, so the same strength is π× too bright
+ * here (AgX then washes the colours out) - divide it back. Position it from theme sunElevation / sunAzimuth.
+ * The world light comes from applyRendererLook. */
 export function themeLights(theme: MapTheme) {
-  return { sun: new DirectionalLight(theme.lighting.sun, theme.lighting.sunIntensity * 1.6) };
+  return { sun: new DirectionalLight(theme.lighting.sun, (theme.lighting.sunIntensity * 1.6) / Math.PI) };
 }
