@@ -17,18 +17,26 @@ export class RoomFlow {
   private finish = document.querySelector<HTMLButtonElement>("#finish-round")!;
   private signature = "";
   private abort = new AbortController();
-  constructor(private net: Network) {
+  private prepared = false;
+  private preparationError = "";
+  constructor(private net: Network, preparation: Promise<void>, unlockAudio: () => void) {
+    this.ready.disabled = true;
+    void preparation.then(() => { if (!this.abort.signal.aborted) {
+      this.prepared = true; this.ready.disabled = false;
+      if (this.net.room?.state.phase === RoomPhase.Lobby) this.message.textContent = "The round starts when everyone is ready.";
+    } })
+      .catch(error => { if (!this.abort.signal.aborted) this.preparationError = `${String(error)} Reload to retry the battle bus download.`; });
     const options = { signal: this.abort.signal };
     this.ready.addEventListener("click", () => {
       const member = net.room?.state.members.get(net.room.sessionId);
-      if (member) net.room.send("ready", !member.ready);
+      if (member && this.prepared) { unlockAudio(); net.room.send("ready", !member.ready); }
     }, options);
     this.restart.addEventListener("click", () => net.room.send("restartRound"), options);
     this.finish.addEventListener("click", () => net.room.send("finishRound"), options);
     this.root.querySelector("#room-leave")!.addEventListener("click", () => location.reload(), options);
   }
   patch(state: WorldState, id: string) {
-    const signature = JSON.stringify([state.phase, state.hostId, id,
+    const signature = JSON.stringify([state.phase, state.introComplete, state.hostId, id,
       [...state.members].map(([key, m]) => [key, m.name, m.ready, m.spectator]),
       [...state.results].map(([key, r]) => [key, r.name, r.hitsLanded, r.hitsReceived])]);
     if (signature === this.signature) return;
@@ -40,7 +48,7 @@ export class RoomFlow {
     this.ready.hidden = state.phase !== RoomPhase.Lobby || !member;
     this.ready.textContent = member?.ready ? "Cancel ready" : "Ready";
     this.restart.hidden = state.phase !== RoomPhase.Finished || !host;
-    this.finish.hidden = state.phase !== RoomPhase.Running || !host || !!member?.spectator;
+    this.finish.hidden = state.phase !== RoomPhase.Running || !state.introComplete || !host || !!member?.spectator;
     this.roster.hidden = state.phase === RoomPhase.Finished;
     this.table.hidden = state.phase !== RoomPhase.Finished;
     this.message.textContent = state.phase === RoomPhase.Lobby
@@ -70,6 +78,8 @@ export class RoomFlow {
     }
   }
   update() {
+    if (this.net.room?.state.phase === RoomPhase.Lobby && !this.prepared)
+      this.message.textContent = this.preparationError || "Loading the battle bus before you can ready up…";
     this.timer.hidden = !this.net.canPlay;
     if (this.net.canPlay) {
       const seconds = Math.max(0, Math.ceil((this.net.room.state.endsAt - this.net.now()) / 1000));

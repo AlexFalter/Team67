@@ -35,6 +35,8 @@ button:disabled { cursor: wait; opacity: 0.6; }
 #pause [role=status] { color: #ffd38a; }
 #sensitivity { width: 100%; }
 #render-resolution { box-sizing: border-box; width: 100%; padding: 10px; border: 1px solid #60768a; border-radius: 8px; background: #203449; color: #edf4fc; font: inherit; }
+#battle-bus-intro { position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%); padding: 12px 20px; border-radius: 8px; background: #142333e8; color: #edf4fc; font: 16px monospace; text-align: center; pointer-events: none; }
+.map-viewer:has(#battle-bus-intro:not([hidden])) :is(.mode-toggle, .game-hud, .map-controls) { display: none; }
  .map-viewer > canvas { outline: none; touch-action: none; }
 
 .map-viewer:has(#lobby[hidden]):has(#pause[hidden]) .mode-toggle { display: none; }

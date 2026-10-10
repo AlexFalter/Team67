@@ -6,7 +6,7 @@ import { RoundManager } from "../apps/server/src/round.ts";
 import { withServer, until, delay, type WireState } from "./fixture.ts";
 
 function fixture() {
-  const state = new RaceState(), rounds = new RoundManager(state, 1000);
+  const state = new RaceState(), rounds = new RoundManager(state, 1000, undefined, undefined, { durationMs: 0, leadMs: 0 });
   const join = (id: string, name = id) => {
     const member = rounds.join(id, { name });
     if (!member.spectator) state.players.set(id, new Player());
@@ -88,7 +88,7 @@ test("live room lifecycle gates gameplay, shows identical results to late joiner
     assert.equal(a.state.phase, C.RoomPhase.Lobby);
     assert.equal(initial.x, position.x); assert.equal(initial.shoes, false); assert.equal(initial.vehicleId, "");
     b.send("ready", true);
-    await until(() => a.state.phase === C.RoomPhase.Running && b.state.phase === C.RoomPhase.Running, "start");
+    await until(() => a.state.phase === C.RoomPhase.Running && b.state.phase === C.RoomPhase.Running && a.state.introComplete && b.state.introComplete, "start");
     const waiting = await client.joinById<WireState>(a.roomId, { name: "Cam", character: 2 }); rooms.push(waiting);
     waiting.onMessage("bump", () => {});
     await until(() => waiting.state?.members?.size === 3, "late member");
@@ -122,7 +122,7 @@ test("live room lifecycle gates gameplay, shows identical results to late joiner
     assert.equal(a.state.players.get(waiting.sessionId)!.character, 2);
     assert.equal(a.state.results.size, 0);
     for (const room of rooms) room.send("ready", true);
-    await until(() => rooms.every(room => room.state.phase === C.RoomPhase.Running), "next round includes waiters");
+    await until(() => rooms.every(room => room.state.phase === C.RoomPhase.Running && room.state.introComplete), "next round includes waiters");
   }, "flat", { ROUND_DURATION_MS: "60000" });
 });
 

@@ -27,12 +27,15 @@ export interface WorldState {
   startedAt: number;
   endsAt: number;
   finishedAt: number;
+  introStartedAt: number;
+  introComplete: boolean;
   members: Map<string, RoomMember>;
   results: Map<string, RoundResult>;
   players: Map<string, PlayerState>;
   vehicles: Map<string, VehicleState>;
 }
 export interface RoomMember {
+  introSeat: number;
   name: string;
   character: number;
   ready: boolean;
