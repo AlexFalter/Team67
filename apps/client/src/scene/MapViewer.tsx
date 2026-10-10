@@ -16,7 +16,7 @@ import { MapGame } from "../multiplayer/MapGame";
 import { ExamOverlay } from "../exam/ExamOverlay";
 import { ExamDebugButton } from "../exam/ExamDebugButton";
 import { emptyExamSession, type ExamSession } from "../exam/ExamSequence";
-import { activeTheme } from "../maps/zurich/theme";
+import { activeTheme, applyRendererLook } from "../maps/zurich/theme";
 
 export function MapViewer() {
   const [examSession, setExamSession] = useState<ExamSession>(emptyExamSession);
@@ -67,7 +67,8 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
       controls: OrbitControls | undefined;
     let resize: ResizeObserver | undefined,
       game: MapGame | undefined,
-      sunlight: DirectionalLight | undefined;
+      sunlight: DirectionalLight | undefined,
+      disposeLook: (() => void) | undefined;
     const scene = new Scene();
     const theme = activeTheme();
     scene.background = new Color(theme.sky);
@@ -100,6 +101,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
         });
         renderer = new WebGLRenderer({ canvas: canvas!, antialias: true,
           powerPreference: "high-performance" });
+        disposeLook = applyRendererLook(renderer, scene, theme);
         renderer.shadowMap.enabled = playing;
         renderer.shadowMap.type = PCFShadowMap;
         const light = theme.lighting;
@@ -193,6 +195,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
       disposeMap(scene);
       sunlight?.shadow.dispose();
       scene.clear();
+      disposeLook?.();
       renderer?.dispose();
       renderer?.forceContextLoss();
     };
