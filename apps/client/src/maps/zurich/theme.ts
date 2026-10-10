@@ -51,6 +51,11 @@ function textMask(text: string, w: number, h: number) {
 export interface MapTheme {
   texture: { pixels: number; tileMeters: number };
   sky: string;
+  /** Procedural sky dome (sky.ts); without it the background is the flat `sky` colour. Angles in degrees. */
+  skyDome?: {
+    zenith: string; upper: string; horizon: string; glow: string; sun: string;
+    cloudLit: string; cloudShade: string; pixel?: number; sunSize?: number;
+  };
   surfaces: Record<string, SurfaceStyle>;
   trees: { leaves: string[]; conifer: string[]; trunk: string[] };
   lighting: {
