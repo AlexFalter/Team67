@@ -3,10 +3,37 @@ import assert from "node:assert/strict";
 import {
   createBody,
   createContact,
+  collisionImpulses,
   capsuleContact,
   stepMovement,
   applyImpulse,
+  STOMP_BOUNCE,
 } from "../packages/shared/src/index.ts";
+test("sprint knocks down the stationary target; separating pairs skip", () => {
+  const a = createBody(),
+    b = createBody(),
+    out = createContact();
+  b.x = 0.9;
+  a.vx = 11;
+  assert.ok(collisionImpulses(a, b, out));
+  assert.ok(out.knockB);
+  assert.ok(out.bx > 13);
+  a.vx = -11;
+  assert.equal(collisionImpulses(a, b, out), false);
+});
+test("stomp bounces the top capsule in either pair order", () => {
+  const top = createBody(),
+    bottom = createBody(),
+    out = createContact();
+  top.y = 1.6;
+  top.vy = -8;
+  assert.ok(collisionImpulses(top, bottom, out));
+  assert.equal(out.ay, STOMP_BOUNCE);
+  assert.ok(out.knockB);
+  assert.ok(collisionImpulses(bottom, top, out));
+  assert.equal(out.by, STOMP_BOUNCE);
+  assert.ok(out.knockA);
+});
 test("capsule segment gap and coincident fallback", () => {
   const a = createBody(),
     b = createBody(),
