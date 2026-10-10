@@ -288,7 +288,7 @@ export function applyRendererLook(renderer: WebGLRenderer, scene: Scene, theme: 
   renderer.toneMappingExposure = l.exposure ?? 1;
   const pmrem = new PMREMGenerator(renderer);
   const world = new Scene();
-  world.background = new Color(l.skyLight).multiplyScalar(l.hemiIntensity * 0.55);
+  world.background = new Color(l.skyLight).multiplyScalar(l.hemiIntensity * 0.55 * BLENDER_LIGHT_SCALE);
   let target = pmrem.fromScene(world, 0);
   if (l.environment) {  // optional neutral studio light on top (0 = off, like Blender)
     const room = new RoomEnvironment();
@@ -301,10 +301,31 @@ export function applyRendererLook(renderer: WebGLRenderer, scene: Scene, theme: 
   return () => { if (scene.environment === target.texture) scene.environment = null; target.dispose(); };
 }
 
-/** The sun lamp of the Blender preview (blender/scene_light.py): strength sunIntensity * 1.6 W/m². Blender's
- * diffuse is albedo * E / π while three.js folds the π into punctual lights, so the same strength is π× too bright
- * here (AgX then washes the colours out) - divide it back. Position it from theme sunElevation / sunAzimuth.
- * The world light comes from applyRendererLook. */
+/**
+ * Blender -> three.js light scale, measured (ETH HG view, Blender material preview vs. this renderer, same theme,
+ * camera and AgX exposure): for the same sun / world strength, three.js renders both parts about 2-3x darker
+ * (up-facing roofs and the dome fit π, facades and the whole frame ~2 - Blender's shadows/AO darken those). 2.5 is
+ * the compromise; the theme keeps Blender's numbers.
+ */
+export const BLENDER_LIGHT_SCALE = 2.5;
+
+/** The sun lamp of the Blender preview (blender/scene_light.py): strength sunIntensity * 1.6, times
+ * BLENDER_LIGHT_SCALE. Position it from theme sunElevation / sunAzimuth. The world light: applyRendererLook. */
 export function themeLights(theme: MapTheme) {
-  return { sun: new DirectionalLight(theme.lighting.sun, (theme.lighting.sunIntensity * 1.6) / Math.PI) };
+  return { sun: new DirectionalLight(theme.lighting.sun, theme.lighting.sunIntensity * 1.6 * BLENDER_LIGHT_SCALE) };
+}
+
+/**
+ * Texture filtering like Blender's viewport: anisotropic filtering on every map texture, so the pixel patterns stay
+ * calm at grazing angles and in the distance instead of shimmering into noise (plaza, streets, roofs).
+ */
+export function sharpenMapTextures(root: Object3D, renderer: WebGLRenderer) {
+  const aniso = renderer.capabilities.getMaxAnisotropy();
+  root.traverse((object) => {
+    if (!(object instanceof Mesh)) return;
+    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+      const map = (material as MeshStandardMaterial).map;
+      if (map && map.anisotropy !== aniso) { map.anisotropy = aniso; map.needsUpdate = true; }
+    }
+  });
 }
