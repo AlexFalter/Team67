@@ -3,6 +3,88 @@ import assert from "node:assert/strict";
 import * as C from "../packages/shared/src/index.ts";
 const dt = 1 / 60;
 
+test("consecutive jumps lose height, reach a useful minimum and recover after grounded rest", () => {
+  const p = C.createBody(), peaks: number[] = [];
+  for (let jump = 0; jump < 7; jump++) {
+    C.stepPlayer(p, { ...C.IDLE_INPUT, jump: true }, dt);
+    assert.ok(!p.grounded);
+    let peak = p.y;
+    const fatigue = p.jumpFatigue;
+    while (!p.grounded) {
+      C.stepPlayer(p, { ...C.IDLE_INPUT, jump: true }, dt);
+      assert.equal(p.jumpFatigue, fatigue, "airborne presses neither drain nor recover fatigue");
+      peak = Math.max(peak, p.y);
+    }
+    peaks.push(peak);
+  }
+  assert.ok(peaks[0] > 1.2, "first jump keeps its original height");
+  for (let i = 1; i < 5; i++) assert.ok(peaks[i] < peaks[i - 1] * 0.85, "rapid jumping progressively loses height");
+  assert.ok(peaks[4] > 0.3 && peaks[4] < peaks[0] * 0.35, "tired jumps remain possible but much lower");
+  assert.equal(peaks[5], peaks[6], "fatigue has a bounded minimum");
+  // Clear the last airborne buffered request before taking a break.
+  p.jumpUntil = 0;
+  for (let i = 0; i < 30; i++) C.stepPlayer(p, C.IDLE_INPUT, dt);
+  assert.equal(p.jumpFatigue, 0);
+  C.stepPlayer(p, { ...C.IDLE_INPUT, jump: true }, dt);
+  assert.ok(Math.abs(p.vy - (C.JUMP_VELOCITY + C.GRAVITY * dt)) < 1e-8, "rest restores full takeoff power");
+  C.respawn(p); assert.equal(p.jumpFatigue, 0); assert.equal(p.jumpSprintLocked, false);
+});
+
+test("fatigue applies to buffered slide jumps and replays deterministically", () => {
+  const a = C.createBody(); a.vz = 11;
+  a.jumpFatigue = 0.5;
+  C.stepPlayer(a, { ...C.IDLE_INPUT, z: 1, sprint: true, slide: true }, dt);
+  assert.equal(a.anim, C.SLIDE_ANIM);
+  const b = structuredClone(a);
+  for (const p of [a, b]) {
+    C.stepPlayer(p, { ...C.IDLE_INPUT, jump: true }, dt);
+    assert.ok(p.vy < C.JUMP_VELOCITY * 0.8 && p.vy > 0, "slide exit shares jump fatigue");
+    for (let i = 0; i < 180; i++) C.stepPlayer(p, { ...C.IDLE_INPUT, jump: i % 24 === 0 }, dt);
+  }
+  assert.deepEqual(a, b);
+});
+
+test("repeated sprint jumps slow down to walking and half a second grounded restores sprint", () => {
+  const p = C.createBody(), speeds: number[] = [];
+  const running = { ...C.IDLE_INPUT, z: 1, sprint: true };
+  p.vz = C.SPRINT_SPEED;
+  for (let jump = 0; jump < 5; jump++) {
+    // Keep the movement test away from the flat world's edge.
+    p.z = 0;
+    C.stepPlayer(p, { ...running, jump: true }, dt);
+    speeds.push(Math.hypot(p.vx, p.vz));
+    while (!p.grounded) C.stepPlayer(p, running, dt);
+  }
+  assert.equal(speeds[0], C.SPRINT_SPEED);
+  assert.ok(speeds[1] < speeds[0] && speeds[2] < speeds[1]);
+  assert.ok(speeds[3] <= C.WALK_SPEED && speeds[4] <= C.WALK_SPEED,
+    "bunny hopping cannot keep sprint momentum");
+  assert.equal(p.jumpSprintLocked, true);
+  p.vz = 11;
+  C.stepPlayer(p, { ...running, slide: true }, dt);
+  assert.notEqual(p.anim, C.SLIDE_ANIM, "exhaustion also blocks starting a sprint slide");
+  for (let i = 0; i < 28; i++) C.stepPlayer(p, running, dt);
+  assert.equal(p.jumpSprintLocked, true, "sprint stays locked during recovery");
+  C.stepPlayer(p, running, dt);
+  assert.equal(p.jumpFatigue, 0); assert.equal(p.jumpSprintLocked, false);
+  for (let i = 0; i < 20; i++) C.stepPlayer(p, running, dt);
+  assert.ok(p.vz > 10.9, "holding sprint resumes it after recovery");
+});
+
+test("brief jump cooldown blocks an early repeat, preserves buffering and resets on respawn", () => {
+  const p = C.createBody();
+  C.stepPlayer(p, { ...C.IDLE_INPUT, jump: true }, dt);
+  const ready = p.jumpReadyAt!;
+  assert.equal(ready, p.simTime + C.JUMP_COOLDOWN_MS);
+  // Simulate an unusually early landing on a higher surface.
+  Object.assign(p, { y: 0, vy: 0, grounded: true, simTime: ready - 60 });
+  C.stepPlayer(p, { ...C.IDLE_INPUT, jump: true }, dt);
+  assert.equal(p.grounded, true, "cooldown blocks another takeoff");
+  for (let i = 0; i < 4; i++) C.stepPlayer(p, C.IDLE_INPUT, dt);
+  assert.ok(!p.grounded && p.vy > 0, "buffered press fires when the short cooldown ends");
+  C.respawn(p); assert.equal(p.jumpReadyAt, 0);
+});
+
 test("running accelerates, sprint is faster, and grounded release brakes promptly", () => {
   const p = C.createBody(), move = { ...C.IDLE_INPUT, z: -1 };
   C.stepPlayer(p, move, dt); assert.ok(p.vz < 0 && p.vz > -C.WALK_SPEED / 2);
@@ -45,4 +127,58 @@ test("parkour jump grace state is deterministic across replay", () => {
     C.stepPlayer(a, input, dt); C.stepPlayer(b, input, dt);
   }
   assert.deepEqual(a, b); assert.ok(Number.isFinite(a.groundTime));
+});
+
+test("sprint jump effects latch takeoff intent through flight and clear on landing or impact", () => {
+  const p = C.createBody(); p.vz = 11;
+  C.stepPlayer(p, { ...C.IDLE_INPUT, sprint: true, jump: true, z: 1 }, dt);
+  assert.equal(p.sprintJump, true);
+  C.stepPlayer(p, C.IDLE_INPUT, dt); assert.equal(p.sprintJump, true, "releasing Shift mid-flight does not erase the sprint jump");
+  for (let i = 0; i < 60; i++) C.stepPlayer(p, C.IDLE_INPUT, dt);
+  assert.equal(p.sprintJump, false);
+  const walking = C.createBody(); walking.vz = 7.5;
+  C.stepPlayer(walking, { ...C.IDLE_INPUT, jump: true, z: 1 }, dt); assert.equal(walking.sprintJump, false);
+  C.applyImpulse(p, { from: "hit", ix: 0, iy: 2, iz: 0, knockdown: false }, p.simTime);
+  assert.equal(p.sprintJump, false);
+});
+
+test("turns and reversals carry momentum for a few frames but respond promptly", () => {
+  const p = C.createBody(); p.vz = 11;
+  C.stepPlayer(p, { ...C.IDLE_INPUT, x: 1, sprint: true }, dt);
+  assert.ok(p.vx > 0 && p.vz > 9, "first turning frame retains old direction");
+  for (let i = 0; i < 15; i++) C.stepPlayer(p, { ...C.IDLE_INPUT, x: 1, sprint: true }, dt);
+  assert.ok(p.vx > 10 && p.vz < 1.1, "turn settles within a quarter second");
+  const reverse = C.createBody(); reverse.vz = 11;
+  C.stepPlayer(reverse, { ...C.IDLE_INPUT, z: -1, sprint: true }, dt);
+  assert.ok(reverse.vz > 8, "reversal brakes before changing direction");
+  for (let i = 0; i < 9; i++) C.stepPlayer(reverse, { ...C.IDLE_INPUT, z: -1, sprint: true }, dt);
+  assert.ok(reverse.vz < 0, "reverse responds within 170 ms");
+});
+
+test("releasing sprint and airborne steering retain momentum without generating unlimited speed", () => {
+  const p = C.createBody(); p.vz = 11;
+  C.stepPlayer(p, { ...C.IDLE_INPUT, z: 1 }, dt);
+  assert.ok(p.vz > 10 && p.vz < 11, "sprint speed tapers toward walk speed");
+  const air = C.createBody(); air.vz = 11;
+  C.stepPlayer(air, { ...C.IDLE_INPUT, jump: true }, dt);
+  assert.equal(air.vz, 11, "jump at release keeps the launch velocity");
+  const open: C.MovementWorld = { ...C.flatWorld, name: "zurich", height: () => undefined, spawn: { x: 0, y: -1000, z: 0 } };
+  for (let i = 0; i < 180; i++) {
+    const angle = i * 0.2;
+    C.stepPlayer(air, { ...C.IDLE_INPUT, x: Math.sin(angle), z: Math.cos(angle) }, dt, open);
+    assert.ok(Math.hypot(air.vx, air.vz) <= 11 + 1e-8, "air strafing never adds speed above the launch cap");
+  }
+});
+
+test("force integration keeps similar movement and stopping distances at 30, 60 and 120 Hz", () => {
+  const results = [30, 60, 120].map(hz => {
+    const p = C.createBody();
+    for (let i = 0; i < hz / 2; i++) C.stepPlayer(p, { ...C.IDLE_INPUT, z: 1, sprint: true }, 1 / hz);
+    const cruise = p.z;
+    for (let i = 0; i < hz / 2; i++) C.stepPlayer(p, C.IDLE_INPUT, 1 / hz);
+    assert.equal(p.vz, 0, "braking reaches a finite stop");
+    return { cruise, stop: p.z };
+  });
+  assert.ok(Math.max(...results.map(r => r.cruise)) - Math.min(...results.map(r => r.cruise)) < 0.16);
+  assert.ok(Math.max(...results.map(r => r.stop)) - Math.min(...results.map(r => r.stop)) < 0.08);
 });

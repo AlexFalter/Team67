@@ -1,6 +1,7 @@
 import type { MovementWorld } from "./world.ts";
 
-export const MATE_POSITION = { x: -184.722, z: 49.187 };
+// Pavement in front of Coop at Bahnhofbrücke; controls face the bridge (-Z).
+export const MATE_POSITION = { x: -130, z: 83 };
 export const MATE_LOADING_MS = 1400, MATE_DROP_MS = 950;
 export const MATE_BOOST_MS = 15000, MATE_SPEED_MULTIPLIER = 1.35;
 export const MATE_FLAVORS = ["Basic", "Light", "Mint", "Ginger"] as const;

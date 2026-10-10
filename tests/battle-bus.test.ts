@@ -55,7 +55,7 @@ test("client gameplay gate cannot unlock using the clock alone before server arr
   net.room = { sessionId: "a", state: { phase: C.RoomPhase.Running, startedAt: 0, endsAt: Date.now() + 60000,
     introComplete: false, players: new Map([["a", body]]), members: new Map([["a", { spectator: false }]]) },
     send: (type: string) => messages.push(type) } as unknown as typeof net.room;
-  net.frame(0.1, body, () => ({ ...C.IDLE_INPUT, x: 1, jump: true, hit: true, toggleShoes: true }));
+  net.frame(0.1, body, () => ({ ...C.IDLE_INPUT, x: 1, jump: true, hit: true }));
   assert.equal(net.canPlay, false); assert.equal(body.x, 0); assert.deepEqual(messages, []);
   net.room.state.introComplete = true;
   assert.equal(net.canPlay, true);
@@ -72,7 +72,7 @@ test("live clients share the intro deadline; host cannot skip, late joiners wait
     assert.equal(a.state.introStartedAt, b.state.introStartedAt); assert.equal(a.state.startedAt, b.state.startedAt);
     assert.equal(a.state.introComplete, false); assert.equal(a.state.endsAt - a.state.startedAt, 60000);
     const p = a.state.players.get(a.sessionId)!, original = { x: p.x, y: p.y, z: p.z };
-    a.send("finishRound"); a.send("ready", false); a.send("toggleShoes"); a.send("hit");
+    a.send("finishRound"); a.send("ready", false); a.send("hit");
     a.send("vehicleEnter", "bike-1"); a.send("move", [500, 20, 500, 0, 12, 0, 12, 1]);
     const late = await client.joinById<WireState>(a.roomId, { name: "Cam" }); rooms.push(late);
     late.onMessage("bump", () => {});
@@ -80,7 +80,7 @@ test("live clients share the intro deadline; host cannot skip, late joiners wait
     await delay(100);
     assert.equal(a.state.phase, C.RoomPhase.Running); assert.equal(a.state.introComplete, false);
     assert.deepEqual({ x: p.x, y: p.y, z: p.z }, original);
-    assert.equal(p.shoes, false); assert.equal(p.vehicleId, "");
+    assert.equal(p.vehicleId, "");
     assert.equal(late.state.members.get(late.sessionId)!.spectator, true); assert.equal(late.state.players.has(late.sessionId), false);
     await until(() => rooms.every(room => room.state.introComplete), "synchronized server arrival");
     const points = C.battleBusDropoffs(C.zurichWorld, 40);

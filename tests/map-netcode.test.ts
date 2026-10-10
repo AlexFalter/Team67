@@ -18,7 +18,7 @@ test("Rapier loose objects stay on Zürich terrain in original map coordinates",
   } finally { physics.dispose(); }
 });
 
-test("real Zurich reports preserve terrain, jumping, shoes and original coordinates", { timeout: 30000 }, async () => {
+test("real Zurich reports preserve terrain, jumping and original coordinates", { timeout: 30000 }, async () => {
   await withServer(async (client, rooms) => {
     const a = await client.create("race", { name: "Player" }); rooms.push(a);
     const b = await client.joinById(a.roomId, { name: "Player" }); rooms.push(b);
@@ -38,13 +38,13 @@ test("real Zurich reports preserve terrain, jumping, shoes and original coordina
     }));
     assert.ok(direction, "clear movement path near spawn");
     try {
-      a.send("toggleShoes"); moving.body.shoes = true; moving.input.x = direction.x; moving.input.z = direction.z;
+      moving.input.x = direction.x; moving.input.z = direction.z;
       await delay(250); moving.input.jump = true;
       await until(() => !own.grounded && own.vy > 0, "map takeoff");
       await delay(150); moving.input.x = moving.input.z = 0;
       // The server admits grounded reports within 10 cm; wait for the actual
       // terrain landing before checking the stricter foot-height invariant.
-      await until(() => own.grounded && own.shoes && Math.abs(own.y - C.zurichWorld.height(own.x, own.z)!) < 0.03, "landed with shoes");
+      await until(() => own.grounded && Math.abs(own.y - C.zurichWorld.height(own.x, own.z)!) < 0.03, "landed");
       assert.ok(Math.hypot(own.x - start.x, own.z - start.z) > 1, "terrain movement replicated");
       assert.ok(Math.abs(own.y - C.zurichWorld.height(own.x, own.z)!) < 0.03, `map landing y=${own.y}, terrain=${C.zurichWorld.height(own.x, own.z)}`);
       for (const v of b.state.vehicles.values()) assert.ok((C.isRail(v) || v.x < -100) && Number.isFinite(v.y), `vehicle kind=${v.kind} x=${v.x} y=${v.y}`);

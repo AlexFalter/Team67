@@ -116,3 +116,21 @@ test("live clients compete for a reservation; leaving frees it and reset restore
     assert.ok([...loser.state.publiBikes.values()].every(bike => bike.batteryMs === C.PUBLI_BIKE_BATTERY_MS && !bike.reservedBy));
   });
 });
+
+test("displaced bikes clear stale docks, and returning bikes can reuse their empty slots", () => {
+  const { state, fleet } = setup();
+  for (const [id, bike] of state.publiBikes) {
+    const v = state.vehicles.get(id)!;
+    assert.equal(C.publiBikeIsDocked(bike, v, fleet.station.slots), true);
+    v.z += 10;
+    assert.equal(C.publiBikeIsDocked(bike, v, fleet.station.slots), false);
+  }
+  fleet.tick(1000);
+  assert.equal([...state.publiBikes.values()].filter(b => b.dock >= 0).length, 0);
+  const returning = state.vehicles.get("publibike-1")!;
+  Object.assign(returning, fleet.station.slots[0]);
+  fleet.park("publibike-1");
+  assert.equal(state.publiBikes.get("publibike-1")!.dock, 0);
+  returning.driver = "rider";
+  assert.equal(C.publiBikeIsDocked(state.publiBikes.get("publibike-1")!, returning, fleet.station.slots), false);
+});

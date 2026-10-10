@@ -95,11 +95,11 @@ test("live room lifecycle gates gameplay, shows identical results to late joiner
     const initial = a.state.players.get(a.sessionId)!;
     const position = { x: initial.x, y: initial.y, z: initial.z };
     a.send("move", [initial.x + 0.1, initial.y, initial.z, 0, 1, 0, 0, 1]);
-    a.send("toggleShoes"); a.send("vehicleEnter", "cart-1"); a.send("hit");
+    a.send("vehicleEnter", "cart-1"); a.send("hit");
     b.send("ready", true);
     await until(() => a.state.members.get(b.sessionId)!.ready, "guest ready");
     assert.equal(a.state.phase, C.RoomPhase.Lobby);
-    assert.equal(initial.x, position.x); assert.equal(initial.shoes, false); assert.equal(initial.vehicleId, "");
+    assert.equal(initial.x, position.x); assert.equal(initial.vehicleId, "");
     b.send("ready", false);
     await until(() => !a.state.members.get(b.sessionId)!.ready, "guest not ready");
     a.send("ready", true);
@@ -109,7 +109,7 @@ test("live room lifecycle gates gameplay, shows identical results to late joiner
     await until(() => waiting.state?.members?.size === 3, "late member");
     assert.equal(waiting.state.members.get(waiting.sessionId)!.spectator, true);
     assert.equal(waiting.state.players.has(waiting.sessionId), false);
-    waiting.send("ready", true); waiting.send("toggleShoes"); waiting.send("hit");
+    waiting.send("ready", true); waiting.send("hit");
     waiting.send("vehicleEnter", "cart-1"); waiting.send("finishRound");
     await delay(100);
     assert.equal(a.state.phase, C.RoomPhase.Running);
@@ -125,7 +125,7 @@ test("live room lifecycle gates gameplay, shows identical results to late joiner
     assert.deepEqual(results(a), results(b)); assert.deepEqual(results(a), results(waiting));
     assert.equal(a.state.results.get(a.sessionId)!.hitsLanded, 1);
     const frozen = results(a);
-    a.send("hit"); a.send("toggleShoes"); a.send("move", [0, 0, 0, 0, 0, 0, 0, 0]);
+    a.send("hit"); a.send("move", [0, 0, 0, 0, 0, 0, 0, 0]);
     waiting.send("restartRound"); await delay(100);
     assert.equal(a.state.phase, C.RoomPhase.Finished); assert.deepEqual(results(a), frozen);
     const lateFinished = await client.joinById<WireState>(a.roomId, { name: "Dee" }); rooms.push(lateFinished);

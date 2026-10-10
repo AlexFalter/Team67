@@ -8,7 +8,7 @@ export class GameControls {
   private abort = new AbortController();
   private captured = false;
   private edge = { x: 0, y: 0 };
-  constructor(private canvas: HTMLCanvasElement, private local: LocalPlayer, private view: PlayerView, private ready: () => boolean) {
+  constructor(private canvas: HTMLCanvasElement, private local: LocalPlayer, private view: PlayerView, private ready: () => boolean, private suspended: () => boolean = () => false) {
     const options = { signal: this.abort.signal };
     canvas.tabIndex = 0;
     this.play.addEventListener("click", () => void this.resume(), options);
@@ -18,7 +18,7 @@ export class GameControls {
     document.querySelector<HTMLInputElement>("#sensitivity")!.addEventListener("input", e => { view.sensitivity = Number((e.target as HTMLInputElement).value) / 10000; }, options);
     canvas.addEventListener("click", () => { if (local.enabled) local.punch(); else void this.resume(); }, options);
     document.addEventListener("mousemove", e => {
-      if (!local.enabled || (!this.captured && e.target !== canvas)) return;
+      if (this.suspended() || !local.enabled || (!this.captured && e.target !== canvas)) return;
       view.look(e.movementX, e.movementY);
       const rect = canvas.getBoundingClientRect();
       this.edge = edgeTurn(e.clientX - rect.left, e.clientY - rect.top, rect.width, rect.height);
@@ -33,7 +33,7 @@ export class GameControls {
     document.addEventListener("pointerlockerror", () => this.fallback(), options);
     window.addEventListener("blur", () => { if (local.enabled) this.pause(); }, options);
     window.addEventListener("keydown", e => {
-      if (!ready()) return;
+      if (!ready() || this.suspended()) return;
       if (e.code === "Escape") { e.preventDefault(); if (this.menu.hidden) this.pause(); else if (!e.repeat) void this.resume(); }
       if (local.enabled && ["F5", "KeyV"].includes(e.code)) { e.preventDefault(); if (!e.repeat) view.cycle(); this.update(); }
     }, options);
@@ -55,6 +55,11 @@ export class GameControls {
     this.update(); if (this.ready()) document.querySelector<HTMLButtonElement>("#resume")!.focus();
   }
   update(dt = 0) {
+    if (this.ready() && this.suspended()) {
+      this.local.clear(); this.edge = { x: 0, y: 0 };
+      this.play.hidden = this.crosshair.hidden = true;
+      return;
+    }
     if (!this.ready()) {
       this.local.enabled = false; this.local.clear(); this.menu.hidden = true;
       this.edge = { x: 0, y: 0 };

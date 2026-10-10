@@ -17,7 +17,6 @@ export interface PlayerState {
   knockdownUntil: number;
   simTime: number;
   vehicleKind: number;
-  shoes: boolean;
   attackReadyAt: number;
   mateCount: number;
   mateBoostMs: number;
@@ -32,6 +31,10 @@ export interface WorldState {
   finishedAt: number;
   introStartedAt: number;
   introComplete: boolean;
+  devMode: boolean;
+  skipIntro: boolean;
+  goldPubliBikes: boolean;
+  railCrashProtection: boolean;
   members: Map<string, RoomMember>;
   results: Map<string, RoundResult>;
   players: Map<string, PlayerState>;
@@ -53,6 +56,8 @@ export interface RoundResult {
 }
 export interface VehicleState {
   kind: number; // 0 cart, 1 shuttle, 2 bike, 3 NPC car, 4 ball, 5 tram, 6 Polybahn
+  derailStartedAt: number;
+  derailAge: number;
   railDistance: number;
   railLane: number;
   railReverse: boolean;
@@ -100,12 +105,18 @@ export interface Input {
   z: number;
   sprint: boolean;
   jump: boolean;
-  toggleShoes?: boolean;
+  slide?: boolean;
   hit?: boolean;
   aim?: boolean;
   facing?: number;
 }
 export interface Body extends PlayerState {
+  jumpReadyAt?: number;
+  jumpFatigue?: number;
+  jumpSprintLocked?: boolean;
+  sprintJump?: boolean;
+  slideUntil?: number;
+  slideReadyAt?: number;
 }
 
 // Main's compact client-owned movement reports, with feature gameplay metadata
