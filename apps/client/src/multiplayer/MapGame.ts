@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { BATTLE_BUS_HEADING, INTERP_DELAY_MS, zurichWorld } from "@race/shared";
+import { BATTLE_BUS_HEADING, INTERP_DELAY_MS, RoomPhase, zurichWorld } from "@race/shared";
 import { Network } from "./net.ts";
 import { LocalPlayer } from "./localPlayer.ts";
 import { RemotePlayers } from "./remotePlayers.ts";
@@ -16,9 +16,11 @@ import { BattleBusIntro } from "./battleBus.ts";
 import { PubliBikeFeature } from "./publiBikes.ts";
 import { TransitScenery } from "./transitScenery.ts";
 import { MateFeature } from "./mate.ts";
+import { MenuScene } from "./MenuScene";
 
 // MapViewer owns rendering and the loop; this instance owns gameplay cleanup.
 export class MapGame {
+  readonly ready: Promise<void>;
   private net = new Network();
   private local = new LocalPlayer();
   private remotes: RemotePlayers;
@@ -38,6 +40,7 @@ export class MapGame {
   private introStartedAt = 0;
   private transitScenery: TransitScenery;
   private mate: MateFeature;
+  private menuScene: MenuScene;
   constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, private canvas: HTMLCanvasElement,
     hud: HTMLDivElement, hints: HTMLDivElement, map: THREE.Object3D) {
     this.transitScenery = new TransitScenery(scene, map);
@@ -50,30 +53,35 @@ export class MapGame {
     this.publiBikes = new PubliBikeFeature(scene, camera, this.net, this.vehicles, this.local, canvas);
     this.mate = new MateFeature(scene, camera, this.net, this.local, canvas);
     this.view = new PlayerView(camera, [map, this.mate.machine], zurichWorld);
-    this.roomFlow = new RoomFlow(this.net, Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready]).then(() => {}), () => this.bus.unlockAudio());
+    this.ready = Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready]).then(() => {});
+    this.roomFlow = new RoomFlow(this.net, this.ready, () => this.bus.unlockAudio());
     this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.publiBikes.active && !this.mate.active);
     Object.assign(this.local.body, zurichWorld.spawn);
     camera.near = 0.05;
     camera.position.set(zurichWorld.spawn.x, zurichWorld.spawn.y + 1.6, zurichWorld.spawn.z);
+    this.menuScene = new MenuScene(scene, camera);
     scene.add(this.mesh, this.firstBody);
     this.mesh.visible = this.firstBody.visible = false;
-    this.closeLobby = lobby(selection => this.net.connect(this.local.body, (state, id) => {
-      if (state.introStartedAt && this.introStartedAt !== state.introStartedAt) {
-        this.introStartedAt = state.introStartedAt;
-        this.view.yaw = BATTLE_BUS_HEADING; this.view.pitch = 0;
-      }
-      if (state.introComplete) camera.up.set(0, 1, 0);
-      this.roomFlow.patch(state, id);
-      this.vehicles.patch(state); this.remotes.patch(state, id);
-      const p = state.players.get(id);
-      if (p && !this.avatarReady) {
-        disposeAvatar(this.mesh); disposeAvatar(this.firstBody);
-        this.mesh = avatar(p.color, p.character); this.firstBody = avatar(p.color, p.character, true);
-        scene.add(this.mesh, this.firstBody); this.avatarReady = true;
-      }
-    }, hit => this.effects.enqueue(hit), selection));
+    this.closeLobby = lobby(selection => {
+      this.bus.unlockAudio();
+      return this.net.connect(this.local.body, (state, id) => {
+        if (state.introStartedAt && this.introStartedAt !== state.introStartedAt) {
+          this.introStartedAt = state.introStartedAt;
+          this.view.yaw = BATTLE_BUS_HEADING; this.view.pitch = 0;
+        }
+        if (state.introComplete) camera.up.set(0, 1, 0);
+        this.roomFlow.patch(state, id);
+        this.vehicles.patch(state); this.remotes.patch(state, id);
+        const p = state.players.get(id);
+        if (p && !this.avatarReady) {
+          disposeAvatar(this.mesh); disposeAvatar(this.firstBody);
+          this.mesh = avatar(p.color, p.character); this.firstBody = avatar(p.color, p.character, true);
+          scene.add(this.mesh, this.firstBody); this.avatarReady = true;
+        }
+      }, hit => this.effects.enqueue(hit), selection);
+    });
   }
-  get focus() { return this.bus.active ? this.bus.focus : this.local.body; }
+  get focus() { return this.net.room?.state?.phase === RoomPhase.Lobby ? this.menuScene.focus : this.bus.active ? this.bus.focus : this.local.body; }
   update(elapsed: number, now: number) {
     const dt = Math.min(0.1, elapsed), renderTime = this.net.now() - INTERP_DELAY_MS;
     this.vehicles.render(renderTime, dt, "rail");
@@ -96,10 +104,15 @@ export class MapGame {
     this.controls.update(dt); this.effects.update(renderTime, dt); this.hud.update(dt, this.net);
     this.vehicles.updateLabels(this.local.body, now);
     this.bus.update(dt, this.mesh, this.remotes);
+    const state = this.net.room?.state;
+    const inMenu = !state || state.phase === RoomPhase.Lobby;
+    for (const remote of this.remotes.players.values()) remote.mesh.visible = !inMenu;
+    this.menuScene.update(dt, state, this.net.room?.sessionId);
     this.publiBikes.update(dt);
     this.mate.update();
   }
   dispose() {
+    this.menuScene.dispose();
     this.mate.dispose();
     this.publiBikes.dispose();
     this.bus.dispose();
