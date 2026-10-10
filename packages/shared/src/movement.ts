@@ -37,6 +37,7 @@ export function respawn(p: Body, world: MovementWorld = flatWorld) {
   p.grounded = true;
   p.knockdownUntil = 0;
   p.groundTime = p.simTime; p.jumpUntil = 0; p.jumpReadyAt = 0;
+  p.jumpFatigue = 0; p.jumpSprintLocked = false;
   p.slideUntil = p.slideReadyAt = 0; p.sprintJump = false;
 }
 export function applyImpulse(p: Body, hit: Impulse, now: number) {
@@ -51,7 +52,7 @@ export function applyImpulse(p: Body, hit: Impulse, now: number) {
 // Velocity is integrated from acceleration, not replaced by an input target.
 // Ground grip removes lateral slip; airborne control adds bounded directional
 // acceleration while retaining launch momentum and collision impulses.
-function accelerateFoot(p: Body, input: Input, targetSpeed: number, dt: number, takingOff: boolean) {
+function accelerateFoot(p: Body, input: Input, targetSpeed: number, dt: number, takingOff: boolean, boost: number) {
   const oldSpeed = Math.hypot(p.vx, p.vz), length = Math.hypot(input.x, input.z);
   if (length === 0) {
     if (p.grounded && !takingOff && oldSpeed > 0) {
@@ -65,7 +66,6 @@ function accelerateFoot(p: Body, input: Input, targetSpeed: number, dt: number, 
   const x = input.x / length, z = input.z / length;
   const wishSpeed = targetSpeed * Math.min(1, length);
   const along = p.vx * x + p.vz * z;
-  const boost = targetSpeed / (input.sprint ? C.SPRINT_SPEED : C.WALK_SPEED);
   if (p.grounded && !takingOff) {
     const lateralX = p.vx - along * x, lateralZ = p.vz - along * z;
     const grip = Math.exp(-C.GROUND_GRIP * dt);
@@ -90,8 +90,18 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
   const previous = { x: p.x, y: p.y, z: p.z };
   const down = now < p.knockdownUntil,
     length = Math.hypot(input.x, input.z);
+  const wantsJump = (input.jump || p.jumpUntil > now) && now >= (p.jumpReadyAt ?? 0);
+  // Half a second of grounded walking/rest restores fatigue. Immediate repeat
+  // takeoffs do not count as rest, even when the jump was buffered in the air.
+  if (p.grounded && !wantsJump && p.jumpFatigue) {
+    p.jumpFatigue = Math.max(0, p.jumpFatigue - dt * 1000 / C.JUMP_FATIGUE_RECOVERY_MS);
+    if (p.jumpFatigue < 1e-8) { p.jumpFatigue = 0; p.jumpSprintLocked = false; }
+  }
+  const fatigue = p.jumpFatigue ?? 0;
+  if (fatigue >= C.JUMP_FATIGUE_WALK_THRESHOLD) p.jumpSprintLocked = true;
+  const sprinting = input.sprint && !p.jumpSprintLocked;
   if (down || !p.grounded) p.slideUntil = 0;
-  if (input.slide && input.sprint && p.grounded && !down && !input.jump &&
+  if (input.slide && sprinting && p.grounded && !down && !input.jump &&
     now >= (p.slideReadyAt ?? 0) && Math.hypot(p.vx, p.vz) >= C.SLIDE_MIN_SPEED) {
     p.slideUntil = now + C.SLIDE_DURATION_MS;
     p.slideReadyAt = now + C.SLIDE_DURATION_MS + C.SLIDE_COOLDOWN_MS;
@@ -99,7 +109,9 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
   const slideJump = input.jump && now < (p.slideUntil ?? 0);
   if (input.jump) p.slideUntil = 0;
   const sliding = now < (p.slideUntil ?? 0);
-  const targetSpeed = (input.sprint ? C.SPRINT_SPEED : C.WALK_SPEED) * (p.mateBoostMs > 0 ? MATE_SPEED_MULTIPLIER : 1);
+  const boost = p.mateBoostMs > 0 ? MATE_SPEED_MULTIPLIER : 1;
+  const sprintSpeed = C.SPRINT_SPEED - (C.SPRINT_SPEED - C.WALK_SPEED) * Math.min(1, fatigue / C.JUMP_FATIGUE_WALK_THRESHOLD);
+  const targetSpeed = (sprinting ? sprintSpeed : C.WALK_SPEED) * boost;
   const moving = !down && length > 0;
   if (sliding || slideJump) {
     const drag = slideJump ? 1 : Math.exp(-C.SLIDE_FRICTION * dt);
@@ -109,7 +121,7 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
     p.vx *= drag; p.vz *= drag;
   } else {
     const takingOff = now >= (p.jumpReadyAt ?? 0) && (input.jump || p.jumpUntil > now) && (p.grounded || now - p.groundTime <= C.COYOTE_MS);
-    accelerateFoot(p, input, targetSpeed, dt, takingOff);
+    accelerateFoot(p, input, targetSpeed, dt, takingOff, boost);
   }
   if (!down && input.aim && Number.isFinite(input.facing)) p.rotY = input.facing!;
   else if (moving) p.rotY = Math.atan2(input.x, input.z);
@@ -117,8 +129,12 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
   if (down) p.jumpUntil = 0;
   else if (input.jump) p.jumpUntil = now + C.JUMP_BUFFER_MS;
   if (!down && now >= (p.jumpReadyAt ?? 0) && p.jumpUntil > now && (p.grounded || now - p.groundTime <= C.COYOTE_MS)) {
-    p.sprintJump = input.sprint && Math.hypot(p.vx, p.vz) >= C.SLIDE_MIN_SPEED;
-    p.vy = C.JUMP_VELOCITY;
+    // A tired takeoff sheds excess sprint momentum, including slide exits.
+    const speed = Math.hypot(p.vx, p.vz);
+    if (fatigue > 0 && speed > targetSpeed) { p.vx *= targetSpeed / speed; p.vz *= targetSpeed / speed; }
+    p.sprintJump = sprinting && Math.hypot(p.vx, p.vz) >= C.SLIDE_MIN_SPEED;
+    p.vy = C.JUMP_VELOCITY * (1 - (1 - C.JUMP_FATIGUE_MIN_POWER) * (p.jumpFatigue ?? 0));
+    p.jumpFatigue = Math.min(1, (p.jumpFatigue ?? 0) + C.JUMP_FATIGUE_PER_JUMP);
     p.jumpReadyAt = now + C.JUMP_COOLDOWN_MS;
     p.grounded = false;
     p.groundTime = -1e9; p.jumpUntil = 0;

@@ -22,7 +22,8 @@ test("slide requires a grounded sprint, carries momentum without steering, expir
   assert.ok(p.vz < speed && p.vz > 7, "controlled drag carries sprint speed");
   for (let i = 0; i < 30; i++) C.stepPlayer(p, slide, dt);
   assert.notEqual(p.anim, C.SLIDE_ANIM, "duration expires despite a repeated request");
-  for (let i = 0; i < 80; i++) C.stepPlayer(p, slide, dt);
+  while (p.simTime < p.slideReadyAt!) C.stepPlayer(p, { ...slide, slide: false }, dt);
+  C.stepPlayer(p, slide, dt);
   assert.equal(p.anim, C.SLIDE_ANIM, "a later sprint can slide again");
 });
 

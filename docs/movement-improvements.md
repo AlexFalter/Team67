@@ -4,9 +4,11 @@ The three existing characters keep their mesh pieces, colours, outfits and propo
 
 ## Sprint slide
 
-Hold Shift while running, then press C after reaching sprint speed (at least 9 m/s). The slide lasts 750 ms, carries the current direction with drag, and has an 800 ms recovery period after its scheduled end. Looking remains free. Space interrupts the slide with a jump that retains momentum. Jump takeoffs have a brief 150 ms cooldown, preserving buffered presses and coyote jumps; respawn resets it. Leaving the ground, impacts, boarding and a stop against a wall end the slide. The terrain collision clearance stays at the normal player height: sliding does not enable passing under low obstacles.
+Hold Shift while running, then press C after reaching sprint speed (at least 9 m/s). The slide lasts 750 ms, carries the current direction with drag, and has a 400 ms recovery period after its scheduled end. Looking remains free. Space interrupts the slide with a jump that retains momentum. Jump takeoffs have a brief 150 ms cooldown, preserving buffered presses and coyote jumps; respawn resets it. Leaving the ground, impacts, boarding and a stop against a wall end the slide. The terrain collision clearance stays at the normal player height: sliding does not enable passing under low obstacles.
 
 Slide animation 4 travels in the existing eight-number movement report. The server relays it only for grounded moving players and continues to override it for knockdowns. Timers belong to the local movement body; no schema fields or report length changed.
+
+Repeated jumps build fatigue: the first jump has full height, and each consecutive jump reduces takeoff power until it reaches 55% (roughly 30% of the original height). Fatigue also reduces sprint speed toward walking speed; at 75% fatigue, sprinting and starting slides are locked until recovery completes. Tired takeoffs cap horizontal momentum so repeated jumping cannot preserve full sprint/slide speed. Half a second of grounded walking or resting fully clears fatigue, with no additional delay. Buffered/coyote jumps and jumps out of slides share the same fatigue; invalid airborne presses do not add fatigue, and respawn clears it.
 
 ## First person
 

@@ -106,6 +106,8 @@ export interface Input {
 }
 export interface Body extends PlayerState {
   jumpReadyAt?: number;
+  jumpFatigue?: number;
+  jumpSprintLocked?: boolean;
   sprintJump?: boolean;
   slideUntil?: number;
   slideReadyAt?: number;
