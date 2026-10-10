@@ -157,7 +157,7 @@ export class RaceMap {
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     for (const marker of this.markers()) {
       const v = p(marker); if (v.x < 0 || v.y < 0 || v.x > width || v.y > height) continue;
-      ctx.font = `900 ${full ? 19 : 13}px system-ui`; ctx.lineWidth = 3; ctx.strokeStyle = "#142b31"; ctx.strokeText("?", v.x, v.y); ctx.fillStyle = "#d7f87a"; ctx.fillText("?", v.x, v.y);
+      ctx.font = `900 ${full ? 19 : 17}px ui-monospace, monospace`; ctx.lineWidth = 3; ctx.strokeStyle = "#142b31"; ctx.strokeText("?", v.x, v.y); ctx.fillStyle = "#d7f87a"; ctx.fillText("?", v.x, v.y);
     }
     for (const [id, player] of this.net.room?.state.players ?? []) {
       if (id === this.net.room.sessionId || this.net.room.state.members.get(id)?.spectator) continue;
