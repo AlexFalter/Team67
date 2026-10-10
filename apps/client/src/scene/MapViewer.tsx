@@ -13,6 +13,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { disposeMap, loadZurichMap } from "../maps/zurich/loadZurichMap";
 import { GameOverlay } from "../multiplayer/GameOverlay";
 import { MapGame } from "../multiplayer/MapGame";
+import { activeTheme } from "../maps/zurich/theme";
 
 export function MapViewer() {
   const [playing, setPlaying] = useState(true);
@@ -61,7 +62,8 @@ function MapCanvas({ playing, resolution, onResolutionChange }: {
       game: MapGame | undefined,
       sunlight: DirectionalLight | undefined;
     const scene = new Scene();
-    scene.background = new Color("#aabecb");
+    const theme = activeTheme();
+    scene.background = new Color(theme.sky);
     canvas.addEventListener(
       "webglcontextlost",
       (event) => {
@@ -93,10 +95,14 @@ function MapCanvas({ playing, resolution, onResolutionChange }: {
           powerPreference: "high-performance" });
         renderer.shadowMap.enabled = playing;
         renderer.shadowMap.type = PCFShadowMap;
-        scene.add(new HemisphereLight("#ffffff", "#7c8792", 2));
-        const sun = new DirectionalLight("#fff7e6", 2.5);
+        const light = theme.lighting;
+        scene.add(new HemisphereLight(light.skyLight, light.groundLight, light.hemiIntensity));
+        const sun = new DirectionalLight(light.sun, light.sunIntensity);
         sunlight = sun;
-        sun.position.set(-300, 700, 500);
+        // sun direction from the theme (azimuth from north, clockwise; map north = -Z)
+        const el = (light.sunElevation * Math.PI) / 180, az = (light.sunAzimuth * Math.PI) / 180;
+        const sunDir = { x: Math.sin(az) * Math.cos(el), y: Math.sin(el), z: -Math.cos(az) * Math.cos(el) };
+        sun.position.set(sunDir.x * 900, sunDir.y * 900, sunDir.z * 900);
         sun.castShadow = playing;
         sun.shadow.mapSize.set(1024, 1024);
         Object.assign(sun.shadow.camera, {
@@ -150,7 +156,7 @@ function MapCanvas({ playing, resolution, onResolutionChange }: {
           previous = now;
           if (game) {
             const p = game.focus;
-            sun.position.set(p.x - 20, p.y + 40, p.z + 20);
+            sun.position.set(p.x + sunDir.x * 50, p.y + sunDir.y * 50, p.z + sunDir.z * 50);
             sun.target.position.set(p.x, p.y, p.z);
             sun.target.updateMatrixWorld();
           }

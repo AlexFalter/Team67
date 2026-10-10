@@ -1,0 +1,108 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Map perf bench</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"./three/build/three.module.js","three/addons/":"./three/examples/jsm/"}}</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const q = new URLSearchParams(location.search);
+const W = +(q.get('w') ?? innerWidth), H = +(q.get('h') ?? innerHeight);
+const log = (o) => console.log('BENCH ' + JSON.stringify(o));
+const loader = new GLTFLoader();
+const load = (f) => new Promise((ok, err) => loader.load('assets/' + f, ok, undefined, err));
+
+const canvas = document.createElement('canvas'); document.body.appendChild(canvas);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(1); renderer.setSize(W, H, false);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
+const gl = renderer.getContext();
+const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+const timer = gl.getExtension('EXT_disjoint_timer_query_webgl2');
+log({ gpu: dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '?', timer: !!timer, size: [W, H] });
+
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#aabecb');
+scene.add(new THREE.HemisphereLight('#ffffff', '#7c8792', 2));
+const sun = new THREE.DirectionalLight('#fff7e6', 2.5); sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 120 });
+scene.add(sun, sun.target);
+const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 6000);
+
+function pixelTex(hex) {
+  const c = document.createElement('canvas'); c.width = c.height = 16;
+  const x = c.getContext('2d'); const col = new THREE.Color(hex);
+  for (let i = 0; i < 256; i++) { const k = 0.9 + Math.random() * 0.2; x.fillStyle = `rgb(${col.r*255*k},${col.g*255*k},${col.b*255*k})`; x.fillRect(i % 16, i >> 4, 1, 1); }
+  const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const groundColors = { G_Road: '#3b3f45', G_Path: '#6b6f73', G_Sidewalk: '#8e9196', G_Paved: '#8a8379', G_Green: '#5f8f3e', G_Water: '#3f78a8', G_Rail: '#6e655c', G_Quay: '#8b857b', G_Footprint: '#7a7d82' };
+const shadowy = (root) => root.traverse((o) => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; } });
+
+const ground = (await load('ground.glb')).scene;
+ground.traverse((o) => { if (o.isMesh) { const mats = Array.isArray(o.material) ? o.material : [o.material];
+  const next = mats.map((m) => new THREE.MeshStandardMaterial({ map: pixelTex(groundColors[m.name] ?? '#888'), roughness: 1 }));
+  o.material = Array.isArray(o.material) ? next : next[0]; } });
+shadowy(ground); scene.add(ground);
+
+// trees, instanced exactly like loadTrees.ts
+const rows = await (await fetch('assets/trees.json')).json();
+const tg = (await load('trees.glb')).scene; const trees = new THREE.Group();
+const leaves = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 1 }), trunk = new THREE.MeshStandardMaterial({ flatShading: true, roughness: 1, color: '#6b4a2f' });
+const m4 = new THREE.Matrix4(), p = new THREE.Vector3(), s = new THREE.Vector3(), r = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), col = new THREE.Color();
+const pal = ['#4f7d35', '#5c8f3c', '#3f6b2e', '#6b9d45', '#47763a'];
+tg.traverse((o) => { if (!o.isMesh) return;
+  const model = (o.parent?.name.startsWith('TreeModel_') ? o.parent.name : o.name).replace('TreeModel_', '');
+  const placed = rows.filter((row) => row[5] === model);
+  const isTrunk = o.material.name === 'Tree_Trunk';
+  const im = new THREE.InstancedMesh(o.geometry, isTrunk ? trunk : leaves, placed.length);
+  placed.forEach(([x, y, z, h, rad, , ci, yaw], i) => { p.set(x, y, z); s.set(rad, h, rad); r.setFromAxisAngle(up, yaw); im.setMatrixAt(i, m4.compose(p, r, s)); im.setColorAt(i, col.set(pal[ci % 5])); });
+  im.castShadow = im.receiveShadow = true; im.computeBoundingSphere(); trees.add(im); });
+scene.add(trees);
+
+const buildingMat = new THREE.MeshStandardMaterial({ color: '#c2c6cc', roughness: 1 });
+const variants = (q.get('variants') ?? 'none,lod1,lod2_raw,lod2_clean_single,lod2_clean_each').split(',');
+// Views: street = follow cam behind a player in Niederdorf; plaza = open view over Limmat; overview = inspect mode.
+const views = {
+  street:   { pos: [11.4, 19.6, 588.7], target: [4.4, 17.2, 581.7] },
+  bridge:   { pos: [-60, 12, 720], target: [-75, 8, 660] },
+  overview: { pos: [650, 850, 900], target: [0, 25, 0] },
+};
+function place(v) {
+  camera.position.set(...v.pos); camera.lookAt(...v.target); camera.updateMatrixWorld();
+  sun.position.set(v.target[0] - 20, v.target[1] + 40, v.target[2] + 20); sun.target.position.set(...v.target); sun.target.updateMatrixWorld();
+}
+const px = new Uint8Array(4);
+function frameSync() { renderer.render(scene, camera); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); }
+async function gpuTime(n) {
+  if (!timer) return null;
+  const qs = [];
+  for (let i = 0; i < n; i++) { const qq = gl.createQuery(); gl.beginQuery(timer.TIME_ELAPSED_EXT, qq); renderer.render(scene, camera); gl.endQuery(timer.TIME_ELAPSED_EXT); qs.push(qq); }
+  gl.finish();
+  await new Promise((ok) => setTimeout(ok, 200));
+  const ts = [];
+  for (const qq of qs) { for (let k = 0; k < 50 && !gl.getQueryParameter(qq, gl.QUERY_RESULT_AVAILABLE); k++) await new Promise((ok) => setTimeout(ok, 10));
+    if (gl.getQueryParameter(qq, gl.QUERY_RESULT_AVAILABLE)) ts.push(gl.getQueryParameter(qq, gl.QUERY_RESULT) / 1e6); }
+  ts.sort((a, b) => a - b); return ts.length ? +ts[Math.floor(ts.length / 2)].toFixed(2) : null;
+}
+async function rafFps(ms) {
+  return new Promise((ok) => { let n = 0; const t0 = performance.now();
+    const step = () => { renderer.render(scene, camera); n++; if (performance.now() - t0 < ms) requestAnimationFrame(step); else ok(+(n * 1000 / (performance.now() - t0)).toFixed(1)); };
+    requestAnimationFrame(step); });
+}
+let current = null;
+for (const name of variants) {
+  if (current) { scene.remove(current); current.traverse((o) => o.isMesh && o.geometry.dispose()); current = null; }
+  if (name !== 'none') { current = (await load(name + '.glb')).scene; current.traverse((o) => { if (o.isMesh) o.material = buildingMat; }); shadowy(current); scene.add(current); }
+  for (const [vn, v] of Object.entries(views)) {
+    place(v);
+    for (let i = 0; i < 20; i++) frameSync(); // warm-up, shader compile
+    const t0 = performance.now(); const N = 60; for (let i = 0; i < N; i++) frameSync();
+    const syncMs = +((performance.now() - t0) / N).toFixed(2);
+    const t1 = performance.now(); renderer.render(scene, camera); const cpuMs = +(performance.now() - t1).toFixed(2); gl.finish();
+    const info = renderer.info.render;
+    log({ variant: name, view: vn, syncMs, gpuMs: await gpuTime(30), cpuSubmitMs: cpuMs, fps: await rafFps(1500), calls: info.calls, tris: info.triangles });
+  }
+}
+log({ done: true });
+</script></body></html>
