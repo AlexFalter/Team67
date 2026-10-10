@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { INTERP_DELAY_MS, zurichWorld } from "@race/shared";
+import { INTERP_DELAY_MS, zurichWorld, examSecondsRemaining, RoomPhase } from "@race/shared";
 import { Network } from "./net.ts";
 import { LocalPlayer } from "./localPlayer.ts";
 import { RemotePlayers } from "./remotePlayers.ts";
@@ -11,10 +11,12 @@ import { PlayerView } from "./view.ts";
 import { GameControls } from "./gameControls.ts";
 import { lobby } from "./lobby.ts";
 import { RoomFlow } from "./roomFlow.ts";
+import { ExamSequence, type ExamSession } from "../exam/ExamSequence";
 import { accelerateMapRaycasts } from "./mapRaycast.ts";
 
 // MapViewer owns rendering and the loop; this instance owns gameplay cleanup.
 export class MapGame {
+  private exam: ExamSequence;
   private net = new Network();
   private local = new LocalPlayer();
   private remotes: RemotePlayers;
@@ -30,7 +32,8 @@ export class MapGame {
   private firstBody = avatar("#ffffff", 0, true);
   private avatarReady = false;
   constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, private canvas: HTMLCanvasElement,
-    hud: HTMLDivElement, hints: HTMLDivElement, map: THREE.Object3D) {
+    hud: HTMLDivElement, hints: HTMLDivElement, map: THREE.Object3D, onExamChange: (session: ExamSession) => void = () => {}) {
+    this.exam = new ExamSequence(scene, camera, onExamChange);
     this.disposeMapRaycasts = accelerateMapRaycasts(map);
     this.remotes = new RemotePlayers(scene);
     this.vehicles = new Vehicles(scene, this.net, hints);
@@ -38,7 +41,7 @@ export class MapGame {
     this.hud = new Hud(hud);
     this.view = new PlayerView(camera, [map], zurichWorld);
     this.roomFlow = new RoomFlow(this.net);
-    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay);
+    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.exam.active);
     Object.assign(this.local.body, zurichWorld.spawn);
     camera.near = 0.05;
     camera.position.set(zurichWorld.spawn.x, zurichWorld.spawn.y + 1.6, zurichWorld.spawn.z);
@@ -55,10 +58,14 @@ export class MapGame {
       }
     }, hit => this.effects.enqueue(hit), selection));
   }
+  get examScreenVisible() { return this.exam.screenVisible; }
   get focus() { return this.local.body; }
   update(elapsed: number, now: number) {
     const dt = Math.min(0.1, elapsed), renderTime = this.net.now() - INTERP_DELAY_MS;
-    if (this.net.canPlay) {
+    const state = this.net.room?.state;
+    const remaining = state?.phase === RoomPhase.Running ? examSecondsRemaining(state.endsAt, this.net.now()) : 0;
+    this.exam.update(this.local.body, this.net.canPlay, this.local.enabled, state?.startedAt ?? 0, remaining, now);
+    if (this.net.canPlay && !this.exam.active) {
       this.net.frame(dt, this.local.body, () => this.local.controls(this.view.yaw));
       if (this.local.takeInteraction()) this.vehicles.interact(this.local.body);
       if (this.local.body.vehicleId) this.vehicles.local(this.local.body, this.net.room.sessionId);
@@ -69,14 +76,25 @@ export class MapGame {
       this.effects.trail(this.net.room.sessionId, this.local.body, now);
       this.view.update(this.local.body, dt);
     }
-    if (!this.net.canPlay) { this.mesh.visible = this.firstBody.visible = false; this.vehicles.stopDriving(); }
+    if (!this.net.canPlay || this.exam.active) { this.mesh.visible = this.firstBody.visible = false; this.vehicles.stopDriving(); }
     this.roomFlow.update();
     this.vehicles.render(renderTime, dt); this.remotes.render(renderTime, this.vehicles.items, dt);
     for (const [id, remote] of this.remotes.players) this.effects.trail(id, remote.rendered, now);
     this.controls.update(dt); this.effects.update(renderTime, dt); this.hud.update(dt, this.net);
     this.vehicles.updateLabels(this.local.body, now);
   }
+  skipExamTransition() { this.exam.skipTransition(); }
+  completeExam(score: number) { this.exam.complete(score); }
+  returnFromExam() { this.exam.returnToWorld(); }
+  debugTeleportToTerrace(enterPortal = false) {
+    if (!import.meta.env.DEV || !this.net.canPlay || this.exam.active) return;
+    this.local.clear(); this.local.body.vx = this.local.body.vy = this.local.body.vz = 0;
+    this.view.yaw = this.view.pitch = 0;
+    if (enterPortal) void this.controls.resume();
+    this.net.room.send("debugTeleportToPolyterrasse", enterPortal ? "portal" : "terrace");
+  }
   dispose() {
+    this.exam.dispose();
     this.disposeMapRaycasts();
     this.closeLobby(); this.roomFlow.dispose(); this.controls.dispose(); this.local.dispose(); this.net.dispose();
     this.effects.dispose(); this.vehicles.dispose(); this.remotes.dispose();

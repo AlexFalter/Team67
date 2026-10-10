@@ -7,10 +7,10 @@ import './eth-blur.css';
 import { TutorialDemo } from './TutorialDemo';
 
 /** The final clock can override the standalone 30-second timer. */
-export type EthBlurProps = { remainingSeconds?: number; onComplete?: (score: number) => void };
+export type EthBlurProps = { remainingSeconds?: number; onComplete?: (score: number) => void; startImmediately?: boolean; onExit?: () => void };
 type Feedback = { kind: 'correct' | 'wrong' | 'skip'; text: string } | null;
-export function EthBlur({ remainingSeconds, onComplete }: EthBlurProps) {
-  const [started, setStarted] = useState(false);
+export function EthBlur({ remainingSeconds, onComplete, startImmediately = false, onExit }: EthBlurProps) {
+  const [started, setStarted] = useState(startImmediately);
   const [duration] = useState(() => readDuration(window.location.search));
   const [deck, setDeck] = useState(createDeck);
   const [index, setIndex] = useState(0);
@@ -107,12 +107,12 @@ export function EthBlur({ remainingSeconds, onComplete }: EthBlurProps) {
   function select(b: Building) { setSelected(b); setQuery(b.code); input.current?.focus({ preventScroll: true }); }
   return <div className={`campus-game ${!started ? 'tutorial-mode' : ''}`}>
     <div className="campus-shell">
-      <nav className="campus-nav"><a href="/" aria-label="Back to world">←</a><span>FINAL EXAM</span><span className="campus-mark">ETH ZÜRICH</span></nav>
+      <nav className="campus-nav">{onExit ? <button className="exam-back" onClick={onExit} aria-label="Back to world">←</button> : <a href="/" aria-label="Back to world">←</a>}<span>FINAL EXAM</span><span className="campus-mark">ETH ZÜRICH</span></nav>
       <div className="campus-title"><h1>Campusless<span>.</span></h1><p>A familiar place. A little less familiar.</p></div>
       {!started ? <TutorialDemo duration={duration} externalClock={remainingSeconds !== undefined} onStart={() => setStarted(true)} /> : <>
       <div className="campus-stats"><span><strong>{score.toLocaleString()}</strong> points</span><span className={left < 10 ? 'clock urgent' : 'clock'}><span aria-hidden="true">◷</span> <strong>{clockLabel}</strong>{clockSeconds < 60 && 's'}</span></div>
       <div className="campus-clock-track"><div style={{ width: `${Math.max(0, Math.min(100, left / clockDuration * 100))}%` }} /></div>
-      {ended ? <section className="campus-finish"><span className="finish-icon">✦</span><h2>{exhausted ? 'Exam complete.' : 'Time’s up.'}</h2><p>{correct} buildings recognised · {score.toLocaleString()} points</p>{remainingSeconds === undefined && <button className="guess-button" onClick={restart}>Play again ↗</button>}<a href="/">Back to the world</a></section> : <>
+      {ended ? <section className="campus-finish"><span className="finish-icon">✦</span><h2>{exhausted ? 'Exam complete.' : 'Time’s up.'}</h2><p>{correct} buildings recognised · {score.toLocaleString()} points</p>{remainingSeconds === undefined && <button className="guess-button" onClick={restart}>Play again ↗</button>}{onExit ? <button className="reveal-action" onClick={onExit}>Back to the world →</button> : <a href="/">Back to the world</a>}</section> : <>
         <div className="campus-round">
         <div className="campus-visual">
         <div className={`campus-photo ${resolving ? 'resolved' : ''}`}>
