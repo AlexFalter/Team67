@@ -34,6 +34,7 @@ button:disabled { cursor: wait; opacity: 0.6; }
 #pause p { line-height: 1.7; font-size: 12px; color: #b9ccd9; }
 #pause [role=status] { color: #ffd38a; }
 #sensitivity { width: 100%; }
+#render-resolution { box-sizing: border-box; width: 100%; padding: 10px; border: 1px solid #60768a; border-radius: 8px; background: #203449; color: #edf4fc; font: inherit; }
  .map-viewer > canvas { outline: none; touch-action: none; }
 
 .map-viewer:has(#lobby[hidden]):has(#pause[hidden]) .mode-toggle { display: none; }

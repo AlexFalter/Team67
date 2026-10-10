@@ -16,9 +16,11 @@ import { MapGame } from "../multiplayer/MapGame";
 
 export function MapViewer() {
   const [playing, setPlaying] = useState(true);
+  const [resolution, setResolution] = useState<"performance" | "high">("performance");
   return (
     <div className="map-viewer">
-      <MapCanvas key={playing ? "play" : "inspect"} playing={playing} />
+      <MapCanvas key={playing ? "play" : "inspect"} playing={playing}
+        resolution={resolution} onResolutionChange={setResolution} />
       <button
         className="mode-toggle"
         onClick={() => setPlaying((value) => !value)}
@@ -29,12 +31,23 @@ export function MapViewer() {
   );
 }
 
-function MapCanvas({ playing }: { playing: boolean }) {
+function MapCanvas({ playing, resolution, onResolutionChange }: {
+  playing: boolean;
+  resolution: "performance" | "high";
+  onResolutionChange: (resolution: "performance" | "high") => void;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hudRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
+  const resolutionRef = useRef(resolution);
+  const fitRef = useRef<(() => void) | undefined>(undefined);
   const [status, setStatus] = useState("Loading official Zürich 3D map…");
   const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    resolutionRef.current = resolution;
+    fitRef.current?.();
+  }, [resolution]);
 
   useEffect(() => {
     const canvas = canvasRef.current,
@@ -76,8 +89,8 @@ function MapCanvas({ playing }: { playing: boolean }) {
             object.receiveShadow = true;
           }
         });
-        renderer = new WebGLRenderer({ canvas: canvas!, antialias: true });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer = new WebGLRenderer({ canvas: canvas!, antialias: true,
+          powerPreference: "high-performance" });
         renderer.shadowMap.enabled = playing;
         renderer.shadowMap.type = PCFShadowMap;
         scene.add(new HemisphereLight("#ffffff", "#7c8792", 2));
@@ -115,12 +128,19 @@ function MapCanvas({ playing }: { playing: boolean }) {
         }
         const fit = () => {
           const { width, height } = canvas!.getBoundingClientRect();
-          renderer!.setSize(Math.max(width, 1), Math.max(height, 1), false);
+          // Keep the default drawing buffer near 1080p even on large/HiDPI displays.
+          const density = resolutionRef.current === "high"
+            ? Math.min(window.devicePixelRatio, 2)
+            : Math.min(window.devicePixelRatio, 1,
+              Math.sqrt(1920 * 1080 / (Math.max(width, 1) * Math.max(height, 1))));
+          renderer!.setDrawingBufferSize(Math.max(width, 1), Math.max(height, 1), density);
           camera.aspect = Math.max(width, 1) / Math.max(height, 1);
           camera.updateProjectionMatrix();
         };
         resize = new ResizeObserver(fit);
+        fitRef.current = fit;
         resize.observe(canvas!);
+        window.addEventListener("resize", fit, { signal: abort.signal });
         fit();
         let previous = performance.now();
         renderer.setAnimationLoop(() => {
@@ -148,6 +168,7 @@ function MapCanvas({ playing }: { playing: boolean }) {
     void initialize();
     return () => {
       abort.abort();
+      fitRef.current = undefined;
       renderer?.setAnimationLoop(null);
       resize?.disconnect();
       controls?.dispose();
@@ -156,6 +177,7 @@ function MapCanvas({ playing }: { playing: boolean }) {
       sunlight?.shadow.dispose();
       scene.clear();
       renderer?.dispose();
+      renderer?.forceContextLoss();
     };
   }, [playing]);
 
@@ -171,7 +193,7 @@ function MapCanvas({ playing }: { playing: boolean }) {
       >
         {status}
       </div>
-      {playing && <GameOverlay />}
+      {playing && <GameOverlay resolution={resolution} onResolutionChange={onResolutionChange} />}
       <div ref={hudRef} className="game-hud" hidden={!playing} />
       <div ref={controlsRef} className="map-controls">
         {playing

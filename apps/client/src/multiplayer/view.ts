@@ -21,7 +21,10 @@ export class PlayerView {
   private origin = new THREE.Vector3();
   private direction = new THREE.Vector3();
   private desired = new THREE.Vector3();
-  constructor(readonly camera: THREE.PerspectiveCamera, private walls: THREE.Object3D[], private world?: MovementWorld) {}
+  private intersections: THREE.Intersection[] = [];
+  constructor(readonly camera: THREE.PerspectiveCamera, private walls: THREE.Object3D[], private world?: MovementWorld) {
+    this.ray.firstHitOnly = true;
+  }
   look(dx: number, dy: number) {
     this.yaw -= dx * this.sensitivity;
     this.pitch = THREE.MathUtils.clamp(this.pitch - dy * this.sensitivity, -1.45, 1.45);
@@ -62,7 +65,9 @@ export class PlayerView {
       this.direction.copy(this.camera.position).sub(this.origin);
       const distance = this.direction.length();
       this.ray.set(this.origin, this.direction.normalize());
-      const hit = this.ray.intersectObjects(this.walls, true)[0];
+      this.ray.far = distance;
+      this.intersections.length = 0;
+      const hit = this.ray.intersectObjects(this.walls, true, this.intersections)[0];
       if (hit && hit.distance < distance) this.camera.position.copy(this.origin).addScaledVector(this.direction, Math.max(0.15, hit.distance - 0.2));
       const ground = this.world?.height(this.camera.position.x, this.camera.position.z);
       if (ground !== undefined) this.camera.position.y = Math.max(this.camera.position.y, ground + 0.25);

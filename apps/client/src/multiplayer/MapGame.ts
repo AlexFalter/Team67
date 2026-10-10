@@ -11,6 +11,7 @@ import { PlayerView } from "./view.ts";
 import { GameControls } from "./gameControls.ts";
 import { lobby } from "./lobby.ts";
 import { RoomFlow } from "./roomFlow.ts";
+import { accelerateMapRaycasts } from "./mapRaycast.ts";
 
 // MapViewer owns rendering and the loop; this instance owns gameplay cleanup.
 export class MapGame {
@@ -21,6 +22,7 @@ export class MapGame {
   private effects: Effects;
   private hud: Hud;
   private view: PlayerView;
+  private disposeMapRaycasts: () => void;
   private controls: GameControls;
   private roomFlow: RoomFlow;
   private closeLobby: () => void;
@@ -29,6 +31,7 @@ export class MapGame {
   private avatarReady = false;
   constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, private canvas: HTMLCanvasElement,
     hud: HTMLDivElement, hints: HTMLDivElement, map: THREE.Object3D) {
+    this.disposeMapRaycasts = accelerateMapRaycasts(map);
     this.remotes = new RemotePlayers(scene);
     this.vehicles = new Vehicles(scene, this.net, hints);
     this.effects = new Effects(scene);
@@ -74,6 +77,7 @@ export class MapGame {
     this.vehicles.updateLabels(this.local.body, now);
   }
   dispose() {
+    this.disposeMapRaycasts();
     this.closeLobby(); this.roomFlow.dispose(); this.controls.dispose(); this.local.dispose(); this.net.dispose();
     this.effects.dispose(); this.vehicles.dispose(); this.remotes.dispose();
     disposeAvatar(this.mesh); disposeAvatar(this.firstBody); this.canvas.removeAttribute("tabindex");

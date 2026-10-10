@@ -1,6 +1,9 @@
 import "./game.css";
 
-export function GameOverlay() {
+export function GameOverlay({ resolution, onResolutionChange }: {
+  resolution: "performance" | "high";
+  onResolutionChange: (resolution: "performance" | "high") => void;
+}) {
   return <>
     <section id="lobby" aria-label="Multiplayer lobby">
       <form>
@@ -53,6 +56,13 @@ export function GameOverlay() {
         <label><input id="bob" type="checkbox" defaultChecked /> Walking / running bob</label>
         <label htmlFor="sensitivity">Mouse / trackpad sensitivity</label>
         <input id="sensitivity" type="range" min="8" max="60" defaultValue="25" />
+        <label htmlFor="render-resolution">Rendering resolution</label>
+        <select id="render-resolution" value={resolution}
+          onChange={event => onResolutionChange(event.target.value === "high" ? "high" : "performance")}>
+          <option value="performance">Performance</option>
+          <option value="high">High — sharper image</option>
+        </select>
+        <p>Performance reduces rendering resolution for smoother play. High uses more GPU power.</p>
         <p>Mouse / trackpad: look · click to punch.<br />
           WASD run · Shift sprint · Space jump · E ride<br />
           F hit · R shoes<br />
