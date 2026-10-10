@@ -66,6 +66,8 @@ export class PlayMode implements Mode {
     this.local.afterTick = b => {
       for (const r of this.remotes.all.values())
         if (r.visible && !r.vehicle && r.buffer.size) C.separate(b, r.pose.x, r.pose.y, r.pose.z, world);
+      for (const v of this.vehicles.all.values())
+        if (v.id !== this.myVehicle) C.separate(b, v.pose.x, v.pose.y, v.pose.z, world, C.vehicleRadius(v.kind) + C.RADIUS);
     };
     this.active = !net;
     this.apply(settings);

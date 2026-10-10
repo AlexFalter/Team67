@@ -1,10 +1,11 @@
 # Frontend development agreement
 
-## Integrated workspace
+## Workspace
 
-This frontend now mounts the Zürich multiplayer game. The canonical Colyseus server is `../server`, shared movement/protocol/world data is `../../packages/shared`, and plain TypeScript gameplay modules are in `src/multiplayer`. The old standalone prototype and Python demo backend have been removed. Use the root npm workspace install and lockfile.
-
-From `Team67/`: `npm install`, `npm run dev`. Open port 5173. Root `npm run build` regenerates shared map data, checks TypeScript and builds `apps/client/dist`; `npm start` serves the frontend and multiplayer from one Node process on 2567. Root `npm test` checks collision, vehicles, interpolation, live room behavior and terrain. Run frontend lint as `npm run lint` from the root. The workspace contains only the client, server, and shared package; no game API key is required.
+The client is `apps/client`, the Colyseus 0.18 server `apps/server`, shared code `packages/shared` (constants,
+the pure movement step, height-grid world, vehicle math, rules, protocol). Use the root npm workspace and
+lockfile. From the root: `npm run dev` (server + Vite), `npm test`, `npm run check`, `npm run lint`,
+`npm run build`, `npm start` (one port). Read the root README for the architecture.
 
 ## Coordinate contract
 
@@ -20,21 +21,34 @@ Z = 1248000 - northing    north is -Z
 
 ## Ownership and lifecycle
 
-- `loadZurichMap.ts` only fetches/parses geometry. Keep gameplay and networking out of it.
-- `MapViewer.tsx` owns the renderer, camera, lights, resize observer and **one animation loop**. It passes the scene/camera to `MapGame`; game modules never create their own renderer or loop.
-- `MapGame.ts` wires input, movement, network patches, avatars, vehicles, effects, HUD and follow camera. Inspection mode uses OrbitControls and leaves the room; entering play creates a fresh connection.
-- Keep React StrictMode enabled. Abort pending loads and connection work, stop loops/timers, remove input listeners, leave rooms and dispose geometry/materials/textures/audio on cleanup. Mutable Three.js objects belong in module instances, not React state.
-- Entity render roots are Groups with world placement at their root and model-relative transforms inside. Shared resources need explicit ownership; do not dispose geometry still used by another avatar.
+- `src/engine/Engine.ts` owns the renderer, scene, lights, camera, resize observer and **the one animation
+  loop**. Modes (`InspectMode`, `game/PlayMode`) implement `frame(dt, now)`/`dispose()`; nothing else creates a
+  renderer or a loop. `mapLoader.ts` only loads, themes, merges and BVH-indexes the map.
+- `App.tsx` owns the `Engine` (one per mount) and the `Net` connection (created on create/join, disposed on
+  leave). `PlayMode` only adds and removes its own listeners on the room. Entering a room always makes a fresh
+  connection; inspect mode has none.
+- Keep React StrictMode. Abort loads, stop timers, remove listeners, leave rooms and dispose geometry,
+  materials and textures on cleanup. Mutable three.js objects live in plain class instances, never in React
+  state. React state changes only for rare events (phase, roster, pause), never per frame.
+- Shared resources (avatar and vehicle geometry, materials) are owned once by `Avatars`/`Vehicles` and
+  disposed once.
 
-## Shared gameplay contracts
+## Gameplay contracts
 
-Use `@race/shared` for constants, messages, capsule math, movement and world queries. The Zürich terrain/building grid and shuttle route come from `../../scripts/build-world.ts`, reading the checked-in GLB offline. `zurichWorld.height` and `blocked` are the current lightweight terrain/collision interface. Its 2 m mask is approximate; Rapier detects entity contacts and loose-object physics; rooftop navigation, detailed openings and a road network are not implemented.
-
-Foot players and cart drivers own their movement. The server validates and stores reports and referees collisions; impulse messages change local velocity. Remote entities interpolate on the delayed server clock; never interpolate the local player. Bump effects queue on that same timeline.
-
-Room phase, names, readiness, membership, host and results are server-owned. Waiting members have no gameplay entity. Gate movement, controls, vehicle interaction and combat on Running plus active membership; results stay frozen until the host resets to Lobby.
-
-The server atomically grants vehicle occupancy and releases it on exit/disconnect. A client flag or rendered mesh cannot grant ownership. Shuttles are server scheduled; the first passenger starts the countdown, further passengers do not reset it, and an empty shuttle cancels it. Keep schema and shared types consistent before changing protocol behavior.
+- `step(body, input, dt, world)` is the only movement code (client, bots, tests). Keep it pure and
+  allocation-free; tune only in `packages/shared/src/constants.ts`.
+- The client simulates at a fixed 60 Hz and interpolates for rendering. Mouse look is applied raw; never
+  smooth camera rotation. Never interpolate or snap the local player; corrections blend out.
+- Foot players and drivers own their motion and report it (`MOVE`, 30 Hz). The server validates, corrects,
+  and owns phases, hits, knockdowns, seats, the shuttle schedule and scores. Seats are granted only by the
+  server.
+- Colyseus state stays flat: numbers for per-frame fields, strings only for rare changes. Keep
+  `apps/server/src/state.ts` and the client's `StateView` (`src/net/Net.ts`) in sync.
+- Remote entities render on the adaptive-delay timeline in `game/remotes.ts`; the shuttle and traffic are
+  computed from the schedule at the synced server time.
+- Waiting members (joined mid-round) have no entity. Controls, vehicles and punches only work for active
+  players in a running round.
+- Gameplay collision is the 2 m grid (`height`, `blocked`); mesh raycasts are for the camera only.
 
 ## Map and deployment
 

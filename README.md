@@ -1,79 +1,93 @@
-# Zürich multiplayer prototype
+# Zürich Chase
 
-The original Zürich map viewer and Colyseus prototype now run together. The workspace contains the integrated game. The existing React page hosts plain TypeScript gameplay modules and a single Three.js scene. Rapier handles relevant entity contacts; shared map queries keep terrain movement deterministic. No database or authentication system is required.
+A small multiplayer game on the official Zürich 3D city model (HB ↔ ETH). Vite + React + three.js client,
+Colyseus 0.18 server, one shared TypeScript package. Up to 40 players per room.
 
-## Run locally
+## Run
 
-Use Node **22.12+** (Node 24 also works). From `Team67/`:
+Node 22.12+ (24 works). From the repository root:
 
 ```sh
 npm install
-npm run dev
+npm run dev        # Colyseus on :2567 + Vite on :5173
 ```
 
-Open **http://localhost:5173** in two tabs. Create a room with a code, then join that same code in another tab (up to 40 players). Choose CS Student, Student Athlete, or Albert Einstein. Players spawn on clear terrain near Hauptbahnhof, alongside three single-seat carts and a six-seat shuttle. The project contains only the game client, multiplayer server, and shared code.
-
-Enter your name (1-24 characters), choose a character, and create or join a room. Rooms follow **Lobby ? Running ? Finished**. In the room lobby, everyone must press **Ready** before the round starts; readiness can be cancelled while waiting. Joining an ongoing round opens a waiting screen instead of spawning a player.
-
-Rounds last **three minutes** by default (`ROUND_DURATION_MS` on the server). The host can also end the round from the game menu. At the end, every connected member sees the same results, sorted by hits landed, including players who left during the round. The host can return everyone to the lobby; waiting members can then ready up and play. If the host leaves, host duties pass to another connected member. Gameplay and vehicle claims are disabled outside a running round and for waiting members.
-
-Click **Click to play** to capture the cursor. Mouse / trackpad looks, **WASD** runs, **Shift** sprints, **Space** jumps, **E** rides/exits, **F / click** punches, **R** toggles running shoes. **F5 / V** cycles first-person, rear, and front views. **Esc** opens the quick menu (bob, sensitivity, leave). **Inspect map** from the lobby/menu leaves the room; **Join multiplayer** returns to the lobby.
-
-Carts are claimed exclusively by one player. Their driver can run over foot players. The shuttle starts its **10-second countdown** when the first passenger boards, follows a shared terrain route toward ETH, and automatically disembarks riders on arrival. Later boarders do not reset the countdown. An empty shuttle cancels its countdown; passengers cannot exit while it travels. Board again at ETH for the return trip. The route is roughly two minutes each way, rather than the old short flat-plane trip.
-
-## Commands
-
-Run these from `Team67/`:
+Open http://localhost:5173 in two or three tabs, enter a name, pick a character, create a room in one tab
+and join its code in the others. Everyone presses **Ready**; rounds last three minutes.
 
 | Command | Purpose |
 | --- | --- |
-| `npm run dev` | Colyseus on 2567 and Vite on 5173, both bound to the network |
-| `npm run build` | Regenerate shared map queries from the checked-in GLB, type-check, build `apps/client/dist` |
-| `npm start` | One Node process serves the built game and Colyseus on 2567 |
-| `npm run bots -- 30` | 30 headless players using native inputs (set ROOM_CODE to join a visible room) |
-| `npm test` | Shared collision, interpolation, live server, vehicle, and map regression checks |
-| `npm run check` | TypeScript checks across the workspace |
-| `npm run lint` | Frontend ESLint |
-| `npm run world:build` | Regenerate terrain/building queries and shuttle route, entirely offline |
+| `npm run dev` | Server (watch) and Vite dev server |
+| `npm run build` | Regenerate the world grid JSON, type-check, build `apps/client/dist` |
+| `npm start` | One Node process serves the built client and Colyseus on `PORT` (default 2567) |
+| `npm test` | Movement, interpolation/clock, vehicle rules, live server rooms |
+| `npm run check` / `npm run lint` | TypeScript / ESLint |
+| `npm run bots -- 30` | 30 headless players (`ROOM_CODE=ABCD` joins a room, else one is created and printed) |
+| `docker compose up -d --build` | Caddy (client, port 80 → 8080 inside) + Colyseus behind it |
 
-`npm run dev` from `apps/client/` also starts both services. Use the root workspace install and lockfile. `npm run dev:client` inside `apps/client/` starts only Vite for work with an already running server. `vite preview` alone serves static files and does not provide the multiplayer service.
+Environment: `PORT` (server), `ROUND_DURATION_MS` (server, default 180000), `COLYSEUS_URL` (bots),
+`VITE_COLYSEUS_URL` (dev client; production derives `ws(s)://` from the page origin).
 
-## Environment and production
+**Testing bad networks:** add `?lag=150&jitter=30&loss=2` to the page URL (one-way delay ms each direction,
+random extra delay, % of messages stalled like a TCP retransmit). **F3** (or backquote) shows the debug overlay:
+fps, CPU ms, draw calls, triangles, RTT, jitter, clock offset, interpolation delay and buffer depth,
+corrections per second. `?theme=summer` switches the map theme.
 
-| Variable | Used by | Meaning |
-| --- | --- | --- |
-| `VITE_COLYSEUS_URL` | Vite development client | Defaults to `ws://localhost:2567`; copy `apps/client/.env.example` to `apps/client/.env.local` to override |
-| `PORT` | Node server | Defaults to 2567 |
-| `COLYSEUS_URL` | Bots | Defaults to `ws://localhost:2567` |
-| `GAME_WORLD=flat` | Server/bots regression tests | Old flat prototype world; leave unset for the Zürich frontend |
+## Controls
 
-```sh
-npm run build
-npm start
+Click to capture the mouse. Mouse look · **WASD** move · **Shift** sprint · **Space** jump (hold to hop) ·
+**F** / click punch · **E** enter/leave a vehicle · **R** running shoes · **V** / **F5** first person / rear /
+front view · **Esc** menu (sensitivity, camera bob, end round for the host, leave). **Inspect map** in the menu
+orbits the map without connecting; **Practice offline** runs the controller with no server.
+
+## Game rules
+
+- Lobby → Running → Finished. Everyone in the lobby must be ready (ready can be cancelled). The host can end
+  the round early; when the host leaves the role passes on. Players joining mid-round wait without an entity.
+- Results are shared, sorted by hits landed, include players who left, and stay until the host returns the
+  room to the lobby.
+- A punch hits in a 90° cone up to 2.4 m (1.5 s cooldown) and knocks down for 5 s. Buildings block punches.
+  Players only push each other apart.
+- Carts (single seat) run over foot players. Bikes fall and throw their rider on impact. The shuttle has six
+  seats: the first passenger starts a 10 s countdown, an empty shuttle cancels it, it drives the terrain route
+  HB → ETH (~2 min), nobody can get off on the way, everyone is set down on arrival, and it then waits for the
+  trip back. The shuttle and the traffic car keep moving and knock riders off carts and bikes.
+
+## Architecture
+
+```
+packages/shared/src   constants.ts (all tuning) · movement.ts (pure step) · world.ts (height grid)
+                      vehicles.ts · rules.ts · protocol.ts · zurich-world.json (generated)
+apps/server/src       index.ts · GameRoom.ts (rooms, rounds, validation, combat) · vehicles.ts · state.ts · bots.ts
+apps/client/src       App.tsx (menus only) · engine/ (renderer, loop, map) · game/ (play mode) · net/ (connection)
 ```
 
-Open **http://localhost:2567**. On another device on the same LAN, open `http://<server-LAN-IP>:2567` and allow that port through the host firewall. Production derives its WebSocket URL from the page's host and port, using `wss:` with HTTPS. No client environment override is required in production. For Vite development from another device, set `VITE_COLYSEUS_URL=ws://<server-LAN-IP>:2567` and restart Vite; otherwise its default points at that device's own localhost.
+- **One movement step.** `step(body, input, dt, world)` in `packages/shared/src/movement.ts` is pure and
+  allocation-free: Quake-style ground acceleration and friction, capped air acceleration (air strafing),
+  coyote time, jump buffering, hold-to-hop with no friction on the landing tick, axis-separated collision
+  against the 2 m height grid (`height`, `blocked`). The client, the bots and the tests use the same code.
+- **Client feel.** The local player runs at a fixed 60 Hz with render interpolation between ticks. Mouse look
+  is applied from raw pointer-lock deltas (`unadjustedMovement`) in the event handler, never smoothed. The
+  first-person camera sits exactly on the interpolated body. The local player is never interpolated toward
+  the network; rare server corrections leave a render offset that decays in ~150 ms.
+- **Authority.** Clients own their movement and send a compact pose array at 30 Hz, stamped with the
+  estimated server time. The server validates speed, ground and building columns and corrects bad reports
+  (rate-limited). It owns phases, punches (lag-compensated against a short pose history), knockdowns, seats,
+  the shuttle schedule and scores. State is flat: one players map of numbers, a small vehicles map, the
+  room phase; patches at 30 Hz, simulation tick at 60 Hz.
+- **Remote smoothness.** The clock comes from ping/pong (minimum-RTT sample, slewed, never jumping). Remote
+  players are drawn on one timeline behind the server clock with cubic Hermite interpolation (positions and
+  velocities) over a 16-sample ring, extrapolating at most 100 ms and then holding. The delay is 100 ms on a
+  good link and adapts to how late samples really arrive, so `?lag=` never runs the buffer dry. The server
+  restamps client samples with their minimum uplink delay: precise spacing, minimal latency. The shuttle and
+  traffic are computed from the server schedule, so they are exact on every client.
+- **Rendering.** `Engine` owns the renderer and the single `setAnimationLoop`; React never re-renders while
+  playing (the HUD writes DOM text at ≤ 10 Hz). Avatars are instanced: 8 segments × 3 characters = 24 draw
+  calls for any number of players. The map's City tiles are merged in pairs per material at load time, the
+  ground and trees only receive shadows, and the street-level view distance is 700 m with fog: a street-level
+  sweep stays at ≤ ~250 draw calls and ~1.4–1.6 M triangles. Camera collision uses `three-mesh-bvh` on map
+  meshes only.
 
-Docker Compose runs two services: `client` (Caddy) and `server` (Colyseus). Caddy on **8080** forwards `/matchmake/*` and WebSocket upgrade requests to Colyseus and serves the frontend:
-
-```sh
-docker compose up -d --build --remove-orphans
-```
-
-Open http://localhost:8080. No `.env` file or API key is required. The service names have changed; `--remove-orphans` removes containers from the previous layout. View logs with `docker compose logs -f client server` and stop the game with `docker compose down`.
-
-The original hackathon template documents that the **portal proxy rejects WebSockets with 502**. Caddy routing cannot fix a proxy upstream of it. Use direct LAN access, an SSH tunnel, or a deployment endpoint that supports WebSockets; portal compatibility must be verified separately. Inspection mode still works without a multiplayer connection.
-
-## Architecture and authority
-
-- `apps/client/src/scene/MapViewer.tsx`: map loading, renderer, camera, lights, resizing, one animation loop, inspect/play lifecycle.
-- `apps/client/src/multiplayer/`: local movement/input, delayed remote interpolation, networking/clock sync, vehicles, particles/audio, and HUD. `MapGame.ts` wires these into the existing map scene.
-- `apps/server/src/`: Colyseus 0.18 server, schema 5 state, collision referee, atomic vehicle occupancy, shuttle schedule, and bots.
-- `packages/shared/src/`: constants, protocol types, capsule/cart collision math, movement, terrain and building queries, and route sampling.
-- `scripts/build-world.ts`: derives `zurich-world.json` from the existing GLB, with a source hash and deterministic placements/route.
-
-Networking follows main's client-owned movement: compact movement/vehicle reports at 20 Hz, server validation, ping/pong clock synchronization, and impulse messages with 20 Hz state patches. The feature's shared movement, camera, character rigs, and Rapier contacts are retained. Remote players/vehicles interpolate 100 ms behind estimated server time. Player contact only separates players; cone hits knock down for five seconds. Bikes fall/eject on impacts, heavy trams keep moving, and shoes boost speed/jump. The server owns occupancy, action cooldowns, transport schedules, and collision corrections. Banana dropping/throwing and peel slips are removed.
-
-The map keeps its original LV95 conversion: **X = E − 2683475**, **Y = elevation − 400**, **Z = 1248000 − N**, in metres. Shared terrain uses bilinear heights on a **2 m grid**, and buildings use a sampled roof/footprint obstruction mask. This is a deliberately approximate hackathon collision surface: it blocks ordinary buildings and follows hills, but does not model doors, tunnels, bridges, rooftop walking, water, or detailed wall geometry. The shuttle route avoids sampled building footprints; it is not an imported road network. The original 60 × 60 plane is only used in regression tests.
-
-The official GLB and source credit are preserved. Builds do not fetch GIS data. See [apps/client/README.md](apps/client/README.md) for provenance and explicit map re-import instructions. If the GLB changes, run `npm run world:build` and commit its generated JSON too.
+The map pipeline (Blender scripts, theme JSON, provenance) is documented in
+[apps/client/README.md](apps/client/README.md) and `apps/client/assets-src/zurich/README.md`. Coordinates:
+`X = E − 2683475`, `Y = h − 400`, `Z = 1248000 − N` (metres, north is −Z).

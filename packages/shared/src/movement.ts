@@ -132,10 +132,10 @@ function accelerate(b: Body, wx: number, wz: number, cap: number, wish: number, 
   b.vx += wx * amount; b.vz += wz * amount;
 }
 
-/** Push a body out of another player's capsule (horizontal only). Contact only separates players. */
-export function separate(b: Body, ox: number, oy: number, oz: number, world: World) {
+/** Push a body out of another player's capsule or a vehicle's circle (horizontal only). Contact only separates. */
+export function separate(b: Body, ox: number, oy: number, oz: number, world: World, min = 2 * C.RADIUS) {
   if (Math.abs(b.y - oy) >= C.HEIGHT) return false;
-  const dx = b.x - ox, dz = b.z - oz, d2 = dx * dx + dz * dz, min = 2 * C.RADIUS;
+  const dx = b.x - ox, dz = b.z - oz, d2 = dx * dx + dz * dz;
   if (d2 >= min * min) return false;
   const d = Math.sqrt(d2), push = min - d;
   const nx = d > 1e-4 ? dx / d : 1, nz = d > 1e-4 ? dz / d : 0;

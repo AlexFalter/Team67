@@ -1,39 +1,32 @@
-# Zürich map and multiplayer client
+# Zürich Chase client
 
-The existing React/Vite/Three.js map viewer now hosts the multiplayer prototype. Gameplay stays in small plain TypeScript modules under `src/multiplayer/`, with the shared workspace package supplying movement, protocol, collision math and map queries. The map loader remains independent of gameplay.
+Vite + React + three.js. React draws only the menus and room screens; the game runs in one
+`renderer.setAnimationLoop` owned by `Engine`, and the HUD is plain DOM written at ≤ 10 Hz.
+See the root [README](../../README.md) for commands, controls and the networking design.
 
-## Run
+## Layout
 
-From the repository root (`Team67/`):
-
-```sh
-npm install
-npm run dev
-```
-
-Open http://localhost:5173 in multiple tabs. Click the scene, then WASD to move, Shift to sprint, Space to jump, E to ride/exit, drag to turn and scroll to zoom. Inspect map switches to the original orbit/pan viewer and leaves multiplayer. Join multiplayer reconnects. Root `npm run build && npm start` serves the game and Colyseus together on http://localhost:2567.
-
-Use the **root lockfile**. From `apps/client/`, `npm run dev` also starts both services; `npm run dev:client` starts Vite alone. `npm run lint` checks the frontend. `npm run preview` does not start Colyseus; use root production start to test the complete game. For development on a second device, set `VITE_COLYSEUS_URL` in `apps/client/.env.local` to the server's LAN address. Production uses the page's own host/port automatically.
-
-## Architecture
-
-| File | Responsibility |
+| Path | Responsibility |
 | --- | --- |
-| `src/App.tsx` | Page, game viewer and source credit |
-| `src/scene/MapViewer.tsx` | Renderer, camera, lights, one animation loop, inspect/play lifecycle |
-| `src/multiplayer/MapGame.ts` | Connect gameplay modules to the map scene |
-| `src/multiplayer/net.ts` | Colyseus connection, messages, clock synchronization |
-| `src/multiplayer/localPlayer.ts` | Focused input and shared local movement |
-| `src/multiplayer/remotePlayers.ts` | Snapshots, interpolation, capsule meshes, cosmetic separation |
-| `src/multiplayer/vehicles.ts` | Cart prediction, remote vehicles, seats, interaction prompts |
-| `src/multiplayer/effects.ts` | Delayed collision particles and generated audio |
-| `src/maps/zurich/loadZurichMap.ts` | Map fetching/parsing and GPU disposal |
-| `../../packages/shared/src/world.ts` | Shared terrain/building queries and route sampling |
-| `../../scripts/build-world.ts` | Offline map preprocessing from the existing GLB |
+| `src/App.tsx` | Menu, lobby, results and pause screens; owns the `Engine` and the room connection |
+| `src/engine/Engine.ts` | Renderer, scene, lights, camera, resize, the single animation loop, frame stats |
+| `src/engine/mapLoader.ts` | Map download with progress, theme, trees, pairwise tile merge, BVH for camera rays |
+| `src/engine/InspectMode.ts` | Orbit camera, no connection |
+| `src/game/PlayMode.ts` | Play mode: wires input, local player, remotes, vehicles, camera, avatars, HUD |
+| `src/game/LocalPlayer.ts` | Fixed 60 Hz simulation (on foot or driving) with render interpolation and correction blending |
+| `src/game/input.ts` | Pointer lock (`unadjustedMovement`), raw mouse look, keys |
+| `src/game/camera.ts` | First person on the body; rear/front third person with a BVH boom |
+| `src/game/avatars.ts` | Instanced low-poly rigs: 24 draw calls for all players |
+| `src/game/remotes.ts` | Remote players on one adaptive-delay timeline |
+| `src/game/vehicles.ts` | Vehicle meshes and poses (scheduled shuttle/traffic, interpolated carts/bikes) |
+| `src/net/Net.ts` | Colyseus connection, ping/pong, production URL from the page origin |
+| `src/net/clock.ts`, `src/net/interp.ts` | Server clock estimate; Hermite sample buffer |
+| `src/net/lag.ts` | `?lag=&jitter=&loss=` network simulator |
+| `src/maps/zurich/*` | Map assets contract, theme and tree loader (exported from Blender, see below) |
 
-All gameplay uses the coordinate contract below. The approximate 2 m ground/building grid supplies terrain height and obstruction queries without a physics engine. The HB–ETH shuttle follows a generated clear route, rather than cutting through the map in a straight line. This does not supply detailed doors, bridges, rooftop movement or road geometry.
-
-The existing React shell is retained. All game resources and connections are cleaned up on unmount, including StrictMode remounts. The legacy Python backend and todo components have been removed.
+Use the root lockfile. `npm run dev:client` here starts Vite alone (expects a server on
+`VITE_COLYSEUS_URL`, default `ws://<host>:2567`). Production serves this build from the Colyseus
+process (`npm start`) or from Caddy (`docker compose`), and connects to the page's own origin.
 
 ## Official data and coordinates
 
@@ -91,6 +84,6 @@ provenance alongside any bounds/origin changes.
 
 ## Deployment
 
-Root `docker-compose.yml` builds from the npm workspace root, serves this build via Caddy on 8080, and runs Colyseus as its second service. No Python backend or `/api` proxy is required. Matchmaking and WebSocket upgrade requests route to the multiplayer service. The root README documents the hackathon portal's WebSocket limitation; test a direct endpoint supporting WebSockets for multiplayer.
+Root `docker-compose.yml` builds from the npm workspace root, serves this build via Caddy on 8080, and runs Colyseus as its second service. Matchmaking and WebSocket upgrade requests route to the multiplayer service. The root README documents the hackathon portal's WebSocket limitation; test a direct endpoint supporting WebSockets for multiplayer.
 
 After changing/re-importing the map, run `npm run world:build` from the root and commit the generated shared JSON together with the GLB/provenance. Root production builds regenerate this data offline; they never contact GIS services.
