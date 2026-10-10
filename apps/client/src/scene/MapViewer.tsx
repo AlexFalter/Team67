@@ -121,7 +121,7 @@ function MapCanvas({ playing, resolution, onResolutionChange }: {
           playing ? 0.1 : 1,
           6000,
         );
-        if (playing) game = new MapGame(scene, camera, canvas!, hud!, hints!, map);
+        if (playing) game = new MapGame(scene, camera, canvas!, hud!, hints!, map, () => renderer!.render(scene, camera));
         else {
           camera.position.set(650, 850, 900);
           controls = new OrbitControls(camera, canvas!);
@@ -161,6 +161,7 @@ function MapCanvas({ playing, resolution, onResolutionChange }: {
             sun.target.updateMatrixWorld();
           }
           renderer!.render(scene, camera);
+          game?.afterRender();
         });
         setStatus("Map loaded");
       } catch (error) {

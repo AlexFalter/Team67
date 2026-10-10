@@ -1,0 +1,114 @@
+{
+    "npcs":  {
+                 "scooter":  {
+                                 "interactionDistance":  4,
+                                 "volume":  0.75,
+                                 "audioNearDistance":  4,
+                                 "audioFarDistance":  24,
+                                 "handoverSeconds":  0.8,
+                                 "horns":  false,
+                                 "greeting":  "Komm nach Frankfurt bekämpfen.",
+                                 "giftLine":  "Für dich."
+                             },
+                 "finance":  {
+                                 "interactionDistance":  2.8,
+                                 "volume":  0.9
+                             },
+                 "kid":  {
+                             "interactionDistance":  1.15,
+                             "volume":  0.48,
+                             "inspectionVolume":  0.12,
+                             "audioNearDistance":  1.2,
+                             "audioFarDistance":  8,
+                             "question":  "Quick question. How much does that clock cost?",
+                             "choices":  [
+                                             "CHF 12. It is a clock.",
+                                             "67.",
+                                             "Sir, this is a funicular."
+                                         ],
+                             "triggerChoice":  1,
+                             "replies":  [
+                                             "Twelve? That is barely a tutorial number. Try again.",
+                                             "",
+                                             "Funicular? Weird way to pronounce six seven. Anyway, how much is the clock?"
+                                         ]
+                         },
+                 "eater":  {
+                               "interactionDistance":  1.15,
+                               "voiceVolume":  0.58,
+                               "chewingVolume":  0.48,
+                               "audioNearDistance":  0.8,
+                               "audioFarDistance":  6,
+                               "choices":  [
+                                               "What are you eating on the Polybahn?",
+                                               "I thought that was the rail brakes.",
+                                               "That sounds suspiciously delicious.",
+                                               "Enjoy your meal. I have a lecture."
+                                           ],
+                               "lines":  {
+                                             "question":  [
+                                                              "Wow, hast du das Squeezing gehört?",
+                                                              "“Wow, did you hear that squeezing?”"
+                                                          ],
+                                             "lunch":  [
+                                                           "Bei uns gibt’s heute Pulled Pork.",
+                                                           "“Pulled pork is on the menu today.”"
+                                                       ],
+                                             "closer":  [
+                                                            "Nee, musst mal näher kommen.",
+                                                            "“No, you need to come closer.”"
+                                                        ],
+                                             "delicious":  [
+                                                               "Einfach nur geil.",
+                                                               "“Absolutely delicious.”"
+                                                           ]
+                                         }
+                           },
+                 "inspector":  {
+                                   "fineCHF":  100,
+                                   "timePenaltySeconds":  10,
+                                   "speechRate":  0.88,
+                                   "speechPitch":  0.85,
+                                   "lines":  [
+                                                 "Tickets, please. Your student aura is not a valid fare.",
+                                                 "No ticket? I see. You bought the invisible student discount.",
+                                                 "CHF {fineCHF}. Congratulations. This is now the most expensive lecture you have attended.",
+                                                 "The ticket machine was right there. It was not a decorative fridge.",
+                                                 "Next time, collect a ticket. It is the tiny rectangle with a better academic record than you.",
+                                                 "Right. Off you go. The syllabus will survive without your punctuality."
+                                             ]
+                               },
+                 "privateProperty":  {
+                                         "volume":  0.85,
+                                         "durationSeconds":  8.4,
+                                         "audioStartSeconds":  2.3
+                                     },
+                 "einstein":  {
+                                  "interactionDistance":  3,
+                                  "portalDistance":  2.2
+                              },
+                 "interview":  {
+                                   "interactionDistance":  2.8,
+                                   "boardingDistance":  9
+                               }
+             },
+    "camera":  {
+                   "worldFovDegrees":  60,
+                   "portraitFovDegrees":  90,
+                   "landscapeFovDegrees":  55,
+                   "frameCoverage":  0.88,
+                   "previewWidth":  600,
+                   "aimSmoothing":  18,
+                   "yawSensitivityCap":  0.8,
+                   "pitchSensitivityCap":  0.6,
+                   "cursorWarpFraction":  0.45,
+                   "qrYawOffsetRadians":  [
+                                              0.12,
+                                              0.18
+                                          ],
+                   "qrPitchOffsetRadians":  [
+                                                0.035,
+                                                0.065
+                                            ]
+               }
+}
