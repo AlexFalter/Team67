@@ -59,7 +59,7 @@ export class NpcFeature {
    this.tourists=this.own(createTouristPhoto(this.root,world,solver,{capture,onComplete:()=>this.syncLock(),uiRoot,renderCanvas:this.canvas,
     location:new THREE.Vector3(placements.tourists.position[0],0,placements.tourists.position[1]),viewpoint:new THREE.Vector3(placements.tourists.viewpoint[0],0,placements.tourists.viewpoint[1])}));
    this.property=this.own(createPrivatePropertyEncounter(this.root,world,new THREE.Vector3(),0,solver,{uiRoot}));
-   this.scooter=this.own(createBridgeScooter(this.root,world,{placement:placements.scooterEncounter,uiRoot,onCollect:()=>{this.onMedal('frankfurtDelivery');this.syncLock();}}));
+   this.scooter=this.own(createBridgeScooter(this.root,world,{placement:placements.scooterEncounter,parked:true,uiRoot,onCollect:()=>{this.onMedal('frankfurtDelivery');this.syncLock();}}));
    // A fixed parked trio is shared scenery; approaching different players cannot divert it.
    this.scooter.park();
    this.limo=this.own(await createInterviewLimo(this.root,world,solver,{uiRoot,

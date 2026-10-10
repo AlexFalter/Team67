@@ -8,6 +8,7 @@ import {
   createBody,
   passengerYaw,
 } from "@race/shared";
+import { decoratePlayer } from "./playerIdentity.ts";
 import { avatar, pose, disposeAvatar } from "./avatar.ts";
 interface Snapshot extends PlayerState {
   t: number;
@@ -29,6 +30,7 @@ export class RemotePlayers {
         this.players.set(id, r);
         this.scene.add(r.mesh);
       }
+      decoratePlayer(r.mesh, state.members.get(id)?.name ?? "Player", true);
       const s: Snapshot = {
         x: p.x,
         y: p.y,
@@ -48,7 +50,6 @@ export class RemotePlayers {
         knockdownUntil: p.knockdownUntil,
         simTime: p.simTime,
         vehicleKind: p.vehicleKind,
-        shoes: p.shoes,
         attackReadyAt: p.attackReadyAt,
         mateCount: p.mateCount,
         mateBoostMs: p.mateBoostMs,
@@ -89,7 +90,6 @@ export class RemotePlayers {
         a.rotY +
         Math.atan2(Math.sin(b.rotY - a.rotY), Math.cos(b.rotY - a.rotY)) * f;
       p.anim = f < 0.5 ? a.anim : b.anim;
-      p.shoes = (f < 1 ? a : b).shoes;
       p.attackReadyAt = (f < 1 ? a : b).attackReadyAt;
       p.simTime = a.simTime + (b.simTime - a.simTime) * f;
       const membership = f < 1 ? a : b;

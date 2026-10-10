@@ -5,7 +5,6 @@ import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { accelerateMapRaycasts } from "../apps/client/src/multiplayer/mapRaycast.ts";
 import { zurichWorld, zurichNativeHeight, zurichNativeBlocked } from "../packages/shared/src/world.ts";
 import tram from "../packages/shared/src/tram-source.json";
-import polybahn from "../packages/shared/src/polybahn-source.json";
 const world = { ...zurichWorld, height: zurichNativeHeight, blocked: zurichNativeBlocked };
 
 // Resolve prototype coordinates against the shipped map, once, offline.
@@ -37,86 +36,109 @@ function clear(x: number, z: number, radius: number) {
   const y = world.height(x, z);
   return y !== undefined && !world.blocked(x, y, z, radius, 3.4);
 }
-function nearest(p: number[], radius: number) {
-  for (let r = 0; r <= 60; r += 2) for (let a = 0; a < 16; a++) {
-    const x = Math.round((p[0] + Math.cos(a * Math.PI / 8) * r) / 2) * 2;
-    const z = Math.round((p[1] + Math.sin(a * Math.PI / 8) * r) / 2) * 2;
-    if (clear(x, z, radius)) return { x, y: height(x, z), z };
-  }
-  throw Error("No clear transit stop");
-}
-// Four-neighbour breadth-first routing uses the same ground and obstacle mask
-// as multiplayer movement. Each car follows this path rather than cutting corners.
-const start = nearest(tram.points[0], 2.0), end = nearest(tram.points.at(-1)!, 2.0);
-const key = (x: number, z: number) => `${x},${z}`;
-const previous = new Map<string, string | null>([[key(start.x, start.z), null]]);
-const queue = [start]; let found = false;
-for (let i = 0; i < queue.length; i++) {
-  const p = queue[i];
-  if (p.x === end.x && p.z === end.z) { found = true; break; }
-  for (const [dx, dz] of [[2, 0], [-2, 0], [0, 2], [0, -2]]) {
-    const x = p.x + dx, z = p.z + dz, k = key(x, z), y = world.height(x, z);
-    if (previous.has(k) || !clear(x, z, 2.0) || y === undefined || Math.abs(y - p.y) > 1.2) continue;
-    previous.set(k, key(p.x, p.z)); queue.push({ x, y, z });
-  }
-}
-if (!found) throw Error("No clear tram route");
-const route = []; let k: string | null = key(end.x, end.z);
-while (k) { const [x, z] = k.split(",").map(Number); route.unshift({ x, y: height(x, z), z }); k = previous.get(k)!; }
-function lineClear(a: typeof start, b: typeof start) {
-  const steps = Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) * 2);
-  let previousY = a.y;
-  for (let i = 0; i <= steps; i++) {
-    const t = steps ? i / steps : 0, x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
-    const y = world.height(x, z);
-    if (!clear(x, z, 2.0) || y === undefined || Math.abs(y - previousY) > 0.7) return false;
-    previousY = y;
-  }
-  return true;
-}
-// String-pull the grid path, then round its meaningful bends. Validate the
-// complete curve, so smoothing cannot push the tram through a building.
-const corners = [route[0]];
-for (let i = 0; i < route.length - 1;) {
-  let next = i + 1;
-  for (let j = route.length - 1; j > next; j--) if (lineClear(route[i], route[j])) { next = j; break; }
-  corners.push(route[next]); i = next;
-}
-const smooth = [corners[0]];
-for (let i = 1; i < corners.length - 1; i++) {
-  const a = corners[i - 1], b = corners[i], c = corners[i + 1];
-  const before = Math.hypot(b.x - a.x, b.z - a.z), after = Math.hypot(c.x - b.x, c.z - b.z);
-  let rounded = false;
-  for (const radius of [8, 4, 2, 1]) {
-    const r = Math.min(radius, before * 0.4, after * 0.4);
-    const entry = { x: b.x + (a.x - b.x) * r / before, z: b.z + (a.z - b.z) * r / before };
-    const exit = { x: b.x + (c.x - b.x) * r / after, z: b.z + (c.z - b.z) * r / after };
-    const samples = Array.from({ length: Math.ceil(r * 4) + 1 }, (_, j) => j);
-    const curve = samples.map((_, j) => {
-      const t = j / (samples.length - 1), u = 1 - t;
-      const x = u * u * entry.x + 2 * u * t * b.x + t * t * exit.x;
-      const z = u * u * entry.z + 2 * u * t * b.z + t * t * exit.z;
-      return { x, y: world.height(x, z) ?? NaN, z };
-    });
-    if (curve.every(p => Number.isFinite(p.y) && clear(p.x, p.z, 2.0)) && lineClear(smooth.at(-1)!, curve[0])) {
-      smooth.push(...curve); rounded = true; break;
+// Follow the actual street corridor, not a shortest path across open ground.
+const road = (x: number, z: number) => {
+  ray.set(new Vector3(x, 300, z), new Vector3(0, -1, 0));
+  const hit = ray.intersectObjects(ground)[0];
+  if (!hit) return false;
+  const mesh = hit.object as Mesh, materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  return /G_(Road|Rail)$/.test((materials[hit.face!.materialIndex] ?? materials[0]).name);
+};
+const route: { x: number; y: number; z: number }[] = [];
+for (let i = 1; i < tram.points.length; i++) {
+  const a = tram.points[i - 1], b = tram.points[i], length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const nx = -(b[1] - a[1]) / length, nz = (b[0] - a[0]) / length;
+  for (let j = i === 1 ? 0 : 1; j <= Math.ceil(length); j++) {
+    const t = j / Math.ceil(length), x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t;
+    let seed = 0;
+    if (!road(x, z)) {
+      const candidates = Array.from({ length: 81 }, (_, k) => (k - 40) * .25).sort((a, b) => Math.abs(a) - Math.abs(b));
+      const found = candidates.find(offset => road(x + nx * offset, z + nz * offset));
+      if (found === undefined) throw Error(`Tram source misses road at ${x},${z}`);
+      seed = found;
     }
+    let left = seed, right = seed;
+    while (left > -24 && road(x + nx * (left - .25), z + nz * (left - .25))) left -= .25;
+    while (right < 24 && road(x + nx * (right + .25), z + nz * (right + .25))) right += .25;
+    // Wide junctions have no unique street centre; keep the mapped rail alignment.
+    const offset = right - left <= 22 ? (left + right) / 2 : seed;
+    route.push(point([x + nx * offset, z + nz * offset]));
   }
-  if (!rounded) smooth.push(b);
 }
-smooth.push(corners.at(-1)!);
+// Smooth in metres over repeated passes, including the first departure bend.
+// Validate each candidate against the existing street and building clearance.
+let smooth = route;
+for (let pass = 0; pass < 3; pass++) {
+  smooth = smooth.map((p, i, points) => {
+    if (i === 0 || i === points.length - 1) return p;
+    let x = 0, z = 0, weight = 0;
+    for (let j = Math.max(0, i - 12); j <= Math.min(points.length - 1, i + 12); j++) {
+      const q = points[j], distance = Math.hypot(q.x - p.x, q.z - p.z);
+      const w = Math.exp(-distance * distance / 32);
+      x += q.x * w; z += q.z * w; weight += w;
+    }
+    x /= weight; z /= weight;
+    return road(x, z) && clear(x, z, 1.5) ? point([x, z]) : p;
+  });
+}
 const tramRoute = [smooth[0]];
 for (let i = 1; i < smooth.length; i++) {
   const a = smooth[i - 1], b = smooth[i], steps = Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) * 2);
   for (let j = 1; j <= steps; j++) {
     const x = a.x + (b.x - a.x) * j / steps, z = a.z + (b.z - a.z) * j / steps;
-    const y = world.height(x, z); if (y === undefined) throw Error("Smoothed tram left terrain");
+    const y = height(x, z);
     tramRoute.push({ x, y, z });
   }
 }
-const polybahnRoute = polybahn.points.map(point);
-const platforms = [nearest(polybahn.points[0], 1.2), nearest(polybahn.points.at(-1)!, 1.2)];
-writeFileSync("packages/shared/src/transit-routes.json", JSON.stringify({ tram: tramRoute, polybahn: polybahnRoute, polybahnPlatforms: platforms }, null, 2) + "\n");
+// Recover the rail tops from the authored map. Ground raycasts under the
+// elevated bridge put cabins below the rails; the old OSM curve also misses its loop.
+const bins = new Map<number, { z: number; y: number }[]>();
+scene.traverse(o => {
+  if (!(o instanceof Mesh)) return;
+  const materials = Array.isArray(o.material) ? o.material : [o.material];
+  const g = o.geometry, positions = g.attributes.position, index = g.index;
+  for (const group of g.groups.length ? g.groups : [{ start: 0, count: index?.count ?? positions.count, materialIndex: 0 }]) {
+    if ((materials[group.materialIndex ?? 0] ?? materials[0]).name !== "G_Metal") continue;
+    for (let i = group.start; i < group.start + group.count; i++) {
+      const p = new Vector3().fromBufferAttribute(positions, index ? index.getX(i) : i).applyMatrix4(o.matrixWorld);
+      if (p.x < 15 || p.x > 178 || p.z < 73 || p.z > 116 || p.y > 46) continue;
+      const k = Math.round(p.x), values = bins.get(k) ?? [];
+      values.push({ z: p.z, y: p.y }); bins.set(k, values);
+    }
+  }
+});
+const polybahnOffsets: number[] = [];
+const rawPolybahnRoute = Array.from({ length: 155 }, (_, i) => {
+  const x = i + 20, values = bins.get(x) ?? bins.get(x - 1) ?? bins.get(x + 1);
+  if (!values?.length) throw Error(`Missing authored Polybahn rails at x=${x}`);
+  const low = Math.min(...values.map(p => p.z)), high = Math.max(...values.map(p => p.z));
+  polybahnOffsets.push(Math.max(0, (high - low - 1.07) / 2));
+  return { x, y: Math.max(...values.map(p => p.y)), z: (low + high) / 2 };
+});
+// Quantised rail vertices need a short smoothing window for stable cabin pitch.
+const polybahnRoute = rawPolybahnRoute.map((p, i) => {
+  // Preserve endpoint slope: a truncated average lifts the lower stop and flattens its pitch.
+  if (i < 2 || i >= rawPolybahnRoute.length - 2) return p;
+  const window = rawPolybahnRoute.slice(i - 2, i + 3);
+  return { x: p.x, y: window.reduce((n, q) => n + q.y, 0) / window.length, z: window.reduce((n, q) => n + q.z, 0) / window.length };
+});
+// Dock the entire cabin inside each hall, rather than at its exterior threshold.
+// The lower hall's exported rails stop at the facade; scenery supplies this short continuation.
+const first = polybahnRoute[0], next = polybahnRoute[5];
+for (let x = 19; x >= 16; x--) {
+  const t = (x - first.x) / (next.x - first.x);
+  polybahnRoute.unshift({x, y: first.y + (next.y - first.y) * t, z: first.z + (next.z - first.z) * t});
+  polybahnOffsets.unshift(0);
+}
+const last = polybahnRoute.at(-1)!, previous = polybahnRoute.at(-6)!;
+for (let x = 175; x <= 177; x++) {
+  const t = (x - last.x) / (last.x - previous.x);
+  polybahnRoute.push({x, y: last.y + (last.y - previous.y) * t, z: last.z + (last.z - previous.z) * t});
+  polybahnOffsets.push(0);
+}
+// Interior lobby slabs measured from G_StationFloor in the shipped GLB.
+const platforms = [{x:12.5,y:8.625,z:114},{x:185,y:48.875,z:75}];
+writeFileSync("packages/shared/src/transit-routes.json", JSON.stringify({ tram: tramRoute, polybahn: polybahnRoute, polybahnOffsets, polybahnPlatforms: platforms }, null, 2) + "\n");
 dispose();
-console.log(`Tram: ${route.length} grid samples -> ${corners.length} corners -> ${tramRoute.length} smooth samples; Polybahn: ${polybahnRoute.length} nodes; station access: ${JSON.stringify(platforms)}`);
+console.log(`Tram: ${route.length} road samples -> street-centred -> ${tramRoute.length} smooth samples; Polybahn: ${polybahnRoute.length} nodes; station access: ${JSON.stringify(platforms)}`);
 

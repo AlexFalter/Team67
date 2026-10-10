@@ -63,9 +63,8 @@ test("drinking is single-use, gives the prototype's walking speed, and pauses th
     C.stepPlayer(boosted, { ...C.IDLE_INPUT, x: 1, sprint: true }, 1 / 60);
   }
   assert.ok(Math.abs(boosted.vx / normal.vx - C.MATE_SPEED_MULTIPLIER) < .001);
-  boosted.shoes = true;
   for (let i = 0; i < 60; i++) C.stepPlayer(boosted, { ...C.IDLE_INPUT, x: 1, sprint: true }, 1 / 60);
-  assert.ok(boosted.vx <= C.MAX_HORIZONTAL_SPEED, "existing report limit accepts the boosted shoes/sprint speed");
+  assert.ok(boosted.vx <= C.MAX_HORIZONTAL_SPEED, "existing report limit accepts the boosted sprint speed");
   p.vehicleId = "bike"; machine.tick(5000); assert.equal(p.mateBoostMs, C.MATE_BOOST_MS);
   p.vehicleId = ""; machine.tick(6000); assert.equal(p.mateBoostMs, C.MATE_BOOST_MS - 1000);
   machine.tick(21000); assert.equal(p.mateBoostMs, 0);

@@ -78,7 +78,7 @@ export class PubliBikes {
     const bike = this.state.publiBikes.get(id), v = this.state.vehicles.get(id); if (!bike || !v || v.driver) return;
     let dock = -1, distance = 3;
     this.station.slots.forEach((slot, i) => {
-      if ([...this.state.publiBikes.values()].some(b => b.dock === i)) return;
+      if ([...this.state.publiBikes].some(([id, b]) => b.dock === i && C.publiBikeIsDocked(b, this.state.vehicles.get(id), this.station.slots))) return;
       const d = Math.hypot(slot.x - v.x, slot.z - v.z);
       if (d < distance) { dock = i; distance = d; }
     });
@@ -90,6 +90,7 @@ export class PubliBikes {
     for (const [id, lease] of this.leases) if (now >= this.state.publiBikes.get(id)!.reservationUntil || !this.eligible(lease.owner, id, now)) this.release(id);
     for (const [id, b] of this.state.publiBikes) {
       const v = this.state.vehicles.get(id)!;
+      if (b.dock >= 0 && !C.publiBikeIsDocked(b, v, this.station.slots)) b.dock = -1;
       if (!v.driver || b.broken) { this.batteryTimes.delete(id); continue; }
       const previous = this.batteryTimes.get(id) ?? now; this.batteryTimes.set(id, now);
       b.batteryMs = Math.max(0, b.batteryMs - Math.max(0, now - previous));

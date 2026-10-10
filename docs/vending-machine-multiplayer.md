@@ -33,13 +33,12 @@ items. Closing cancels an unpaid selection; a paid purchase continues and can
 be reopened. Disconnect removes purchase state; restarting resets all purchases,
 inventory and boosts, including players who waited during the previous round.
 
-Drinking grants **+35% walking/sprinting speed for 15 seconds** and stacks with
-the existing shoes. It does not change vehicle speed. The server timer pauses
+Drinking grants **+35% walking/sprinting speed for 15 seconds** and is the only optional speed boost. It does not change vehicle speed. The server timer pauses
 while riding and freezes with room results. In multiplayer it continues while
 the player's menu is open; opening a menu does not pause the room. Clients use
 replicated boost state in the existing shared movement code; movement reports
 cannot create or prolong a boost. The existing horizontal report limit already
-covers boosted sprinting with shoes and needs no increase.
+covers boosted sprinting and needs no increase.
 
 The static cabinet's 112 source nodes are batched into nine material meshes and
 the can into two, preserving embedded label textures. Loads are abortable; DOM,
@@ -69,3 +68,5 @@ Completed checks:
   exactly one feature UI without browser page errors.
 - All 490 restored prototype files match the source branch after Git's normal
   line-ending conversion. `git diff --check` passed.
+
+The shared `MATE_POSITION` places the cabinet at (-130, 83), on the pavement in front of the Coop beside Bahnhofbrücke. Its controls face the bridge (-Z). Rendering, interaction distance and collision all use this same placement.

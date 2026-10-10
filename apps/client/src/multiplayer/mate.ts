@@ -25,24 +25,26 @@ export class MateFeature {
   private savedView?: { position: THREE.Vector3; quaternion: THREE.Quaternion; up: THREE.Vector3; fov: number };
   private ray = new THREE.Raycaster();
   private collectionBox: THREE.Mesh;
+  private cans: THREE.Group[] = [];
   constructor(scene: THREE.Scene, private camera: THREE.PerspectiveCamera, private net: Network, private local: LocalPlayer, private canvas: HTMLCanvasElement) {
     this.machine.name = "El Tony Mate vending machine";
     this.machine.position.copy(C.mateSite(C.zurichWorld));
     this.prize.name = "Collectible Mate can"; this.prize.visible = false; this.machine.add(this.prize);
     this.collectionBox = new THREE.Mesh(new THREE.BoxGeometry(1.1, .36, .28), new THREE.MeshBasicMaterial({ visible: false }));
     this.collectionBox.position.set(.34, .35, -.4); this.machine.add(this.collectionBox); scene.add(this.machine);
-    this.ready = Promise.allSettled([loadMateModel("mate-machine", this.abort.signal), loadMateModel("mate-can-mint", this.abort.signal)]).then(results => {
+    this.ready = Promise.allSettled([loadMateModel("mate-machine", this.abort.signal), ...(["mate-can-basic", "mate-can-light", "mate-can-mint", "mate-can-ginger"] as const).map(name => loadMateModel(name, this.abort.signal))]).then(results => {
       const failure = results.find(r => r.status === "rejected");
       if (failure || this.abort.signal.aborted) {
         results.forEach(r => { if (r.status === "fulfilled") disposeMap(r.value); });
         if (failure?.status === "rejected") throw failure.reason; this.abort.signal.throwIfAborted();
       }
-      const [machine, can] = results.map(r => (r as PromiseFulfilledResult<THREE.Group>).value);
-      this.machine.add(machine); can.position.y = -.145; this.prize.add(can);
+      const [machine, ...cans] = results.map(r => (r as PromiseFulfilledResult<THREE.Group>).value);
+      this.machine.add(machine); this.cans = cans;
+      cans.forEach((can, i) => { can.position.y = -.145; can.visible = i === this.state?.selected; this.prize.add(can); });
     });
     const asset = (path: string) => `${import.meta.env.BASE_URL}assets/tony-mate/${path}`;
     this.modal.id = "mate-minigame"; this.modal.hidden = true;
-    this.modal.innerHTML = `<section class="mate-cabinet" role="dialog" aria-modal="true" aria-label="El Tony Mate vending machine"><p class="mate-message" role="status" aria-live="polite"></p><small class="mate-detail"></small><div class="mate-loading-track"><i></i></div><div class="mate-selections">${C.MATE_FLAVORS.map((flavor, i) => `<button type="button" class="mate-selection" data-flavor="${i}"><span>0${i + 1} · ${flavor}<small>330 ml · CHF 3.50</small></span><img src="${asset(`cans/${flavor.toLowerCase()}.png`)}" alt="${flavor} can"></button>`).join("")}</div><label class="mate-payment-slot">SWIPE CARD →<input id="mate-card" type="range" min="0" max="100" step="25" value="0" aria-label="Swipe card to pay CHF 3.50"><small class="mate-card-status">Select a flavor first</small></label><div class="mate-collection-hint" hidden><b>CLICK THE CAN IN THE DISPENSER</b><small>Enter also collects your Mate.</small><button type="button" class="mate-collect-back">Back · Esc</button></div><button type="button" class="mate-close">Step away · Esc</button></section>`;
+    this.modal.innerHTML = `<section class="mate-cabinet" role="dialog" aria-modal="true" aria-label="El Tony Mate vending machine"><p class="mate-message" role="status" aria-live="polite"></p><small class="mate-detail"></small><div class="mate-loading-track"><i></i></div><div class="mate-selections">${C.MATE_FLAVORS.map((flavor, i) => `<button type="button" class="mate-selection" data-flavor="${i}"><span>0${i + 1} · ${flavor}<small>330 ml · CHF 3.50</small></span><img src="${asset(`cans/${flavor.toLowerCase()}.png`)}" alt="${flavor} can"></button>`).join("")}</div><p class="mate-selection-required" role="status">You have to select something.</p><label class="mate-payment-slot" hidden>SWIPE CARD →<input disabled id="mate-card" type="range" min="0" max="100" step="25" value="0" aria-label="Swipe card to pay CHF 3.50"><small class="mate-card-status">Select a flavor first</small></label><div class="mate-collection-hint" hidden><b>CLICK THE CAN IN THE DISPENSER</b><small>Enter also collects your Mate.</small><button type="button" class="mate-collect-back">Back · Esc</button></div><button type="button" class="mate-close">Step away · Esc</button></section>`;
     this.panel = this.modal.querySelector<HTMLElement>(".mate-cabinet")!;
     this.card = this.modal.querySelector<HTMLInputElement>("input")!;
     this.message = this.modal.querySelector<HTMLElement>(".mate-message")!;
@@ -111,22 +113,39 @@ export class MateFeature {
     const now = this.net.now(), state = this.state, p = this.local.body;
     if (this.pending && now - this.pendingAt > 5000) this.pending = false;
     if (this.active && (!this.net.canPlay || p.vehicleId || p.knockdownUntil > now || !C.nearMate(p, C.zurichWorld))) this.close();
+    this.modal.querySelector<HTMLElement>(".mate-payment-slot")!.hidden = state?.phase !== "payment";
+    this.modal.querySelector<HTMLElement>(".mate-selection-required")!.hidden = !!state && !["idle", "failure"].includes(state.phase);
     const physical = state?.phase === "dropping" || state?.phase === "collect";
+    this.cans.forEach((can, i) => { can.visible = i === state?.selected; });
     this.prize.visible = !!physical && this.net.canPlay;
     if (physical) { const pose = C.mateCanDropPose((now - state!.dropStartedAt) / 1000); this.prize.position.set(pose.x, pose.y, pose.z); this.prize.rotation.set(pose.roll, 0, -Math.PI / 2 + pose.tilt); }
     this.hint.hidden = !this.net.canPlay || !this.local.enabled || !!p.vehicleId || !C.nearMate(p, C.zurichWorld);
     this.hint.textContent = state?.phase === "success" ? "El Tony Mate · collected" : "E · El Tony Mate vending machine";
     this.inventory.hidden = !this.net.canPlay || (!p.mateCount && !p.mateBoostMs);
+    const flavor = C.MATE_FLAVORS[state?.selected ?? 2];
+    if (flavor) {
+      const image = this.inventory.querySelector<HTMLImageElement>("img")!;
+      const source = `${import.meta.env.BASE_URL}assets/tony-mate/cans/${flavor.toLowerCase()}.png`;
+      if (image.getAttribute("src") !== source) { image.src = source; image.alt = `${flavor} Mate`; }
+    }
     this.inventory.querySelector("b")!.textContent = `×${p.mateCount}`;
     this.inventory.querySelector<HTMLButtonElement>("button")!.disabled = this.pending || this.active || !p.mateCount || p.mateBoostMs > 0 || !!p.vehicleId || p.knockdownUntil > now;
     this.inventory.querySelector("[role=status]")!.textContent = p.mateBoostMs > 0 ? `Mate rush · +35% · ${Math.ceil(p.mateBoostMs / 1000)}s${p.vehicleId ? " · paused while riding" : ""}` : "";
     this.effects.hidden = !this.net.canPlay || this.active || !!p.vehicleId || p.mateBoostMs <= 0 || Math.hypot(p.vx, p.vz) < .2;
     if (!this.active || !state) return;
     this.modal.dataset.phase = state.phase;
-    this.buttons.forEach((button, i) => { const tried = !!(state.tried & (1 << i)); button.disabled = this.pending || !["idle", "failure"].includes(state.phase) || tried || now < state.retryAt; button.dataset.tried = String(tried); button.classList.toggle("selected", state.phase !== "idle" && i === state.selected); button.querySelector("small")!.textContent = tried ? "Unavailable · try another" : "330 ml · CHF 3.50"; });
+    this.buttons.forEach((button, i) => {
+      const tried = !!(state.tried & (1 << i));
+      const soldOut = tried && (i !== state.selected || state.phase === "failure");
+      button.disabled = this.pending || !["idle", "failure"].includes(state.phase) || tried || now < state.retryAt;
+      button.dataset.soldOut = String(soldOut);
+      button.classList.toggle("selected", state.phase !== "idle" && i === state.selected);
+      button.querySelector("small")!.textContent = soldOut ? "Sold out · try another" : "330 ml · CHF 3.50";
+    });
     if (state.phase !== this.lastPhase) { this.card.value = "0"; this.lastPhase = state.phase; }
     this.card.disabled = this.pending || state.phase !== "payment";
-    this.message.textContent = this.pending ? "Please wait…" : ({ idle: "Select your Mate", payment: "Swipe to pay", loading: "Please wait", failure: "Not available", dropping: "Dispensing can", collect: "Take your can", success: "Mate acquired" } as Record<string, string>)[state.phase];
+    this.message.classList.toggle("mate-message-failure", state.phase === "failure" && !this.pending);
+    this.message.textContent = this.pending ? "Please wait…" : ({ idle: "Select your Mate", payment: "Swipe to pay", loading: "Please wait", failure: "Sold out · try another", dropping: "Dispensing can", collect: "Take your can", success: "Mate acquired" } as Record<string, string>)[state.phase];
     this.modal.querySelector(".mate-detail")!.textContent = now < state.retryAt ? `Retry in ${((state.retryAt - now) / 1000).toFixed(1)}s · payment refunded` : state.phase === "payment" ? `${C.MATE_FLAVORS[state.selected]} · CHF 3.50` : physical ? "Collect from the tray below" : "";
     this.modal.querySelector<HTMLElement>(".mate-loading-track i")!.style.width = state.phase === "loading" ? `${Math.max(0, Math.min(100, (1 - (state.readyAt - now) / C.MATE_LOADING_MS) * 100))}%` : "0%";
     this.modal.querySelector(".mate-card-status")!.textContent = state.phase === "payment" ? "Drag the card all the way right" : state.phase === "failure" ? "Payment refunded" : "Select a flavor first";

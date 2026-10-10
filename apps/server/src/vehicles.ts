@@ -27,7 +27,7 @@ export class VehicleManager {
     addNear("npc-car", 3, -20, 6);
     addNear("loose-ball", 4, 10, -5, 7, 3);
     if (world.name === "zurich") {
-      const tram = C.createVehicle(C.TRAM_KIND); tram.capacity = 18; tram.railDistance = 14;
+      const tram = C.createVehicle(C.TRAM_KIND); tram.capacity = 18; tram.railDistance = C.TRAM_START_DISTANCE;
       Object.assign(tram, C.railFrame(tram)); this.add("tram-1", tram);
       for (let i = 0; i < 2; i++) {
         const cabin = C.createVehicle(C.POLYBAHN_KIND); cabin.capacity = 12;
@@ -54,7 +54,7 @@ export class VehicleManager {
     if (
       p.simTime < p.knockdownUntil ||
       Math.abs(p.y - boarding.y) > C.VEHICLE_BOARD_HEIGHT ||
-      Math.hypot(p.x - boarding.x, p.z - boarding.z) > C.VEHICLE_BOARD_DISTANCE
+      Math.hypot(p.x - boarding.x, p.z - boarding.z) > (C.isRail(v) ? C.railBoardingDistance(v) : C.VEHICLE_BOARD_DISTANCE)
     )
       return this.result(client, false, "Move closer to board.");
     if (v.traveling)
@@ -324,7 +324,18 @@ export class VehicleManager {
         v.arrivalAt = v.tripStartedAt + C.railTripDuration(v) + C.TRANSIT_DOOR_MS;
       }
       if (!v.traveling) continue;
-      C.railMotion(v, now);
+      C.railMotion(v, now, !this.state.railCrashProtection);
+      if(v.kind===C.TRAM_KIND&&!this.state.railCrashProtection&&!v.railReverse&&!v.derailStartedAt&&v.railDistance>=C.tramFirstCorner&&C.tramTurnLoad(v)>C.TRAM_TRACK_ADHESION){
+        v.railDistance=C.tramFirstCorner;Object.assign(v,C.railFrame(v));v.derailStartedAt=now;
+        const incoming=C.railFrame({kind:v.kind,railLane:v.railLane,railDistance:C.tramFirstCorner-8});
+        const speed=Math.hypot(v.vx,v.vz);
+        v.vx=Math.sin(incoming.rotY)*speed;v.vz=Math.cos(incoming.rotY)*speed;
+      }
+      if(v.derailStartedAt){
+        v.derailAge=Math.min(8,Math.max(0,(now-v.derailStartedAt)/1000));
+        for(const p of this.state.players.values())if(p.vehicleId===id){this.attach(p,v);if(v.derailAge>=1.1)this.release(p);}
+        continue;
+      }
       for (const p of this.state.players.values()) if (p.vehicleId === id) this.attach(p, v);
       if (now >= v.arrivalAt) arrived.push([id, v]);
     }

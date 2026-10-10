@@ -18,7 +18,7 @@ from mathutils import Vector
 
 TILE = 1.0  # UV units per metre -> 16 px per metre with 16 px theme textures
 SIZE = 1.5  # all models scaled up (game readability); textures scale with them
-MATS = ['G_LampIron', 'G_LampGlass', 'G_BinSteel', 'G_BinSlot']
+MATS = ['G_LampIron', 'G_LampGlass', 'G_BinSteel', 'G_BinSlot', 'G_TramRoof', 'G_Wood', 'G_Metal', 'G_FlagCH', 'G_FlagZH']
 
 def collection(name, hide=False):
     c = bpy.data.collections.get(name)
@@ -55,9 +55,10 @@ def lathe(bm, uv, rings, sides, rot=0.0, cap_bottom=True, cap_top=True):
         for l in f.loops: l[uv].uv = (l.vert.co.x / TILE, l.vert.co.y / TILE)
     return loops
 
-def finish(name, bm):
-    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
-    bmesh.ops.scale(bm, vec=(SIZE, SIZE, SIZE), verts=bm.verts)
+def finish(name, bm, size=None, weld=True):
+    if weld: bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
+    k = SIZE if size is None else size
+    bmesh.ops.scale(bm, vec=(k, k, k), verts=bm.verts)
     bm.normal_update()
     me = bpy.data.meshes.get(name) or bpy.data.meshes.new(name)
     me.clear_geometry()
@@ -106,9 +107,65 @@ def bin_mesh():
         for l in f.loops: l[uv].uv = (l.vert.co.x / TILE, l.vert.co.y / TILE)
     return finish('PropModel_Bin', bm)
 
+def box(bm, uv, x0, x1, y0, y1, z0, z1, mat):
+    """Axis-aligned box, outward faces, box-projected UVs (TILE)."""
+    v = [bm.verts.new(c) for c in ((x0, y0, z0), (x1, y0, z0), (x1, y1, z0), (x0, y1, z0),
+                                     (x0, y0, z1), (x1, y0, z1), (x1, y1, z1), (x0, y1, z1))]
+    for q in ((0, 3, 2, 1), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)):
+        f = bm.faces.new([v[i] for i in q]); f.material_index = mat; f.normal_update()
+        n = f.normal
+        for l in f.loops:
+            c = l.vert.co
+            l[uv].uv = ((c.x, c.y) if abs(n.z) > 0.5 else ((c.x if abs(n.y) > abs(n.x) else c.y), c.z))
+
+def tram_stop_mesh():
+    """Tram shelter, 8 x 1.5 x 3 m: blue roof, wooden back and side walls with open window cut-outs,
+    metal front posts, bench. Open (walk-in) side = front = -Y; back wall at +Y."""
+    ROOF, WOOD, METAL = 4, 5, 6
+    bm = bmesh.new(); uv = bm.loops.layers.uv.new('UVMap')
+    W, D, T = 4.0, 0.75, 0.12            # half width, half depth, wall thickness
+    LOW, HIGH, TOP = 0.95, 2.35, 2.75     # solid band below LOW and above HIGH, roof underside TOP
+    box(bm, uv, -W - 0.15, W + 0.15, -D - 0.2, D + 0.1, TOP, TOP + 0.2, ROOF)
+    yb = D - T                            # back wall
+    box(bm, uv, -W, W, yb, D, 0.0, LOW, WOOD); box(bm, uv, -W, W, yb, D, HIGH, TOP, WOOD)
+    for x in (-W, -1.32, 1.32, W - T):
+        box(bm, uv, x, x + T, yb, D, LOW, HIGH, WOOD)
+    for x0 in (-W, W - T):                # side walls: same bands, open window in between
+        box(bm, uv, x0, x0 + T, -D + 0.25, yb, 0.0, LOW, WOOD); box(bm, uv, x0, x0 + T, -D + 0.25, yb, HIGH, TOP, WOOD)
+        box(bm, uv, x0, x0 + T, -D + 0.25, -D + 0.25 + T, LOW, HIGH, WOOD)
+    for x in (-W, W - 0.1):               # front posts
+        box(bm, uv, x, x + 0.1, -D, -D + 0.1, 0.0, TOP, METAL)
+    box(bm, uv, -2.5, 2.5, 0.2, yb, 0.42, 0.5, WOOD)          # bench seat
+    for x in (-2.3, 2.2): box(bm, uv, x, x + 0.1, 0.3, 0.45, 0.0, 0.42, METAL)
+    return finish('PropModel_TramStop', bm, size=1.0)
+
+def flag_mesh(kind):
+    """Flag pole (6.2 m) with a square cloth blowing towards the front (-Y): it waves sideways and sags
+    towards the tip, like a frozen gust. Both cloth sides are faces (the game renders single-sided)."""
+    METAL, CLOTH = 6, (7 if kind == 'CH' else 8)
+    bm = bmesh.new(); uv = bm.loops.layers.uv.new('UVMap')
+    lathe(bm, uv, [(0.05, 0.0, METAL), (0.05, 6.15, METAL), (0.09, 6.2, METAL), (0.0, 6.33, METAL)], 6)
+    L, H, TOPZ, N = 1.8, 1.8, 6.05, 10
+    rows = []
+    for i in range(N + 1):
+        t = i / N
+        y = -t * L * 0.96
+        x = 0.16 * math.sin(t * math.pi * 2.3) * (0.3 + t)   # wave grows towards the free end
+        sag = 0.5 * t * t                                    # hangs down at the tip
+        rows.append((t, Vector((x, y, TOPZ - sag)), Vector((x, y, TOPZ - H - sag * 1.15))))
+    for side in (0, 1):  # front and back faces need their own vertices
+        top = [bm.verts.new(r[1]) for r in rows]; bot = [bm.verts.new(r[2]) for r in rows]
+        for i in range(N):
+            q = (bot[i], bot[i + 1], top[i + 1], top[i]) if side == 0 else (top[i], top[i + 1], bot[i + 1], bot[i])
+            f = bm.faces.new(q); f.material_index = CLOTH
+            for l in f.loops:
+                k = top.index(l.vert) if l.vert in top else bot.index(l.vert)
+                l[uv].uv = (rows[k][0], 1.0 if l.vert in top else 0.0)
+    return finish('PropModel_Flag' + kind, bm, size=1.0, weld=False)
+
 models = collection('PropModels', hide=True)
 props = collection('Props')
-for mk in (lantern_mesh, bin_mesh):
+for mk in (lantern_mesh, bin_mesh, tram_stop_mesh, lambda: flag_mesh('CH'), lambda: flag_mesh('ZH')):
     me = mk(); o = bpy.data.objects.get(me.name)
     if o is None:
         o = bpy.data.objects.new(me.name, me); models.objects.link(o)
@@ -132,4 +189,4 @@ if globals().get('SAMPLES', True) and not props.objects:
         return r[1].z if r[0] else 8.8
     p = c - n * 9.98 + d * 4; place('Lantern', p.x, p.y, ground(p), yaw)   # railing inner face at 10.58
     p = c - n * 13.58 - d * 2; place('Bin', p.x, p.y, ground(p), yaw)      # railing inner face at 14.18
-print('props:', {k: sum(1 for o in props.objects if o.data.name.startswith('PropModel_' + k)) for k in ('Lantern', 'Bin')})
+print('props:', {k: sum(1 for o in props.objects if o.data.name.startswith('PropModel_' + k)) for k in ('Lantern', 'Bin', 'TramStop', 'FlagCH', 'FlagZH')})

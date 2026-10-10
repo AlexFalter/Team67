@@ -1,3 +1,4 @@
+import { CHARACTERS } from "./avatar.ts";
 import { RoomPhase, type WorldState, type RoundResult } from "@race/shared";
 import type { Network } from "./net.ts";
 
@@ -15,6 +16,7 @@ export class RoomFlow {
   private table = this.root.querySelector<HTMLTableElement>("#room-results")!;
   private timer = document.querySelector<HTMLElement>("#round-timer")!;
   private finish = document.querySelector<HTMLButtonElement>("#finish-round")!;
+  private countdownAnimation?: Animation;
   private signature = "";
   private abort = new AbortController();
   private prepared = false;
@@ -36,7 +38,7 @@ export class RoomFlow {
     this.root.querySelector("#room-leave")!.addEventListener("click", () => location.reload(), options);
   }
   patch(state: WorldState, id: string) {
-    const signature = JSON.stringify([state.phase, state.introComplete, state.hostId, id,
+    const signature = JSON.stringify([state.phase, state.introComplete, state.devMode, state.skipIntro, state.hostId, id,
       [...state.members].map(([key, m]) => [key, m.name, m.ready, m.spectator]),
       [...state.results].map(([key, r]) => [key, r.name, r.hitsLanded, r.hitsReceived])]);
     if (signature === this.signature) return;
@@ -67,7 +69,7 @@ export class RoomFlow {
       icon.textContent = ["CS", "SA", "AE"][m.character] ?? "CS";
       const name = document.createElement("span"); name.className = "roster-player"; name.textContent = m.name;
       const detail = document.createElement("small");
-      detail.textContent = [memberId === id ? "YOU" : "", memberId === state.hostId ? "HOST" : "", ["CS Student", "Student Athlete", "Albert Einstein"][m.character]].filter(Boolean).join(" · ");
+      detail.textContent = [memberId === id ? "YOU" : "", memberId === state.hostId ? "HOST" : "", CHARACTERS[m.character]].filter(Boolean).join(" · ");
       name.append(detail);
       const badge = document.createElement("span"); badge.className = "roster-status"; badge.textContent = status;
       badge.dataset.ready = String(state.phase === RoomPhase.Lobby);
@@ -88,17 +90,33 @@ export class RoomFlow {
     }
   }
   private lobbyMessage() {
-    return this.net.room?.state.hostId === this.net.room?.sessionId
+    const state = this.net.room?.state;
+    const prefix = state?.devMode ? `Dev mode${state.skipIntro ? " · bus intro skipped" : ""}. ` : "";
+    return prefix + (state?.hostId === this.net.room?.sessionId
       ? "Share the room code. When you're ready, start the match for everyone."
-      : "You're in. The host will start the match—every player competes solo.";
+      : "You're in. The host will start the match—every player competes solo.");
   }
   update() {
     if (this.net.room?.state.phase === RoomPhase.Lobby && !this.prepared)
       this.message.textContent = this.preparationError || "Loading the battle bus before you can ready up…";
-    this.timer.hidden = !this.net.canPlay;
-    if (this.net.canPlay) {
-      const seconds = Math.max(0, Math.ceil((this.net.room.state.endsAt - this.net.now()) / 1000));
-      this.timer.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} remaining`;
+    const canPlay = this.net.canPlay;
+    this.timer.hidden = !canPlay;
+    const remaining = canPlay ? Math.max(0, this.net.room.state.endsAt - this.net.now()) : 0;
+    const finalCountdown = canPlay && remaining > 0 && remaining <= 10000;
+    this.timer.dataset.final = String(finalCountdown);
+    if (!finalCountdown) this.countdownAnimation?.cancel();
+    if (canPlay) {
+      const seconds = Math.ceil(remaining / 1000);
+      const text = finalCountdown ? String(seconds) : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} remaining`;
+      if (this.timer.textContent !== text) {
+        this.timer.textContent = text;
+        this.timer.setAttribute("aria-label", `${seconds} seconds remaining`);
+        if (finalCountdown && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          this.countdownAnimation?.cancel();
+          this.countdownAnimation = this.timer.animate([{ scale: "1.15", opacity: .65 }, { scale: "1", opacity: 1 }],
+            { duration: 240, easing: "ease-out" });
+        }
+      }
     }
     if (this.net.room && this.net.status.startsWith("Disconnected")) {
       this.root.hidden = false; this.title.textContent = "Disconnected";
@@ -106,5 +124,5 @@ export class RoomFlow {
       this.ready.hidden = this.restart.hidden = this.finish.hidden = true;
     }
   }
-  dispose() { this.abort.abort(); }
+  dispose() { this.abort.abort(); this.countdownAnimation?.cancel(); this.timer.hidden = true; }
 }

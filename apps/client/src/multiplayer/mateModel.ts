@@ -31,7 +31,7 @@ export function batchMateModel(source: THREE.Group) {
   source.clear(); // Materials/textures now belong to the merged model.
   return root;
 }
-export async function loadMateModel(name: "mate-machine" | "mate-can-mint", signal: AbortSignal, baseUrl = import.meta.env.BASE_URL) {
+export async function loadMateModel(name: "mate-machine" | "mate-can-basic" | "mate-can-light" | "mate-can-mint" | "mate-can-ginger", signal: AbortSignal, baseUrl = import.meta.env.BASE_URL) {
   const response = await fetch(`${baseUrl}models/${name}.glb`, { signal });
   if (!response.ok) throw Error(`${name} download failed (${response.status})`);
   const bytes = await response.arrayBuffer(); signal.throwIfAborted();

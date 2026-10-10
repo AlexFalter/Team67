@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Character movement preview</title>
+  <style>
+    body { margin: 0; background: #18232e; color: #fff; font: 15px system-ui; }
+    nav { position: absolute; top: 12px; left: 16px; z-index: 1; }
+    select { padding: 8px; margin: 4px; }
+    canvas { display: block; }
+    p { margin: 8px; }
+    a { color: #b9e3ff; }
+  </style>
+</head>
+<body>
+  <nav>
+    <select id="motion" aria-label="Animation">
+      <option value="run">Run</option><option value="sprint" selected>Sprint</option>
+      <option value="jump">Sprint jump</option><option value="slide">Slide</option><option value="idle">Idle</option>
+    </select>
+    <select id="view" aria-label="Camera view">
+      <option>Third person</option><option>First person</option><option>Look down</option>
+    </select>
+    <select id="character" aria-label="Character">
+      <option>CS Student Boy</option><option>CS Student Girl</option><option>Einstein</option><option>Rector Dissertori</option>
+    </select>
+    <label><input id="slow" type="checkbox" /> Slow motion</label>
+    <p>Same character · sprint, airborne kicks and slide · <a href="/">Play the game</a></p>
+  </nav>
+  <script type="module">
+    import * as T from 'three';
+    import { avatar, pose, disposeAvatar, CHARACTERS } from '/src/multiplayer/avatar.ts';
+    import { decoratePlayer } from '/src/multiplayer/playerIdentity.ts';
+    import { SpeedParticles } from '/src/multiplayer/effects.ts';
+    import { PlayerView } from '/src/multiplayer/view.ts';
+    import { createBody } from '@race/shared';
+
+    const scene = new T.Scene(); scene.background = new T.Color('#243544');
+    const camera = new T.PerspectiveCamera(82, innerWidth / innerHeight, 0.05, 100);
+    const renderer = new T.WebGLRenderer({ antialias: true });
+    renderer.setSize(innerWidth, innerHeight); document.body.append(renderer.domElement);
+    scene.add(new T.HemisphereLight(0xffffff, 0x687482, 2));
+    const sun = new T.DirectionalLight(0xffffff, 3); sun.position.set(3, 6, 4); scene.add(sun);
+    const floor = new T.Mesh(new T.PlaneGeometry(100, 100), new T.MeshStandardMaterial({ color: '#758c86' }));
+    floor.rotation.x = -Math.PI / 2; scene.add(floor);
+    const grid = new T.GridHelper(100, 100, 0x455d58, 0x6a807b); scene.add(grid);
+    let full = avatar('#ffc978'), first = avatar('#ffc978', 0, true); scene.add(full, first);
+    decoratePlayer(full, CHARACTERS[0], true);
+    const p = createBody(), view = new PlayerView(camera, []), speed = new SpeedParticles(scene);
+    view.yaw = Math.PI;
+    const motion = document.querySelector('#motion'), perspective = document.querySelector('#view');
+    const slow = document.querySelector('#slow');
+    let t = 0, last = performance.now(), distance = 0;
+    document.querySelector('#character').onchange = event => {
+      disposeAvatar(full); disposeAvatar(first);
+      full = avatar('#ffc978', event.target.selectedIndex);
+      first = avatar('#ffc978', event.target.selectedIndex, true); scene.add(full, first);
+      decoratePlayer(full, CHARACTERS[event.target.selectedIndex], true);
+    };
+    motion.onchange = () => { t = 0; };
+    function frame(now) {
+      const dt = Math.min(0.05, (now - last) / 1000) * (slow.checked ? 0.35 : 1);
+      last = now; t += dt;
+      Object.assign(p, { simTime: t * 1000, vz: motion.value === 'run' ? 7.5 : 11, rotY: 0, y: 0, vy: 0, grounded: true, sprintJump: false, anim: 1 });
+      if (motion.value === 'jump') {
+        const air = t % 1.05;
+        p.y = Math.max(0, 8 * air - 12.5 * air * air);
+        p.grounded = p.y === 0; p.vy = p.grounded ? 0 : 8 - 25 * air; p.anim = p.grounded ? 1 : 2; p.sprintJump = !p.grounded;
+      }
+      if (motion.value === 'slide') p.anim = 4;
+      if (motion.value === 'idle') { p.anim = 0; p.vz = 0; }
+      const firstPerson = perspective.selectedIndex !== 0;
+      full.visible = !firstPerson; first.visible = firstPerson; pose(full, p, dt);
+      if (!firstPerson) { camera.position.set(2.5, 1.4 + p.y, 3); camera.lookAt(0, p.y + 0.8, 0); }
+      else { view.pitch = perspective.selectedIndex === 2 ? -1.25 : 0; view.update(p, dt); pose(first, p, dt, view.pitch, camera); }
+      distance += p.vz * dt; grid.position.z = -(distance % 1);
+      speed.update(p, camera, dt, firstPerson); renderer.render(scene, camera); requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+    onresize = () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); };
+  </script>
+</body>
+</html>

@@ -1,11 +1,6 @@
 import { useState } from "react";
 import "./game.css";
-
-const characters = [
-  { name: "CS Student", detail: "Glasses & backpack" },
-  { name: "Student Athlete", detail: "Varsity jacket & sneakers" },
-  { name: "Albert Einstein", detail: "Wild hair & moustache" },
-];
+import { CHARACTERS as characters } from "./avatar.ts";
 
 export function GameOverlay({ resolution, onResolutionChange }: {
   resolution: "performance" | "high";
@@ -22,7 +17,7 @@ export function GameOverlay({ resolution, onResolutionChange }: {
         <p className="menu-game-type">Solo multiplayer</p>
       </div>
       <form onSubmit={event => event.preventDefault()}>
-        <div className="menu-card-heading"><span>CHOOSE YOUR CHARACTER</span><span>0{character + 1} / 03</span></div>
+        <div className="menu-card-heading"><span>CHOOSE YOUR CHARACTER</span><span>0{character + 1} / 0{characters.length}</span></div>
         <div className="character-picker" role="group" aria-label="Choose your character"
           onKeyDown={event => {
             if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
@@ -30,18 +25,26 @@ export function GameOverlay({ resolution, onResolutionChange }: {
             }
           }}>
           <button type="button" className="character-arrow" aria-label="Previous character" onClick={() => cycleCharacter(-1)}>‹</button>
-          <div id="character-stage" role="img" aria-label={`3D preview of ${characters[character].name}`} />
+          <div id="character-stage" role="img" aria-label={`3D preview of ${characters[character]}`} />
           <button type="button" className="character-arrow" aria-label="Next character" onClick={() => cycleCharacter(1)}>›</button>
         </div>
         <div className="character-description" aria-live="polite">
-          <h1>{characters[character].name}</h1><p>{characters[character].detail}</p>
+          <h1>{characters[character]}</h1>
         </div>
         <div className="character-pagination" aria-hidden="true">{characters.map((_, index) => <i key={index} className={index === character ? "selected" : undefined} />)}</div>
         <input id="character" type="hidden" name="character" value={character} />
         <label htmlFor="player-name">Your name</label>
         <input id="player-name" autoComplete="nickname" maxLength={24} required placeholder="Your name" />
         <label htmlFor="room-code">Room code</label>
-        <input id="room-code" autoComplete="off" maxLength={12} minLength={4} required placeholder="e.g. ZURICH" />
+        <input id="room-code" autoComplete="off" maxLength={12} minLength={4} placeholder="e.g. ZURICH" />
+        <fieldset id="dev-settings">
+          <legend>Testing</legend>
+          <label><input id="dev-mode" type="checkbox" /> Dev mode</label>
+          <label id="skip-intro-option" hidden><input id="skip-intro" type="checkbox" defaultChecked /> Skip starting bus animation</label>
+          <label id="gold-bikes-option" hidden><input id="gold-bikes" type="checkbox" defaultChecked /> Gold working PubliBikes</label>
+          <label id="rail-protection-option" hidden><input id="rail-protection" type="checkbox" /> Prevent tram derailment</label>
+          <p className="hint">Saved on this browser. Applies to rooms you create; everyone in the room starts together.</p>
+        </fieldset>
         <div className="buttons">
           <button type="submit" value="create" disabled>Create room <span aria-hidden="true">↗</span></button>
           <button type="submit" value="join" disabled>Join room</button>
@@ -75,6 +78,7 @@ export function GameOverlay({ resolution, onResolutionChange }: {
     </section>
     <div id="round-timer" hidden aria-live="off"></div>
     <div id="battle-bus-intro" hidden role="status" aria-live="polite"></div>
+    <div id="activity-feed" hidden role="log" aria-live="polite" aria-label="Activity feed"></div>
     <button id="play" hidden>Click to play<br /><small>Mouse / trackpad look · WASD run · Space jump · Esc menu</small></button>
     <div id="crosshair" hidden aria-hidden="true">+</div>
     <section id="pause" hidden aria-label="Game menu">
@@ -96,8 +100,8 @@ export function GameOverlay({ resolution, onResolutionChange }: {
         </select>
         <p>Performance reduces rendering resolution for smoother play. High uses more GPU power.</p>
         <p>Mouse / trackpad: look · click to punch.<br />
-          WASD run · Shift sprint · Space jump · E ride<br />
-          F hit · R shoes<br />
+          WASD run · Shift sprint · Space jump · C slide while sprinting · E ride<br />
+          F hit<br />
           F5 / V change view · Esc menu</p>
         <p role="status"></p>
         <button id="leave">Leave room</button>

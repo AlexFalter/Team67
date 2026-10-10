@@ -1,7 +1,8 @@
 import {
   AgXToneMapping,
+  DirectionalLight,
   PMREMGenerator,
-  type Scene,
+  Scene,
   BufferAttribute,
   CanvasTexture,
   Color,
@@ -21,7 +22,7 @@ import autumn from "./themes/autumn.json";
 /** Every visual knob of the map lives in themes/*.json; this module only interprets it. */
 export interface SurfaceStyle {
   palette: string[];
-  pattern: "noise" | "tiles" | "rails" | "water" | "window" | "shopfront" | "rooftiles" | "timber" | "text" | "leaves" | "bark";
+  pattern: "noise" | "tiles" | "rails" | "water" | "window" | "shopfront" | "rooftiles" | "timber" | "text" | "leaves" | "bark" | "flag_ch" | "flag_zh";
   weights?: number[];
   tile?: [number, number];
   stagger?: number;
@@ -163,6 +164,13 @@ function patternIndex(style: SurfaceStyle, n: number, x: number, y: number, rand
     }
     case "text":
       return mask?.has(y * (style.size?.[0] ?? n) + x) ? 1 : 0;
+    case "flag_ch": { // white cross on red (palette 0 red, 1 white)
+      const w = style.size?.[0] ?? n, h = style.size?.[1] ?? n;
+      const cx = Math.abs(x + 0.5 - w / 2), cy = Math.abs(y + 0.5 - h / 2), arm = w * 0.31, half = w * 0.1;
+      return (cx < half && cy < arm) || (cy < half && cx < arm) ? 1 : 0;
+    }
+    case "flag_zh": // diagonal: white upper-right, blue lower-left (palette 0 blue, 1 white)
+      return x >= y ? 1 : 0;
     case "timber": {
       // half-timbering: frame + X brace per panel, plaster dither
       const m = n - 1;
@@ -207,6 +215,8 @@ export function surfaceTexture(name: string, style: SurfaceStyle, pixels: number
   const texture = new CanvasTexture(canvas);
   texture.flipY = false; // glTF UVs: row 0 of the canvas is v = 0 (otherwise signs/windows render upside down)
   texture.colorSpace = SRGBColorSpace;
+  // Text signs use the authored glTF UV orientation, unlike repeating ground patterns.
+  if (style.pattern === "text") texture.flipY = false;
   texture.magFilter = NearestFilter;
   texture.wrapS = texture.wrapT = RepeatWrapping;
   return texture;
@@ -262,21 +272,32 @@ function tintBuildings(mesh: Mesh, palette: (typeof TINTED)[string], theme: MapT
 }
 
 /**
- * Renderer look shared by every client, matching Blender's material preview: AgX tone mapping plus a
- * neutral studio environment as ambient light. Without them the theme lights clip pale walls and
- * flat roofs to white and leave sun-averted roofs dark. Returns a dispose function.
+ * Renderer look matching the Blender preview (blender/scene_light.py): AgX tone mapping (Blender's view
+ * transform) and the world as an environment of one uniform colour, theme skyLight at strength
+ * hemiIntensity * 0.55 - like Blender's world it lights diffuse surfaces (albedo * strength) and shows up
+ * in reflections (water). Optional extra neutral studio fill: lighting.environment. Returns dispose.
  */
 export function applyRendererLook(renderer: WebGLRenderer, scene: Scene, theme: MapTheme) {
+  const l = theme.lighting;
   renderer.toneMapping = AgXToneMapping;
-  renderer.toneMappingExposure = theme.lighting.exposure ?? 1;
-  const strength = theme.lighting.environment ?? 0;
-  if (!strength) return () => {};
+  renderer.toneMappingExposure = l.exposure ?? 1;
   const pmrem = new PMREMGenerator(renderer);
-  const room = new RoomEnvironment();
-  const target = pmrem.fromScene(room, 0.04);
-  room.traverse((o) => { if (o instanceof Mesh) { o.geometry.dispose(); (o.material as Material).dispose(); } });
+  const world = new Scene();
+  world.background = new Color(l.skyLight).multiplyScalar(l.hemiIntensity * 0.55);
+  let target = pmrem.fromScene(world, 0);
+  if (l.environment) {  // optional neutral studio light on top (0 = off, like Blender)
+    const room = new RoomEnvironment();
+    target.dispose(); target = pmrem.fromScene(room, 0.04);
+    room.traverse((o) => { if (o instanceof Mesh) { o.geometry.dispose(); (o.material as Material).dispose(); } });
+  }
   pmrem.dispose();
   scene.environment = target.texture;
-  scene.environmentIntensity = strength;
+  scene.environmentIntensity = 1;
   return () => { if (scene.environment === target.texture) scene.environment = null; target.dispose(); };
+}
+
+/** The sun lamp of the Blender preview (blender/scene_light.py): strength sunIntensity * 1.6. Position it
+ * from theme sunElevation / sunAzimuth. The world light comes from applyRendererLook. */
+export function themeLights(theme: MapTheme) {
+  return { sun: new DirectionalLight(theme.lighting.sun, theme.lighting.sunIntensity * 1.6) };
 }

@@ -25,6 +25,16 @@ test("names are required, bounded and normalized; invalid joins do not create me
   assert.equal(C.playerName("<b>Ada</b>"), "<b>Ada</b>", "names stay text, rather than markup");
 });
 
+test("all four character choices are accepted and invalid choices fall back to the male student", () => {
+  const { rounds } = fixture();
+  for (let character = 0; character < 4; character++) {
+    assert.equal(rounds.join(`p${character}`, { name: `Player ${character}`, character }).character, character);
+  }
+  for (const character of [-1, 4, "3", 1.5]) {
+    assert.equal(rounds.join(`invalid${character}`, { name: "Player", character }).character, 0);
+  }
+});
+
 test("only the host starts the round; guest readiness and disconnects never auto-start", () => {
   const { state, rounds, join } = fixture(); join("a"); join("b"); join("c");
   rounds.ready("b", "true", 1000);
@@ -85,21 +95,22 @@ test("the last participant leaving finishes for waiting members and transfers th
 test("live room lifecycle gates gameplay, shows identical results to late joiners, and admits them next round", { timeout: 20000 }, async () => {
   await withServer(async (client, rooms) => {
     const a = await client.create<WireState>("race", { name: "Ada", character: 1 }); rooms.push(a);
-    const b = await client.joinById<WireState>(a.roomId, { name: "Ben", character: 2 }); rooms.push(b);
+    const b = await client.joinById<WireState>(a.roomId, { name: "Ben", character: 3 }); rooms.push(b);
     for (const room of rooms) {
       room.onMessage("bump", () => {}); room.onMessage("impulse", () => {}); room.onMessage("playerCorrection", () => {});
     }
     await until(() => a.state?.members?.size === 2 && b.state?.members?.size === 2, "lobby members");
     assert.equal(a.state.phase, C.RoomPhase.Lobby);
     assert.equal(a.state.members.get(a.sessionId)!.name, "Ada");
+    assert.equal(a.state.players.get(b.sessionId)!.character, 3, "rector character reaches the other client");
     const initial = a.state.players.get(a.sessionId)!;
     const position = { x: initial.x, y: initial.y, z: initial.z };
     a.send("move", [initial.x + 0.1, initial.y, initial.z, 0, 1, 0, 0, 1]);
-    a.send("toggleShoes"); a.send("vehicleEnter", "cart-1"); a.send("hit");
+    a.send("vehicleEnter", "cart-1"); a.send("hit");
     b.send("ready", true);
     await until(() => a.state.members.get(b.sessionId)!.ready, "guest ready");
     assert.equal(a.state.phase, C.RoomPhase.Lobby);
-    assert.equal(initial.x, position.x); assert.equal(initial.shoes, false); assert.equal(initial.vehicleId, "");
+    assert.equal(initial.x, position.x); assert.equal(initial.vehicleId, "");
     b.send("ready", false);
     await until(() => !a.state.members.get(b.sessionId)!.ready, "guest not ready");
     a.send("ready", true);
@@ -109,7 +120,7 @@ test("live room lifecycle gates gameplay, shows identical results to late joiner
     await until(() => waiting.state?.members?.size === 3, "late member");
     assert.equal(waiting.state.members.get(waiting.sessionId)!.spectator, true);
     assert.equal(waiting.state.players.has(waiting.sessionId), false);
-    waiting.send("ready", true); waiting.send("toggleShoes"); waiting.send("hit");
+    waiting.send("ready", true); waiting.send("hit");
     waiting.send("vehicleEnter", "cart-1"); waiting.send("finishRound");
     await delay(100);
     assert.equal(a.state.phase, C.RoomPhase.Running);
@@ -125,7 +136,7 @@ test("live room lifecycle gates gameplay, shows identical results to late joiner
     assert.deepEqual(results(a), results(b)); assert.deepEqual(results(a), results(waiting));
     assert.equal(a.state.results.get(a.sessionId)!.hitsLanded, 1);
     const frozen = results(a);
-    a.send("hit"); a.send("toggleShoes"); a.send("move", [0, 0, 0, 0, 0, 0, 0, 0]);
+    a.send("hit"); a.send("move", [0, 0, 0, 0, 0, 0, 0, 0]);
     waiting.send("restartRound"); await delay(100);
     assert.equal(a.state.phase, C.RoomPhase.Finished); assert.deepEqual(results(a), frozen);
     const lateFinished = await client.joinById<WireState>(a.roomId, { name: "Dee" }); rooms.push(lateFinished);

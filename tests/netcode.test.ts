@@ -55,7 +55,7 @@ test("main reports keep feature movement immediate under 160ms latency", { timeo
 });
 
 
-test("clients share shoes, stationary look-directed punches, cooldown and recovery without bananas", { timeout: 15000 }, async () => {
+test("clients share stationary look-directed punches, cooldown and recovery without bananas", { timeout: 15000 }, async () => {
   await withServer(async (client, rooms) => {
     const a = await client.create<WireState>("race", { name: "Player" }), b = await client.joinById<WireState>(a.roomId, { name: "Player" }); rooms.push(a, b);
     const hits: C.Impulse[] = [];
@@ -64,7 +64,7 @@ test("clients share shoes, stationary look-directed punches, cooldown and recove
     await until(() => a.state?.players?.size === 2 && b.state?.players?.size === 2, "two players");
     await startRound(a, [a, b]);
     assert.ok(!("peels" in a.state));
-    a.send("toggleShoes"); await until(() => b.state.players.get(a.sessionId)!.shoes, "remote shoes");
+    assert.ok(!("shoes" in a.state.players.get(a.sessionId)!), "running-shoe state is removed from the live schema");
     const own = a.state.players.get(a.sessionId)!, startX = own.x;
     a.send("move", [own.x, own.y, own.z, Math.PI / 2, 0, 0, 0, 0]); a.send("hit");
     await until(() => hits.length === 1 && b.state.players.get(b.sessionId)!.knockdownUntil > Date.now(), "punch");

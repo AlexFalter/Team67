@@ -17,7 +17,9 @@ REPO = os.path.normpath(os.path.join(ZH_DIR, '..', '..', '..', '..'))
 src = globals().get('PROPS_JSON') or os.path.join(REPO, 'apps', 'client', 'public', 'maps', 'zurich', 'props.json')
 rows = json.load(open(src))
 props = bpy.data.collections['Props']
-for o in list(props.objects): bpy.data.objects.remove(o)
+kinds_in_file = {r[5] for r in rows}  # only replace the kinds this file contains (props.json vs flags_stations.json)
+for o in list(props.objects):
+    if o.data.name.split('.')[0].replace('PropModel_', '') in kinds_in_file: bpy.data.objects.remove(o)
 dg = bpy.context.evaluated_depsgraph_get()
 walk = [bpy.data.objects['Ground']] + [o for n in ('Bridges_lowpoly', 'Bahnhofbruecke_lowpoly', 'Polyterrasse_lowpoly')
                                        for o in [bpy.data.objects.get(n)] if o]

@@ -166,7 +166,8 @@ export class GameAudio {
       if (this.lastGrounded && !body.grounded && body.vy > 2) this.effect("jump");
       if (!this.lastGrounded && body.grounded && -this.lastVy > 3) { this.stepAge = 0; this.effect("land", 0.2 + Math.min(-this.lastVy / 30, 0.35)); }
       // Footsteps: one recorded step per stride, alternating feet.
-      if (body.grounded && speed >= 0.5) {
+      // No footsteps during a sprint slide (main's C key).
+      if (body.grounded && speed >= 0.5 && body.anim !== C.SLIDE_ANIM) {
         const sprint = speed > C.WALK_SPEED + 0.5, stride = sprint ? 3 : 2.3;
         this.stepAge += Math.max(0, dt) * speed;
         if (this.stepAge >= stride) { this.stepAge %= stride; this.effect("step", sprint ? 0.42 : 0.3); }

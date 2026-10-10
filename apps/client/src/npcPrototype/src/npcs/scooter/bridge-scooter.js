@@ -9,7 +9,7 @@ import dialogueCues from '../../../assets/audio/frankfurt-dialogue-cues.json';
 import {createStudent} from '../../player/student-model.js';
 import {createMapNavigation} from '../../world/core/map-navigation.js';
 
-export function createBridgeScooter(scene,world,{horns=gameConfig.npcs.scooter.horns,knifeModel,onCollect=()=>{},placement,uiRoot=document.body}={}){
+export function createBridgeScooter(scene,world,{horns=gameConfig.npcs.scooter.horns,knifeModel,onCollect=()=>{},placement,parked=false,uiRoot=document.body}={}){
  placement=featurePlacement(world,'scooterEncounter',placement);
  const passengers=createVehiclePassengers('gangScooter');for(let i=0;i<3;i++)passengers.board(`rider-${i}`);
  const group=new THREE.Group();group.name='Three riders on a Lime scooter · Bahnhofbrücke';scene.add(group);
@@ -40,29 +40,25 @@ export function createBridgeScooter(scene,world,{horns=gameConfig.npcs.scooter.h
  // Enter from the void north of the map, then follow a clear street route to the bridge.
  const bounds=world.data.playableBounds,bridge=placement.ridePoints;
  const safe=(x,z)=>!world.isWater(x,z)&&!world.bodyBlocked(x,world.height(x,z)+.15,z,.65,3);
- const nav=createMapNavigation({data:world.data,height:world.height,blocked:(x,z)=>!safe(x,z)},{penetration:()=>0},{step:2});
- let entry=placement.entrance?placementPoint(placement.entrance,'scooter entrance'):null;
+ // Multiplayer uses only the parked bridge pose, so it needs no map-edge arrival.
+ const nav=parked?null:createMapNavigation({data:world.data,height:world.height,blocked:(x,z)=>!safe(x,z)},{penetration:()=>0},{step:2});
+ let entry=parked?[...bridge[0]]:placement.entrance?placementPoint(placement.entrance,'scooter entrance'):null;
  if(entry&&!safe(...entry))throw Error('Scooter entrance is blocked');
- // The map's north edge is no longer straight (the terrain ends before bounds.maxZ in places),
- // so enter at the northernmost clear ground of each column rather than at bounds.maxZ.
- let edge=bounds.maxZ;
- const clearAt=(x,z)=>Array.from({length:9},(_,i)=>safe(x,z+i*.25)).every(Boolean);
  for(let offset=0;offset<300&&!entry;offset+=2)for(const side of [-1,1]){
-  const x=placement.entranceX+side*offset;let z=bounds.maxZ-2;
-  while(z>bounds.maxZ-400&&!safe(x,z))z-=2;
-  z-=2;if(clearAt(x,z)){entry=[x,z];edge=Math.min(bounds.maxZ,z+2);break;}
+  const x=placement.entranceX+side*offset,z=bounds.maxZ-2;
+  if(Array.from({length:9},(_,i)=>safe(x,z+i*.25)).every(Boolean)){entry=[x,z];break;}
  }
  if(!entry)throw Error('No safe scooter entrance from the void');
- const approach=navigatePlacement(nav,entry,placement.approachWaypoints,bridge[0]);
+ const approach=parked?[]:navigatePlacement(nav,entry,placement.approachWaypoints,bridge[0]);
  if(approach.length>1&&nav.line(new THREE.Vector3(entry[0],world.height(...entry),entry[1]),new THREE.Vector3(approach[1][0],world.height(...approach[1]),approach[1][1])))approach.shift();
  if(approach.length>1&&nav.line(new THREE.Vector3(approach.at(-2)[0],world.height(...approach.at(-2)),approach.at(-2)[1]),new THREE.Vector3(bridge[0][0],world.height(...bridge[0]),bridge[0][1])))approach.pop();
- const route=[[entry[0],edge+30],entry,...approach,bridge[0],bridge[1]];
+ const route=parked?bridge:[[entry[0],bounds.maxZ+30],entry,...approach,bridge[0],bridge[1]];
  const nodes=route.map(([x,z],i)=>new THREE.Vector3(x,i===0?world.height(...entry):world.height(x,z),z));
  const spans=[];let length=0;for(let i=1;i<nodes.length;i++){const span=nodes[i].clone().sub(nodes[i-1]);const size=Math.hypot(span.x,span.z);if(size<.001)continue;spans.push({a:nodes[i-1],b:nodes[i],start:length,size});length+=size;}
  const bridgeStart=length-Math.hypot(bridge[1][0]-bridge[0][0],bridge[1][1]-bridge[0][1]);
- function frame(distance){const span=spans.find(s=>distance<=s.start+s.size)??spans.at(-1),t=THREE.MathUtils.clamp((distance-span.start)/span.size,0,1),p=span.a.clone().lerp(span.b,t);if(p.z<=edge)p.y=world.height(p.x,p.z);return {p,heading:Math.atan2(-(span.b.x-span.a.x),-(span.b.z-span.a.z))};}
+ function frame(distance){const span=spans.find(s=>distance<=s.start+s.size)??spans.at(-1),t=THREE.MathUtils.clamp((distance-span.start)/span.size,0,1),p=span.a.clone().lerp(span.b,t);if(p.z<=bounds.maxZ)p.y=world.height(p.x,p.z);return {p,heading:Math.atan2(-(span.b.x-span.a.x),-(span.b.z-span.a.z))};}
  function point(distance){return frame(distance).p;}
- for(let d=0;d<=length;d+=.25){const p=point(d);if(p.z<=edge&&!safe(p.x,p.z))throw Error('Scooter arrival route is not clear');}
+ for(let d=0;d<=length;d+=.25){const p=point(d);if(p.z<=bounds.maxZ&&!safe(p.x,p.z))throw Error('Scooter arrival route is not clear');}
  const audio=new Audio('/audio/frankfurt-dialogue.mp3?v=2'),clips=[audio];for(const audio of clips){audio.preload='auto';audio.volume=gameConfig.npcs.scooter.volume;}
  const caption=document.createElement('aside');caption.id='bridge-scooter-caption';caption.hidden=true;caption.setAttribute('aria-live','polite');uiRoot.append(caption);styleEncounterLine(caption);caption.classList.add('encounter-subtitle');
  let distance=0,age=0,used=false,moving=false,playing=false,played=false,failed=false,line=-1,generation=0,cooldown=0,speed=0,heading=0,stopDistance=length,phase='waiting',diverted=false,lastScan=-1;
@@ -77,7 +73,7 @@ export function createBridgeScooter(scene,world,{horns=gameConfig.npcs.scooter.h
  audio.onended=()=>{if(conversation&&phase==='dialogue')offer();else{playing=false;caption.hidden=true;}};
  collect.onclick=()=>{if(!conversation||phase!=='handover'||offerAge<gameConfig.npcs.scooter.handoverSeconds)return;completed=true;conversation=false;phase='parked';gift.visible=false;collect.hidden=true;caption.hidden=true;onCollect();};
  function pose(dt=0){const f=frame(distance);group.position.copy(f.p);heading=dt?heading+Math.atan2(Math.sin(f.heading-heading),Math.cos(f.heading-heading))*(1-Math.exp(-10*dt)):f.heading;group.rotation.y=heading;group.updateMatrixWorld(true);}
- pose();
+ if(parked){used=true;distance=length;phase='parked';}pose();
  return {dispose(){this.reset();audio.onended=null;audio.removeEventListener('timeupdate',syncCaption);caption.remove();collect.remove();disposeOwnedObject(group);},park(){used=true;moving=false;distance=stopDistance=length;phase='parked';pose();},passengers,group,riders,audio,clips,dialogueCues,point,active:()=>conversation,
   updateConversation(dt,position,camera){if(!conversation)return;position.copy(frozen);conversationAge+=dt;
    if(phase==='dialogue'){syncCaption();if((failed||audio.error||conversationAge>12)&&conversationAge>=dialogueCues.at(-1).end-dialogueCues[1].start)offer();}
