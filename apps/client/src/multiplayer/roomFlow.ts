@@ -1,3 +1,4 @@
+import { CHARACTERS } from "./avatar.ts";
 import { RoomPhase, type WorldState, type RoundResult } from "@race/shared";
 import type { Network } from "./net.ts";
 
@@ -68,7 +69,7 @@ export class RoomFlow {
       icon.textContent = ["CS", "SA", "AE"][m.character] ?? "CS";
       const name = document.createElement("span"); name.className = "roster-player"; name.textContent = m.name;
       const detail = document.createElement("small");
-      detail.textContent = [memberId === id ? "YOU" : "", memberId === state.hostId ? "HOST" : "", ["CS Student", "Student Athlete", "Albert Einstein"][m.character]].filter(Boolean).join(" · ");
+      detail.textContent = [memberId === id ? "YOU" : "", memberId === state.hostId ? "HOST" : "", CHARACTERS[m.character]].filter(Boolean).join(" · ");
       name.append(detail);
       const badge = document.createElement("span"); badge.className = "roster-status"; badge.textContent = status;
       badge.dataset.ready = String(state.phase === RoomPhase.Lobby);

@@ -5,8 +5,8 @@ import { avatar, pose, disposeAvatar, CHARACTERS, gaitRate } from "../apps/clien
 import { PlayerView } from "../apps/client/src/multiplayer/view.ts";
 import { createBody, ATTACK_COOLDOWN_MS } from "../packages/shared/src/index.ts";
 
-test("three original low-poly rigs animate locomotion, punches, falls and recovery without snapping", () => {
-  for (let i = 0; i < 3; i++) {
+test("four low-poly rigs animate locomotion, punches, falls and recovery without snapping", () => {
+  for (let i = 0; i < CHARACTERS.length; i++) {
     const mesh = avatar("#d9ab72", i), p = createBody();
     assert.equal(mesh.name, CHARACTERS[i]);
     assert.ok(new Box3().setFromObject(mesh).max.y < 2, "art fits the player collider");
@@ -45,14 +45,14 @@ test("three original low-poly rigs animate locomotion, punches, falls and recove
 test("first-person rigs reuse each outfit, hide the head, and show shoes when looking down", () => {
   const camera = new PerspectiveCamera(82, 1); camera.position.set(0, 1.6, -0.15);
   camera.rotation.set(-1.3, 0, 0, "YXZ"); camera.updateMatrixWorld(true);
-  for (let character = 0; character < 3; character++) {
+  for (let character = 0; character < CHARACTERS.length; character++) {
     const mesh = avatar("#d9ab72", character, true), p = createBody(); p.rotY = Math.PI;
     for (let n = 0; n < 60; n++) pose(mesh, p, 1 / 60, -1.3);
     assert.equal(mesh.getObjectByName("head")!.visible, false);
     const shoe = mesh.getObjectByName("shoe")!; mesh.updateMatrixWorld(true);
     const projected = shoe.getWorldPosition(new Vector3()).project(camera);
     assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1 && projected.z < 1, "feet inside downward view");
-    assert.equal(((shoe as Mesh).material as MeshStandardMaterial).color.getHexString(), "e8dfcb");
+    assert.equal(((shoe as Mesh).material as MeshStandardMaterial).color.getHexString(), character === 3 ? "20252b" : "e8dfcb");
     disposeAvatar(mesh);
   }
 });
@@ -94,7 +94,7 @@ test("first-person elbows pump in opposition, track gaze, and blend to airborne/
 });
 
 test("original outfit meshes have chest, elbow, knee, wrist and ankle articulation; slide lowers into asymmetric legs", () => {
-  for (let character = 0; character < 3; character++) {
+  for (let character = 0; character < CHARACTERS.length; character++) {
     const mesh = avatar("#ffffff", character), p = createBody();
     for (const name of ["chest", "left-elbow", "right-elbow", "left-knee", "right-knee", "left-wrist", "right-wrist", "left-ankle", "right-ankle"]) assert.ok(mesh.getObjectByName(name));
     p.anim = 4; p.vz = 10;

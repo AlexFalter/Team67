@@ -1,11 +1,6 @@
 import { useState } from "react";
 import "./game.css";
-
-const characters = [
-  { name: "CS Student", detail: "Glasses & backpack" },
-  { name: "Student Athlete", detail: "Varsity jacket & sneakers" },
-  { name: "Albert Einstein", detail: "Wild hair & moustache" },
-];
+import { CHARACTERS as characters } from "./avatar.ts";
 
 export function GameOverlay({ resolution, onResolutionChange }: {
   resolution: "performance" | "high";
@@ -22,7 +17,7 @@ export function GameOverlay({ resolution, onResolutionChange }: {
         <p className="menu-game-type">Solo multiplayer</p>
       </div>
       <form onSubmit={event => event.preventDefault()}>
-        <div className="menu-card-heading"><span>CHOOSE YOUR CHARACTER</span><span>0{character + 1} / 03</span></div>
+        <div className="menu-card-heading"><span>CHOOSE YOUR CHARACTER</span><span>0{character + 1} / 0{characters.length}</span></div>
         <div className="character-picker" role="group" aria-label="Choose your character"
           onKeyDown={event => {
             if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
@@ -30,11 +25,11 @@ export function GameOverlay({ resolution, onResolutionChange }: {
             }
           }}>
           <button type="button" className="character-arrow" aria-label="Previous character" onClick={() => cycleCharacter(-1)}>‹</button>
-          <div id="character-stage" role="img" aria-label={`3D preview of ${characters[character].name}`} />
+          <div id="character-stage" role="img" aria-label={`3D preview of ${characters[character]}`} />
           <button type="button" className="character-arrow" aria-label="Next character" onClick={() => cycleCharacter(1)}>›</button>
         </div>
         <div className="character-description" aria-live="polite">
-          <h1>{characters[character].name}</h1><p>{characters[character].detail}</p>
+          <h1>{characters[character]}</h1>
         </div>
         <div className="character-pagination" aria-hidden="true">{characters.map((_, index) => <i key={index} className={index === character ? "selected" : undefined} />)}</div>
         <input id="character" type="hidden" name="character" value={character} />
