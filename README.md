@@ -13,6 +13,10 @@ npm run dev
 
 Open **http://localhost:5173** in two tabs. Create a room with a code, then join that same code in another tab (up to 40 players). Choose CS Student, Student Athlete, or Albert Einstein. Players spawn on clear terrain near Hauptbahnhof, alongside three single-seat carts and a six-seat shuttle. The project contains only the game client, multiplayer server, and shared code.
 
+Enter your name (1-24 characters), choose a character, and create or join a room. Rooms follow **Lobby ? Running ? Finished**. In the room lobby, everyone must press **Ready** before the round starts; readiness can be cancelled while waiting. Joining an ongoing round opens a waiting screen instead of spawning a player.
+
+Rounds last **three minutes** by default (`ROUND_DURATION_MS` on the server). The host can also end the round from the game menu. At the end, every connected member sees the same results, sorted by hits landed, including players who left during the round. The host can return everyone to the lobby; waiting members can then ready up and play. If the host leaves, host duties pass to another connected member. Gameplay and vehicle claims are disabled outside a running round and for waiting members.
+
 Click **Click to play** to capture the cursor. Mouse / trackpad looks, **WASD** runs, **Shift** sprints, **Space** jumps, **E** rides/exits, **F / click** punches, **R** toggles running shoes. **F5 / V** cycles first-person, rear, and front views. **Esc** opens the quick menu (bob, sensitivity, leave). **Inspect map** from the lobby/menu leaves the room; **Join multiplayer** returns to the lobby.
 
 Carts are claimed exclusively by one player. Their driver can run over foot players. The shuttle starts its **10-second countdown** when the first passenger boards, follows a shared terrain route toward ETH, and automatically disembarks riders on arrival. Later boarders do not reset the countdown. An empty shuttle cancels its countdown; passengers cannot exit while it travels. Board again at ETH for the return trip. The route is roughly two minutes each way, rather than the old short flat-plane trip.

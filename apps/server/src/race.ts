@@ -3,6 +3,7 @@ import * as C from "@race/shared";
 import { Player, RaceState } from "./state.ts";
 import { VehicleManager } from "./vehicles.ts";
 import { ContactWorld } from "./physics.ts";
+import { RoundManager } from "./round.ts";
 // The prototype runs one server process. Reserve synchronously before async
 // physics initialization so two simultaneous creates cannot claim one code.
 const codes = new Set<string>();
@@ -16,6 +17,7 @@ export class Race extends Room<{ state: RaceState }> {
   private physics!: ContactWorld;
   private vehicles!: VehicleManager;
   private code?: string;
+  private rounds!: RoundManager;
   async onCreate(options: { code?: unknown } = {}) {
     if (options.code !== undefined) {
       const code = C.roomCode(options.code);
@@ -25,48 +27,76 @@ export class Race extends Room<{ state: RaceState }> {
     this.physics = await ContactWorld.create(this.world);
     this.state.serverTime = Date.now();
     this.vehicles = new VehicleManager(this.state, this.world);
+    const configuredDuration = Number(process.env.ROUND_DURATION_MS ?? C.ROUND_DURATION_MS);
+    const duration = Number.isFinite(configuredDuration) && configuredDuration > 0 ? configuredDuration : C.ROUND_DURATION_MS;
+    this.rounds = new RoundManager(this.state, duration, () => {
+      for (const id of this.state.players.keys()) this.lastMoves.set(id, Date.now());
+    }, () => this.resetRound());
+    this.onMessage("ready", (client, ready: unknown) => this.rounds.ready(client.sessionId, ready));
+    this.onMessage("restartRound", client => this.rounds.restart(client.sessionId));
+    this.onMessage("finishRound", client => {
+      if (client.sessionId === this.state.hostId) this.rounds.finish();
+    });
     this.onMessage("move", (client, data: unknown) => this.move(client, data));
-    this.onMessage("vehicleMove", (client, data: unknown) => this.vehicles.move(client, data));
+    this.onMessage("vehicleMove", (client, data: unknown) => {
+      if (this.rounds.canPlay(client.sessionId)) this.vehicles.move(client, data);
+    });
     this.onMessage("ping", (client, data: unknown) => {
       const t = (data as C.Ping)?.clientTime;
       if (Number.isFinite(t)) client.send("pong", { clientTime: t, serverTime: Date.now() });
     });
     this.onMessage("toggleShoes", client => {
       const p = this.state.players.get(client.sessionId);
-      if (p) p.shoes = !p.shoes;
+      if (p && this.rounds.canPlay(client.sessionId)) p.shoes = !p.shoes;
     });
     this.onMessage("hit", client => this.attack(client));
     this.onMessage("bikeCrash", client => {
       const p = this.state.players.get(client.sessionId), v = p && this.state.vehicles.get(p.vehicleId);
-      if (!v || v.kind !== 2 || v.driver !== client.sessionId) return;
+      if (!this.rounds.canPlay(client.sessionId) || !v || v.kind !== 2 || v.driver !== client.sessionId) return;
       const probe = C.snapshot(v, C.createVehicle());
       const impact = C.stepCart(probe, { ...C.IDLE_INPUT, x: Math.sin(v.rotY), z: Math.cos(v.rotY) }, 1 / C.CLIENT_SEND_RATE, this.world);
       if (impact > 0.001) this.vehicles.crashBike(p!.vehicleId, Date.now(), this.vehicleHit);
     });
     this.setPatchRate(1000 / C.SERVER_PATCH_RATE);
-    this.onMessage("vehicleEnter", (client, data: unknown) => this.vehicles.enter(client, data, Date.now()));
-    this.onMessage("vehicleExit", (client) => this.vehicles.exit(client));
+    this.onMessage("vehicleEnter", (client, data: unknown) => {
+      if (this.rounds.canPlay(client.sessionId)) this.vehicles.enter(client, data, Date.now());
+    });
+    this.onMessage("vehicleExit", client => {
+      if (this.rounds.canPlay(client.sessionId)) this.vehicles.exit(client);
+    });
     this.setSimulationInterval(() => this.tick(), 1000 / C.COLLISION_TICK_RATE);
   }
-  onJoin(client: Client, options: { character?: unknown } = {}) {
-    this.lastMoves.set(client.sessionId, Date.now());
+  onJoin(client: Client, options: { name?: unknown; character?: unknown } = {}) {
+    const member = this.rounds.join(client.sessionId, options);
+    if (!member.spectator) this.spawnPlayer(client.sessionId, member.character);
+  }
+  private spawnPlayer(id: string, character: number, color?: string) {
+    this.lastMoves.set(id, Date.now());
     const index = this.state.players.size;
-    this.state.players.set(client.sessionId, new Player({
+    this.state.players.set(id, new Player({
       ...(this.world.name === "flat" ? { x: (index % 5 - 2) * 2, y: 0, z: Math.floor(index / 5) * 2 } : C.spawnPoint(this.world)),
-      color: `hsl(${Math.floor(Math.random() * 360)}, 85%, 65%)`,
-      simTime: Date.now(),
-      character: options.character === 1 || options.character === 2 ? options.character : 0,
+      color: color ?? `hsl(${Math.floor(Math.random() * 360)}, 85%, 65%)`,
+      simTime: Date.now(), character,
     }));
+  }
+  private resetRound() {
+    const colors = new Map([...this.state.players].map(([id, p]) => [id, p.color]));
+    this.state.players.clear(); this.state.vehicles.clear(); this.lastMoves.clear();
+    this.physics.sync(new Map(), new Map());
+    this.vehicles = new VehicleManager(this.state, this.world);
+    for (const [id, member] of this.state.members) this.spawnPlayer(id, member.character, colors.get(id));
   }
   onLeave(client: Client) {
     this.vehicles.disconnect(client.sessionId);
     this.state.players.delete(client.sessionId);
     this.lastMoves.delete(client.sessionId);
+    this.rounds.leave(client.sessionId);
   }
   onDispose() { this.physics?.dispose(); if (this.code) codes.delete(this.code); }
   private hit(target: string, hit: C.Impulse) {
     const p = this.state.players.get(target);
-    if (p) {
+    if (p && this.rounds.canPlay(target)) {
+      this.rounds.hit(hit.from, target);
       p.simTime = Date.now();
       const correction = this.correction(p);
       C.applyImpulse(p, hit, p.simTime);
@@ -87,6 +117,7 @@ export class Race extends Room<{ state: RaceState }> {
       vehicleId: p.vehicleId, vehicleKind: p.vehicleKind, seat: p.seat };
   }
   private move(client: Client, data: unknown) {
+    if (!this.rounds.canPlay(client.sessionId)) return;
     if (
       !Array.isArray(data) ||
       data.length !== 8 ||
@@ -131,6 +162,7 @@ export class Race extends Room<{ state: RaceState }> {
     this.lastMoves.set(client.sessionId, now);
   }
   private attack(client: Client) {
+    if (!this.rounds.canPlay(client.sessionId)) return;
     const p = this.state.players.get(client.sessionId), now = Date.now();
     if (!p || p.vehicleId || now < p.knockdownUntil || now < p.attackReadyAt) return;
     p.simTime = now; p.attackReadyAt = now + C.ATTACK_COOLDOWN_MS;
@@ -142,6 +174,8 @@ export class Race extends Room<{ state: RaceState }> {
   }
   private tick() {
     const now = this.state.serverTime = Date.now(), vehicleHit = this.vehicleHit;
+    this.rounds.tick(now);
+    if (this.state.phase !== C.RoomPhase.Running) return;
     const positions = new Map([...this.state.players].map(([id, p]) => [id, this.correction(p)]));
     for (const p of this.state.players.values()) p.simTime = now;
     this.vehicles.tick(now, vehicleHit);

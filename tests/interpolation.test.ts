@@ -11,6 +11,8 @@ test("remote interpolation follows the delayed timeline and shortest angle, hold
     remote = createBody();
   const state: WorldState = {
     serverTime: 1000,
+    phase: "Running", hostId: "local", startedAt: 0, endsAt: 0, finishedAt: 0,
+    members: new Map(), results: new Map(),
     vehicles: new Map(),
     players: new Map([
       ["local", local],

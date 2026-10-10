@@ -9,3 +9,4 @@ export * from "./flatObstacles.ts";
 export * from "./snapshot.ts";
 export * from "./mechanics.ts";
 export * from "./roomCode.ts";
+export * from "./room.ts";

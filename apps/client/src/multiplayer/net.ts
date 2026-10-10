@@ -10,10 +10,11 @@ import type {
   VehicleMove,
   VehicleResult,
 } from "@race/shared";
-import { CLIENT_SEND_RATE, packMove, zurichWorld, snapshot, stepPlayer, applyImpulse, CART_MIN_HIT_SPEED } from "@race/shared";
+import { CLIENT_SEND_RATE, packMove, zurichWorld, snapshot, stepPlayer, applyImpulse, CART_MIN_HIT_SPEED, RoomPhase } from "@race/shared";
 export class Network {
   room!: Room<object, WorldState>;
   private disposed = false;
+  private phase = "";
   offset = 0;
   rtt = 0;
   collisions = 0;
@@ -38,8 +39,8 @@ export class Network {
       : `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}`;
     const client = new Client(url);
     const room = selection.mode === "create"
-      ? await client.create<WorldState>("race", { code: selection.code, character: selection.character })
-      : await client.joinById<WorldState>(selection.code, { character: selection.character });
+      ? await client.create<WorldState>("race", { code: selection.code, character: selection.character, name: selection.name })
+      : await client.joinById<WorldState>(selection.code, { character: selection.character, name: selection.name });
     // This prototype releases seats on disconnect and has no server reconnection grace.
     room.reconnection.enabled = false;
     if (this.disposed) {
@@ -51,7 +52,8 @@ export class Network {
     this.room.onStateChange((state) => {
       if (this.disposed) return;
       const own = state.players.get(this.room.sessionId);
-      if (own && (!this.initialized || own.vehicleId !== body.vehicleId)) {
+      if (own && (!this.initialized || own.vehicleId !== body.vehicleId ||
+        (this.phase !== state.phase && state.phase !== RoomPhase.Finished))) {
         if (!this.initialized) this.offset = state.serverTime - Date.now();
         snapshot(own, body);
         body.grounded =
@@ -65,6 +67,7 @@ export class Network {
         body.attackReadyAt = Math.max(body.attackReadyAt, own.attackReadyAt);
         body.knockdownUntil = Math.max(body.knockdownUntil, own.knockdownUntil);
       }
+      this.phase = state.phase;
       onPatch(state, this.room.sessionId);
     });
     this.room.onMessage<PlayerCorrection>("playerCorrection", correction => {
@@ -99,7 +102,7 @@ export class Network {
     this.timers.push(
       setInterval(() => this.sync(), 10000),
       setInterval(() => {
-        if (!this.initialized) return;
+        if (!this.canPlay) return;
         if (body.vehicleId) {
           const move = this.vehicleMove?.();
           if (move) this.room.send("vehicleMove", move);
@@ -109,7 +112,7 @@ export class Network {
   }
   // Gameplay stays in the feature's shared step; main's transport sends reports.
   frame(dt: number, body: Body, controls: () => Input) {
-    if (!this.initialized) return;
+    if (!this.canPlay) return;
     const cmd = controls();
     let remaining = Math.min(0.1, dt), first = true, impact = 0;
     // Cooldowns use main's synchronized clock, including after a background tab.
@@ -127,6 +130,11 @@ export class Network {
       if (cmd.hit) this.room.send("hit");
       if (body.vehicleKind === 2 && impact >= CART_MIN_HIT_SPEED) this.room.send("bikeCrash");
     }
+  }
+  get canPlay() {
+    return this.initialized && this.room?.state?.phase === RoomPhase.Running && this.now() < this.room.state.endsAt &&
+      !!this.room.state.players.get(this.room.sessionId) && !!this.room.state.members.get(this.room.sessionId) &&
+      !this.room.state.members.get(this.room.sessionId)!.spectator;
   }
   initialized = false;
   private sync() {

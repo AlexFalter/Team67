@@ -22,8 +22,26 @@ export interface PlayerState {
 }
 export interface WorldState {
   serverTime: number;
+  phase: string;
+  hostId: string;
+  startedAt: number;
+  endsAt: number;
+  finishedAt: number;
+  members: Map<string, RoomMember>;
+  results: Map<string, RoundResult>;
   players: Map<string, PlayerState>;
   vehicles: Map<string, VehicleState>;
+}
+export interface RoomMember {
+  name: string;
+  character: number;
+  ready: boolean;
+  spectator: boolean;
+}
+export interface RoundResult {
+  name: string;
+  hitsLanded: number;
+  hitsReceived: number;
 }
 export interface VehicleState {
   kind: number; // 0: cart, 1: shared shuttle, 2: bicycle, 3: NPC car

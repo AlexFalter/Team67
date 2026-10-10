@@ -6,8 +6,10 @@ import { Network } from "../apps/client/src/multiplayer/net.ts";
 function fixture() {
   const net = new Network(), messages: { type: string; data: unknown }[] = [];
   net.initialized = true;
-  net.room = { send: (type: string, data: unknown) => messages.push({ type, data }) } as unknown as typeof net.room;
   const body = Object.assign(C.createBody(), C.zurichWorld.spawn, { simTime: Date.now() });
+  net.room = { sessionId: "local", state: { phase: C.RoomPhase.Running, endsAt: Date.now() + 60000, players: new Map([["local", body]]),
+    members: new Map([["local", { name: "Player", spectator: false }]]) },
+    send: (type: string, data: unknown) => messages.push({ type, data }) } as unknown as typeof net.room;
   return { net, body, messages };
 }
 
@@ -48,4 +50,18 @@ test("knockdown recovers on the synchronized clock after a background tab", () =
   assert.ok(body.simTime >= body.knockdownUntil);
   assert.notEqual(body.anim, 3);
   assert.ok(body.vx > 0);
+});
+
+
+test("client refuses simulation and actions in lobby, after finish, and for waiting members", () => {
+  const { net, body, messages } = fixture(), x = body.x;
+  for (const phase of [C.RoomPhase.Lobby, C.RoomPhase.Finished]) {
+    net.room.state.phase = phase;
+    net.frame(0.1, body, () => ({ ...C.IDLE_INPUT, x: 1, hit: true, toggleShoes: true }));
+    assert.equal(body.x, x); assert.equal(messages.length, 0); assert.equal(net.canPlay, false);
+  }
+  net.room.state.phase = C.RoomPhase.Running;
+  net.room.state.members.get("local")!.spectator = true;
+  net.frame(0.1, body, () => ({ ...C.IDLE_INPUT, x: 1, hit: true }));
+  assert.equal(body.x, x); assert.equal(messages.length, 0);
 });

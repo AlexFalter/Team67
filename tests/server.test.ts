@@ -1,15 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as C from "../packages/shared/src/index.ts";
-import { withServer, until, delay, type WireState } from "./fixture.ts";
+import { startRound, withServer, until, delay, type WireState } from "./fixture.ts";
 import { reportClient } from "./reportClient.ts";
 
 test("main reports preserve rooms, characters, validation, contact separation, clock and leave", { timeout: 30000 }, async () => {
   await withServer(async (client, rooms, port) => {
     const code = `TEST-${port}`;
-    const a = await client.create<WireState>("race", { code, character: 1 }); rooms.push(a);
-    const b = await client.joinById<WireState>(code, { character: 2 }); rooms.push(b);
-    const spectator = await client.joinById<WireState>(code); rooms.push(spectator);
+    const a = await client.create<WireState>("race", { name: "Player", code, character: 1 }); rooms.push(a);
+    const b = await client.joinById<WireState>(code, { name: "Player", character: 2 }); rooms.push(b);
+    const spectator = await client.joinById<WireState>(code, { name: "Player" }); rooms.push(spectator);
     const bumps: C.Bump[] = [], impulses: C.Impulse[] = [];
     for (const room of rooms) {
       room.onMessage<C.Bump>("bump", hit => bumps.push(hit));
@@ -20,10 +20,11 @@ test("main reports preserve rooms, characters, validation, contact separation, c
     assert.equal(a.roomId, code);
     assert.equal(spectator.state.players.get(a.sessionId)!.character, 1);
     assert.equal(a.state.players.get(b.sessionId)!.character, 2);
-    const duplicates = await Promise.allSettled([client.create("race", { code }), client.create("race", { code })]);
+    const duplicates = await Promise.allSettled([client.create("race", { name: "Player", code }), client.create("race", { name: "Player", code })]);
     assert.ok(duplicates.every(result => result.status === "rejected"));
-    await assert.rejects(client.joinById("NO-SUCH-ROOM"));
-    await assert.rejects(client.create("race", { code: "!" }));
+    await assert.rejects(client.joinById("NO-SUCH-ROOM", { name: "Player" }));
+    await assert.rejects(client.create("race", { name: "Player", code: "!" }));
+    await startRound(a, rooms);
     const own = a.state.players.get(a.sessionId)!, start = own.x;
     a.send("move", [NaN, 0, 0, 0, 0, 0, 0, 0]);
     a.send("move", [90, 0, 0, 0, 0, 0, 0, 0]); await delay(100);
