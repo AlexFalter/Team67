@@ -17,6 +17,10 @@ export async function loadZurichMap(signal: AbortSignal): Promise<Object3D> {
   signal.throwIfAborted();
   const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(data, '');
   if (signal.aborted) { disposeMap(gltf.scene); signal.throwIfAborted(); }
+  // Exporter min/max can be slightly off; exact bounds keep frustum culling and raycasts correct.
+  gltf.scene.traverse((object) => {
+    if (object instanceof Mesh) { object.geometry.computeBoundingBox(); object.geometry.computeBoundingSphere(); }
+  });
   const theme = activeTheme();
   applyTheme(gltf.scene, theme);
   try {
