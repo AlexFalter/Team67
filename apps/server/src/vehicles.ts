@@ -27,14 +27,16 @@ export class VehicleManager {
     addNear("npc-car", 3, -20, 6);
     addNear("loose-ball", 4, 10, -5, 7, 3);
   }
-  private add(id: string, props: C.VehicleState) {
+  add(id: string, props: C.VehicleState) {
     this.state.vehicles.set(id, new Vehicle(props));
     this.hitTimes.set(id, new Map());
   }
-  enter(client: Client, data: unknown, now = Date.now()) {
+  enter(client: Client, data: unknown, now = Date.now(), scanned = false) {
     const p = this.state.players.get(client.sessionId),
       v = typeof data === "string" ? this.state.vehicles.get(data) : undefined;
     if (!p || !v) return this.result(client, false, "Vehicle not found.");
+    if (this.state.publiBikes.has(data as string) && !scanned)
+      return this.result(client, false, "Scan the PubliBike QR code to unlock it.");
     if (v.kind >= 3) return this.result(client, false, "This object cannot be ridden.");
     if (now < v.fallenUntil) return this.result(client, false, "Give the bike a moment to recover.");
     if (p.vehicleId)
