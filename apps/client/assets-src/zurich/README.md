@@ -137,6 +137,10 @@ bed). Bottom: door on the Central facade 1.5 m north of the track line. Top: doo
   interpolated, so quay and terrace walls would otherwise be walkable). Prints a report (holes,
   reachable share from spawn, key places such as both Polybahn halls); `WALK_PNG = '<path>.png'`
   before exec'ing writes a colour debug map. Check it after every geometry change.
+- Detail patches: both Polybahn stations get 0.5 m grids (same rules, `patches` in the JSON); the 2 m
+  grid cannot follow their thin rotated walls and doors. `tests/polybahn-stations.test.ts` walks in.
+- The bottom portal is one 5.6 m doorway: the old centre pillar split it into two gaps too narrow to
+  walk through with the 1 m player capsule.
 - `ground_uv.py`: steep ground (> ~41°) is box-projected from the side at the same 4 m tile, so
   slopes keep the flat-ground pixel size. Run after any Ground rebuild.
 - Theme textures in the game use `flipY = false` (glTF UVs) and the `Style` seed is read back as
