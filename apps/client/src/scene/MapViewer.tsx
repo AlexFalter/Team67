@@ -11,6 +11,7 @@ import {
 } from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { disposeMap, loadZurichMap } from "../maps/zurich/loadZurichMap";
+import { GameOverlay } from "../multiplayer/GameOverlay";
 import { MapGame } from "../multiplayer/MapGame";
 
 export function MapViewer() {
@@ -101,7 +102,7 @@ function MapCanvas({ playing }: { playing: boolean }) {
           playing ? 0.1 : 1,
           6000,
         );
-        if (playing) game = new MapGame(scene, camera, canvas!, hud!, hints!);
+        if (playing) game = new MapGame(scene, camera, canvas!, hud!, hints!, map);
         else {
           camera.position.set(650, 850, 900);
           controls = new OrbitControls(camera, canvas!);
@@ -170,10 +171,11 @@ function MapCanvas({ playing }: { playing: boolean }) {
       >
         {status}
       </div>
+      {playing && <GameOverlay />}
       <div ref={hudRef} className="game-hud" hidden={!playing} />
       <div ref={controlsRef} className="map-controls">
         {playing
-          ? "Click scene · WASD move · Shift sprint · Space jump · E ride / exit · Drag to turn · Scroll to zoom"
+          ? "Mouse / trackpad look · WASD run · Space jump · Esc menu"
           : "Drag to orbit · Right-drag to pan · Scroll to zoom"}
       </div>
     </>

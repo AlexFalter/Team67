@@ -71,7 +71,7 @@ test("the whole HB–ETH shuttle route follows terrain and avoids sampled buildi
   assert.equal(point.z, world.stops[0].z);
 });
 
-test("map vehicle validation preserves elevation and safe exits", () => {
+test("predicted map vehicles preserve elevation and the shuttle completes a round trip with safe exits", () => {
   const state = new RaceState(),
     manager = new VehicleManager(state, world);
   const messages: C.VehicleResult[] = [];
@@ -81,14 +81,29 @@ test("map vehicle validation preserves elevation and safe exits", () => {
   } as unknown as Client;
   const p = new Player({ ...world.carts[0] });
   state.players.set(client.sessionId, p);
-  manager.enter(client, "car-1", 100000);
-  const cart = state.vehicles.get("car-1")!;
-  const x = cart.x + 0.3,
-    z = cart.z;
-  manager.move(client, ["car-1", x, z, Math.PI / 2, 6, 0], 100050);
-  assert.equal(cart.x, x);
-  assert.equal(cart.y, world.height(x, z));
+  manager.enter(client, "cart-1", 100000);
+  const cart = state.vehicles.get("cart-1")!;
+  const start = cart.x;
+  C.stepPlayer(p, { ...idle, x: 1 }, 1 / 60, world);
+  manager.syncDriver(client.sessionId);
+  assert.ok(cart.x > start);
+  assert.ok(Math.abs(cart.y - world.height(cart.x, cart.z)!) < 1e-9);
   assert.equal(p.y, cart.y + C.CART_SEAT_HEIGHT);
   manager.exit(client);
   assert.equal(p.y, world.height(p.x, p.z));
+  const shuttle = state.vehicles.get("shuttle-1")!;
+  for (let trip = 0; trip < 2; trip++) {
+    Object.assign(p, { x: shuttle.x, y: shuttle.y, z: shuttle.z });
+    manager.enter(client, "shuttle-1", 200000 + trip * 500000);
+    assert.equal(messages.at(-1)!.ok, true);
+    manager.tick(shuttle.departureAt + 100, () => {});
+    assert.equal(shuttle.traveling, true);
+    manager.tick(shuttle.arrivalAt, () => {});
+    const stop = world.stops[trip === 0 ? 1 : 0];
+    assert.equal(shuttle.x, stop.x);
+    assert.equal(shuttle.z, stop.z);
+    assert.equal(p.vehicleId, "");
+    assert.equal(p.y, world.height(p.x, p.z));
+    assert.equal(world.blocked(p.x, p.y, p.z, 0.5, 1.8), false);
+  }
 });

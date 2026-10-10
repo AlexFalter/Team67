@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import * as C from "@race/shared";
 import type { Network } from "./net.ts";
-
 interface Snapshot extends C.VehicleState {
   t: number;
 }
@@ -17,7 +16,6 @@ interface Visual {
 export class Vehicles {
   items = new Map<string, Visual>();
   private prediction = C.createVehicle();
-  private collided = false;
   private drivenId = "";
   private platforms: THREE.Mesh[] = [];
   private message = "";
@@ -28,23 +26,25 @@ export class Vehicles {
     private net: Network,
     private controls: HTMLDivElement,
   ) {
-    net.vehicleMove = () =>
-      this.drivenId
-        ? [
-            this.drivenId,
-            this.prediction.x,
-            this.prediction.z,
-            this.prediction.rotY,
-            this.prediction.vx,
-            this.prediction.vz,
-            this.collided,
-          ]
-        : undefined;
+    net.vehicleMove = () => this.drivenId ? [this.drivenId, this.prediction.x, this.prediction.z,
+      this.prediction.rotY, this.prediction.vx, this.prediction.vz] : undefined;
     net.onVehicleResult = (result) => {
       this.message = result.message;
       this.messageUntil = Date.now() + 2000;
     };
-
+    C.zurichWorld.stops.forEach((stop, i) => {
+      const platform = new THREE.Mesh(
+        new THREE.BoxGeometry(5, 0.08, 7),
+        new THREE.MeshStandardMaterial({
+          color: i === 0 ? "#dba347" : "#5999d6",
+          roughness: 1,
+        }),
+      );
+      platform.position.set(stop.x, stop.y + 0.045, stop.z);
+      platform.receiveShadow = true;
+      this.scene.add(platform);
+      this.platforms.push(platform);
+    });
   }
   patch(state: C.WorldState) {
     for (const [id, v] of state.vehicles) {
@@ -54,10 +54,9 @@ export class Vehicles {
         this.items.set(id, visual);
         this.scene.add(visual.mesh);
       }
-      Object.assign(visual.latest, v);
+      C.snapshot(v, visual.latest);
       const snapshot: Snapshot = {
-        ...C.createVehicle(),
-        ...v,
+        ...C.snapshot(v, C.createVehicle()),
         t: state.serverTime,
       };
       if (visual.snapshots.at(-1)?.t === snapshot.t)
@@ -85,7 +84,7 @@ export class Vehicles {
   }
   private create(v: C.VehicleState): Visual {
     const mesh = new THREE.Group(),
-      shuttle = v.kind === 1, bike = v.kind === 2;
+      shuttle = v.kind === 1;
     const box = (
       width: number,
       height: number,
@@ -105,29 +104,51 @@ export class Vehicles {
       mesh.add(part);
     };
     box(
-      bike ? 0.25 : shuttle ? 2.7 : 1.5,
+      shuttle ? 2.7 : 1.5,
       0.65,
-      bike ? 1.5 : shuttle ? 4.5 : 2.1,
+      shuttle ? 4.5 : 2.1,
       0,
       0.65,
       0,
       shuttle ? "#339bba" : "#e59c40",
     );
-    box(bike ? 0.7 : shuttle ? 2.4 : 1.25, 0.35, 0.65, 0, 1, shuttle ? 1.7 : 0.8, "#dce8ed");
+    box(shuttle ? 2.4 : 1.25, 0.35, 0.65, 0, 1, shuttle ? 1.7 : 0.8, "#dce8ed");
+    if (v.kind === 2) {
+      // Reuse the lightweight vehicle root, with a narrow bicycle silhouette.
+      mesh.children.forEach((child) => { (child as THREE.Mesh).geometry.dispose(); ((child as THREE.Mesh).material as THREE.Material).dispose(); });
+      mesh.clear();
+      box(0.12, 0.12, 1.3, 0, 0.7, 0, "#80dbb5");
+      box(0.12, 0.6, 0.12, 0, 0.65, 0, "#80dbb5");
+      box(0.4, 0.12, 0.35, 0, 1, 0, "#182430");
+      box(0.7, 0.1, 0.1, 0, 1.2, 0.55, "#dce8ed");
+      for (const z of [-0.6, 0.6]) {
+        const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.07, 6, 16), new THREE.MeshStandardMaterial({ color: "#182430" }));
+        wheel.rotation.y = Math.PI / 2; wheel.position.set(0, 0.42, z); mesh.add(wheel);
+      }
+    }
+    if (v.kind === 4) {
+      mesh.children.forEach((child) => { (child as THREE.Mesh).geometry.dispose(); ((child as THREE.Mesh).material as THREE.Material).dispose(); });
+      mesh.clear();
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(C.vehicleRadius(v), 16, 12), new THREE.MeshStandardMaterial({ color: "#e777a9", roughness: 0.7 }));
+      ball.position.y = C.vehicleRadius(v); ball.castShadow = true; mesh.add(ball);
+    }
     if (shuttle) {
       box(0.15, 0.35, 4.3, -1.3, 1.1, 0, "#dce8ed");
       box(0.15, 0.35, 4.3, 1.3, 1.1, 0, "#dce8ed");
+      box(2.8, 0.15, 4.6, 0, 2.3, 0, "#e3e7da");
+      for (const x of [-1.25, 1.25]) for (const z of [-1.8, 0, 1.8]) box(0.10, 1.1, 0.12, x, 1.75, z, "#e3e7da");
+      box(2.4, 0.7, 0.06, 0, 1.7, 2.15, "#78b8c6");
+      box(2.2, 0.10, 0.12, 0, 0.85, 2.2, "#ffe8a0");
     }
-    for (let side = -1; side <= 1; side += 2)
+    for (let side = -1; v.kind !== 2 && v.kind !== 4 && side <= 1; side += 2)
       for (let axle = -1; axle <= 1; axle += 2) {
-        if (bike && side === 1) continue;
         const wheel = new THREE.Mesh(
           new THREE.CylinderGeometry(0.38, 0.38, 0.25, 10),
           new THREE.MeshStandardMaterial({ color: "#192430" }),
         );
         wheel.rotation.z = Math.PI / 2;
         wheel.position.set(
-          bike ? 0 : side * (shuttle ? 1.4 : 0.8),
+          side * (shuttle ? 1.4 : 0.8),
           0.4,
           axle * (shuttle ? 1.5 : 0.65),
         );
@@ -139,22 +160,22 @@ export class Vehicles {
     canvas.height = 80;
     const texture = new THREE.CanvasTexture(canvas),
       label = new THREE.Sprite(
-        new THREE.SpriteMaterial({ map: texture, depthTest: false }),
+        new THREE.SpriteMaterial({ map: texture }),
       );
-    label.position.y = 3.6;
-    label.scale.set(shuttle ? 5 : 3.8, 0.65, 1);
+    label.position.y = 2.8;
+    label.scale.set(shuttle ? 2.5 : 1.4, 0.28, 1);
     mesh.add(label);
     return {
       mesh,
-      rendered: { ...v },
-      latest: { ...v },
+      rendered: C.snapshot(v, C.createVehicle()),
+      latest: C.snapshot(v, C.createVehicle()),
       snapshots: [],
       label,
       canvas,
       labelText: "",
     };
   }
-  render(t: number) {
+  render(t: number, dt = 1 / 60) {
     for (const [id, v] of this.items) {
       if (id === this.drivenId) Object.assign(v.rendered, this.prediction);
       else {
@@ -175,31 +196,30 @@ export class Vehicles {
           a.rotY +
           Math.atan2(Math.sin(b.rotY - a.rotY), Math.cos(b.rotY - a.rotY)) * f;
       }
-      this.pose(v);
+      this.pose(v, t, dt);
     }
   }
-  private pose(v: Visual) {
+  private pose(v: Visual, t: number, dt: number) {
     v.mesh.position.set(v.rendered.x, v.rendered.y, v.rendered.z);
     v.mesh.rotation.y = v.rendered.rotY;
-    v.mesh.rotation.z = v.rendered.kind === 2 && v.latest.fallenUntil > this.net.now() ? Math.PI / 2 : 0;
+    const fallen = v.rendered.kind === 2 && v.rendered.fallenUntil > t;
+    v.mesh.rotation.z = THREE.MathUtils.lerp(v.mesh.rotation.z, fallen ? -1.42 : 0, 1 - Math.exp(-9 * dt));
+    // Rotate about the tyre contact rather than burying the frame underground.
+    v.mesh.position.y += Math.abs(Math.sin(v.mesh.rotation.z)) * 0.11;
+    v.label.position.set(Math.sin(v.mesh.rotation.z) * 2.8, Math.cos(v.mesh.rotation.z) * 2.8, 0);
   }
-  step(body: C.Body, input: C.Input, dt: number, sessionId: string) {
+  local(body: C.Body, sessionId: string) {
     const visual = this.items.get(body.vehicleId);
     if (!visual) {
       this.drivenId = "";
       return;
     }
     if (visual.latest.kind !== 1 && visual.latest.driver === sessionId) {
-      if (this.drivenId !== body.vehicleId) {
-        this.drivenId = body.vehicleId;
-        Object.assign(this.prediction, visual.latest);
-      }
-      const collided = C.stepCart(this.prediction, input, dt, C.zurichWorld);
-      this.collided ||= this.prediction.kind === 2 && collided;
+      this.drivenId = body.vehicleId;
+      Object.assign(this.prediction, visual.latest, { x: body.x, y: body.y - C.CART_SEAT_HEIGHT, z: body.z, rotY: body.rotY, vx: body.vx, vz: body.vz });
       Object.assign(visual.rendered, this.prediction);
-      this.pose(visual);
     } else this.drivenId = "";
-    C.seatPosition(visual.rendered, body.seat, body);
+    if (!this.drivenId) C.seatPosition(visual.rendered, body.seat, body);
     body.rotY = visual.rendered.rotY;
     body.vx = visual.rendered.vx;
     body.vy = 0;
@@ -209,13 +229,13 @@ export class Vehicles {
   }
   stopDriving() {
     this.drivenId = "";
-    this.collided = false;
   }
   private nearest(body: C.Body) {
     let closest = "",
       distance = C.VEHICLE_BOARD_DISTANCE;
     for (const [id, v] of this.items) {
       const d = Math.hypot(body.x - v.rendered.x, body.z - v.rendered.z);
+      if (v.latest.kind >= 3) continue;
       if (d < distance) {
         closest = id;
         distance = d;
@@ -233,9 +253,24 @@ export class Vehicles {
   updateLabels(body: C.Body, now: number) {
     if (now - this.lastLabels < 250) return;
     this.lastLabels = now;
-    for (const visual of this.items.values()) {
+    const state = this.net.room?.state;
+    const nearest = this.nearest(body);
+    for (const [id, visual] of this.items) {
       const v = visual.latest;
-      const text = `${v.kind === 2 ? "BIKE" : "CAR"} ? ${v.fallenUntil > this.net.now() ? "recovering" : v.driver ? "occupied" : "E to ride"}`;
+      visual.label.visible = id === body.vehicleId || (!body.vehicleId && id === nearest);
+      let count = 0;
+      for (const p of state?.players?.values() ?? [])
+        if (p.vehicleId === id) count++;
+      const seconds = Math.max(
+        0,
+        Math.ceil(
+          ((v.traveling ? v.arrivalAt : v.departureAt) - this.net.now()) / 1000,
+        ),
+      );
+      const text =
+        v.kind !== 1
+          ? `${v.kind === 2 ? "BIKE" : v.kind === 3 ? "NPC CAR" : v.kind === 4 ? "LOOSE BALL" : "CART"} · ${v.kind >= 3 ? "watch out" : v.fallenUntil > this.net.now() ? "recovering" : v.driver ? "occupied" : "E to ride"}`
+          : `TRAM ${count}/${v.capacity} · ${v.traveling ? "arriving " + seconds + "s" : v.departureAt ? "leaving " + seconds + "s" : "E to board"}`;
       if (text !== visual.labelText) {
         const context = visual.canvas.getContext("2d")!;
         context.clearRect(0, 0, 512, 80);
@@ -250,16 +285,35 @@ export class Vehicles {
       }
     }
     const riding = this.items.get(body.vehicleId)?.latest;
-    let prompt = "WASD move ? Shift sprint ? Space jump ? drag to orbit";
-    if (riding) prompt = "WASD drive ? E exit ? drag to orbit";
-    else if (this.nearest(body)) prompt += " ? E ride vehicle";
+    let prompt = `Mouse / trackpad look · WASD run · Shift sprint · Space jump · click/F hit · R shoes ${body.shoes ? "on" : "off"} · F5/V view · Esc menu`;
+    if (riding)
+      prompt =
+        riding.kind !== 1
+          ? "WASD drive · E exit · mouse / trackpad look · F5/V view · Esc menu"
+          : riding.traveling
+            ? "Riding tram · exit at the next stop"
+            : "E leave tram · departure countdown is above the tram";
+    else {
+      const near = this.items.get(this.nearest(body))?.latest;
+      if (near)
+        prompt +=
+          near.kind === 2
+            ? near.fallenUntil > this.net.now() ? " · Bike recovering" : near.driver ? " · Bike occupied" : " · E ride bike"
+            : near.kind === 0
+            ? near.driver
+              ? " · Cart occupied"
+              : " · E ride cart"
+            : near.traveling
+              ? " · Tram moving"
+              : " · E board tram";
+    }
     this.controls.textContent =
       this.messageUntil > Date.now() ? `${prompt} · ${this.message}` : prompt;
   }
   dispose() {
     this.drivenId = "";
-    this.net.vehicleMove = undefined;
     this.net.onVehicleResult = undefined;
+    this.net.vehicleMove = undefined;
     for (const v of this.items.values()) {
       v.mesh.traverse((object) => {
         if (object instanceof THREE.Mesh) {

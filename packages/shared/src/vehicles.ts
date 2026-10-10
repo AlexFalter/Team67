@@ -1,6 +1,10 @@
 import * as C from "./constants.ts";
 import type { Input, PlayerState, VehicleState } from "./types.ts";
+import { resolveHouses } from "./flatObstacles.ts";
 import { flatWorld, routePoint, type MovementWorld } from "./world.ts";
+
+export function vehicleRadius(v: Pick<VehicleState, "kind">) { return v.kind === 2 ? 0.65 : v.kind === 1 ? 2.4 : C.CART_RADIUS; }
+export function vehicleSpeed(v: Pick<VehicleState, "kind">) { return v.kind === 2 ? C.BIKE_SPEED : C.CART_SPEED; }
 
 export function createVehicle(kind = 0, x = 0, z = 0): VehicleState {
   return {
@@ -11,8 +15,7 @@ export function createVehicle(kind = 0, x = 0, z = 0): VehicleState {
     rotY: 0,
     vx: 0,
     vz: 0,
-    fallenUntil: 0,
-    capacity: kind === 1 ? C.SHUTTLE_CAPACITY : 1,
+    capacity: kind === 1 ? C.SHUTTLE_CAPACITY : kind >= 3 ? 0 : 1,
     driver: "",
     departureAt: 0,
     traveling: false,
@@ -22,63 +25,50 @@ export function createVehicle(kind = 0, x = 0, z = 0): VehicleState {
     toZ: z,
     tripStartedAt: 0,
     arrivalAt: 0,
+    fallenUntil: 0,
   };
 }
 
-export function stepCart(
-  v: VehicleState,
-  input: Input,
-  dt: number,
-  world: MovementWorld = flatWorld,
-) {
-  const oldX = v.x, oldZ = v.z;
+export function stepCart(v: VehicleState, input: Input, dt: number, world: MovementWorld = flatWorld) {
+  const previous = { x: v.x, y: v.y, z: v.z };
+  const speed = vehicleSpeed(v);
   const length = Math.hypot(input.x, input.z),
     moving = length > 0;
   const blend =
     1 - Math.exp(-(moving ? C.CART_ACCELERATION : C.CART_FRICTION) * dt);
   v.vx +=
-    ((moving ? (input.x / Math.max(1, length)) * C.CART_SPEED : 0) - v.vx) *
+    ((moving ? (input.x / Math.max(1, length)) * speed : 0) - v.vx) *
     blend;
   v.vz +=
-    ((moving ? (input.z / Math.max(1, length)) * C.CART_SPEED : 0) - v.vz) *
+    ((moving ? (input.z / Math.max(1, length)) * speed : 0) - v.vz) *
     blend;
   if (Math.hypot(v.vx, v.vz) > 0.2) v.rotY = Math.atan2(v.vx, v.vz);
-  const bounds = world.bounds,
-    x = Math.max(
-      bounds.minX + C.CART_RADIUS,
-      Math.min(bounds.maxX - C.CART_RADIUS, v.x + v.vx * dt),
-    ),
-    z = Math.max(
-      bounds.minZ + C.CART_RADIUS,
-      Math.min(bounds.maxZ - C.CART_RADIUS, v.z + v.vz * dt),
-    );
-  const canMove = (nx: number, nz: number) => {
-    const y = world.height(nx, nz);
-    return (
-      y !== undefined &&
-      !world.blocked(nx, y, nz, C.CART_RADIUS, C.CART_HIT_HEIGHT) &&
-      Math.abs(y - v.y) <= C.MAX_GROUND_STEP
-    );
-  };
-  if (canMove(x, v.z)) v.x = x;
-  else v.vx = 0;
-  if (canMove(v.x, z)) v.z = z;
-  else v.vz = 0;
-  if (
-    v.x === bounds.minX + C.CART_RADIUS ||
-    v.x === bounds.maxX - C.CART_RADIUS
-  )
+  const radius = vehicleRadius(v), bounds = world.bounds;
+  v.x += v.vx * dt;
+  v.z += v.vz * dt;
+  const vx = v.vx, vz = v.vz;
+  if (v.x < bounds.minX + radius || v.x > bounds.maxX - radius) {
+    v.x = Math.max(bounds.minX + radius, Math.min(bounds.maxX - radius, v.x));
     v.vx = 0;
-  if (
-    v.z === bounds.minZ + C.CART_RADIUS ||
-    v.z === bounds.maxZ - C.CART_RADIUS
-  )
+  }
+  if (v.z < bounds.minZ + radius || v.z > bounds.maxZ - radius) {
+    v.z = Math.max(bounds.minZ + radius, Math.min(bounds.maxZ - radius, v.z));
     v.vz = 0;
-  const collided = (Math.abs(x - oldX) > 0.001 && v.x === oldX) ||
-    (Math.abs(z - oldZ) > 0.001 && v.z === oldZ) ||
-    (length > 0 && (v.x === bounds.minX + C.CART_RADIUS || v.x === bounds.maxX - C.CART_RADIUS || v.z === bounds.minZ + C.CART_RADIUS || v.z === bounds.maxZ - C.CART_RADIUS));
-  v.y = world.height(v.x, v.z) ?? v.y;
-  return collided;
+  }
+  const body = { ...v, vy: 0, grounded: true };
+  if (world.name === "flat") resolveHouses(body, previous, radius);
+  else {
+    const canMove = (x: number, z: number) => {
+      const y = world.height(x, z);
+      return y !== undefined && Math.abs(y - v.y) <= C.MAX_GROUND_STEP &&
+        !world.blocked(x, y, z, radius, C.CART_HIT_HEIGHT);
+    };
+    if (!canMove(body.x, previous.z)) { body.x = previous.x; body.vx = 0; }
+    if (!canMove(body.x, body.z)) { body.z = previous.z; body.vz = 0; }
+    v.y = world.height(body.x, body.z) ?? v.y;
+  }
+  v.x = body.x; v.z = body.z; v.vx = body.vx; v.vz = body.vz;
+  return Math.hypot(vx - v.vx, vz - v.vz);
 }
 
 export function seatPosition(
@@ -94,19 +84,14 @@ export function seatPosition(
 }
 
 // Analytic transport motion: no physics or player movement simulation.
-export function shuttlePosition(
-  v: VehicleState,
-  now: number,
-  world: MovementWorld = flatWorld,
-) {
+export function shuttlePosition(v: VehicleState, now: number, world: MovementWorld = flatWorld) {
   const duration = v.arrivalAt - v.tripStartedAt;
   const f =
     duration > 0
       ? Math.max(0, Math.min(1, (now - v.tripStartedAt) / duration))
       : 1;
   if (world.name === "zurich") {
-    const reverse =
-      Math.hypot(v.fromX - world.stops[0].x, v.fromZ - world.stops[0].z) > 1;
+    const reverse = Math.hypot(v.fromX - world.stops[0].x, v.fromZ - world.stops[0].z) > 1;
     routePoint(world, f * world.routeLength, v, reverse);
     v.vx = f < 1 ? Math.sin(v.rotY) * C.SHUTTLE_SPEED : 0;
     v.vz = f < 1 ? Math.cos(v.rotY) * C.SHUTTLE_SPEED : 0;
@@ -129,16 +114,12 @@ export function cartContact(
   p: PlayerState,
   out: VehicleContact,
 ) {
-  if (
-    p.vehicleId ||
-    p.y - v.y > C.CART_HIT_HEIGHT ||
-    p.y + C.CAPSULE_HEIGHT < v.y
-  )
+  if (p.vehicleId || p.y - v.y > C.CART_HIT_HEIGHT || p.y + C.CAPSULE_HEIGHT < v.y)
     return false;
   if (Math.hypot(v.vx, v.vz) < C.CART_MIN_HIT_SPEED) return false;
   const dx = p.x - v.x,
     dz = p.z - v.z,
-    r = C.CART_RADIUS + C.CAPSULE_RADIUS;
+    r = vehicleRadius(v) + C.CAPSULE_RADIUS;
   const squared = dx * dx + dz * dz;
   if (squared >= r * r) return false;
   const dist = Math.sqrt(squared),

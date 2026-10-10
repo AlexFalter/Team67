@@ -30,13 +30,14 @@ try {
     room.onStateChange((s) => {
       const p = s.players.get(room.sessionId);
       if (p && !ready) {
-        Object.assign(body, p);
+        C.snapshot(p, body);
         ready = true;
       }
     });
     room.onMessage<C.Impulse>("impulse", (hit) =>
       C.applyImpulse(body, hit, Date.now()),
     );
+    room.onMessage<C.PlayerCorrection>("playerCorrection", correction => Object.assign(body, correction));
     room.onMessage("bump", () => {});
     room.onMessage("pong", () => {});
     const input: C.Input = { x: 0, z: 0, sprint: false, jump: false };
@@ -69,7 +70,7 @@ try {
       input.z = Math.cos(angle);
       input.sprint = sprint;
       input.jump = Math.random() < 0.005;
-      C.stepMovement(body, input, dt, now, world);
+      C.stepPlayer(body, input, dt, world);
     }, 1000 / 60);
     const send = setInterval(() => {
       if (ready) room.send("move", C.packMove(body));

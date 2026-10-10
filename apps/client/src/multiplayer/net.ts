@@ -1,3 +1,5 @@
+import type { Selection } from "./lobby.ts";
+import type { Input, PlayerCorrection } from "@race/shared";
 import { Client, type Room } from "@colyseus/sdk";
 import type {
   Bump,
@@ -8,7 +10,7 @@ import type {
   VehicleMove,
   VehicleResult,
 } from "@race/shared";
-import { CLIENT_SEND_RATE, packMove, zurichWorld } from "@race/shared";
+import { CLIENT_SEND_RATE, packMove, zurichWorld, snapshot, stepPlayer, applyImpulse, CART_MIN_HIT_SPEED } from "@race/shared";
 export class Network {
   room!: Room<object, WorldState>;
   private disposed = false;
@@ -28,13 +30,16 @@ export class Network {
   async connect(
     body: Body,
     onPatch: (state: WorldState, id: string) => void,
-    onImpulse: (hit: Impulse) => void,
     onBump: (hit: Bump) => void,
+    selection: Selection,
   ) {
     const url = import.meta.env.DEV
-      ? import.meta.env.VITE_COLYSEUS_URL || "ws://localhost:2567"
+      ? import.meta.env.VITE_COLYSEUS_URL || `ws://${location.hostname}:2567`
       : `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}`;
-    const room = await new Client(url).joinOrCreate<WorldState>("race");
+    const client = new Client(url);
+    const room = selection.mode === "create"
+      ? await client.create<WorldState>("race", { code: selection.code, character: selection.character })
+      : await client.joinById<WorldState>(selection.code, { character: selection.character });
     // This prototype releases seats on disconnect and has no server reconnection grace.
     room.reconnection.enabled = false;
     if (this.disposed) {
@@ -47,17 +52,25 @@ export class Network {
       if (this.disposed) return;
       const own = state.players.get(this.room.sessionId);
       if (own && (!this.initialized || own.vehicleId !== body.vehicleId)) {
-        Object.assign(body, own);
+        if (!this.initialized) this.offset = state.serverTime - Date.now();
+        snapshot(own, body);
         body.grounded =
           !body.vehicleId &&
           Math.abs(body.y - (zurichWorld.height(body.x, body.z) ?? Infinity)) <
             0.05;
-        body.knockdownUntil = 0;
+        body.simTime = this.now();
         this.initialized = true;
+      }
+      if (own) {
+        body.attackReadyAt = Math.max(body.attackReadyAt, own.attackReadyAt);
+        body.knockdownUntil = Math.max(body.knockdownUntil, own.knockdownUntil);
       }
       onPatch(state, this.room.sessionId);
     });
-    this.room.onMessage<Impulse>("impulse", onImpulse);
+    this.room.onMessage<PlayerCorrection>("playerCorrection", correction => {
+      Object.assign(body, correction);
+    });
+    this.room.onMessage<Impulse>("impulse", hit => applyImpulse(body, hit, this.now()));
     this.room.onMessage<VehicleResult>("vehicleResult", (result) =>
       this.onVehicleResult?.(result),
     );
@@ -93,6 +106,27 @@ export class Network {
         } else this.room.send("move", packMove(body));
       }, 1000 / CLIENT_SEND_RATE),
     );
+  }
+  // Gameplay stays in the feature's shared step; main's transport sends reports.
+  frame(dt: number, body: Body, controls: () => Input) {
+    if (!this.initialized) return;
+    const cmd = controls();
+    let remaining = Math.min(0.1, dt), first = true, impact = 0;
+    // Cooldowns use main's synchronized clock, including after a background tab.
+    body.simTime = this.now() - remaining * 1000;
+    while (remaining > 0) {
+      const step = Math.min(remaining, 1 / 60);
+      impact = Math.max(impact, stepPlayer(body, first ? cmd : { ...cmd, jump: false, toggleShoes: false, hit: false }, step, zurichWorld) ?? 0);
+      first = false; remaining -= step;
+    }
+    // Report pose before actions so the server uses the current facing/position.
+    if (cmd.hit || cmd.toggleShoes || impact >= CART_MIN_HIT_SPEED) {
+      if (body.vehicleId) this.room.send("vehicleMove", [body.vehicleId, body.x, body.z, body.rotY, body.vx, body.vz]);
+      else this.room.send("move", packMove(body));
+      if (cmd.toggleShoes) this.room.send("toggleShoes");
+      if (cmd.hit) this.room.send("hit");
+      if (body.vehicleKind === 2 && impact >= CART_MIN_HIT_SPEED) this.room.send("bikeCrash");
+    }
   }
   initialized = false;
   private sync() {

@@ -28,25 +28,27 @@ test("cart claims are exclusive; only its driver reports movement; leaving and d
       clients: [a, b],
     } = fixture(2, -5, 0),
     now = 100000;
-  manager.enter(a.client, "car-1", now);
-  manager.enter(b.client, "car-1", now);
-  const cart = state.vehicles.get("car-1")!;
+  manager.enter(a.client, "cart-1", now);
+  manager.enter(b.client, "cart-1", now);
+  const cart = state.vehicles.get("cart-1")!;
   assert.equal(cart.driver, a.client.sessionId);
   assert.equal(b.messages.at(-1)!.ok, false);
   assert.equal(state.players.get(b.client.sessionId)!.vehicleId, "");
-  manager.move(b.client, ["car-1", -4.5, 0, 0, 10, 0], now + 50);
+  const passenger = state.players.get(b.client.sessionId)!;
+  passenger.x = -4.5; passenger.vx = 10;
+  manager.syncDriver(b.client.sessionId);
   assert.equal(cart.x, -5);
-  manager.move(a.client, ["car-1", -4.5, 0, 0, 10, 0], now + 50);
+  const owner = state.players.get(a.client.sessionId)!;
+  owner.x = -4.5; owner.vx = 10;
+  manager.syncDriver(a.client.sessionId);
   assert.equal(cart.x, -4.5);
   assert.equal(state.players.get(a.client.sessionId)!.x, -4.5);
   assert.equal(state.players.get(a.client.sessionId)!.y, C.CART_SEAT_HEIGHT);
-  manager.move(a.client, ["car-1", 20, 0, 0, 10, 0], now + 51);
-  assert.equal(cart.x, -4.5);
   manager.exit(a.client);
   assert.equal(cart.driver, "");
   assert.equal(cart.vx, 0);
   assert.equal(state.players.get(a.client.sessionId)!.vehicleId, "");
-  manager.enter(b.client, "car-1", now + 100);
+  manager.enter(b.client, "cart-1", now + 100);
   assert.equal(cart.driver, b.client.sessionId);
   manager.disconnect(b.client.sessionId);
   assert.equal(cart.driver, "");
@@ -60,25 +62,93 @@ test("run-over math and server cooldown hit foot players without hitting passeng
       clients: [driver, target],
     } = fixture(2, -5, 0),
     now = 100000;
-  manager.enter(driver.client, "car-1", now);
+  manager.enter(driver.client, "cart-1", now);
   const victim = state.players.get(target.client.sessionId)!;
   victim.x = -3.7;
-  manager.move(driver.client, ["car-1", -5, 0, Math.PI / 2, 12, 0], now + 50);
+  const owner = state.players.get(driver.client.sessionId)!;
+  owner.vx = 12; owner.rotY = Math.PI / 2;
+  manager.syncDriver(driver.client.sessionId);
   const hits: unknown[][] = [];
-  manager.tick(now + 51, (...args) => hits.push(args));
+  manager.contacts(now + 51, (...args) => hits.push(args));
   assert.equal(hits.length, 1);
   assert.equal(hits[0][0], driver.client.sessionId);
   assert.equal(hits[0][1], target.client.sessionId);
   assert.ok((hits[0][5] as number) > 0);
   assert.equal(hits[0][8], true);
-  manager.tick(now + 100, (...args) => hits.push(args));
+  manager.contacts(now + 100, (...args) => hits.push(args));
   assert.equal(hits.length, 1);
   victim.y = 2;
-  manager.tick(now + 400, (...args) => hits.push(args));
+  manager.contacts(now + 400, (...args) => hits.push(args));
   assert.equal(hits.length, 1);
   victim.y = 0;
-  manager.tick(now + 1000, (...args) => hits.push(args));
-  assert.equal(hits.length, 1, "stale cart reports cannot run players over");
+  manager.exit(driver.client);
+  manager.contacts(now + 1000, (...args) => hits.push(args));
+  assert.equal(hits.length, 1, "parked cars cannot run players over");
+});
+
+test("shuttle countdown starts once, reserves six unique seats, travels, and disembarks at the opposite dock", () => {
+  const [a, b] = C.SHUTTLE_STOPS;
+  const { state, manager, clients } = fixture(C.SHUTTLE_CAPACITY + 1, a.x, a.z),
+    now = 100000;
+  manager.enter(clients[0].client, "shuttle-1", now);
+  const shuttle = state.vehicles.get("shuttle-1")!,
+    departure = now + C.SHUTTLE_COUNTDOWN_MS;
+  assert.equal(shuttle.departureAt, departure);
+  for (let i = 1; i < clients.length; i++)
+    manager.enter(clients[i].client, "shuttle-1", now + 100 * i);
+  assert.equal(
+    shuttle.departureAt,
+    departure,
+    "later boarders do not restart countdown",
+  );
+  assert.equal(
+    clients.at(-1)!.messages.at(-1)!.ok,
+    false,
+    "full shuttle rejects seventh rider",
+  );
+  assert.equal(
+    new Set(
+      [...state.players.values()].filter((p) => p.vehicleId).map((p) => p.seat),
+    ).size,
+    C.SHUTTLE_CAPACITY,
+  );
+  manager.tick(departure - 1, () => {});
+  assert.equal(shuttle.traveling, false);
+  manager.tick(departure + 100, () => {});
+  assert.equal(shuttle.traveling, true);
+  assert.ok(shuttle.x > a.x);
+  manager.exit(clients[0].client);
+  assert.equal(clients[0].messages.at(-1)!.ok, false, "no exit while moving");
+  manager.enter(clients.at(-1)!.client, "shuttle-1", departure + 101);
+  assert.equal(clients.at(-1)!.messages.at(-1)!.ok, false);
+  const arrival = shuttle.arrivalAt;
+  manager.tick(arrival, () => {});
+  assert.equal(shuttle.x, b.x);
+  assert.equal(shuttle.z, b.z);
+  assert.equal(shuttle.traveling, false);
+  assert.equal(shuttle.departureAt, 0);
+  for (const p of state.players.values()) assert.equal(p.vehicleId, "");
+  assert.equal(shuttle.toX, a.x, "next trip returns to the first dock");
+  const rider = state.players.get(clients[0].client.sessionId)!;
+  assert.equal(rider.y, 0);
+  assert.equal(rider.seat, -1);
+  manager.enter(clients[0].client, "shuttle-1", arrival + 100);
+  assert.equal(shuttle.departureAt, arrival + 100 + C.SHUTTLE_COUNTDOWN_MS);
+});
+
+test("an empty shuttle cancels boarding countdown; one rider leaving does not reset others", () => {
+  const a = C.SHUTTLE_STOPS[0],
+    { state, manager, clients } = fixture(2, a.x, a.z);
+  manager.enter(clients[0].client, "shuttle-1", 100000);
+  manager.enter(clients[1].client, "shuttle-1", 100100);
+  const shuttle = state.vehicles.get("shuttle-1")!,
+    departure = shuttle.departureAt;
+  manager.exit(clients[0].client);
+  assert.equal(shuttle.departureAt, departure);
+  manager.disconnect(clients[1].client.sessionId);
+  assert.equal(shuttle.departureAt, 0);
+  manager.enter(clients[0].client, "shuttle-1", 200000);
+  assert.equal(shuttle.departureAt, 200000 + C.SHUTTLE_COUNTDOWN_MS);
 });
 
 test("cart movement accelerates and stops at plane edges; vehicle seats rotate with their vehicle", () => {
@@ -94,60 +164,4 @@ test("cart movement accelerates and stops at plane edges; vehicle seats rotate w
   assert.ok(Math.abs(seat.x - 2.75) < 1e-9);
   assert.ok(Math.abs(seat.z - 5.65) < 1e-9);
   assert.equal(seat.y, C.SHUTTLE_SEAT_HEIGHT);
-});
-
-
-test("only car and bike spawn; bike collision ejects rider, falls, and recovers", () => {
-  const { state, manager, clients: [rider, target] } = fixture(2, 5, 0);
-  assert.deepEqual([...state.vehicles.keys()], ["car-1", "bike-1"]);
-  const bike = state.vehicles.get("bike-1")!;
-  Object.assign(state.players.get(rider.client.sessionId)!, { x: bike.x, y: bike.y, z: bike.z });
-  manager.enter(rider.client, "bike-1", 100000);
-  manager.enter(target.client, "bike-1", 100000);
-  assert.equal(target.messages.at(-1)!.ok, false);
-  Object.assign(state.players.get(target.client.sessionId)!, { x: bike.x + 1, y: bike.y, z: bike.z });
-  manager.move(rider.client, ["bike-1", bike.x, bike.z, Math.PI / 2, 8, 0], 100050);
-  const hits: unknown[][] = [];
-  manager.tick(100051, (...args) => hits.push(args));
-  assert.equal(bike.driver, "");
-  assert.equal(state.players.get(rider.client.sessionId)!.vehicleId, "");
-  assert.equal(bike.fallenUntil, 102551);
-  assert.ok(hits.some(h => h[1] === rider.client.sessionId && h[8] === true));
-  manager.enter(rider.client, "bike-1", 100100);
-  assert.equal(rider.messages.at(-1)!.ok, false);
-  manager.tick(102551, () => {});
-  assert.equal(bike.fallenUntil, 0);
-});
-
-test("bike falls against car and validated world boundary", () => {
-  for (const obstacle of ["car", "boundary"]) {
-    const { state, manager, clients: [rider] } = fixture(1, 5, 0);
-    const bike = state.vehicles.get("bike-1")!, car = state.vehicles.get("car-1")!;
-    if (obstacle === "car") Object.assign(bike, { x: car.x + 1.5, z: car.z });
-    else Object.assign(bike, { x: C.PLANE_SIZE / 2 - C.CART_RADIUS, z: 0 });
-    Object.assign(state.players.get(rider.client.sessionId)!, { x: bike.x, y: bike.y, z: bike.z });
-    manager.enter(rider.client, "bike-1", 100000);
-    manager.move(rider.client, ["bike-1", bike.x, bike.z, Math.PI / 2, 8, 0, obstacle === "boundary"], 100050);
-    manager.tick(100051, () => {});
-    assert.ok(bike.fallenUntil > 100051, obstacle);
-    assert.equal(bike.driver, "");
-  }
-});
-
-
-test("bike building impacts are checked against the world; false crash reports are ignored", () => {
-  const state = new RaceState();
-  const world: C.MovementWorld = { ...C.flatWorld, blocked: (x) => x > 5.1 };
-  const manager = new VehicleManager(state, world);
-  const bike = state.vehicles.get("bike-1")!;
-  const client = { sessionId: "rider", send: () => {} } as unknown as Client;
-  state.players.set(client.sessionId, new Player({ x: bike.x, z: bike.z }));
-  manager.enter(client, "bike-1", 100000);
-  manager.move(client, ["bike-1", bike.x, bike.z, -Math.PI / 2, 0, 0, true], 100050);
-  manager.tick(100051, () => {});
-  assert.equal(bike.fallenUntil, 0);
-  manager.move(client, ["bike-1", bike.x, bike.z, Math.PI / 2, 0, 0, true], 100100);
-  manager.tick(100101, () => {});
-  assert.ok(bike.fallenUntil > 100101);
-  assert.equal(bike.driver, "");
 });

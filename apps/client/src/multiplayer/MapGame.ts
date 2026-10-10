@@ -1,190 +1,75 @@
 import * as THREE from "three";
-import { CAPSULE_RADIUS, CAPSULE_HEIGHT, INTERP_DELAY_MS, zurichWorld } from "@race/shared";
-import { Network } from "./net";
-import { LocalPlayer } from "./localPlayer";
-import { RemotePlayers } from "./remotePlayers";
-import { Vehicles } from "./vehicles";
-import { Effects } from "./effects";
-import { Hud } from "./hud";
-import { avatar, pose, disposeAvatar } from "./avatar";
+import { INTERP_DELAY_MS, zurichWorld } from "@race/shared";
+import { Network } from "./net.ts";
+import { LocalPlayer } from "./localPlayer.ts";
+import { RemotePlayers } from "./remotePlayers.ts";
+import { Vehicles } from "./vehicles.ts";
+import { Effects } from "./effects.ts";
+import { Hud } from "./hud.ts";
+import { avatar, pose, disposeAvatar } from "./avatar.ts";
+import { PlayerView } from "./view.ts";
+import { GameControls } from "./gameControls.ts";
+import { lobby } from "./lobby.ts";
 
-// Mounted by MapViewer: owns gameplay, never a second renderer or animation loop.
+// MapViewer owns rendering and the loop; this instance owns gameplay cleanup.
 export class MapGame {
   private net = new Network();
-  private local: LocalPlayer;
+  private local = new LocalPlayer();
   private remotes: RemotePlayers;
   private vehicles: Vehicles;
   private effects: Effects;
   private hud: Hud;
+  private view: PlayerView;
+  private controls: GameControls;
+  private closeLobby: () => void;
   private mesh = avatar("#ffffff");
-  private abort = new AbortController();
-  private yaw = 0;
-  private dragging = false;
-  private disposed = false;
-  private target = new THREE.Vector3();
-  private desired = new THREE.Vector3();
-  private distance = 10;
-  constructor(
-    scene: THREE.Scene,
-    private camera: THREE.PerspectiveCamera,
-    private canvas: HTMLCanvasElement,
-    hud: HTMLDivElement,
-    controls: HTMLDivElement,
-  ) {
-    this.local = new LocalPlayer(canvas);
+  private firstBody = avatar("#ffffff", 0, true);
+  private avatarReady = false;
+  constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, private canvas: HTMLCanvasElement,
+    hud: HTMLDivElement, hints: HTMLDivElement, map: THREE.Object3D) {
     this.remotes = new RemotePlayers(scene);
-    this.vehicles = new Vehicles(scene, this.net, controls);
+    this.vehicles = new Vehicles(scene, this.net, hints);
     this.effects = new Effects(scene);
     this.hud = new Hud(hud);
-    this.mesh.visible = false;
-    scene.add(this.mesh);
+    this.view = new PlayerView(camera, [map], zurichWorld);
+    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.initialized);
     Object.assign(this.local.body, zurichWorld.spawn);
-    camera.position.set(
-      this.local.body.x,
-      this.local.body.y + 6,
-      this.local.body.z + this.distance,
-    );
-    canvas.tabIndex = 0;
-    canvas.addEventListener(
-      "pointerdown",
-      (event) => {
-        canvas.focus();
-        this.dragging = true;
-        canvas.setPointerCapture(event.pointerId);
-      },
-      { signal: this.abort.signal },
-    );
-    canvas.addEventListener("pointerup", () => (this.dragging = false), {
-      signal: this.abort.signal,
-    });
-    canvas.addEventListener("pointercancel", () => (this.dragging = false), {
-      signal: this.abort.signal,
-    });
-    canvas.addEventListener(
-      "pointermove",
-      (event) => {
-        if (this.dragging) this.yaw -= event.movementX * 0.005;
-      },
-      { signal: this.abort.signal },
-    );
-    canvas.addEventListener(
-      "wheel",
-      (event) => {
-        event.preventDefault();
-        this.distance = THREE.MathUtils.clamp(
-          this.distance + event.deltaY * 0.015,
-          5,
-          25,
-        );
-      },
-      { signal: this.abort.signal, passive: false },
-    );
-    void this.net
-      .connect(
-        this.local.body,
-        (state, id) => {
-          this.vehicles.patch(state);
-          this.remotes.patch(state, id);
-          const p = state.players.get(id);
-          if (p) {
-            (
-              (this.mesh.children[0] as THREE.Mesh)
-                .material as THREE.MeshStandardMaterial
-            ).color.set(p.color);
-            this.mesh.visible = true;
-          }
-        },
-        (hit) => this.local.impulse(hit),
-        (hit) => this.effects.enqueue(hit),
-      )
-      .catch((error) => {
-        if (!this.disposed)
-          this.net.status = `Could not connect: ${error instanceof Error ? error.message : String(error)}`;
-      });
+    camera.near = 0.05;
+    camera.position.set(zurichWorld.spawn.x, zurichWorld.spawn.y + 1.6, zurichWorld.spawn.z);
+    scene.add(this.mesh, this.firstBody);
+    this.mesh.visible = this.firstBody.visible = false;
+    this.closeLobby = lobby(selection => this.net.connect(this.local.body, (state, id) => {
+      this.vehicles.patch(state); this.remotes.patch(state, id);
+      const p = state.players.get(id);
+      if (p && !this.avatarReady) {
+        disposeAvatar(this.mesh); disposeAvatar(this.firstBody);
+        this.mesh = avatar(p.color, p.character); this.firstBody = avatar(p.color, p.character, true);
+        scene.add(this.mesh, this.firstBody); this.avatarReady = true;
+      }
+    }, hit => this.effects.enqueue(hit), selection));
   }
-  update(dt: number, now: number) {
-    const elapsed = Math.min(0.1, dt),
-      renderTime = this.net.now() - INTERP_DELAY_MS;
-    this.vehicles.render(renderTime);
-    this.remotes.render(renderTime, this.vehicles.items);
+  get focus() { return this.local.body; }
+  update(elapsed: number, now: number) {
+    const dt = Math.min(0.1, elapsed), renderTime = this.net.now() - INTERP_DELAY_MS;
     if (this.net.initialized) {
+      this.net.frame(dt, this.local.body, () => this.local.controls(this.view.yaw));
       if (this.local.takeInteraction()) this.vehicles.interact(this.local.body);
-      let remaining = elapsed;
-      while (remaining > 0) {
-        const step = Math.min(remaining, 1 / 60);
-        if (this.local.body.vehicleId)
-          this.vehicles.step(
-            this.local.body,
-            this.local.controls(this.yaw),
-            step,
-            this.net.room.sessionId,
-          );
-        else {
-          this.vehicles.stopDriving();
-          this.local.step(step, this.yaw);
-          const { x, z } = this.local.body;
-          this.remotes.pushLocal(this.local.body, step);
-          if (
-            zurichWorld.blocked(
-              this.local.body.x,
-              this.local.body.y,
-              this.local.body.z,
-              CAPSULE_RADIUS,
-              CAPSULE_HEIGHT,
-            )
-          ) {
-            this.local.body.x = x;
-            this.local.body.z = z;
-          }
-        }
-        remaining -= step;
-      }
-      pose(this.mesh, this.local.body);
+      if (this.local.body.vehicleId) this.vehicles.local(this.local.body, this.net.room.sessionId);
+      else this.vehicles.stopDriving();
+      pose(this.mesh, this.local.body, dt); pose(this.firstBody, this.local.body, dt, this.view.pitch);
+      this.mesh.visible = this.avatarReady && this.view.perspective !== 0;
+      this.firstBody.visible = this.avatarReady && this.view.perspective === 0 && this.local.body.anim !== 3;
+      this.effects.trail(this.net.room.sessionId, this.local.body, now);
+      this.view.update(this.local.body, dt);
     }
-    const p = this.local.body;
-    this.target.set(p.x, p.y + 1, p.z);
-    this.desired.set(
-      p.x + Math.sin(this.yaw) * this.distance,
-      p.y + 6,
-      p.z + Math.cos(this.yaw) * this.distance,
-    );
-    // Terrain and the shared building mask keep the camera outside the map.
-    this.desired.y = Math.max(
-      this.desired.y,
-      (zurichWorld.height(this.desired.x, this.desired.z) ?? p.y) + 2,
-    );
-    for (let i = 1; i <= 20; i++) {
-      const t = i / 20,
-        x = THREE.MathUtils.lerp(this.target.x, this.desired.x, t),
-        y = THREE.MathUtils.lerp(this.target.y, this.desired.y, t),
-        z = THREE.MathUtils.lerp(this.target.z, this.desired.z, t);
-      if (zurichWorld.blocked(x, y, z, 0.2, 0.4)) {
-        this.desired.lerpVectors(
-          this.target,
-          this.desired,
-          Math.max(0.15, t - 0.1),
-        );
-        break;
-      }
-    }
-    this.camera.position.lerp(this.desired, 1 - Math.exp(-6 * elapsed));
-    this.camera.lookAt(this.target);
-    this.effects.update(renderTime, elapsed);
-    this.hud.update(dt, this.net);
-    this.vehicles.updateLabels(p, now);
-  }
-  get focus() {
-    return this.local.body;
+    this.vehicles.render(renderTime, dt); this.remotes.render(renderTime, this.vehicles.items, dt);
+    for (const [id, remote] of this.remotes.players) this.effects.trail(id, remote.rendered, now);
+    this.controls.update(dt); this.effects.update(renderTime, dt); this.hud.update(dt, this.net);
+    this.vehicles.updateLabels(this.local.body, now);
   }
   dispose() {
-    this.disposed = true;
-    this.abort.abort();
-    this.net.dispose();
-    this.local.dispose();
-    this.effects.dispose();
-    this.vehicles.dispose();
-    this.remotes.dispose();
-    disposeAvatar(this.mesh);
-    this.canvas.removeAttribute("tabindex");
+    this.closeLobby(); this.controls.dispose(); this.local.dispose(); this.net.dispose();
+    this.effects.dispose(); this.vehicles.dispose(); this.remotes.dispose();
+    disposeAvatar(this.mesh); disposeAvatar(this.firstBody); this.canvas.removeAttribute("tabindex");
   }
 }

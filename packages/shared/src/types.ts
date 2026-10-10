@@ -8,8 +8,17 @@ export interface PlayerState {
   vz: number;
   anim: number;
   color: string;
+  character: number; // 0: CS student, 1: Student Athlete, 2: Einstein
   vehicleId: string;
   seat: number;
+  grounded: boolean;
+  groundTime: number;
+  jumpUntil: number;
+  knockdownUntil: number;
+  simTime: number;
+  vehicleKind: number;
+  shoes: boolean;
+  attackReadyAt: number;
 }
 export interface WorldState {
   serverTime: number;
@@ -17,14 +26,13 @@ export interface WorldState {
   vehicles: Map<string, VehicleState>;
 }
 export interface VehicleState {
-  kind: number; // 0: car, 1: legacy shuttle, 2: bike
+  kind: number; // 0: cart, 1: shared shuttle, 2: bicycle, 3: NPC car
   x: number;
   y: number;
   z: number;
   rotY: number;
   vx: number;
   vz: number;
-  fallenUntil: number;
   capacity: number;
   driver: string;
   departureAt: number;
@@ -35,28 +43,19 @@ export interface VehicleState {
   toZ: number;
   tripStartedAt: number;
   arrivalAt: number;
+  fallenUntil: number;
 }
-export type VehicleMove = [string, number, number, number, number, number, boolean?];
 export interface VehicleResult {
   ok: boolean;
   message: string;
 }
-export type Move = [
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-  number,
-];
 export interface Impulse {
   from: string;
   ix: number;
   iy: number;
   iz: number;
   knockdown: boolean;
+  durationMs?: number;
 }
 export interface Bump {
   a: string;
@@ -66,19 +65,26 @@ export interface Bump {
   z: number;
   t: number;
 }
-export interface Ping {
-  clientTime: number;
-}
-export interface Pong extends Ping {
-  serverTime: number;
-}
 export interface Input {
   x: number;
   z: number;
   sprint: boolean;
   jump: boolean;
+  toggleShoes?: boolean;
+  hit?: boolean;
+  aim?: boolean;
+  facing?: number;
 }
 export interface Body extends PlayerState {
-  grounded: boolean;
-  knockdownUntil: number;
+}
+
+// Main's compact client-owned movement reports, with feature gameplay metadata
+// kept in the existing player schema and server-refereed action messages.
+export type Move = [number, number, number, number, number, number, number, number];
+export type VehicleMove = [string, number, number, number, number, number];
+export interface Ping { clientTime: number }
+export interface Pong extends Ping { serverTime: number }
+export interface PlayerCorrection {
+  x: number; y: number; z: number; vx: number; vy: number; vz: number; grounded: boolean;
+  vehicleId: string; vehicleKind: number; seat: number;
 }

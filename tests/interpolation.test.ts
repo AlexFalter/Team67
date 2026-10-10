@@ -41,23 +41,3 @@ test("remote interpolation follows the delayed timeline and shortest angle, hold
   assert.equal(scene.children.length, 0);
   assert.equal(remotes.players.size, 0);
 });
-
-test("soft separation pushes only the local body", () => {
-  const remotes = new RemotePlayers(new Scene());
-  const remote = createBody(),
-    local = createBody();
-  remote.x = 0.5;
-  remotes.patch(
-    {
-      serverTime: 1000,
-      players: new Map([["remote", remote]]),
-      vehicles: new Map(),
-    },
-    "local",
-  );
-  remotes.render(1000);
-  remotes.pushLocal(local, 1 / 60);
-  assert.ok(local.x < 0);
-  assert.equal(remote.x, 0.5);
-  assert.equal(remotes.players.get("remote")!.rendered.x, 0.5);
-});

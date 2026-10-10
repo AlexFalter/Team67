@@ -28,7 +28,7 @@ Z = 1248000 - northing    north is -Z
 
 ## Shared gameplay contracts
 
-Use `@race/shared` for constants, messages, capsule math, movement and world queries. The Zürich terrain/building grid and shuttle route come from `../../scripts/build-world.ts`, reading the checked-in GLB offline. `zurichWorld.height` and `blocked` are the current lightweight terrain/collision interface. Its 2 m mask is approximate; no physics engine, rooftop navigation, detailed openings or road network is implemented.
+Use `@race/shared` for constants, messages, capsule math, movement and world queries. The Zürich terrain/building grid and shuttle route come from `../../scripts/build-world.ts`, reading the checked-in GLB offline. `zurichWorld.height` and `blocked` are the current lightweight terrain/collision interface. Its 2 m mask is approximate; Rapier detects entity contacts and loose-object physics; rooftop navigation, detailed openings and a road network are not implemented.
 
 Foot players and cart drivers own their movement. The server validates and stores reports and referees collisions; impulse messages change local velocity. Remote entities interpolate on the delayed server clock; never interpolate the local player. Bump effects queue on that same timeline.
 
