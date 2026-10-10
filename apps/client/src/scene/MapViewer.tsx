@@ -13,7 +13,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { disposeMap, loadZurichMap } from "../maps/zurich/loadZurichMap";
 import { GameOverlay } from "../multiplayer/GameOverlay";
 import { MapGame } from "../multiplayer/MapGame";
-import { activeTheme } from "../maps/zurich/theme";
+import { activeTheme, applyRendererLook } from "../maps/zurich/theme";
 
 export function MapViewer() {
   const [playing, setPlaying] = useState(true);
@@ -60,7 +60,8 @@ function MapCanvas({ playing, resolution, onResolutionChange }: {
       controls: OrbitControls | undefined;
     let resize: ResizeObserver | undefined,
       game: MapGame | undefined,
-      sunlight: DirectionalLight | undefined;
+      sunlight: DirectionalLight | undefined,
+      disposeLook: (() => void) | undefined;
     const scene = new Scene();
     const theme = activeTheme();
     scene.background = new Color(theme.sky);
@@ -93,6 +94,7 @@ function MapCanvas({ playing, resolution, onResolutionChange }: {
         });
         renderer = new WebGLRenderer({ canvas: canvas!, antialias: true,
           powerPreference: "high-performance" });
+        disposeLook = applyRendererLook(renderer, scene, theme);
         renderer.shadowMap.enabled = playing;
         renderer.shadowMap.type = PCFShadowMap;
         const light = theme.lighting;
@@ -182,6 +184,7 @@ function MapCanvas({ playing, resolution, onResolutionChange }: {
       disposeMap(scene);
       sunlight?.shadow.dispose();
       scene.clear();
+      disposeLook?.();
       renderer?.dispose();
       renderer?.forceContextLoss();
     };

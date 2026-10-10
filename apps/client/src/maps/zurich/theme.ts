@@ -1,4 +1,7 @@
 import {
+  AgXToneMapping,
+  PMREMGenerator,
+  type Scene,
   BufferAttribute,
   CanvasTexture,
   Color,
@@ -9,7 +12,9 @@ import {
   SRGBColorSpace,
   type Material,
   type Object3D,
+  type WebGLRenderer,
 } from "three";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import summer from "./themes/summer.json";
 import autumn from "./themes/autumn.json";
 
@@ -50,6 +55,10 @@ export interface MapTheme {
   lighting: {
     sun: string; sunIntensity: number; sunElevation: number; sunAzimuth: number;
     skyLight: string; groundLight: string; hemiIntensity: number;
+    /** AgX tone mapping exposure (Blender's default view transform); 1 = neutral */
+    exposure?: number;
+    /** neutral studio ambient (image-based, like Blender's material preview); 0 = off */
+    environment?: number;
   };
   buildings: {
     walls: Record<BuildingCategory, string[]>;
@@ -250,4 +259,24 @@ function tintBuildings(mesh: Mesh, palette: (typeof TINTED)[string], theme: MapT
     colors.set([color.r, color.g, color.b], i * 3);
   }
   mesh.geometry.setAttribute("color", new BufferAttribute(colors, 3));
+}
+
+/**
+ * Renderer look shared by every client, matching Blender's material preview: AgX tone mapping plus a
+ * neutral studio environment as ambient light. Without them the theme lights clip pale walls and
+ * flat roofs to white and leave sun-averted roofs dark. Returns a dispose function.
+ */
+export function applyRendererLook(renderer: WebGLRenderer, scene: Scene, theme: MapTheme) {
+  renderer.toneMapping = AgXToneMapping;
+  renderer.toneMappingExposure = theme.lighting.exposure ?? 1;
+  const strength = theme.lighting.environment ?? 0;
+  if (!strength) return () => {};
+  const pmrem = new PMREMGenerator(renderer);
+  const room = new RoomEnvironment();
+  const target = pmrem.fromScene(room, 0.04);
+  room.traverse((o) => { if (o instanceof Mesh) { o.geometry.dispose(); (o.material as Material).dispose(); } });
+  pmrem.dispose();
+  scene.environment = target.texture;
+  scene.environmentIntensity = strength;
+  return () => { if (scene.environment === target.texture) scene.environment = null; target.dispose(); };
 }

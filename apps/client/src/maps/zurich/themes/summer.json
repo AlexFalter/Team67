@@ -79,11 +79,11 @@
   "lighting": {
     "$comment": "Sun + sky light (game: DirectionalLight + HemisphereLight; Blender preview: sun lamp + world).",
     "sun": "#fff2dc",
-    "sunIntensity": 2.6,
+    "sunIntensity": 1.6,
     "sunElevation": 40,
     "sunAzimuth": 210,
     "skyLight": "#dfe8f2",
     "groundLight": "#7c8792",
-    "hemiIntensity": 1.8
+    "hemiIntensity": 0.3, "exposure": 1.0, "environment": 1.0
   }
 }
