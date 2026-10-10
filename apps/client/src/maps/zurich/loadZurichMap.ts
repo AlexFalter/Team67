@@ -4,6 +4,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import area from './area.json';
 import { activeTheme, applyTheme } from './theme';
 import { loadTrees } from './loadTrees';
+import { loadProps } from './loadProps';
 
 /**
  * Map data stays separate from the viewer so the team can reuse the same asset.
@@ -23,11 +24,13 @@ export async function loadZurichMap(signal: AbortSignal): Promise<Object3D> {
   });
   const theme = activeTheme();
   applyTheme(gltf.scene, theme);
-  try {
-    gltf.scene.add(await loadTrees(signal, theme));
-  } catch (error) {
-    if (signal.aborted) { disposeMap(gltf.scene); throw error; }
-    console.warn('Trees not loaded:', error);
+  for (const [label, load] of [['Trees', loadTrees], ['Props', loadProps]] as const) {
+    try {
+      gltf.scene.add(await load(signal, theme));
+    } catch (error) {
+      if (signal.aborted) { disposeMap(gltf.scene); throw error; }
+      console.warn(`${label} not loaded:`, error);
+    }
   }
   return gltf.scene;
 }

@@ -8,6 +8,8 @@ ZH_DIR = globals().get('ZH_DIR') or os.path.dirname(bpy.data.filepath)  # apps/c
   meshopt compression, no quantisation (~33 MB; fits in git without LFS), cleaned by gltfpack -noq.
 - public/maps/zurich/trees.glb + trees.json : instanced tree models + one row per tree
   [x, y, z, height, crownRadius, model, colorIndex, yaw, brightness] (three.js coordinates).
+- public/maps/zurich/props.glb + props.json : street prop models (build_props.py) + one row per placed
+  prop [x, y, z, yaw, scale, kind] (three.js coordinates).
 - assets-src/zurich/world-grid.json : 2 m walk grid for scripts/build-world.ts, from walk_grid.py
   (prints a walkability report: holes, reachable area, key places).
 """
@@ -111,6 +113,24 @@ for o in bpy.data.collections['Trees'].objects:
                  o['kind'], int(o['color']), round(o.rotation_euler.z, 3), round(float(o.get('jitter', 1.0)), 3)])
 json.dump(rows, open(os.path.join(PUBLIC, 'trees.json'), 'w'), separators=(',', ':'))
 
+# --- street props (build_props.py): models + placements, instanced in the game like the trees
+size_props, prop_rows = 0, []
+if bpy.data.collections.get('Props') and bpy.data.objects.get('PropModel_Lantern'):
+    pmodels = [o for o in bpy.data.collections['PropModels'].objects if o.type == 'MESH']
+    for m in pmodels: m.name = m.name + '_src'
+    pm = []
+    for m in pmodels:
+        c = bpy.data.objects.new(m.name.replace('_src', ''), m.data); tmp.objects.link(c); pm.append(c)
+    size_props = export(pm, os.path.join(PUBLIC, 'props.glb'))
+    for c in pm: bpy.data.objects.remove(c)
+    for m in pmodels: m.name = m.name.replace('_src', '')
+    for o in bpy.data.collections['Props'].objects:
+        if o.type != 'MESH' or not o.data.name.startswith('PropModel_'): continue
+        x, y, z = o.location
+        kind = o.data.name.split('.')[0].replace('PropModel_', '')
+        prop_rows.append([round(x, 2), round(z, 2), round(-y, 2), round(o.rotation_euler.z, 3), round(o.scale.z, 3), kind])
+    json.dump(prop_rows, open(os.path.join(PUBLIC, 'props.json'), 'w'), separators=(',', ':'))
+
 # --- gameplay walk grid (ground / walls, 2 m) -> world-grid.json; see walk_grid.py
 exec(open(os.path.join(ZH_DIR, 'blender', 'walk_grid.py')).read())  # defines width, depth, WALK_REPORT
 
@@ -120,4 +140,4 @@ for o in list(tmp.objects):
     if me.users == 0: bpy.data.meshes.remove(me)
 bpy.data.collections.remove(tmp)
 print(f'zurich.glb {size_map:.1f} MB, {len(tiles)} tiles, {tris} tris; trees.glb {size_trees:.2f} MB, {len(rows)} trees; '
-      f'grid {width}x{depth}; {time.time() - t0:.0f} s')
+      f'{len(prop_rows)} props; grid {width}x{depth}; {time.time() - t0:.0f} s')
