@@ -23,13 +23,13 @@ export class RoomFlow {
     this.ready.disabled = true;
     void preparation.then(() => { if (!this.abort.signal.aborted) {
       this.prepared = true; this.ready.disabled = false;
-      if (this.net.room?.state.phase === RoomPhase.Lobby) this.message.textContent = "The round starts when everyone is ready.";
+      if (this.net.room?.state.phase === RoomPhase.Lobby) this.message.textContent = this.lobbyMessage();
     } })
       .catch(error => { if (!this.abort.signal.aborted) this.preparationError = `${String(error)} Reload to retry loading the game.`; });
     const options = { signal: this.abort.signal };
     this.ready.addEventListener("click", () => {
       const member = net.room?.state.members.get(net.room.sessionId);
-      if (member && this.prepared) { unlockAudio(); net.room.send("ready", !member.ready); }
+      if (member && this.prepared && net.room.state.hostId === net.room.sessionId) { unlockAudio(); net.room.send("ready", true); }
     }, options);
     this.restart.addEventListener("click", () => net.room.send("restartRound"), options);
     this.finish.addEventListener("click", () => net.room.send("finishRound"), options);
@@ -43,16 +43,18 @@ export class RoomFlow {
     this.signature = signature;
     const member = state.members.get(id), host = state.hostId === id;
     this.root.hidden = state.phase === RoomPhase.Running && !!member && !member.spectator;
+    this.root.dataset.phase = state.phase;
+    this.root.querySelector<HTMLElement>("#room-count")!.textContent = `${state.members.size} / 40 PLAYERS`;
     this.root.querySelector<HTMLElement>("#room-code-label")!.textContent = `ROOM ${this.net.room.roomId}`;
-    this.title.textContent = state.phase === RoomPhase.Running ? "Round in progress" : state.phase === RoomPhase.Finished ? "Round finished" : "Lobby";
-    this.ready.hidden = state.phase !== RoomPhase.Lobby || !member;
-    this.ready.textContent = member?.ready ? "Cancel ready" : "Ready";
+    this.title.textContent = state.phase === RoomPhase.Running ? "Round in progress" : state.phase === RoomPhase.Finished ? "Round finished" : "Room lobby";
+    this.ready.hidden = state.phase !== RoomPhase.Lobby || !member || !host;
+    this.ready.textContent = "Start match ↗";
     this.restart.hidden = state.phase !== RoomPhase.Finished || !host;
     this.finish.hidden = state.phase !== RoomPhase.Running || !state.introComplete || !host || !!member?.spectator;
     this.roster.hidden = state.phase === RoomPhase.Finished;
     this.table.hidden = state.phase !== RoomPhase.Finished;
     this.message.textContent = state.phase === RoomPhase.Lobby
-      ? state.devMode ? `Dev mode${state.skipIntro ? " · bus intro skipped" : ""}. The round starts when everyone is ready.` : "The round starts when everyone is ready."
+      ? this.lobbyMessage()
       : state.phase === RoomPhase.Running
         ? "You joined during a round. Wait here; you can play in the next round."
         : host ? "Everyone can see these results. Return to the lobby to play again."
@@ -60,8 +62,16 @@ export class RoomFlow {
     const items = document.createDocumentFragment();
     for (const [memberId, m] of state.members) {
       const item = document.createElement("li");
-      const status = state.phase === RoomPhase.Lobby ? m.ready ? "Ready" : "Not ready" : m.spectator ? "Waiting" : "Playing";
-      item.textContent = `${m.name}${memberId === id ? " (you)" : ""}${memberId === state.hostId ? " · host" : ""} — ${status}`;
+      const status = state.phase === RoomPhase.Lobby ? "IN LOBBY" : m.spectator ? "WAITING" : "PLAYING";
+      const icon = document.createElement("span"); icon.className = "roster-avatar";
+      icon.textContent = ["CS", "SA", "AE"][m.character] ?? "CS";
+      const name = document.createElement("span"); name.className = "roster-player"; name.textContent = m.name;
+      const detail = document.createElement("small");
+      detail.textContent = [memberId === id ? "YOU" : "", memberId === state.hostId ? "HOST" : "", ["CS Student", "Student Athlete", "Albert Einstein"][m.character]].filter(Boolean).join(" · ");
+      name.append(detail);
+      const badge = document.createElement("span"); badge.className = "roster-status"; badge.textContent = status;
+      badge.dataset.ready = String(state.phase === RoomPhase.Lobby);
+      item.append(icon, name, badge);
       items.append(item);
     }
     this.roster.replaceChildren(items);
@@ -76,6 +86,13 @@ export class RoomFlow {
       }
       this.table.tBodies[0].replaceChildren(rows);
     }
+  }
+  private lobbyMessage() {
+    const state = this.net.room?.state;
+    const prefix = state?.devMode ? `Dev mode${state.skipIntro ? " · bus intro skipped" : ""}. ` : "";
+    return prefix + (state?.hostId === this.net.room?.sessionId
+      ? "Share the room code. When you're ready, start the match for everyone."
+      : "You're in. The host will start the match—every player competes solo.");
   }
   update() {
     if (this.net.room?.state.phase === RoomPhase.Lobby && !this.prepared)

@@ -163,7 +163,7 @@ export class BattleBusIntro {
       this.camera.position.y = this.start.y + 3.7;
       this.camera.lookAt(this.door.clone().lerp(this.start, THREE.MathUtils.smoothstep(exitTime, 3.8, 5.6) * 0.65).add(new THREE.Vector3(0, 1.3, 0)));
     }
-    this.overlay.textContent = this.net.now() < state!.introStartedAt ? "Everyone is ready. The battle bus is departing…"
+    this.overlay.textContent = this.net.now() < state!.introStartedAt ? "Match started. The battle bus is departing…"
       : elapsed < 7 ? `Mouse / trackpad: look around · ${this.ride.hasThanked ? "Driver thanked!" : "Space: thank the bus driver"}` : "Disembarking together…";
   }
   dispose() {

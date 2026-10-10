@@ -7,6 +7,7 @@ import { registerExamDebug } from "./examDebug.ts";
 import { RoundManager } from "./round.ts";
 import { PubliBikes } from "./publiBikes.ts";
 import { MateMachine } from "./mate.ts";
+import { NpcEncounters } from "./npcs.ts";
 // The prototype runs one server process. Reserve synchronously before async
 // physics initialization so two simultaneous creates cannot claim one code.
 const codes = new Set<string>();
@@ -23,6 +24,7 @@ export class Race extends Room<{ state: RaceState }> {
   private rounds!: RoundManager;
   private publiBikes!: PubliBikes;
   private mate!: MateMachine;
+  private npcs!: NpcEncounters;
   async onCreate(options: { code?: unknown; devMode?: unknown; skipIntro?: unknown; goldPubliBikes?: unknown; railCrashProtection?: unknown } = {}) {
     if (options.code !== undefined) {
       const code = C.roomCode(options.code);
@@ -38,6 +40,7 @@ export class Race extends Room<{ state: RaceState }> {
     this.vehicles = new VehicleManager(this.state, this.world);
     this.publiBikes = this.createPubliBikes();
     this.mate = new MateMachine(this.state, this.world);
+    this.npcs = this.createNpcs();
     const configuredDuration = Number(process.env.ROUND_DURATION_MS ?? C.ROUND_DURATION_MS);
     const duration = Number.isFinite(configuredDuration) && configuredDuration > 0 ? configuredDuration : C.ROUND_DURATION_MS;
     const introDuration = Number(process.env.BATTLE_BUS_INTRO_MS ?? C.BATTLE_BUS_DURATION_MS);
@@ -77,7 +80,7 @@ export class Race extends Room<{ state: RaceState }> {
     });
     this.setPatchRate(1000 / C.SERVER_PATCH_RATE);
     this.onMessage("vehicleEnter", (client, data: unknown) => {
-      if (this.rounds.canPlay(client.sessionId)) this.vehicles.enter(client, data, Date.now());
+      if (this.rounds.canPlay(client.sessionId) && !this.npcs.busy(client.sessionId)) this.vehicles.enter(client, data, Date.now());
     });
     this.onMessage("vehicleExit", client => {
       if (this.rounds.canPlay(client.sessionId)) {
@@ -86,13 +89,15 @@ export class Race extends Room<{ state: RaceState }> {
       }
     });
     this.onMessage("bikeScanBegin", (client, data: unknown) => {
-      if (this.rounds.canPlay(client.sessionId)) this.publiBikes.begin(client, data);
+      if (this.rounds.canPlay(client.sessionId) && !this.npcs.busy(client.sessionId)) this.publiBikes.begin(client, data);
     });
     this.onMessage("bikeScanFinish", (client, data: unknown) => {
       if (this.rounds.canPlay(client.sessionId)) this.publiBikes.finish(client, data);
     });
     this.onMessage("bikeScanCancel", (client, data: unknown) => this.publiBikes.cancel(client, data));
-    this.onMessage("mate", (client, data: unknown) => this.mate.command(client, data));
+    this.onMessage("mate", (client, data: unknown) => { if (!this.npcs.busy(client.sessionId)) this.mate.command(client, data); });
+    this.onMessage("npc", (client, data: unknown) => this.npcs.command(client, data));
+    this.onMessage("npcPose", (client, data: unknown) => this.npcs.pose(client, data));
     this.setSimulationInterval(() => this.tick(), 1000 / C.COLLISION_TICK_RATE);
   }
   onJoin(client: Client, options: { name?: unknown; character?: unknown } = {}) {
@@ -108,6 +113,7 @@ export class Race extends Room<{ state: RaceState }> {
       simTime: Date.now(), character,
     }));
     this.mate.join(id);
+    this.npcs.join(id);
   }
   private resetRound() {
     const colors = new Map([...this.state.players].map(([id, p]) => [id, p.color]));
@@ -116,6 +122,7 @@ export class Race extends Room<{ state: RaceState }> {
     this.vehicles = new VehicleManager(this.state, this.world);
     this.publiBikes = this.createPubliBikes();
     this.state.mates.clear(); this.mate = new MateMachine(this.state, this.world);
+    this.state.npcs.clear(); this.npcs = this.createNpcs();
     for (const [id, member] of this.state.members) this.spawnPlayer(id, member.character, colors.get(id));
   }
   private arriveFromBus() {
@@ -132,6 +139,7 @@ export class Race extends Room<{ state: RaceState }> {
     const id = this.state.players.get(client.sessionId)?.vehicleId;
     this.publiBikes.disconnect(client.sessionId);
     this.mate.leave(client.sessionId);
+    this.npcs.leave(client.sessionId);
     this.vehicles.disconnect(client.sessionId);
     if (id) this.publiBikes.park(id);
     this.state.players.delete(client.sessionId);
@@ -141,7 +149,7 @@ export class Race extends Room<{ state: RaceState }> {
   onDispose() { this.physics?.dispose(); if (this.code) codes.delete(this.code); }
   private hit(target: string, hit: C.Impulse) {
     const p = this.state.players.get(target);
-    if (p && this.rounds.canPlay(target)) {
+    if (p && this.rounds.canPlay(target) && !this.npcs.busy(target)) {
       this.rounds.hit(hit.from, target);
       p.simTime = Date.now();
       const correction = this.correction(p);
@@ -163,7 +171,7 @@ export class Race extends Room<{ state: RaceState }> {
       vehicleId: p.vehicleId, vehicleKind: p.vehicleKind, seat: p.seat };
   }
   private move(client: Client, data: unknown) {
-    if (!this.rounds.canPlay(client.sessionId)) return;
+    if (!this.rounds.canPlay(client.sessionId) || this.npcs.busy(client.sessionId)) return;
     if (
       !Array.isArray(data) ||
       data.length !== 8 ||
@@ -208,7 +216,7 @@ export class Race extends Room<{ state: RaceState }> {
     this.lastMoves.set(client.sessionId, now);
   }
   private attack(client: Client) {
-    if (!this.rounds.canPlay(client.sessionId)) return;
+    if (!this.rounds.canPlay(client.sessionId) || this.npcs.busy(client.sessionId)) return;
     const p = this.state.players.get(client.sessionId), now = Date.now();
     if (!p || p.vehicleId || now < p.knockdownUntil || now < p.attackReadyAt) return;
     p.simTime = now; p.attackReadyAt = now + C.ATTACK_COOLDOWN_MS;
@@ -223,6 +231,7 @@ export class Race extends Room<{ state: RaceState }> {
     this.rounds.tick(now);
     this.publiBikes.tick(now);
     this.mate.tick(now);
+    this.npcs.tick(now);
     if (this.state.phase !== C.RoomPhase.Running || !this.state.introComplete) return;
     const positions = new Map([...this.state.players].map(([id, p]) => [id, this.correction(p)]));
     for (const p of this.state.players.values()) p.simTime = now;
@@ -235,7 +244,7 @@ export class Race extends Room<{ state: RaceState }> {
     const entries = [...this.state.players];
     for (let pass = 0; pass < 4; pass++) for (let i = 0; i < entries.length; i++) for (let j = i + 1; j < entries.length; j++) {
       const [aId, a] = entries[i], [bId, b] = entries[j];
-      if (a.vehicleId || b.vehicleId || (pass === 0 && !this.physics.intersects(aId, bId))) continue;
+      if (a.vehicleId || b.vehicleId || this.npcs.busy(aId) || this.npcs.busy(bId) || (pass === 0 && !this.physics.intersects(aId, bId))) continue;
       const o = this.contact;
       if (C.capsuleContact(a, b, o)) {
         const amount = (2 * C.CAPSULE_RADIUS - o.dist) / 2;
@@ -254,5 +263,13 @@ export class Race extends Room<{ state: RaceState }> {
   private createPubliBikes() {
     return new PubliBikes(this.state, this.vehicles, this.world, (id, message) =>
       this.clients.find(c => c.sessionId === id)?.send("vehicleResult", { ok: false, message }));
+  }
+  private createNpcs() {
+    return new NpcEncounters(this.state, this.world, (id, point) => {
+      const p = this.state.players.get(id); if (!p) return;
+      Object.assign(p, point, { vx: 0, vy: 0, vz: 0, grounded: true, anim: 0, simTime: Date.now() });
+      this.lastMoves.set(id, p.simTime);
+      this.clients.find(c => c.sessionId === id)?.send("playerCorrection", this.correction(p));
+    });
   }
 }

@@ -7,11 +7,14 @@ test('dev rooms skip the bus for all players, preserve round length and keep the
   const host = await client.create<WireState>('race', { name: 'Dev', devMode: true, skipIntro: true }); rooms.push(host);
   const guest = await client.joinById<WireState>(host.roomId, { name: 'Guest', devMode: false, skipIntro: false }); rooms.push(guest);
   await until(() => host.state?.members.size === 2 && guest.state?.members.size === 2, 'both members');
-  host.send('ready', true);
-  await until(() => host.state.members.get(host.sessionId)!.ready, 'host ready');
-  assert.equal(host.state.phase, 'Lobby', 'skip still waits for everyone');
   guest.send('ready', true);
+  await until(() => host.state.members.get(guest.sessionId)!.ready, 'guest ready');
+  assert.equal(host.state.phase, 'Lobby', 'skip still requires the host to start');
+  guest.send('ready', false);
+  await until(() => !host.state.members.get(guest.sessionId)!.ready, 'guest unready');
+  host.send('ready', true);
   await until(() => host.state.introComplete && guest.state.introComplete, 'shared immediate start');
+  assert.equal(host.state.members.get(guest.sessionId)!.ready, false, 'unready guests participate too');
   for (const room of [host, guest]) {
    assert.equal(room.state.devMode, true); assert.equal(room.state.skipIntro, true);
    assert.equal(room.state.startedAt, room.state.introStartedAt);

@@ -6,7 +6,7 @@ ZH_DIR = globals().get('ZH_DIR') or os.path.dirname(bpy.data.filepath)  # apps/c
 - footprint = union of the package's terrace-level surfaces (TOP +- 0.4 m), one flat solid block:
   concrete-tile top, stone walls down into the ground; hidden ground under it pushed below the top
 - fence (stone plinth, metal rails/posts, like the bridges) on every edge with a drop > 0.6 m,
-  except along the ETH main building; a broad staircase down towards the Polybahn top station door
+  except along the ETH main building; a broad 20 % ramp down towards the Polybahn top station door
 """
 import bmesh, math
 from mathutils import Vector, geometry
@@ -14,7 +14,7 @@ from mathutils.bvhtree import BVHTree
 from mathutils.kdtree import KDTree
 
 TOP, BOTTOM = 50.7, 42.0
-STEP, TREAD, STAIR_W = 0.17, 0.36, 5.0
+STEP, TREAD, STAIR_W, RAMP_SLOPE = 0.17, 0.36, 5.0, 0.20
 scene = bpy.context.scene
 exec(open(ZH_DIR + '/blender/guard.py').read())
 if kept('Polyterrasse_lowpoly'): raise SystemExit('Polyterrasse_lowpoly kept (manual edit)')
@@ -99,7 +99,7 @@ def box(p0, p1, half_w, z0, z1, mat):
         f = bm.faces.new([bm.verts.new(v) for v in pts]); f.material_index = mat; f.normal_update()
         if f.normal.dot(f.calc_center_median() - cen) < 0: f.normal_flip()
 
-# staircase towards the Polybahn top station door
+# ramp towards the Polybahn top station door (was a staircase; ramps walk smoothly in the game)
 door = None
 st = bpy.data.objects.get('Polybahn_topstation')
 if st:
@@ -109,19 +109,22 @@ stairs_at = None
 if door:
     a, b, n = min(edge_info, key=lambda e: (((e[0] + e[1]) / 2).to_2d() - door.to_2d()).length if (e[1] - e[0]).length > STAIR_W else 1e9)
     mid = (a + b) / 2; d = (b - a).normalized()
-    z_end = gz(mid + n * 6) or TOP - 2
-    steps = max(1, math.ceil((TOP - z_end) / STEP))
-    for k in range(steps):
-        p0 = mid + n * (k * TREAD); p1 = p0 + n * TREAD
-        zt = TOP - (k + 1) * (TOP - z_end) / steps
-        c0 = Vector((p0.x, p0.y, 0)); c1 = Vector((p1.x, p1.y, 0))
-        # step slab across the stair width (u along n, width along d)
-        q = [c0 - d * STAIR_W / 2, c0 + d * STAIR_W / 2, c1 + d * STAIR_W / 2, c1 - d * STAIR_W / 2]
-        lo = [v + Vector((0, 0, min(zt, z_end) - 1.0)) for v in q]; hi = [v + Vector((0, 0, zt)) for v in q]
-        cen = sum(lo + hi, Vector()) / 8
-        for pts in [(lo[i], lo[(i + 1) % 4], hi[(i + 1) % 4], hi[i]) for i in range(4)] + [hi, list(reversed(lo))]:
-            f = bm.faces.new([bm.verts.new(v) for v in pts]); f.material_index = WALL if pts is not hi else TOPM; f.normal_update()
-            if f.normal.dot(f.calc_center_median() - cen) < 0: f.normal_flip()
+    # ramp (not steps): 20 % slope from the terrace edge down until it meets the ground
+    Lr = 8.0
+    for _ in range(6):
+        z_end = gz(mid + n * Lr) or TOP - 2
+        Lr = min(20.0, max(3.0, (TOP - z_end) / RAMP_SLOPE))
+    z_end = gz(mid + n * Lr) or TOP - 2
+    c0, c1 = Vector((mid.x, mid.y, 0)), Vector((mid.x, mid.y, 0)) + n * Lr
+    w2 = d * STAIR_W / 2
+    z_low = min(z_end, gz(c0) or z_end) - 0.6
+    top = [c0 - w2 + Vector((0, 0, TOP)), c0 + w2 + Vector((0, 0, TOP)), c1 + w2 + Vector((0, 0, z_end)), c1 - w2 + Vector((0, 0, z_end))]
+    low = [Vector((p.x, p.y, z_low)) for p in top]
+    cen = sum(top + low, Vector()) / 8
+    for pts, mat in ((top, TOPM), ((low[0], low[3], top[3], top[0]), WALL), ((low[2], low[1], top[1], top[2]), WALL),
+                     ((low[3], low[2], top[2], top[3]), WALL)):
+        f = bm.faces.new([bm.verts.new(v) for v in pts]); f.material_index = mat; f.normal_update()
+        if f.normal.dot(f.calc_center_median() - cen) < 0: f.normal_flip()
     stairs_at = (mid, d, n)
 
 # fence on edges with a drop, not along the HG, not across the stairs

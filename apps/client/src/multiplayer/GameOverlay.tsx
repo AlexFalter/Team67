@@ -1,25 +1,47 @@
+import { useState } from "react";
 import "./game.css";
+
+const characters = [
+  { name: "CS Student", detail: "Glasses & backpack" },
+  { name: "Student Athlete", detail: "Varsity jacket & sneakers" },
+  { name: "Albert Einstein", detail: "Wild hair & moustache" },
+];
 
 export function GameOverlay({ resolution, onResolutionChange }: {
   resolution: "performance" | "high";
   onResolutionChange: (resolution: "performance" | "high") => void;
 }) {
+  const [character, setCharacter] = useState(0);
+  const cycleCharacter = (direction: number) => setCharacter(current => (current + direction + characters.length) % characters.length);
   return <>
     <section id="lobby" aria-label="Multiplayer lobby">
-      <form>
-        <p className="eyebrow">ZÜRICH MULTIPLAYER</p>
-        <h1>Campus chase.</h1>
-        <p>Create a room or join your friends by code.</p>
+      <div className="menu-story">
+        <p className="menu-place">ZÜRICH / SCHWEIZ</p>
+        <h2>Race to ETH</h2>
+        <p className="menu-neighbourhoods">Zürich HB <span className="menu-route-arrow">→</span> ETH HG</p>
+        <p className="menu-game-type">Solo multiplayer</p>
+      </div>
+      <form onSubmit={event => event.preventDefault()}>
+        <div className="menu-card-heading"><span>CHOOSE YOUR CHARACTER</span><span>0{character + 1} / 03</span></div>
+        <div className="character-picker" role="group" aria-label="Choose your character"
+          onKeyDown={event => {
+            if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+              event.preventDefault(); cycleCharacter(event.key === "ArrowLeft" ? -1 : 1);
+            }
+          }}>
+          <button type="button" className="character-arrow" aria-label="Previous character" onClick={() => cycleCharacter(-1)}>‹</button>
+          <div id="character-stage" role="img" aria-label={`3D preview of ${characters[character].name}`} />
+          <button type="button" className="character-arrow" aria-label="Next character" onClick={() => cycleCharacter(1)}>›</button>
+        </div>
+        <div className="character-description" aria-live="polite">
+          <h1>{characters[character].name}</h1><p>{characters[character].detail}</p>
+        </div>
+        <div className="character-pagination" aria-hidden="true">{characters.map((_, index) => <i key={index} className={index === character ? "selected" : undefined} />)}</div>
+        <input id="character" type="hidden" name="character" value={character} />
         <label htmlFor="player-name">Your name</label>
         <input id="player-name" autoComplete="nickname" maxLength={24} required placeholder="Your name" />
-        <label htmlFor="character">Your character</label>
-        <select id="character" defaultValue="0">
-          <option value="0">CS Student — glasses &amp; backpack</option>
-          <option value="1">Student Athlete — varsity &amp; sneakers</option>
-          <option value="2">Albert Einstein — wild hair &amp; moustache</option>
-        </select>
         <label htmlFor="room-code">Room code</label>
-        <input id="room-code" autoComplete="off" maxLength={12} placeholder="e.g. TEAM67" />
+        <input id="room-code" autoComplete="off" maxLength={12} minLength={4} placeholder="e.g. ZURICH" />
         <fieldset id="dev-settings">
           <legend>Testing</legend>
           <label><input id="dev-mode" type="checkbox" /> Dev mode</label>
@@ -29,15 +51,21 @@ export function GameOverlay({ resolution, onResolutionChange }: {
           <p className="hint">Saved on this browser. Applies to rooms you create; everyone in the room starts together.</p>
         </fieldset>
         <div className="buttons">
-          <button type="submit" value="create">Create room</button>
-          <button type="submit" value="join">Join room</button>
+          <button type="submit" value="create" disabled>Create room <span aria-hidden="true">↗</span></button>
+          <button type="submit" value="join" disabled>Join room</button>
         </div>
-        <p className="hint">4–12 letters, numbers, or hyphens. Leave blank when creating to generate a code.</p>
-        <p role="status" aria-live="polite"></p>
+        <p className="hint">Choose a code to create a session. Share it so others can join.<br />4–12 letters, numbers, or hyphens.</p>
+        <p role="status" aria-live="polite">Loading Zürich…</p>
       </form>
+      <div className="menu-coordinate"><span className="location-dot" aria-hidden="true"></span> ZÜRICH, SWITZERLAND <span>47.3769° N · 8.5417° E</span></div>
+      <a className="menu-credit" href="https://data.stadt-zuerich.ch/dataset/geo_bauten___kombinierte_darstellung_heute" target="_blank" rel="noreferrer">Source data: Stadt Zürich · CC0</a>
     </section>
     <section id="room-screen" hidden aria-label="Room" aria-live="polite">
+      <div className="room-heading"><p className="menu-kicker">MULTIPLAYER LOBBY</p><h2>Zürich HB → ETH HG</h2></div>
+      <div id="squad-labels" aria-hidden="true"></div>
+      <div className="room-location"><span className="location-dot" aria-hidden="true"></span><div>POLYTERRASSE<span>ETH ZENTRUM / ZÜRICH</span></div></div>
       <div className="room-card">
+        <div className="room-card-top"><span>PRIVATE ROOM</span><span id="room-count"></span></div>
         <p className="eyebrow" id="room-code-label"></p>
         <h1 id="room-title">Lobby</h1>
         <p id="room-message" role="status"></p>
@@ -51,6 +79,7 @@ export function GameOverlay({ resolution, onResolutionChange }: {
         <button id="room-restart" hidden>Return room to lobby</button>
         <button id="room-leave">Leave room</button>
       </div>
+      <a className="menu-credit" href="https://data.stadt-zuerich.ch/dataset/geo_bauten___kombinierte_darstellung_heute" target="_blank" rel="noreferrer">Source data: Stadt Zürich · CC0</a>
     </section>
     <div id="round-timer" hidden aria-live="off"></div>
     <div id="battle-bus-intro" hidden role="status" aria-live="polite"></div>

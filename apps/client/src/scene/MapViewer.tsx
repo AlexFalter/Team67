@@ -16,7 +16,7 @@ import { MapGame } from "../multiplayer/MapGame";
 import { ExamOverlay } from "../exam/ExamOverlay";
 import { ExamDebugButton } from "../exam/ExamDebugButton";
 import { emptyExamSession, type ExamSession } from "../exam/ExamSequence";
-import { activeTheme } from "../maps/zurich/theme";
+import { activeTheme, applyRendererLook } from "../maps/zurich/theme";
 
 export function MapViewer() {
   const [examSession, setExamSession] = useState<ExamSession>(emptyExamSession);
@@ -49,8 +49,9 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
   const controlsRef = useRef<HTMLDivElement>(null);
   const resolutionRef = useRef(resolution);
   const fitRef = useRef<(() => void) | undefined>(undefined);
-  const [status, setStatus] = useState("Loading official Zürich 3D map…");
+  const [status, setStatus] = useState("Loading the Zürich game map…");
   const [failed, setFailed] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     resolutionRef.current = resolution;
@@ -67,7 +68,8 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
       controls: OrbitControls | undefined;
     let resize: ResizeObserver | undefined,
       game: MapGame | undefined,
-      sunlight: DirectionalLight | undefined;
+      sunlight: DirectionalLight | undefined,
+      disposeLook: (() => void) | undefined;
     const scene = new Scene();
     const theme = activeTheme();
     scene.background = new Color(theme.sky);
@@ -100,6 +102,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
         });
         renderer = new WebGLRenderer({ canvas: canvas!, antialias: true,
           powerPreference: "high-performance" });
+        disposeLook = applyRendererLook(renderer, scene, theme);
         renderer.shadowMap.enabled = playing;
         renderer.shadowMap.type = PCFShadowMap;
         const light = theme.lighting;
@@ -128,7 +131,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
           playing ? 0.1 : 1,
           6000,
         );
-        if (playing) { game = new MapGame(scene, camera, canvas!, hud!, hints!, map, onExamChange); gameRef.current = game; }
+        if (playing) { game = new MapGame(scene, camera, canvas!, hud!, hints!, map, () => renderer!.render(scene, camera), onExamChange); gameRef.current = game; }
         else {
           camera.position.set(650, 850, 900);
           controls = new OrbitControls(camera, canvas!);
@@ -172,7 +175,14 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
             game?.afterRender();
           }
         });
+        setStatus("Preparing characters and vehicles…");
+        await game?.ready;
+        if (abort.signal.aborted) return;
+        setStatus("Preparing the city view…");
+        await renderer.compileAsync(scene, camera);
+        if (abort.signal.aborted) return;
         setStatus("Map loaded");
+        setInitialized(true);
       } catch (error) {
         if (abort.signal.aborted) return;
         setFailed(true);
@@ -193,6 +203,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
       disposeMap(scene);
       sunlight?.shadow.dispose();
       scene.clear();
+      disposeLook?.();
       renderer?.dispose();
       renderer?.forceContextLoss();
     };
@@ -204,6 +215,15 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
         ref={canvasRef}
         aria-label="Multiplayer on the Zürich map between Hauptbahnhof and ETH Zentrum"
       />
+      {(!initialized || failed) && <section className={`game-loading${failed ? " error" : ""}`} role="status" aria-live="polite">
+        <div>
+          <p className="loading-route">Zürich HB <span>→</span> ETH HG</p>
+          {!failed && <div className="loading-spinner" aria-hidden="true" />}
+          <p className="loading-title">{failed ? "Unable to load the game" : "Loading Zürich"}</p>
+          <p className="loading-detail">{status}</p>
+          {failed && <button onClick={() => location.reload()}>Try again</button>}
+        </div>
+      </section>}
       <div
         className={`map-status ${failed ? "error" : ""}`}
         role={failed ? "alert" : "status"}

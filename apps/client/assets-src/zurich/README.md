@@ -5,7 +5,7 @@
 `exec(open('<this dir>/blender/<script>.py').read())` after the .blend has been saved here.
 
 Order: buildings + terrain (see zh_common bounds) → `build_ground.py` (land cover draped on the
-TIN, relabel, water + quay walls, materials) → `build_trees.py` → `build_bahnhofbruecke.py` → `bridge_railing.py` → `build_bridges.py` (all other river bridges; calls `bridges_railing.py`) → `flatten_bridges.py` → `bridges_railing.py` + `bridge_railing.py` → `integrate_landmarks.py` (after appending the HB / ETH packages) → `build_buildings.py` → `hb_forecourt.py` → `build_polybahn.py` (runs `polybahn_stations.py`) → `signs.py` → `fix_normals.py` → `apply_theme.py` to recolour.
+TIN, relabel, water + quay walls, materials) → `build_trees.py` → `build_bahnhofbruecke.py` → `bridge_railing.py` → `build_bridges.py` (all other river bridges; calls `bridges_railing.py`) → `flatten_bridges.py` → `bridges_railing.py` + `bridge_railing.py` → `integrate_landmarks.py` (after appending the HB / ETH packages) → `build_buildings.py` → `hb_forecourt.py` → `build_polybahn.py` (runs `polybahn_stations.py`) → `signs.py` → `fix_normals.py` → `area_edits.py` → `ground_uv.py` → `apply_theme.py` to recolour → `export_game.py` (game files + walk grid).
 `bridges_railing.py` is rebuildable on its own (slab + edges + railings from the water footprint).
 
 Buildings: `build_buildings.py` copies `Buildings` (official LoD2, hidden) to `BuildingsStyled`:
@@ -125,3 +125,35 @@ bed). Bottom: door on the Central facade 1.5 m north of the track line. Top: doo
 - `remove_floating_shelters.py`: free-standing shelter roofs that hover without posts (tram stops
   at Central, Haldenegg, ETH/Universitätsspital, Bahnhofquai, … — 94 in total) -> `Replaced`.
   Canopies attached to buildings stay.
+
+## Game export and walkability
+
+- `export_game.py`: writes `zurich.glb`, `trees.glb/json` and runs `walk_grid.py`. Then run
+  `npm run world:build` and commit the GLB, trees, `world-grid.json` and `zurich-world.json` together.
+- `walk_grid.py`: the game walks on a 2 m height grid, not on the mesh. Walkable = Ground (no water),
+  bridge decks, Polyterrasse, station floors, LoD2 `Bruecke_Passerelle` decks (Quaibrücke). Walls =
+  water, buildings (LoD2: only inside the solid; doorways/arcades/platform canopies stay open),
+  low headroom, railings/thin walls, and cliffs (> 1 m height jump between cells; the ground is
+  interpolated, so quay and terrace walls would otherwise be walkable). Prints a report (holes,
+  reachable share from spawn, key places such as both Polybahn halls); `WALK_PNG = '<path>.png'`
+  before exec'ing writes a colour debug map. Check it after every geometry change.
+- Detail patches: both Polybahn stations get 0.5 m grids (same rules, `patches` in the JSON); the 2 m
+  grid cannot follow their thin rotated walls and doors. `tests/polybahn-stations.test.ts` walks in.
+- The bottom portal is one 5.6 m doorway: the old centre pillar split it into two gaps too narrow to
+  walk through with the 1 m player capsule.
+- `ground_uv.py`: steep ground (> ~41°) is box-projected from the side at the same 4 m tile, so
+  slopes keep the flat-ground pixel size. Run after any Ground rebuild.
+- Theme textures in the game use `flipY = false` (glTF UVs) and the `Style` seed is read back as
+  `1 - v` (glTF flips V). Both matter: otherwise signs are upside down and buildings white.
+
+## Hand-drawn edit areas and props
+
+- `apps/client/tools/props-editor` (dev only, throwaway): top-down map in the browser
+  (`npm run dev`, then `/tools/props-editor/`). Place lanterns/bins (`props.json`) and draw numbered areas
+  (`areas.json`).
+- `import_props.py`: replaces the `Props` collection from a `props.json` (`PROPS_JSON = ...`).
+- `edit-areas.json` + `area_edits.py`: per-area ground edits (`EDITS`): `ramp` = cut along the outline,
+  slice, even slope between the two street ends (outline vertices at the ends keep their height, smoothstep
+  blend over 3 m), `even` = retexture + smooth heights (water/quay kept). Areas 2, 3 and 5 also get 0.5 m
+  walk patches (`walk_grid.py` `EXTRA_PATCHES`); `tests/map-areas.test.ts` walks up each ramp.
+- `polyterrasse.py` builds a 20 % ramp (not stairs) down towards the Polybahn top station (area 3).

@@ -21,19 +21,18 @@ export class RoundManager {
   leave(id: string, now = Date.now()) {
     this.state.members.delete(id);
     if (this.state.hostId === id) this.state.hostId = this.state.members.keys().next().value ?? "";
-    if (this.state.phase === C.RoomPhase.Lobby) this.startIfReady(now);
-    else if (this.state.phase === C.RoomPhase.Running &&
+    if (this.state.phase === C.RoomPhase.Running &&
       ![...this.state.members.values()].some(member => !member.spectator)) this.finish(now, true);
   }
   ready(id: string, ready: unknown, now = Date.now()) {
     const member = this.state.members.get(id);
     if (this.state.phase !== C.RoomPhase.Lobby || !member || member.spectator || typeof ready !== "boolean") return;
     member.ready = ready;
-    this.startIfReady(now);
+    if (id === this.state.hostId && ready) this.start(now);
   }
-  private startIfReady(now: number) {
+  private start(now: number) {
     const members = [...this.state.members];
-    if (!members.length || members.some(([, member]) => member.spectator || !member.ready)) return;
+    if (!members.length) return;
     this.scores.clear(); this.state.results.clear();
     for (const [slot, [id, member]] of members.entries()) {
       member.introSeat = slot;

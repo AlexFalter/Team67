@@ -34,6 +34,8 @@ export function lobby(connect: (selection: Selection) => Promise<void>) {
   devMode.addEventListener("change", syncDevSettings, { signal: abort.signal });
   goldBikes.addEventListener("change", syncDevSettings, { signal: abort.signal });
   skipIntro.addEventListener("change", syncDevSettings, { signal: abort.signal });
+  message.textContent = "";
+  form.querySelectorAll<HTMLButtonElement>("button").forEach(button => button.disabled = false);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const mode = (event.submitter as HTMLButtonElement)?.value === "join" ? "join" : "create";
@@ -42,7 +44,7 @@ export function lobby(connect: (selection: Selection) => Promise<void>) {
     try {
       const generated = [...crypto.getRandomValues(new Uint8Array(3))].map(n => n.toString(16).padStart(2, "0")).join("");
       const code = roomCode(field.value || (mode === "create" ? generated : ""));
-      await connect({ mode, code, name: playerName(name.value), devMode: devMode.checked, skipIntro: devMode.checked && skipIntro.checked, goldPubliBikes: goldBikes.checked, railCrashProtection: devMode.checked&&railProtection.checked, character: Number(form.querySelector<HTMLSelectElement>("select")!.value) });
+      await connect({ mode, code, name: playerName(name.value), devMode: devMode.checked, skipIntro: devMode.checked && skipIntro.checked, goldPubliBikes: goldBikes.checked, railCrashProtection: devMode.checked&&railProtection.checked, character: Number(form.querySelector<HTMLInputElement>("#character")!.value) });
       if (!abort.signal.aborted) root.hidden = true;
     } catch (error) {
       if (abort.signal.aborted) return;
