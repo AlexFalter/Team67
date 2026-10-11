@@ -118,7 +118,7 @@ export class MapGame {
     this.football=new FootballFeature(scene,camera,this.net,this.local,()=>!this.npcs.active&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.emotes?.opened&&!this.maps?.active&&document.querySelector<HTMLElement>('#pause')?.hidden!==false,()=>{if(this.npcs.karambit?.occupiesHands())this.npcs.karambit.toggle();});
     this.npcs.onFootballReward=()=>this.football.grant();
     this.medals.setSoundEnabled(this.audio.settings.medalSounds);
-    for (const [selector, key] of [["#vehicle-sounds", "vehicleSounds"], ["#medal-sounds", "medalSounds"]] as const) {
+    for (const [selector, key] of [["#vehicle-sounds", "vehicleSounds"], ["#medal-sounds", "medalSounds"], ["#game-music", "gameMusic"]] as const) {
       const input = document.querySelector<HTMLInputElement>(selector);
       if (!input) continue;
       input.checked = this.audio.settings[key];

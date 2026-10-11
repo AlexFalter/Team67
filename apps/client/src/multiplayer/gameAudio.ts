@@ -48,10 +48,18 @@ export class GameAudio {
   private lastVy = 0;
   private lastSpeed = 0;
   private sliding = false;
-  /** "Movement and vehicle sounds" and "Medal sounds", as in the mini-games-2 settings. */
-  settings = { vehicleSounds: true, medalSounds: true };
+  /** Sound settings exposed by the pause menu. */
+  settings = { vehicleSounds: true, medalSounds: true, gameMusic: true };
+  private music = new Audio(`${BASE}gas-gas-gas-instrumental.mp3`);
+  private musicUnlocked = false;
+  private musicStarting = false;
+  private musicFailed = false;
 
   constructor() {
+    this.music.loop = true;
+    this.music.volume = 0.24;
+    this.music.preload = "none";
+    this.music.addEventListener("error", () => { this.musicFailed = true; });
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
       for (const key of Object.keys(this.settings) as (keyof GameAudio["settings"])[])
@@ -67,10 +75,13 @@ export class GameAudio {
     this.settings[key] = value;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(this.settings)); } catch { /* ignore */ }
     if (key === "vehicleSounds" && !value) this.silence();
+    if (key === "gameMusic") this.syncMusic();
   }
 
   unlock() {
     if (this.abort.signal.aborted) return;
+    this.musicUnlocked = true;
+    this.syncMusic();
     if (!this.context) {
       const context = this.context = new AudioContext();
       this.master = context.createGain(); this.master.gain.value = 0.65; this.master.connect(context.destination);
@@ -92,6 +103,18 @@ export class GameAudio {
   }
 
   private get running() { return this.context?.state === "running" && !this.paused && !document.hidden; }
+
+  private syncMusic() {
+    const shouldPlay = this.musicUnlocked && this.settings.gameMusic && !this.paused && !document.hidden && !this.musicFailed;
+    if (!shouldPlay) { this.music.pause(); return; }
+    if (this.music.paused && !this.musicStarting) {
+      this.musicStarting = true;
+      void this.music.play().catch(() => {}).finally(() => {
+        this.musicStarting = false;
+        if (!this.settings.gameMusic || this.paused || document.hidden) this.music.pause();
+      });
+    }
+  }
 
   private play(name: Sample, level: number, { cooldown = 0.6, key = name as string, rate = 1, out, disposeOut = false }: { cooldown?: number; key?: string; rate?: number; out?: AudioNode; disposeOut?: boolean } = {}) {
     const context = this.context, buffer = this.buffers.get(name);
@@ -224,8 +247,9 @@ export class GameAudio {
 
   /** Engine, rail and door sounds for every vehicle near the listener. */
   update(sources: Map<string, LoopSource>, listener: { x: number; z: number; y?: number }, { paused = false, duck = false } = {}) {
-    if (!this.context) return;
     this.paused = paused || document.hidden;
+    this.syncMusic();
+    if (!this.context) return;
     if (this.paused) for (const shot of this.shots) { try { shot.stop(); } catch { /* already stopped */ } }
     const now = this.context.currentTime;
     // Missing vehicles must not leave an old loop running.
@@ -280,7 +304,7 @@ export class GameAudio {
     this.previous.clear();
   }
   dispose() {
-    this.abort.abort(); this.silence(); this.voices.clear();
+    this.abort.abort(); this.music.pause(); this.music.removeAttribute("src"); this.music.load(); this.silence(); this.voices.clear();
     void this.context?.close().catch(() => {});
   }
 }
