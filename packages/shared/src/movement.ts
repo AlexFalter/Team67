@@ -28,7 +28,7 @@ export function createBody(): Body {
     vehicleKind: -1,
     attackReadyAt: 0,
     mateCount: 0,
-    mateBoostMs: 0,
+    mateBoostMs: 0, mateFlavor: 2, mateDrinkStartedAt: 0,
   };
 }
 export function respawn(p: Body, world: MovementWorld = flatWorld) {

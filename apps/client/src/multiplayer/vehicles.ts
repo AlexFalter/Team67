@@ -57,7 +57,7 @@ export class Vehicles {
     net.vehicleMove = () => this.drivenId ? [this.drivenId, this.prediction.x, this.prediction.z,
       this.prediction.rotY, this.prediction.vx, this.prediction.vz] : undefined;
     net.onVehicleResult = (result) => {
-      this.message = result.message;
+      this.message = result.ok && result.message === "Exited vehicle." ? "" : result.message;
       this.messageUntil = Date.now() + 2000;
     };
     C.zurichWorld.stops.forEach((stop, i) => {
@@ -373,6 +373,8 @@ export class Vehicles {
     const own=this.items.get(body.vehicleId);if(own?.latest.kind===C.LIME_KIND)own.label.visible=false;
     for(const visual of this.items.values())if(visual.boardingZone)
       updateTramBoardingZone(visual.boardingZone,visual.latest,visual.rendered,body,this.net.now(),this.net.canPlay);
+    const owned = this.items.get(body.vehicleId);
+    if (owned?.latest.kind === 2) owned.label.visible = false;
     if (now - this.lastLabels < 250) return;
     this.lastLabels = now;
     const state = this.net.room?.state;
@@ -383,17 +385,17 @@ export class Vehicles {
       const boarding=C.isRail(v)?C.railBoardingPoint(visual.rendered):visual.rendered;
       const nearbyRail=C.isRail(v)&&Math.hypot(body.x-boarding.x,body.z-boarding.z)<25;
       const nearbyLime=v.kind===C.LIME_KIND&&Math.hypot(body.x-boarding.x,body.z-boarding.z)<=C.VEHICLE_BOARD_DISTANCE*2;
-      visual.label.visible = (id === body.vehicleId && v.kind!==C.LIME_KIND) || (!body.vehicleId && (id === nearest || nearbyRail || nearbyLime));
+      visual.label.visible = (id === body.vehicleId && v.kind!==C.LIME_KIND && v.kind!==2) || (!body.vehicleId && (id === nearest || nearbyRail || nearbyLime));
       let count = 0;
       for (const p of state?.players?.values() ?? [])
         if (p.vehicleId === id) count++;
       const text =
         C.isRail(v) ? `${C.transitName(v).toUpperCase()} ${count}/${v.capacity} · ${transitStatus(v,clock)}` :
         state?.publiBikes?.has(id)
-          ? `PUBLIBIKE · ${state.publiBikes.get(id)!.broken ? "out of service" : id === body.vehicleId ? "E to get off" : v.driver ? "occupied" : state.publiBikes.get(id)!.reservedBy ? "being unlocked" : "E to scan"}` :
+          ? `PUBLIBIKE · ${state.publiBikes.get(id)!.broken ? "out of service" : id === body.vehicleId ? "riding" : v.driver ? "occupied" : state.publiBikes.get(id)!.reservedBy ? "being unlocked" : "available"}` :
         v.kind===C.LIME_KIND ? `LIME ${count}/${v.capacity} · ${id===body.vehicleId?"E to get off":count>=v.capacity?"full":"E to ride"}` :
         v.kind !== 1
-          ? `${v.kind === 2 ? "BIKE" : v.kind === 3 ? "NPC CAR" : v.kind === 4 ? "LOOSE BALL" : "CART"} · ${v.kind >= 3 ? "watch out" : v.fallenUntil > this.net.now() ? "recovering" : v.driver ? "occupied" : "E to ride"}`
+          ? `${v.kind === 2 ? "BIKE" : v.kind === 3 ? "NPC CAR" : v.kind === 4 ? "LOOSE BALL" : "CART"} · ${v.kind >= 3 ? "watch out" : v.fallenUntil > this.net.now() ? "recovering" : v.driver ? "occupied" : v.kind === 2 ? "available" : "E to ride"}`
           : `TRAM ${count}/${v.capacity} · ${transitStatus(v,clock)}`;
       if (text !== visual.labelText) {
         const context = visual.canvas.getContext("2d")!;
@@ -422,21 +424,19 @@ export class Vehicles {
     }
     const riding = this.items.get(body.vehicleId)?.latest;
     let prompt = "";
-    if (riding)
+    if (riding && riding.kind !== 2)
       prompt =
         !C.isPassengerVehicle(riding)
           ? riding.kind===C.LIME_KIND?(body.seat===0?"WASD ride · Shift boost · E get off · mouse look · F5/V view":"Rear passenger · E get off · mouse look · F5/V view"):"WASD drive · E exit · mouse / trackpad look · F5/V view · Esc menu"
           : riding.traveling
             ? `${C.transitName(riding)} · ${transitStatus(riding,clock)} · Exit at next stop`
             : `${C.transitName(riding)} · ${transitStatus(riding,clock)} · E — Leave`;
-    else {
+    else if (!riding) {
       const near = this.items.get(this.nearest(body))?.latest;
-      if (near)
+      if (near && near.kind !== 2)
         prompt +=
           near.kind===C.LIME_KIND ? " · E ride Lime scooter" :
-          near.kind === 2
-            ? near.fallenUntil > this.net.now() ? "Bike recovering" : near.driver ? "Bike occupied" : "E — Ride bike"
-            : near.kind === 0
+          near.kind === 0
             ? near.driver
               ? "Cart occupied"
               : "E — Ride cart"

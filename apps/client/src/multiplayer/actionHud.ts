@@ -16,8 +16,9 @@ export function actionAvailability(p: Body, sprinting: boolean, now: number) {
   };
 }
 
-export interface ContextAction { icon: "person" | "polybahn" | "tram" | "bike" | "mate" | "cart"; label: string; key: string; enabled: boolean; run: () => void }
+export interface ContextAction { icon: "person" | "polybahn" | "tram" | "bike" | "mate" | "cart" | "leave"; label: string; key: string; enabled: boolean; run: () => void }
 const icons = {
+  leave: '<path d="M10 3H4v18h6M10 12h11m-4-4 4 4-4 4"/>',
   person: '<circle cx="12" cy="6" r="3"/><path d="M5 21v-5a7 7 0 0 1 14 0v5M8 21v-5m8 5v-5"/>',
   bike: '<circle cx="5" cy="17" r="4"/><circle cx="19" cy="17" r="4"/><path d="m5 17 5-9 5 9H5m5-9h7l2 9M8 5h4m4 0h3l1 3"/>',
   cart: '<path d="m4 10 2-6h12l2 6v9H4zM4 10h16M8 4v6m8-6v6M4 14h16m-14 5v3m12-3v3"/><circle cx="7" cy="17" r=".5"/><circle cx="17" cy="17" r=".5"/>',
@@ -30,11 +31,15 @@ export class ActionHud {
   private punch = this.root.querySelector<HTMLButtonElement>("#punch-action")!;
   private slide = this.root.querySelector<HTMLButtonElement>("#slide-action")!;
   private context = document.createElement("div");
+  private instructions = document.createElement("div");
   private entries: { item: HTMLElement; button: HTMLButtonElement; action: ContextAction }[] = [];
   private abort = new AbortController();
   constructor(private local: LocalPlayer, private now: () => number, focus: () => void, private getContext: () => ContextAction[] = () => []) {
     this.context.className = "context-actions"; this.root.prepend(this.context);
-    this.context.addEventListener("click", e => {
+    this.instructions.className = "action-instructions";
+    this.instructions.innerHTML = '<div class="interaction-instruction"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg><span></span></div>';
+    this.root.append(this.instructions);
+    this.root.addEventListener("click", e => {
       const entry = this.entries.find(item => item.button === (e.target as Element).closest("button"));
       if (entry?.action.enabled) { focus(); entry.action.run(); }
     }, { signal: this.abort.signal });
@@ -52,14 +57,23 @@ export class ActionHud {
     this.root.hidden = !visible;
     if (!visible) return;
     const actions = this.getContext();
+    const interaction = actions.find(action => action.key === "E");
+    const hint = this.instructions.querySelector<HTMLElement>(".interaction-instruction")!;
+    hint.hidden = !interaction;
+    if (interaction) {
+      hint.querySelector("span")!.textContent = `E · ${interaction.label}`;
+      const svg = hint.querySelector("svg")!;
+      if (svg.dataset.icon !== interaction.icon) { svg.innerHTML = icons[interaction.icon]; svg.dataset.icon = interaction.icon; }
+    }
     while (this.entries.length > actions.length) this.entries.pop()!.item.remove();
     actions.forEach((action, i) => {
       let entry = this.entries[i];
       if (!entry) {
         const item = document.createElement("div"); item.className = "combat-action";
         item.innerHTML = '<kbd></kbd><button type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg></button>';
-        this.context.append(item); entry = { item, button: item.querySelector("button")!, action }; this.entries.push(entry);
+        if (action.key === "1") this.root.append(item); else this.context.append(item); entry = { item, button: item.querySelector("button")!, action }; this.entries.push(entry);
       }
+      if (action.key === "1") this.root.append(entry.item); else this.context.append(entry.item);
       entry.action = action; entry.item.querySelector("kbd")!.textContent = action.key;
       const svg = entry.button.querySelector("svg")!;
       if (svg.dataset.icon !== action.icon) { svg.innerHTML = icons[action.icon]; svg.dataset.icon = action.icon; }
@@ -77,5 +91,5 @@ export class ActionHud {
       button.setAttribute("aria-label", seconds ? `${label}, ${seconds} seconds remaining` : available ? label : `${label}, unavailable`);
     }
   }
-  dispose() { this.abort.abort(); this.root.hidden = true; this.context.remove(); }
+  dispose() { this.abort.abort(); this.root.hidden = true; this.context.remove(); this.instructions.remove(); this.entries.forEach(entry => entry.item.remove()); }
 }

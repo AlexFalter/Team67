@@ -4,13 +4,13 @@ import * as C from "@race/shared";
 // medal-sound.js), wired to main's multiplayer state instead of the single-player world.
 // Samples are decoded once into one AudioContext; engine and rail beds loop seamlessly.
 
-const BASE = `${import.meta.env.BASE_URL}audio/`;
+const BASE = `${(import.meta.env?.BASE_URL ?? "/")}audio/`;
 type Sample = "bus-engine" | "car-engine" | "rail-running" | "vehicle-door" | "footstep-left"
   | "footstep-right" | "collision-thud" | "bo3-medal-earned";
 const SAMPLES: Sample[] = ["bus-engine", "car-engine", "rail-running", "vehicle-door", "footstep-left",
   "footstep-right", "collision-thud", "bo3-medal-earned"];
 const STORAGE_KEY = "race-to-eth-sound-settings";
-export type EffectKind = "step" | "jump" | "land" | "collision" | "door" | "crash" | "canDrop" | "shutter";
+export type EffectKind = "step" | "jump" | "land" | "collision" | "door" | "crash" | "canDrop" | "shutter" | "slide" | "timer";
 
 /** One looping engine/rail bed, keyed by vehicle id. */
 export interface LoopSource {
@@ -46,6 +46,7 @@ export class GameAudio {
   private lastGrounded = true;
   private lastVy = 0;
   private lastSpeed = 0;
+  private sliding = false;
   /** "Movement and vehicle sounds" and "Medal sounds", as in the mini-games-2 settings. */
   settings = { vehicleSounds: true, medalSounds: true };
 
@@ -110,10 +111,37 @@ export class GameAudio {
     if (!this.settings.vehicleSounds || !this.running) return;
     const context = this.context!, master = this.master!;
     if (kind === "step") { this.play(this.stepSide++ % 2 ? "footstep-right" : "footstep-left", intensity, { cooldown: 0.08, key: "step" }); return; }
-    if (kind === "collision" || kind === "land") { this.play("collision-thud", Math.min(0.65, intensity), { cooldown: 0.3, key: kind }); return; }
+    if (kind === "collision") { this.play("collision-thud", Math.min(0.65, intensity), { cooldown: 0.3, key: kind }); return; }
     if (kind === "jump") { this.play("footstep-left", 0.12, { cooldown: 0.15, key: kind }); return; }
     if (kind === "door") { this.play("vehicle-door", 0.18 * intensity); return; }
     const now = context.currentTime;
+    if (kind === "land") {
+      // Two soft sole contacts plus a muted low body-weight thump.
+      const level = Math.min(.28, .1 + intensity * .3);
+      this.play("footstep-left", level, { cooldown: .18, key: "landing-left", rate: .82 });
+      this.play("footstep-right", level * .65, { cooldown: .18, key: "landing-right", rate: .88 });
+      const tone = context.createOscillator(), gain = context.createGain();
+      tone.type = "sine"; tone.frequency.setValueAtTime(100, now); tone.frequency.exponentialRampToValueAtTime(48, now + .12);
+      gain.gain.setValueAtTime(.0001, now); gain.gain.linearRampToValueAtTime(level * .22, now + .012); gain.gain.exponentialRampToValueAtTime(.0001, now + .17);
+      tone.connect(gain); gain.connect(master); this.track(tone, () => { tone.disconnect(); gain.disconnect(); });
+      tone.start(now); tone.stop(now + .18); return;
+    }
+    if (kind === "timer") {
+      const tone = context.createOscillator(), gain = context.createGain();
+      tone.type = "sine"; tone.frequency.setValueAtTime(740, now); tone.frequency.exponentialRampToValueAtTime(990, now + .12);
+      gain.gain.setValueAtTime(.0001, now); gain.gain.linearRampToValueAtTime(.07, now + .025); gain.gain.exponentialRampToValueAtTime(.0001, now + .28);
+      tone.connect(gain); gain.connect(master); this.track(tone, () => { tone.disconnect(); gain.disconnect(); });
+      tone.start(now); tone.stop(now + .3); return;
+    }
+    if (kind === "slide") {
+      const noise = context.createBufferSource(), filter = context.createBiquadFilter(), gain = context.createGain();
+      noise.buffer = this.noise!; filter.type = "bandpass"; filter.Q.value = .55;
+      filter.frequency.setValueAtTime(1050, now); filter.frequency.exponentialRampToValueAtTime(300, now + .5);
+      gain.gain.setValueAtTime(.0001, now); gain.gain.linearRampToValueAtTime(.038, now + .07); gain.gain.exponentialRampToValueAtTime(.0001, now + .55);
+      noise.connect(filter); filter.connect(gain); gain.connect(master);
+      this.track(noise, () => { noise.disconnect(); filter.disconnect(); gain.disconnect(); });
+      noise.start(now); noise.stop(now + .57); return;
+    }
     if (kind === "canDrop") {
       // Short aluminium clack with a quieter second contact as the can settles.
       for (const [delay, level] of [[0, 0.13], [0.075, 0.045]]) {
@@ -162,6 +190,9 @@ export class GameAudio {
   movement(dt: number, body: C.Body, pushing: boolean, now: number) {
     const speed = Math.hypot(body.vx, body.vz), down = now < body.knockdownUntil;
     const onFoot = !body.vehicleId && !down;
+    const slide = onFoot && body.anim === C.SLIDE_ANIM;
+    if (slide && !this.sliding) this.effect("slide");
+    this.sliding = slide;
     if (onFoot) {
       if (this.lastGrounded && !body.grounded && body.vy > 2) this.effect("jump");
       if (!this.lastGrounded && body.grounded && -this.lastVy > 3) { this.stepAge = 0; this.effect("land", 0.2 + Math.min(-this.lastVy / 30, 0.35)); }
@@ -173,7 +204,7 @@ export class GameAudio {
         if (this.stepAge >= stride) { this.stepAge %= stride; this.effect("step", sprint ? 0.42 : 0.3); }
       } else this.stepAge = 0;
       // Running into a wall zeroes the blocked velocity: a sudden stop while still pushing.
-      const touching = body.grounded && pushing && this.lastSpeed > 2.5 && speed < this.lastSpeed * 0.5;
+      const touching = !slide && body.grounded && pushing && this.lastSpeed > 2.5 && speed < this.lastSpeed * 0.5;
       if (touching && !this.contact) this.effect("collision", 0.2 + Math.min(this.lastSpeed / 35, 0.4));
       this.contact = touching || (this.contact && pushing && speed < 1);
     } else { this.stepAge = 0; this.contact = false; }

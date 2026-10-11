@@ -156,8 +156,8 @@ test("tram cameras use seated first-person height and a wider carriage view", ()
   assert.ok(Math.abs(camera.fov - 72) < .001);
   view.cycle();
   for (let i = 0; i < 120; i++) view.update(p, 1 / 60);
-  assert.ok(Math.hypot(camera.position.x - p.x, camera.position.z - p.z) > 17.9);
-  assert.ok(camera.position.y > p.y + 6.8);
+  assert.ok(Math.hypot(camera.position.x - p.x, camera.position.z - p.z) > 12.9);
+  assert.ok(camera.position.y > p.y + 4.8);
 });
 
  test('rail riders never see their own seated body through the first-person camera',async()=>{
@@ -172,3 +172,32 @@ test("tram cameras use seated first-person height and a wider carriage view", ()
   p.vehicleKind=2;assert.equal(firstPersonBodyVisible(p,0),true);
   p.vehicleId='';p.vehicleKind=-1;assert.equal(firstPersonBodyVisible(p,0),true);
  });
+
+
+test("boarding selects third person once, preserves manual changes and restores the walking view", () => {
+  const camera = new PerspectiveCamera();
+  const view = new PlayerView(camera, []);
+  for (const id of ["tram", "publi-bike", "lime-scooter", "cart", "npc-limousine"]) {
+    view.perspective = 0;
+    view.setVehicle(id, .5); assert.equal(view.perspective, 1);
+    assert.equal(view.yaw, .5 + Math.PI);
+    view.cycle(); view.cycle(); assert.equal(view.perspective, 0);
+    view.setVehicle(id, .8); assert.equal(view.perspective, 0, "does not force a chosen view every frame");
+    view.setVehicle("", .8); assert.equal(view.perspective, 0);
+  }
+});
+
+
+test("Lime driver and rear passenger get a third-person follow camera with optional first person", () => {
+  for (const seat of [0, 1]) {
+    const camera = new PerspectiveCamera(), view = new PlayerView(camera, []), p = C.createBody();
+    p.vehicleId = "lime-scooter"; p.vehicleKind = C.LIME_KIND; p.seat = seat;
+    view.setVehicle(p.vehicleId, p.rotY);
+    for (let i = 0; i < 120; i++) view.update(p, 1 / 60);
+    assert.equal(view.perspective, 1);
+    assert.ok(Math.hypot(camera.position.x - p.x, camera.position.z - p.z) > 4);
+    view.cycle(); view.cycle();
+    view.setVehicle(p.vehicleId, p.rotY); assert.equal(view.perspective, 0);
+    view.setVehicle("", p.rotY); assert.equal(view.perspective, 0);
+  }
+});

@@ -121,7 +121,9 @@ export class NpcFeature {
   }catch(error){this.cleanupFeatures();disposeOwnedObject(this.root);this.ui.remove();throw error;}
  }
  get active(){return !!this.pending||!!this.travel||!!this.limePhotoPending||!this.message.hidden||this.features.some(f=>f.active?.()&&f!==this.limo)||!!this.limo?.modal()||!!this.limo?.riding();}
- get hideAvatar(){return this.active;}
+ get ridingVehicle(){return !!this.limo&&['boarding','driving','arriving','stopped','rejection-read'].includes(this.limo.state().phase)&&this.message.hidden&&this.menu.hidden&&!this.pending;}
+ get ridePose(){const car=this.limo?.limo;return this.ridingVehicle&&car?{id:'npc-limousine',x:car.position.x,y:car.position.y,z:car.position.z,rotY:car.rotation.y+Math.PI}:null;}
+ get hideAvatar(){return this.active&&!this.currentPoly();}
  currentPoly(){return this.poly.get(this.local.body.vehicleId);}
  nearbyPolyPassenger(pair=this.currentPoly()){
   if(!pair)return null;
@@ -168,11 +170,12 @@ export class NpcFeature {
   return markers;
  }
  syncLock(){
-  const active=this.active;
+  const active=this.active&&!this.ridingVehicle;
   if(active&&!this.saved){this.saved={fov:this.camera.fov,up:this.camera.up.clone(),enabled:this.local.enabled};this.local.clear();this.local.body.vx=this.local.body.vy=this.local.body.vz=0;if(document.pointerLockElement===this.canvas)document.exitPointerLock();}
   if(!active){this.polyCameraEye=null;}
   if(!active&&this.saved){this.camera.fov=this.saved.fov;this.camera.up.copy(this.saved.up);this.camera.updateProjectionMatrix();if(this.saved.enabled&&this.net.canPlay){this.local.enabled=true;this.local.clear();this.canvas.focus();}this.saved=null;}
-  this.net.npcPaused=active&&!this.local.body.vehicleId;if(active){this.local.enabled=false;this.local.clear();}
+  if(this.ridingVehicle)this.local.clear();
+  this.net.npcPaused=this.active&&!this.local.body.vehicleId;if(active){this.local.enabled=false;this.local.clear();}
  }
  get nearbyTicket(){return !this.local.body.vehicleId&&C.nearTicket(this.local.body,C.zurichWorld);}
  get nearbyInteraction(){

@@ -26,7 +26,7 @@
 .map-viewer .game-hud { top: 120px; left: 18px; color: #adcac3; background: #10252de6; border-color: #ffffff25; font-size: 10px; }
 .map-viewer .map-controls { left: 50%; bottom: 72px; transform: translateX(-50%); width: max-content; max-width: min(460px, calc(100% - 36px)); padding: 12px 20px; border: 1px solid #d7f87a80; border-radius: 10px; background: #10272ff2; color: #f1f8e9; box-shadow: 0 4px 24px #0004; font: 650 14px/1.5 system-ui, sans-serif; text-align: center; }
 .map-viewer[data-playing=true] .map-controls:empty { display: none; }
-.map-viewer:has(:is(#play, #pause, #city-map):not([hidden])) .map-controls,
+.map-viewer:has(:is(#pause, #city-map):not([hidden])) .map-controls,
 .map-viewer:has(:is(#npc-hint, #mate-hint):not([hidden])) .map-controls { visibility: hidden; }
 .map-viewer :is(#npc-hint, #mate-hint) { bottom: 72px; padding: 12px 20px; border: 1px solid #d7f87a80; border-radius: 10px; background: #10272ff2; color: #f1f8e9; font: 650 14px/1.5 system-ui, sans-serif; max-width: min(460px, calc(100% - 36px)); width: max-content; box-shadow: 0 4px 24px #0004; }
 #round-timer { top: 18px; z-index: 4; width: 196px; padding: 12px 22px 14px; border: 1px solid #d7f87a70; border-radius: 14px; background: #10272fee; color: #d7f87a; font-family: system-ui, sans-serif; text-align: center; box-shadow: 0 6px 30px #0003; }
@@ -136,3 +136,5 @@
   .radar-heading { font-size: 11px; }
   #open-city-map { font-size: 13px; }
 }
+
+#publi-bike-battery { background: #432455eb; border: 1px solid #b38dc966; color: #eadbf3; border-radius: 4px; font: 11px/1.5 ui-monospace, monospace; }

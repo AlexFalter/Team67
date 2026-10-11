@@ -47,6 +47,8 @@ export class VehicleManager {
     const p = this.state.players.get(client.sessionId),
       v = typeof data === "string" ? this.state.vehicles.get(data) : undefined;
     if (!p || !v) return this.result(client, false, "Vehicle not found.");
+    const battery = this.state.publiBikes.get(data as string);
+    if (battery && (battery.broken || battery.batteryMs <= 0)) return this.result(client, false, "This bike is permanently out of battery.");
     if (this.state.publiBikes.has(data as string) && !scanned)
       return this.result(client, false, "Scan the PubliBike QR code to unlock it.");
     if (this.parkingPhotos.has(client.sessionId) || [...this.parkingPhotos.values()].includes(data as string))
@@ -118,7 +120,7 @@ export class VehicleManager {
       return this.result(client, false, "Stay aboard until the next stop.");
     const id=p.vehicleId;this.release(p);
     if(v.kind===C.LIME_KIND&&!this.occupied(id))this.parkingPhotos.set(client.sessionId,id);
-    this.result(client, true, this.parkingPhotos.has(client.sessionId)?"Parked. Take your Lime parking photo.":"Exited vehicle.");
+    this.result(client, true, this.parkingPhotos.has(client.sessionId)?"Parked. Take your Lime parking photo.":"");
   }
   photoRequired(id:string){return this.parkingPhotos.get(id);}
   finishParkingPhoto(id:string,vehicle:unknown){
