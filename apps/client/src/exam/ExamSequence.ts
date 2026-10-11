@@ -1,10 +1,11 @@
-import { type PerspectiveCamera, type Scene } from 'three';
-import { insideExamPortal, type Body } from '@race/shared';
+import { Vector3, type PerspectiveCamera, type Scene } from 'three';
+import { FINAL_EXAM_LOCATION, examMapPoint, examFlyoverPosition, insideExamPortal, type Body } from '@race/shared';
 import { ExamPortal } from '../entities/examPortal/ExamPortal';
-export type ExamStage = 'world' | 'bonus' | 'exam' | 'complete';
+import { playExamRoomAnimation } from './examRoomAnimation';
+export type ExamStage = 'world' | 'flyover' | 'room' | 'exam' | 'complete';
 export interface ExamSession { stage: ExamStage; remainingSeconds: number; canEnter: boolean; score: number }
 export const emptyExamSession: ExamSession = { stage: 'world', remainingSeconds: 0, canEnter: false, score: 0 };
-export const BONUS_BANNER_MS = 1800;
+export const EXAM_FLYOVER_MS = 4000;
 export class ExamSequence {
   private portal: ExamPortal;
   private stage: ExamStage = 'world';
@@ -15,8 +16,12 @@ export class ExamSequence {
   private lastPublish = 0;
   private remaining = 0;
   private canEnter = false;
-  constructor(scene: Scene, _camera: PerspectiveCamera, private publish: (session: ExamSession) => void) {
+  private abort = new AbortController();
+  private focus = new Vector3();
+  constructor(private scene: Scene, private camera: PerspectiveCamera, private publish: (session: ExamSession) => void) {
     this.portal = new ExamPortal(scene);
+    const target = examMapPoint(FINAL_EXAM_LOCATION.ethFocusLV95);
+    this.focus.set(target.x, target.y, target.z);
   }
   get active() { return this.stage !== 'world'; }
   get screenVisible() { return this.stage === 'exam' || this.stage === 'complete'; }
@@ -24,21 +29,41 @@ export class ExamSequence {
     this.remaining = remaining; this.canEnter = canPlay;
     this.portal.update(now);
     if (round && round !== this.round) {
-      this.round = round; this.enteredRound = -1; this.score = 0; this.stage = 'world'; this.notify();
+      this.round = round; this.enteredRound = -1; this.score = 0;
+      this.abort.abort(); this.abort = new AbortController(); this.stage = 'world';
+      this.notify();
     }
     if (!this.active && this.enteredRound !== round && canPlay && controlsEnabled && !body.vehicleId && body.anim !== 3 && insideExamPortal(body)) {
-      this.enteredRound = round; this.started = now; this.stage = 'bonus';
-      body.vx = body.vy = body.vz = 0; this.notify();
+      this.enteredRound = round; this.started = now; this.stage = 'flyover';
+      body.vx = body.vy = body.vz = 0;
+      this.notify();
     }
-    if (this.stage === 'bonus' && (now - this.started >= BONUS_BANNER_MS || remaining <= 0)) {
-      this.stage = 'exam'; this.notify();
+    if (this.active && remaining <= 0 && this.stage !== 'complete') {
+      this.abort.abort(); this.stage = 'exam'; this.notify();
+    }
+    if (this.stage === 'flyover') {
+      const progress = Math.min(1, (now - this.started) / EXAM_FLYOVER_MS);
+      const position = examFlyoverPosition(progress);
+      this.camera.position.set(position.x, position.y, position.z);
+      this.camera.lookAt(this.focus);
+      if (progress === 1) {
+        this.stage = 'room'; this.notify();
+        const signal = this.abort.signal;
+        void playExamRoomAnimation({ scene: this.scene, camera: this.camera,
+          seat: examMapPoint(FINAL_EXAM_LOCATION.seatLV95), signal }).then(() => {
+            if (!signal.aborted) { this.stage = 'exam'; this.notify(); }
+          }).catch(() => { if (!signal.aborted) { this.stage = 'exam'; this.notify(); } });
+      }
     }
     if (now - this.lastPublish >= 100) { this.lastPublish = now; this.notify(); }
     this.portal.root.visible = !this.active;
   }
-  skipTransition() { if (this.stage === 'bonus') { this.stage = 'exam'; this.notify(); } }
+  skipTransition() {
+    if (this.stage !== 'flyover' && this.stage !== 'room') return;
+    this.abort.abort(); this.stage = 'exam'; this.notify();
+  }
   complete(score: number) { this.score = score; this.stage = 'complete'; this.notify(); }
-  returnToWorld() { this.stage = 'world'; this.notify(); }
+  returnToWorld() { this.abort.abort(); this.stage = 'world'; this.notify(); }
   private notify() { this.publish({ stage: this.stage, remainingSeconds: this.remaining, canEnter: this.canEnter, score: this.score }); }
-  dispose() { this.portal.dispose(); }
+  dispose() { this.abort.abort(); this.portal.dispose(); }
 }

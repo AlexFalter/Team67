@@ -38,6 +38,15 @@ export class Network {
   now() {
     return Date.now() + this.offset;
   }
+  beginExam(body: Body) {
+    if (!this.canPlay) return;
+    this.room.send("move", packMove(body));
+    this.room.send("examStart", this.room.state.startedAt);
+  }
+  reportExamProgress(progress: import("@race/shared").ExamScore) {
+    if (!this.initialized || !this.room) return;
+    this.room.send("examProgress", { ...progress, roundStartedAt: this.room.state.startedAt } satisfies import("@race/shared").ExamProgress);
+  }
   async connect(
     body: Body,
     onPatch: (state: WorldState, id: string) => void,

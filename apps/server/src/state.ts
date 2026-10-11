@@ -11,6 +11,10 @@ export const RoundResult = schema({
   name: t.string().default(""),
   hitsLanded: t.number().default(0),
   hitsReceived: t.number().default(0),
+  examScore: t.number().default(0),
+  examCorrect: t.number().default(0),
+  examCompleted: t.boolean().default(false),
+  examStartedAt: t.number().default(0),
 }, "RoundResult");
 export const Player = schema(
   {

@@ -63,6 +63,8 @@ export class Race extends Room<{ state: RaceState }> {
       onArrival: () => this.arriveFromBus(),
     });
     registerExamDebug(this, this.world, this.lastMoves, id => this.rounds.canPlay(id));
+    this.onMessage("examStart", (client, roundStartedAt: unknown) => this.rounds.beginExam(client.sessionId, roundStartedAt));
+    this.onMessage("examProgress", (client, data: unknown) => this.rounds.examProgress(client.sessionId, data));
     this.onMessage("ready", (client, ready: unknown) => this.rounds.ready(client.sessionId, ready));
     this.onMessage("restartRound", client => this.rounds.restart(client.sessionId));
     this.onMessage("finishRound", client => {

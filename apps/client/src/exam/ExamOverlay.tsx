@@ -1,13 +1,16 @@
 import { EthBlur } from '../minigames/eth-blur/EthBlur';
 import type { ExamSession } from './ExamSequence';
+import type { ExamScore } from '@race/shared';
 import './exam.css';
-export function ExamOverlay({ session, onComplete, onExit }: {
-  session: ExamSession; onComplete: (score: number) => void; onExit: () => void;
+export function ExamOverlay({ session, onComplete, onProgress, onExit }: {
+  session: ExamSession; onComplete: (score: number) => void; onProgress?: (progress: ExamScore) => void; onExit: () => void;
 }) {
   if (session.stage === 'world') return null;
   if (session.stage === 'exam' || session.stage === 'complete') return <div className="exam-game-screen"><EthBlur
-    startImmediately remainingSeconds={session.remainingSeconds} onComplete={onComplete} onExit={onExit} /></div>;
-  return <section className="exam-transition bonus" role="status" aria-label="Bonus round">
-    <div className="exam-transition-heading"><h1>Chance for bonus points</h1><p>Name the buildings</p></div>
+    startImmediately remainingSeconds={session.remainingSeconds} onComplete={onComplete} onProgress={onProgress} onExit={onExit} /></div>;
+  const seconds = Math.ceil(session.remainingSeconds);
+  return <section className={`exam-transition ${session.stage}`} aria-label="Final exam entrance">
+    <div className="exam-transition-clock">◷ {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')} remaining</div>
+    <div className="exam-transition-heading"><img className="exam-transition-logo" src="/assets/eth-zurich.svg" alt="ETH Zürich" /><h1>Exam Starts</h1></div>
   </section>;
 }

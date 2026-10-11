@@ -67,6 +67,10 @@ export interface RoundResult {
   name: string;
   hitsLanded: number;
   hitsReceived: number;
+  examScore: number;
+  examCorrect: number;
+  examCompleted: boolean;
+  examStartedAt: number;
 }
 export interface VehicleState {
   kind: number; // 0 cart, 1 shuttle, 2 bike, 3 NPC car, 4 ball, 5 tram, 6 Polybahn, 7 Lime scooter

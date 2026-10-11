@@ -36,7 +36,7 @@ export class RoundManager {
     this.scores.clear(); this.state.results.clear();
     for (const [slot, [id, member]] of members.entries()) {
       member.introSeat = slot;
-      this.scores.set(id, { name: member.name, hitsLanded: 0, hitsReceived: 0 });
+      this.scores.set(id, { name: member.name, hitsLanded: 0, hitsReceived: 0, examScore: 0, examCorrect: 0, examCompleted: false, examStartedAt: 0 });
     }
     this.state.phase = C.RoomPhase.Running;
     this.state.introStartedAt = now + (this.intro.leadMs ?? C.BATTLE_BUS_LEAD_MS);
@@ -62,6 +62,22 @@ export class RoundManager {
     const attacker = this.scores.get(from);
     if (attacker) attacker.hitsLanded++;
   }
+  beginExam(id: string, roundStartedAt: unknown, now = Date.now()) {
+    const result = this.scores.get(id), player = this.state.players.get(id);
+    if (roundStartedAt !== this.state.startedAt || !this.canPlay(id, now) || !result || result.examStartedAt || !player || player.vehicleId || !C.insideExamPortal(player)) return;
+    result.examStartedAt = now;
+  }
+  examProgress(id: string, data: unknown, now = Date.now()) {
+    if (!data || typeof data !== 'object' || !this.canPlay(id, now)) return;
+    const progress = data as C.ExamProgress, result = this.scores.get(id);
+    if (!result?.examStartedAt || result.examCompleted || progress.roundStartedAt !== this.state.startedAt ||
+      typeof progress.completed !== 'boolean' || !Number.isSafeInteger(progress.score) || !Number.isSafeInteger(progress.correct) ||
+      progress.correct < result.examCorrect || progress.correct > C.EXAM_BUILDING_COUNT || progress.correct > result.examCorrect + 1 ||
+      progress.score < result.examScore || progress.score > progress.correct * 1000 || progress.score < progress.correct * 50 || progress.score % 50 !== 0) return;
+    const gained = progress.score - result.examScore;
+    if (progress.correct === result.examCorrect ? gained !== 0 : gained < 50 || gained > 1000) return;
+    result.examScore = progress.score; result.examCorrect = progress.correct; result.examCompleted = progress.completed;
+  }
   tick(now = Date.now()) {
     if (this.state.phase === C.RoomPhase.Running && !this.state.introComplete && now >= this.state.startedAt) this.completeIntro();
     if (this.state.phase === C.RoomPhase.Running && now >= this.state.endsAt) this.finish(now);
@@ -69,7 +85,10 @@ export class RoundManager {
   finish(now = Date.now(), empty = false) {
     if (this.state.phase !== C.RoomPhase.Running || (!empty && (!this.state.introComplete || now < this.state.startedAt))) return;
     this.state.phase = C.RoomPhase.Finished; this.state.finishedAt = now;
-    for (const [id, score] of this.scores) this.state.results.set(id, new RoundResult(score));
+    for (const [id, score] of this.scores) {
+      if (score.examStartedAt) score.examCompleted = true;
+      this.state.results.set(id, new RoundResult(score));
+    }
   }
   restart(id: string) {
     if (this.state.phase !== C.RoomPhase.Finished || id !== this.state.hostId) return;

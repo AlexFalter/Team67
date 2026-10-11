@@ -146,7 +146,7 @@ export class MapGame {
     const examWasActive = this.exam.active;
     // Encounters keep camera ownership until they finish; vehicles also block exam entry.
     this.exam.update(this.local.body, this.net.canPlay, this.local.enabled && !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now()>=this.derailUntil, state?.startedAt ?? 0, remaining, now);
-    if (!examWasActive && this.exam.active) this.controls.suspendForMap();
+    if (!examWasActive && this.exam.active) { this.net.beginExam(this.local.body); this.controls.suspendForMap(); }
     this.vehicles.render(renderTime, dt, "rail");
     this.transitScenery.update(state?.vehicles?.values() ?? [], this.net.now(), this.net.canPlay);
     const riding=this.vehicles.items.get(this.local.body.vehicleId)?.latest;
@@ -259,6 +259,7 @@ export class MapGame {
   private get controlsPaused() { return !document.querySelector<HTMLElement>("#pause")?.hidden; }
   skipExamTransition() { this.exam.skipTransition(); }
   completeExam(score: number) { this.exam.complete(score); }
+  reportExamProgress(progress: import("@race/shared").ExamScore) { this.net.reportExamProgress(progress); }
   returnFromExam() { this.exam.returnToWorld(); this.controls.restoreGameplay(); }
   debugTeleportToTerrace(enterPortal = false) {
     if (!import.meta.env.DEV || !this.net.room?.state.devMode || !this.net.canPlay || this.maps.active || this.exam.active || this.mate.active || this.publiBikes.active || this.npcs.active || this.net.now()<this.derailUntil) return;
