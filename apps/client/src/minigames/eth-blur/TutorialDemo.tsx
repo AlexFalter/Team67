@@ -7,11 +7,11 @@ const hg = buildings.find(b => b.code === 'HG')!;
 const captions = [
   'Recognise the building? Guess early for more points.',
   'Need a hint? Reveal more detail. Each reveal costs points.',
-  'Browse photos and ground plans—no names to memorise.',
+  'Choose from the building names and photos.',
   'Choose HG, then press Guess.',
   'Correct! +800 points. On to the next building.',
 ];
-export function TutorialDemo({ duration, externalClock, onStart }: { duration: number; externalClock: boolean; onStart: () => void }) {
+export function TutorialDemo({ duration, externalClock, onStart, inGame = false }: { duration: number; externalClock: boolean; onStart: () => void; inGame?: boolean }) {
   const speed = 8;
   const [stage, setStage] = useState(0);
   const [replay, setReplay] = useState(0);
@@ -24,8 +24,8 @@ export function TutorialDemo({ duration, externalClock, onStart }: { duration: n
   }, [ready, stage, speed, replay]);
   function reset() { setStage(0); setReplay(r => r + 1); }
   return <section className="campus-demo" aria-labelledby="tutorial-title">
-    <div className="demo-heading"><div><span className="tutorial-eyebrow">TUTORIAL</span><h2 id="tutorial-title">Learn with HG.</h2></div><button className="skip-button demo-skip" onClick={onStart}>Skip tutorial →</button></div>
-    <p className="demo-intro">Practice round · Your exam hasn’t started.</p>
+    <div className="demo-heading"><div><span className="tutorial-eyebrow">HOW TO PLAY</span><h2 id="tutorial-title">Learn with HG.</h2></div><button className="skip-button demo-skip" onClick={onStart}>{inGame ? 'Close ×' : 'Skip tutorial →'}</button></div>
+    <p className="demo-intro">{inGame ? 'Practice example · Your round keeps running.' : 'Practice round · Your exam hasn’t started.'}</p>
     <div className="demo-stage" aria-label="Example round with HG">
       <div className="demo-status"><span>TUTORIAL · HG PRACTICE ROUND</span><strong>{stage === 4 ? '800 points earned' : `${stage === 0 ? 1000 : 800} points available`}</strong></div>
       <div className="demo-visual">
@@ -38,12 +38,11 @@ export function TutorialDemo({ duration, externalClock, onStart }: { duration: n
       </div></div>
       <div className="demo-controls">
         <div className="guess-form"><div className="demo-search">{stage >= 3 ? 'HG · Hauptgebäude' : 'Search or browse buildings…'}</div><button className="guess-button demo-target" onClick={() => setStage(4)}>{stage === 4 ? '✓ Correct' : 'Guess →'}{stage === 3 && <DemoCursor />}</button></div>
-        <button className="demo-browse demo-target" onClick={() => setStage(2)}>Browse photos & ground plans ↓{stage === 1 && <DemoCursor />}</button>
-        <button className={`demo-option demo-target ${stage >= 3 ? 'chosen' : ''} ${stage < 2 ? 'pending' : ''}`} onClick={() => setStage(3)}><img src={hg.image} alt="HG exterior" /><span><strong>HG</strong><small>Hauptgebäude · Zentrum</small></span><img src={hg.plan} alt="HG ground plan" /><span>{stage >= 3 ? '✓' : '↗'}</span>{stage === 2 && <DemoCursor />}</button>
+        <button className={`demo-option demo-target ${stage >= 3 ? 'chosen' : ''} ${stage < 2 ? 'pending' : ''}`} onClick={() => setStage(3)}><img src={hg.image} alt="HG exterior" /><span><strong>HG</strong><small>Hauptgebäude</small></span><span>{stage >= 3 ? '✓' : '↗'}</span>{stage === 2 && <DemoCursor />}</button>
       </div>
     </div>
     <div className="demo-caption" role="status"><div className="demo-step"><span>STEP</span><strong>{stage + 1}<small> / 5</small></strong></div><p>{captions[stage]}</p></div>
-    <div className="demo-bottom"><button className="demo-replay" onClick={() => reset()}>↺ Replay demo</button><button className="exam-start-button" onClick={onStart}>Start final exam →</button></div>
+    <div className="demo-bottom"><button className="demo-replay" onClick={() => reset()}>↺ Replay demo</button><button className="exam-start-button" onClick={onStart}>{inGame ? 'Back to game →' : 'Start bonus round →'}</button></div>
     <p className="demo-note">{externalClock ? 'External exam clock' : `${duration}s exam`} · Wrong guess: −100 points · Skip: 0 points</p>
   </section>;
 }

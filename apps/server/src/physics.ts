@@ -32,7 +32,9 @@ export class ContactWorld {
   }
   sync(players: ReadonlyMap<string, C.PlayerState>, vehicles: ReadonlyMap<string, C.VehicleState> = new Map(), fixedVehicles: ReadonlySet<string> = new Set()) {
     const entities = new Map<string, { x: number; y: number; z: number; radius?: number; dynamic?: boolean; ball?: boolean; vx?: number; vz?: number }>(players);
-    for (const [id, v] of vehicles) entities.set(`v:${id}`, { ...C.snapshot(v, C.createVehicle()), radius: C.vehicleRadius(v), ball: v.kind === 4, dynamic: !fixedVehicles.has(id) && (v.kind === 4 || (v.kind !== 1 && v.kind < 3 && !v.driver && !v.fallenUntil)) });
+    // Wreck poses leave the track; the old rail-root cylinder no longer
+    // represents visible geometry and must not remain as an invisible hazard.
+    for (const [id, v] of vehicles) if (!v.derailStartedAt) entities.set(`v:${id}`, { ...C.snapshot(v, C.createVehicle()), radius: C.vehicleRadius(v), ball: v.kind === 4, dynamic: !fixedVehicles.has(id) && (v.kind === 4 || (v.kind !== 1 && v.kind < 3 && !v.driver && !v.fallenUntil)) });
     for (const [id, p] of entities) {
       let shape = this.shapes.get(id);
       if (shape && shape.parent()!.isDynamic() !== !!p.dynamic) {
@@ -58,7 +60,7 @@ export class ContactWorld {
       this.world.removeRigidBody(shape.parent()!); this.shapes.delete(id);
     }
     this.world.step();
-    for (const [id, v] of vehicles) if (this.shapes.get(`v:${id}`)!.parent()!.isDynamic()) {
+    for (const [id, v] of vehicles) if (this.shapes.get(`v:${id}`)?.parent()?.isDynamic()) {
       const body = this.shapes.get(`v:${id}`)!.parent()!, pos = body.translation(), vel = body.linvel();
       const blocked = this.terrain.name === "zurich" && (this.terrain.height(pos.x, pos.z) === undefined ||
         this.terrain.blocked(pos.x, pos.y - 0.55, pos.z, C.vehicleRadius(v), 1.1));

@@ -1,0 +1,7 @@
+.campus-game .campus-nav { align-items: center; }
+.campus-game .campus-help { width: 36px; height: 36px; border: 1px solid var(--line); background: transparent; color: var(--text); font-size: 22px; font-weight: 700; cursor: pointer; }
+.campus-game .campus-help:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+.campus-game .reveal-header { justify-content: center; }
+.campus-help-overlay { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: #080c12cc; backdrop-filter: blur(8px); }
+.campus-help-panel { width: min(900px, 100%); max-height: 100%; overflow: auto; padding: 24px; background: var(--bg, #101213); border: 1px solid var(--line); }
+@media (max-width: 700px) { .campus-help-overlay { padding: 8px; } .campus-help-panel { padding: 14px; } }

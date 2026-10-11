@@ -4,13 +4,16 @@ import { createDeck, pixelColumns, pointsFor, readDuration } from './game';
 import { PixelPhoto } from './PixelPhoto';
 import { loadPhoto } from './photos';
 import './eth-blur.css';
+import './bonus-round.css';
 import { TutorialDemo } from './TutorialDemo';
 
 /** The final clock can override the standalone 30-second timer. */
 export type EthBlurProps = { remainingSeconds?: number; onComplete?: (score: number) => void; startImmediately?: boolean; onExit?: () => void };
 type Feedback = { kind: 'correct' | 'wrong' | 'skip'; text: string } | null;
-export function EthBlur({ remainingSeconds, onComplete, startImmediately = false, onExit }: EthBlurProps) {
+export function EthBlur({ remainingSeconds, onComplete, startImmediately = true, onExit }: EthBlurProps) {
   const [started, setStarted] = useState(startImmediately);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const help = useRef<HTMLElement>(null);
   const [duration] = useState(() => readDuration(window.location.search));
   const [deck, setDeck] = useState(createDeck);
   const [index, setIndex] = useState(0);
@@ -64,8 +67,26 @@ export function EthBlur({ remainingSeconds, onComplete, startImmediately = false
     if (upcoming) void loadPhoto(upcoming.image).catch(() => {});
   }, [deck, index, started]);
   useEffect(() => () => { if (transition.current) clearTimeout(transition.current); }, []);
+  useEffect(() => {
+    if (!helpOpen || ended) return;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const panel = help.current;
+    panel?.querySelector<HTMLButtonElement>('button')?.focus();
+    const key = (event: KeyboardEvent) => {
+      if (event.code === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); setHelpOpen(false); }
+      if (event.code === 'Tab' && panel) {
+        const buttons = [...panel.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')];
+        if (!buttons.length) return;
+        event.preventDefault();
+        const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+        buttons[(index + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length].focus();
+      }
+    };
+    window.addEventListener('keydown', key, true);
+    return () => { window.removeEventListener('keydown', key, true); previous?.focus(); };
+  }, [helpOpen, ended]);
 
-  function active() { return started && ready && !ended && !locked.current && (remainingSeconds !== undefined ? remainingSeconds > 0 : Date.now() < deadline.current); }
+  function active() { return started && ready && !ended && !helpOpen && !locked.current && (remainingSeconds !== undefined ? remainingSeconds > 0 : Date.now() < deadline.current); }
   function showPointLoss(amount: number) {
     if (amount > 0) setPointLoss(previous => ({ amount, id: (previous?.id ?? 0) + 1 }));
   }
@@ -98,6 +119,7 @@ export function EthBlur({ remainingSeconds, onComplete, startImmediately = false
     scoreRef.current += potential; setScore(scoreRef.current); setCorrect(c => c + 1); advance('correct', potential);
   }
   function restart() {
+    setHelpOpen(false);
     if (transition.current) clearTimeout(transition.current);
     locked.current = false; notified.current = false; scoreRef.current = 0;
     setDeck(createDeck()); setIndex(0); setReveal(0); setMistakes([]);
@@ -107,12 +129,12 @@ export function EthBlur({ remainingSeconds, onComplete, startImmediately = false
   function select(b: Building) { setSelected(b); setQuery(b.code); input.current?.focus({ preventScroll: true }); }
   return <div className={`campus-game ${!started ? 'tutorial-mode' : ''}`}>
     <div className="campus-shell">
-      <nav className="campus-nav">{onExit ? <button className="exam-back" onClick={onExit} aria-label="Back to world">←</button> : <a href="/" aria-label="Back to world">←</a>}<span>FINAL EXAM</span><span className="campus-mark">ETH ZÜRICH</span></nav>
-      <div className="campus-title"><h1>Campusless<span>.</span></h1><p>A familiar place. A little less familiar.</p></div>
+      <nav className="campus-nav">{onExit ? <button className="exam-back" onClick={onExit} aria-label="Back to world">←</button> : <a href="/" aria-label="Back to world">←</a>}<span>BONUS ROUND</span><button className="campus-help" onClick={() => setHelpOpen(true)} aria-label="How to play" aria-haspopup="dialog" disabled={ended}>?</button></nav>
+      <div className="campus-title"><h1>Name the buildings</h1></div>
       {!started ? <TutorialDemo duration={duration} externalClock={remainingSeconds !== undefined} onStart={() => setStarted(true)} /> : <>
-      <div className="campus-stats"><span><strong>{score.toLocaleString()}</strong> points</span><span className={left < 10 ? 'clock urgent' : 'clock'}><span aria-hidden="true">◷</span> <strong>{clockLabel}</strong>{clockSeconds < 60 && 's'}</span></div>
+      <div className="campus-stats"><span><strong>{score.toLocaleString()}</strong> bonus points</span><span className={left < 10 ? 'clock urgent' : 'clock'}><span aria-hidden="true">◷</span> <strong>{clockLabel}</strong>{clockSeconds < 60 && 's'}</span></div>
       <div className="campus-clock-track"><div style={{ width: `${Math.max(0, Math.min(100, left / clockDuration * 100))}%` }} /></div>
-      {ended ? <section className="campus-finish"><span className="finish-icon">✦</span><h2>{exhausted ? 'Exam complete.' : 'Time’s up.'}</h2><p>{correct} buildings recognised · {score.toLocaleString()} points</p>{remainingSeconds === undefined && <button className="guess-button" onClick={restart}>Play again ↗</button>}{onExit ? <button className="reveal-action" onClick={onExit}>Back to the world →</button> : <a href="/">Back to the world</a>}</section> : <>
+      {ended ? <section className="campus-finish"><span className="finish-icon">✦</span><h2>{exhausted ? 'Bonus round complete.' : 'Time’s up.'}</h2><p>{correct} buildings recognised · {score.toLocaleString()} bonus points</p>{remainingSeconds === undefined && <button className="guess-button" onClick={restart}>Play again ↗</button>}{onExit ? <button className="reveal-action" onClick={onExit}>Back to the world →</button> : <a href="/">Back to the world</a>}</section> : <>
         <div className="campus-round">
         <div className="campus-visual">
         <div className={`campus-photo ${resolving ? 'resolved' : ''}`}>
@@ -122,9 +144,7 @@ export function EthBlur({ remainingSeconds, onComplete, startImmediately = false
           <span className="photo-round">BUILDING {String(index + 1).padStart(2, '0')} / {deck.length}</span>
           {resolving && <div className={`photo-result ${feedback?.kind}`}><span>{feedback?.kind === 'correct' ? '✓' : '→'}</span><strong>{current.code}</strong><small>{current.name}</small></div>}
         </div>
-        <div className="reveal-header"><span>REVEAL <strong>{reveal + 1} / 6</strong></span><span className="potential">{potential} <small>points available</small>{pointLoss && <span key={pointLoss.id} className="point-loss" role="status" aria-label={`${pointLoss.amount} available points lost`}>−{pointLoss.amount}</span>}</span></div>
-        <div className="reveal-meter" role="progressbar" aria-label="Photo reveal" aria-valuemin={1} aria-valuemax={6} aria-valuenow={reveal + 1} aria-valuetext={`Step ${reveal + 1} of 6`}>{pixelColumns.map((_, i) => <span key={i} className={i <= reveal ? 'revealed' : ''} />)}</div>
-        <div className="reveal-labels"><span>Pixelated</span><span>Clear</span></div>
+        <div className="reveal-header"><span className="potential">{potential} <small>points available</small>{pointLoss && <span key={pointLoss.id} className="point-loss" role="status" aria-label={`${pointLoss.amount} available points lost`}>−{pointLoss.amount}</span>}</span></div>
         <button className="reveal-action" onClick={() => changeReveal(Math.min(5, reveal + 1))} disabled={!ready || resolving || reveal === 5}><span><span aria-hidden="true">＋</span> {reveal === 5 ? 'Fully revealed' : 'Reveal more detail'}</span><small>{reveal < 5 ? `${pointsFor(reveal + 1, mistakes.length)} pts next` : 'Original photo'}</small></button>
         </div>
         <div className="campus-round-controls">
@@ -132,15 +152,18 @@ export function EthBlur({ remainingSeconds, onComplete, startImmediately = false
           <div className="search-wrap"><span className="search-icon" aria-hidden="true">⌕</span><input ref={input} role="combobox" aria-label="Search ETH buildings" aria-expanded={!resolving} aria-controls="building-options" aria-autocomplete="list" aria-activedescendant={!resolving && suggestions[highlight] ? `option-${suggestions[highlight].code}` : undefined} placeholder="Search a building, or browse the photos…" value={query} disabled={resolving || !ready} onChange={e => { setQuery(e.target.value); setSelected(null); setHighlight(0); }} onKeyDown={e => { if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); const next = Math.max(0, Math.min(suggestions.length - 1, highlight + (e.key === 'ArrowDown' ? 1 : -1))); setHighlight(next); document.getElementById(`option-${suggestions[next]?.code}`)?.scrollIntoView({ block: 'nearest' }); } if (e.key === 'Enter' && !resolving && suggestions[highlight] && !buildings.some(b => matchesBuildingAnswer(b, query))) { e.preventDefault(); select(suggestions[highlight]); } }} />{query && <button type="button" className="clear-search" aria-label="Clear search" onClick={() => { setQuery(''); setSelected(null); input.current?.focus(); }}>×</button>}</div>
           <button className="guess-button" disabled={!ready || resolving || !query.trim()} type="submit">Guess →</button>
         </form>
-        <div className="guess-secondary"><button onClick={() => { setSelected(null); setQuery(''); setHighlight(0); }} disabled={!ready || resolving}>{`Browse all ${buildings.length} buildings ↓`}</button><button className="skip-button" onClick={() => { if (active()) advance('skip'); }} disabled={!ready || resolving}>Skip building →</button></div>
+        <div className="guess-secondary"><button className="skip-button" onClick={() => { if (active()) advance('skip'); }} disabled={!ready || resolving}>Skip building →</button></div>
         <div className="building-options-slot">
-        {!resolving && <div className="building-options" id="building-options" role="listbox" aria-label="ETH buildings">{suggestions.length ? suggestions.map((b, i) => <button type="button" role="option" id={`option-${b.code}`} aria-selected={selected?.code === b.code} className={i === highlight ? 'highlighted' : ''} key={b.code} onClick={() => select(b)}><img className="option-photo" src={b.image} alt={`${b.code} exterior`} loading="lazy" /><span><strong>{b.code}</strong><small>{b.name} · {b.campus}</small></span>{b.plan && <img className="option-plan" src={b.plan} alt={`${b.code} footprint / site plan`} loading="lazy" />}<span className="option-arrow">↗</span></button>) : <p>No matching buildings. Try a code like HG.</p>}</div>}
+        {!resolving && <div className="building-options" id="building-options" role="listbox" aria-label="ETH buildings">{suggestions.length ? suggestions.map((b, i) => <button type="button" role="option" id={`option-${b.code}`} aria-selected={selected?.code === b.code} className={i === highlight ? 'highlighted' : ''} key={b.code} onClick={() => select(b)}><img className="option-photo" src={b.image} alt={`${b.code} exterior`} loading="lazy" /><span><strong>{b.code}</strong><small>{b.name}</small></span><span className="option-arrow">↗</span></button>) : <p>No matching buildings. Try a code like HG.</p>}</div>}
         </div>
-        <div className={`campus-feedback ${feedback?.kind ?? ''}`} role="status">{feedback?.text ?? 'Press Reveal more detail to sharpen the photo. Earlier guesses earn more points.'}</div>
+        <div className={`campus-feedback ${feedback?.kind ?? ''}`} role="status">{feedback?.text ?? 'Choose a building and press Guess.'}</div>
         </div></div>
       </>}
       </>}
 
     </div>
+    {helpOpen && !ended && <section ref={help} className="campus-help-overlay" role="dialog" aria-modal="true" aria-label="How to play">
+      <div className="campus-help-panel tutorial-mode"><TutorialDemo duration={duration} externalClock={remainingSeconds !== undefined} inGame onStart={() => setHelpOpen(false)} /></div>
+    </section>}
   </div>;
 }
