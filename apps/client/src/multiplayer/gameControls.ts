@@ -57,8 +57,8 @@ export class GameControls {
         this.interactionEscapeHeld = false;
       }
     }, options);
-    window.addEventListener("blur", () => { if (local.enabled||this.capturePending) {this.pause();this.recaptureOnInput=true;} }, options);
-    document.addEventListener("visibilitychange",()=>{if(document.hidden&&(local.enabled||this.capturePending)){this.pause();this.recaptureOnInput=true;}},options);
+    window.addEventListener("blur", () => { if (local.enabled) {this.pause();this.recaptureOnInput=true;} }, options);
+    document.addEventListener("visibilitychange",()=>{if(document.hidden&&local.enabled){this.pause();this.recaptureOnInput=true;}},options);
     window.addEventListener("keydown", e => {
       if(e.defaultPrevented)return;
       if (e.code === "Escape" && e.repeat && this.interactionEscapeHeld) { e.preventDefault(); return; }
@@ -87,7 +87,7 @@ export class GameControls {
     // A captured cursor released during gameplay is Escape, even before the
     // first mouse movement after an interaction. Intentional releases clear
     // capture ownership or make gameplay unavailable before releasing it.
-    if (released && !this.interactionEscapeHeld && !this.interactionInputPending && this.menu.hidden && this.ready() && !this.suspended()){this.releasePauseAt=Date.now();this.pause();}
+    if (released && this.local.enabled && !this.interactionEscapeHeld && !this.interactionInputPending && this.menu.hidden && this.ready() && !this.suspended()){this.releasePauseAt=Date.now();this.pause();}
   }
   resumeAfterInteraction() {this.restoreGameplay();}
   restoreGameplay() {
@@ -170,7 +170,7 @@ export class GameControls {
     const available=this.ready()&&!this.suspended();
     const returned=available&&!this.available;this.available=available;
     if(returned&&this.menu.hidden)this.restoreGameplay();
-    if(!this.interactionEscapeHeld&&!this.interactionInputPending&&(this.ready()||(this.externalCapture?.()&&this.externalMenuReady?.()))&&!this.suspended()&&this.captured&&!this.capturePending&&this.menu.hidden&&document.pointerLockElement!==this.canvas){
+    if(!this.interactionEscapeHeld&&!this.interactionInputPending&&(this.ready()||(this.externalCapture?.()&&this.externalMenuReady?.()))&&!this.suspended()&&this.local.enabled&&this.captured&&!this.capturePending&&this.menu.hidden&&document.pointerLockElement!==this.canvas){
       // The frame may observe Escape before pointerlockchange is delivered.
       this.captured=false;this.releasePauseAt=Date.now();this.pause();
     }

@@ -60,19 +60,7 @@ export class Vehicles {
       this.message = result.ok && result.message === "Exited vehicle." ? "" : result.message;
       this.messageUntil = Date.now() + 2000;
     };
-    C.zurichWorld.stops.forEach((stop, i) => {
-      const platform = new THREE.Mesh(
-        new THREE.BoxGeometry(5, 0.08, 7),
-        new THREE.MeshStandardMaterial({
-          color: i === 0 ? "#dba347" : "#5999d6",
-          roughness: 1,
-        }),
-      );
-      platform.position.set(stop.x, stop.y + 0.045, stop.z);
-      platform.receiveShadow = true;
-      this.scene.add(platform);
-      this.platforms.push(platform);
-    });
+
   }
   patch(state: C.WorldState) {
     for (const [id, v] of state.vehicles) {

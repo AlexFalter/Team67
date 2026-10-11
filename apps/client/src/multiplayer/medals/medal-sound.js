@@ -36,7 +36,7 @@ export function createMedalSound({audioUrl='/audio/bo3-medal-earned.mp3'}={}){
     if(destroyed||requestedGeneration!==generation)return;
     if(audio.state!=='running')throw new Error(`Medal audio context is ${audio.state}`);
     const source=audio.createBufferSource(),gain=audio.createGain();
-    source.buffer=buffer;gain.gain.value=.45;
+    source.buffer=buffer;gain.gain.value=.32;
     source.connect(gain);gain.connect(audio.destination);voices.add(source);
     source.onended=()=>{voices.delete(source);source.disconnect();gain.disconnect();};
     source.start();played++;error=null;
