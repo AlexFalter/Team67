@@ -6,14 +6,14 @@ import {RaceState,Player} from '../apps/server/src/state.ts';
 import * as C from '../packages/shared/src/index.ts';
 import {withServer,startRound,until,delay} from './fixture.ts';
 
-test('three-player and repeat-victim medals require separate confirmed hits and do not repeat',()=>{
+test('three-hit and repeat-victim medals require separate confirmed hits and do not repeat',()=>{
  const m=new PlayerMedals();assert.equal(m.record('a','a','punch',1),undefined);
  assert.deepEqual(m.record('a','b','punch',1)?.ids,['firstBlood']);
  assert.equal(m.record('a','b','punch',1),undefined);
- assert.deepEqual(m.record('a','b','punch',1)?.ids,['repeatOffender']);
+ assert.deepEqual(m.record('a','b','punch',1)?.ids,['threePlayers','repeatOffender']);
  assert.equal(m.record('a','b','punch',1),undefined);
  assert.equal(m.record('a','c','punch',1),undefined);
- assert.deepEqual(m.record('a','d','punch',1)?.ids,['threePlayers']);
+ assert.equal(m.record('a','d','punch',1),undefined);
  assert.equal(m.record('a','e','punch',1),undefined);
  assert.deepEqual(m.record('a','b','bicycle',1)?.ids,['bicycleHit']);
  assert.equal(m.record('a','b','bicycle',1),undefined);
@@ -39,7 +39,7 @@ test('real room combat awards only the attacker and ignores misses, incapacitate
  b.knockdownUntil=0;a.attackReadyAt=0;room.attack(room.clients[0]);
  assert.equal(events.filter(e=>e.type==='medal').length,1,'recovery protection blocks medal farming even after knockdown ends');
  for(let i=0;i<2;i++){a.attackReadyAt=0;b.knockdownUntil=0;b.invincibleUntil=0;room.attack(room.clients[0]);}
- assert.deepEqual(events.filter(e=>e.type==='medal').at(-1)?.data.ids,['repeatOffender']);
+ assert.deepEqual(events.filter(e=>e.type==='medal').at(-1)?.data.ids,['threePlayers','repeatOffender']);
  b.x=10;state.players.set('npc',new Player({x:1.6,z:0}));a.attackReadyAt=0;room.attack(room.clients[0]);
  assert.equal(events.filter(e=>e.type==='medal').length,2,'entities without connected clients do not count');
 });
@@ -65,4 +65,31 @@ test('live room sends First Blood to the attacking client, never the victim, and
   a.send('finishRound');await until(()=>a.state.phase==='Finished','round end');a.send('restartRound');await until(()=>a.state.phase==='Lobby','reset');
   await startRound(a,[a,b]);attack();await until(()=>awarded.length===2,'First Blood in new round');assert.notEqual(awarded[0].roundStartedAt,awarded[1].roundStartedAt);
  });
+});
+
+test('Bloodthirsty counts three bag hits, awards once per round, and practice hits do not contribute',()=>{
+ const medals=new PlayerMedals();
+ medals.practiceBag(1);medals.practiceBag(1);medals.practiceBag(1);
+ assert.deepEqual(medals.record('a','b','bag',1)?.ids,['firstBlood','bagged']);
+ assert.deepEqual(medals.record('a','b','bag',1)?.ids,['bagged']);
+ assert.deepEqual(medals.record('a','b','bag',1)?.ids,['threePlayers','bagged']);
+ assert.deepEqual(medals.record('a','c','bag',1)?.ids,['bagged']);
+ medals.reset();
+ assert.deepEqual(medals.record('a','b','punch',2)?.ids,['firstBlood']);
+ assert.deepEqual(medals.record('a','c','bicycle',2)?.ids,['bicycleHit']);
+ assert.deepEqual(medals.record('a','d','bag',2)?.ids,['threePlayers','bagged']);
+});
+test('room awards Bloodthirsty on the third recovered-player bag hit, never on downed-player spam',()=>{
+ const {room,state,events}=harness(),victim=state.players.get('b')!,bag={vx:18,vy:0,vz:0};
+ for(let i=0;i<3;i++){
+  victim.knockdownUntil=0;victim.invincibleUntil=0;
+  assert.equal(room.bagHit('a','b',bag,false),true);
+  const count=events.filter(e=>e.type==='medal').length;
+  assert.equal(room.bagHit('a','b',bag,false),false);
+  assert.equal(events.filter(e=>e.type==='medal').length,count);
+ }
+ const awards=events.filter(e=>e.type==='medal');
+ assert.deepEqual(awards.at(-1)?.data.ids,['threePlayers','bagged']);
+ assert.equal(awards.filter(e=>e.data.ids.includes('threePlayers')).length,1);
+ assert(awards.every(e=>e.to==='a'));
 });

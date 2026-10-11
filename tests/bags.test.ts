@@ -38,3 +38,34 @@ test('pickup respects intro, vehicle, knockdown, seated and NPC interaction cond
  state.introComplete=true;a.vehicleId='';a.knockdownUntil=0;a.moodleSitUntil=0;busy=false;
  manager.command(client('a'),data,1000);assert.equal(a.bagId,'ersti-1');
 });
+
+test('moving throws launch from the current position and carry bounded sprint/strafe momentum',()=>{
+ for(const velocity of [{vx:9,vz:0},{vx:0,vz:9},{vx:24,vz:0}]){
+  const {state,manager,a,client}=harness();state.players.delete('b');
+  manager.command(client('a'),{action:'pickup',id:'ersti-1',roundStartedAt:123},1000);
+  manager.command(client('a'),{action:'throw',aim:[1,0,0],roundStartedAt:123},1800);
+  a.x+=2;a.z+=1;Object.assign(a,velocity);
+  manager.tick(2230);const b=state.bags.get('ersti-1')!,carry=Math.min(1,C.BAG_CARRY_SPEED_LIMIT/Math.hypot(velocity.vx,velocity.vz));
+  assert.equal(a.bagId,'');assert(b.flying);
+  assert.equal(b.vx,C.BAG_SPEED+velocity.vx*carry);assert.equal(b.vz,velocity.vz*carry);
+  assert(Math.abs(b.x-(a.x+.65+b.vx*.05))<1e-6,'release follows the player, not the wind-up position');
+  assert(Math.abs(b.z-(a.z+b.vz*.05))<1e-6);
+ }
+});
+test('bag hit area forgives a small aiming miss but still rejects clear misses',()=>{
+ const from={x:-5,y:1,z:0},to={x:5,y:1,z:0};
+ assert(C.bagHitsPlayer(from,to,{x:0,y:0,z:.65}));
+ assert(!C.bagHitsPlayer(from,to,{x:0,y:0,z:.9}));
+ assert(!C.bagHitsPlayer({x:-5,y:3,z:0},{x:5,y:3,z:0},{x:0,y:0,z:0}));
+});
+test('forgiving bag hits do not reach a player standing behind a wall',()=>{
+ const state=new RaceState({phase:C.RoomPhase.Running,introComplete:true,startedAt:123}),home=C.bagHomes(C.flatWorld)[0],hits:string[]=[];
+ const world={...C.flatWorld,blocked:(x:number)=>x>=home.x+1.8&&x<=home.x+1.9};
+ const manager=new BagManager(state,world,(_from,target)=>{hits.push(target);return true;});
+ const a=new Player({x:home.x,y:0,z:home.z});state.players.set('a',a);state.players.set('b',new Player({x:home.x+2,y:0,z:home.z}));
+ const client={sessionId:'a',send:()=>{}};
+ manager.command(client,{action:'pickup',id:'ersti-1',roundStartedAt:123},1000);
+ manager.command(client,{action:'throw',aim:[1,0,0],roundStartedAt:123},1800);
+ for(let now=2230;now<2600;now+=10)manager.tick(now);
+ assert.deepEqual(hits,[]);assert.equal(state.players.get('b')!.bagId,'');
+});

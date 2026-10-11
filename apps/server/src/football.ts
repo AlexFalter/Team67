@@ -36,7 +36,7 @@ export class FootballManager {
     b.vy-=12*step;const floor=this.world.height(to.x,to.z),bounds=this.world.bounds;
     if(floor===undefined||to.x<bounds.minX||to.x>bounds.maxX||to.z<bounds.minZ||to.z>bounds.maxZ){b.vx*=-.4;b.vz*=-.4;to.x=b.x;to.z=b.z;}
     else if(!this.clear(from,to)){b.vx*=-.4;b.vz*=-.4;to.x=b.x;to.z=b.z;}
-    else if(!flight.hit&&Math.hypot(b.vx,b.vz)>3){for(const [target,p] of this.state.players){if(target===b.kicker||p.vehicleId||p.knockdownUntil>now||this.busy(target)||!C.bagHitsPlayer(from,to,p))continue;if(this.hit(b.kicker,target,b)){flight.hit=true;b.vx*=.3;b.vz*=.3;break;}}}
+    else if(!flight.hit&&Math.hypot(b.vx,b.vz)>3){for(const [target,p] of this.state.players){if(target===b.kicker||p.vehicleId||p.knockdownUntil>now||this.busy(target)||!C.bagHitsPlayer(from,to,p,.52))continue;if(this.hit(b.kicker,target,b)){flight.hit=true;b.vx*=.3;b.vz*=.3;break;}}}
     const ground=this.world.height(to.x,to.z)??this.world.height(b.x,b.z)??this.world.spawn.y;
     if(to.y<ground+.22){to.y=ground+.22;b.vy=Math.abs(b.vy)>.8?Math.abs(b.vy)*.35:0;b.vx*=.94;b.vz*=.94;}
     Object.assign(b,to);

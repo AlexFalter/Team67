@@ -32,3 +32,5 @@ cannot activate them.
 
 The mound is an added feature mesh. Its sampled surface matches the shared movement
 height profile; existing map geometry and origin remain intact.
+
+Throws launch at 18 m/s and inherit up to 12 m/s of the player’s horizontal movement at release, so running and strafing carry through naturally. The client sends its latest movement before the throw command; the authoritative release still follows the 430 ms animation timing. The player hit sweep uses a 0.72 m combined radius for more forgiving hits while walls still block the path. A delayed release keeps the throw animation active until ownership changes, avoiding a second pickup animation or a missed handoff.
