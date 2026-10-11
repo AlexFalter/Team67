@@ -28,3 +28,17 @@ export function examSecondsRemaining(endsAt: number, now: number) {
 export const EXAM_BUILDING_COUNT = 16;
 export interface ExamScore { score: number; correct: number; completed: boolean }
 export interface ExamProgress extends ExamScore { roundStartedAt: number }
+
+/** Final leaderboard: reaching ETH (entering the exam) is worth this much, exam points come on top. */
+export const ETH_ARRIVAL_POINTS = 1000;
+/** Straight-line metres from a map point to the exam entrance at ETH. */
+export function distanceToEth(point: { x: number; z: number }) {
+  return Math.hypot(point.x - examPortalPosition.x, point.z - examPortalPosition.z);
+}
+/**
+ * Final leaderboard score: players who reached ETH get ETH_ARRIVAL_POINTS plus their exam points, so
+ * always above 0; everyone else gets minus the metres they were still away from ETH when time ran out.
+ */
+export function finalScore(result: { examStartedAt: number; examScore: number; distanceToEth: number }) {
+  return result.examStartedAt ? ETH_ARRIVAL_POINTS + result.examScore : -Math.round(result.distanceToEth);
+}

@@ -16,6 +16,7 @@ export const RoundResult = schema({
   examCorrect: t.number().default(0),
   examCompleted: t.boolean().default(false),
   examStartedAt: t.number().default(0),
+  distanceToEth: t.number().default(0),
 }, "RoundResult");
 export const Player = schema(
   {

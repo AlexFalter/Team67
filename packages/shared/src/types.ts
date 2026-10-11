@@ -91,6 +91,8 @@ export interface RoundResult {
   examCorrect: number;
   examCompleted: boolean;
   examStartedAt: number;
+  /** Metres to ETH when the round ended (0 for players who reached the exam). */
+  distanceToEth: number;
 }
 export interface VehicleState {
   kind: number; // 0 cart, 1 shuttle, 2 bike, 3 NPC car, 4 ball, 5 tram, 6 Polybahn, 7 Lime scooter

@@ -154,7 +154,13 @@ button:disabled { cursor: wait; opacity: 0.6; }
 #room-results-scroll:focus-visible { outline: 2px solid #d7f87a; outline-offset: 3px; }
 #room-results-scroll #room-results { table-layout: fixed; margin: 0; }
 #room-results th { position: sticky; top: 0; background: #122b35; }
-#room-results :is(th, td):first-child { width: 46%; }
+#room-results :is(th, td):first-child { width: 30%; }
+/* Final leaderboard: gold for players who reached ETH, red for those still on the way. */
+#room-results tr[data-eth=reached] td { color: #f6d77a; background: #f6d77a14; }
+#room-results tr[data-eth=reached] td:first-child { box-shadow: inset 3px 0 #f6d77a; }
+#room-results tr[data-eth=missed] td { color: #ff8f86; background: #ff5a4f12; }
+#room-results tr[data-eth=missed] td:first-child { box-shadow: inset 3px 0 #ff6b61; }
+#room-results td:nth-child(2) { font-weight: 700; font-variant-numeric: tabular-nums; }
 
 #publibike-scan { position:absolute; inset:0; z-index:15; display:grid; place-items:center; touch-action:none; background:#0007; }
 #publibike-scan[hidden], #publi-bike-battery[hidden] { display:none; }
