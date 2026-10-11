@@ -98,7 +98,7 @@ export class Network {
         body.mateCount = own.mateCount; body.mateBoostMs = own.mateBoostMs;
         body.mateFlavor = own.mateFlavor; body.mateDrinkStartedAt = own.mateDrinkStartedAt;
         body.attackReadyAt = Math.max(body.attackReadyAt, own.attackReadyAt);
-        body.moodleSitUntil=own.moodleSitUntil??0;
+        body.moodleSitUntil=own.moodleSitUntil??0;body.moodleBoostUntil=own.moodleBoostUntil??0;
         body.knockdownUntil = Math.max(body.knockdownUntil, own.knockdownUntil);
         if ((own.impactStartedAt ?? 0) > (body.impactStartedAt ?? 0)) {
           body.impactStartedAt = own.impactStartedAt; body.impactX = own.impactX;

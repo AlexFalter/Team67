@@ -9,6 +9,7 @@ export class NpcFeature {
     local: LocalPlayer, vehicles: Vehicles, canvas: HTMLCanvasElement, map: THREE.Object3D,
     capture: () => void);
   externalPhoneBusy?:()=>boolean;
+  onFootballReward?:()=>void;
   onMedal?: (id: string) => void;
   onResume?: () => void;
   onSuspend?: () => void;
