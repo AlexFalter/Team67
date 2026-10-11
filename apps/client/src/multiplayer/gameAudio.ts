@@ -24,6 +24,8 @@ export interface LoopSource {
   y?: number;
   z: number;
   aboard: boolean;
+  /** Engine playback speed; omitted preserves the recording. */
+  rate?: number;
   door?: boolean;
   crashed?: boolean;
 }
@@ -247,6 +249,7 @@ export class GameAudio {
           voice.gain.gain.cancelScheduledValues(now); voice.gain.gain.setValueAtTime(0, now);
           source.start(); voice.source = source;
         }
+        voice.source?.playbackRate.setTargetAtTime(s.rate ?? 1, now, 0.15);
         voice.gain.gain.setTargetAtTime(target, now, 0.15);
       } else this.stop(voice);
       // Do not replay transitions accumulated while paused or muted.

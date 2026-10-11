@@ -1,3 +1,4 @@
+import {GtrDonuts} from './vehicles/gtr/GtrDonuts.ts';
 import {AwpFeature} from './weapons/AwpFeature.ts';
 import {FruitFeature} from './fruit/FruitFeature.ts';
 import { StuckHint } from "./stuckHint.ts";
@@ -53,6 +54,7 @@ export class MapGame {
   private net = new Network();
   private traffic: TrafficRenderer;
   private cows: BridgeCows;
+  private gtr:GtrDonuts;
   private trafficEditor?: TrafficEditor;
   private local = new LocalPlayer();
   private remotes: RemotePlayers;
@@ -97,6 +99,7 @@ export class MapGame {
     this.medals = createMedals({root: canvas.parentElement!, definitions: PLAYER_MEDALS});
     this.net.onMedal = award => this.medals.awardMany(award.ids, award.eventKey);
     this.cows = new BridgeCows(scene, this.audio);
+    this.gtr=new GtrDonuts(scene,TrafficRoadSurface.forMap(map));
     this.traffic = new TrafficRenderer(scene, TrafficRoadSurface.forMap(map));
     this.exam = new ExamSequence(scene, camera, onExamChange);
     this.transitScenery = new TransitScenery(scene, map);
@@ -130,14 +133,14 @@ export class MapGame {
     this.npcs.playerView = this.view;
     scene.add(camera);
     this.bus = new BattleBusIntro(scene, camera, this.net, canvas, () => this.view.sensitivity);
-    this.ready = Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready, this.npcs.ready, this.cows.ready, this.bags.ready,this.fruit.ready,this.awp.ready]).then(() => {});
+    this.ready = Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready, this.npcs.ready, this.cows.ready, this.bags.ready,this.fruit.ready,this.awp.ready,this.gtr.ready]).then(() => {});
     this.roomFlow = new RoomFlow(this.net, this.ready, () => this.bus.unlockAudio(), () => this.audio.effect("timer"));
     this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.trafficEditor?.active && !this.emotes?.opened && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active, () => this.net.now()<this.derailUntil || !!this.maps?.active || (this.local.body.moodleSitUntil??0)>this.net.now(), () => this.net.now(), () => this.contextActions(), () => {if(this.awp.occupiesHands)return {kind:"awp",enabled:this.awp.canFire,run:()=>this.awp.fire()};if(this.fruit.occupiesHands)return {kind:"tomato",enabled:this.fruit.canThrow,run:()=>this.fruit.throw()};if(this.bags.occupiesHands)return {kind:"bag",enabled:this.bags.canThrow,run:()=>this.bags.throwBag()};if(this.football.occupiesHands)return {kind:"football",enabled:this.football.canKick,run:()=>this.football.kick()};const knife=this.npcs.karambit;return knife?.occupiesHands()&&!this.local.body.vehicleId&&this.view.perspective===0?{enabled:this.npcs.canUseKarambit()&&knife.state().phase!=='attack'&&this.local.body.attackReadyAt<=this.net.now(),run:()=>this.npcs.attackKarambit()}:undefined;}, () => this.net.room.send('respawn'));
     this.emotes=new EmoteFeature(this.net,this.local,this.view,canvas.parentElement!,()=>this.net.canPlay&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.npcs.active&&!this.maps?.active&&this.net.now()>=this.derailUntil&&!!document.querySelector<HTMLElement>('#pause')?.hidden,()=>this.controls.resumeAfterInteraction());
     this.spectator=new Spectator(this.net,camera,canvas,()=>{this.controls.suspendForMap();this.exam.returnToExam();},()=>{void this.controls.resume();});
     this.net.onSpectate=()=>{this.maps.closeForTeleport();this.local.enabled=false;this.local.clear();this.exam.spectate();this.controls.suspendForMap();};
     this.maps = new RaceMap(this.net, () => ({ ...this.local.body, enabled: this.local.enabled }),
-      () => [...this.npcs.mapMarkers(), { ...this.mate.machine.position, label: "El Tony Mate" },{x:C.AWP_RACK.approach[0],y:C.AWP_RACK.approach[1],z:C.AWP_RACK.approach[2],label:"Nerf AWP"}],
+      () => [...this.npcs.mapMarkers(), { ...this.mate.machine.position, label: "El Tony Mate" },{x:C.AWP_RACK.approach[0],y:C.AWP_RACK.approach[1],z:C.AWP_RACK.approach[2],label:"Nerf AWP"},{x:C.GTR_DONUTS.center[0],y:C.GTR_DONUTS.center[1],z:C.GTR_DONUTS.center[2],label:"GT-R donuts"}],
       () => !!this.net.canPlay && !this.trafficEditor?.active && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now() >= this.derailUntil && !!document.querySelector<HTMLElement>("#pause")!.hidden,
       () => this.controls.suspendForMap(), () => void this.controls.resume());
     this.net.onMapTeleport=({from,target})=>{this.maps.closeForTeleport();this.local.clear();this.npcs.playMapTeleport(from,target);};
@@ -226,6 +229,7 @@ export class MapGame {
     if(this.awp.occupiesHands)this.view.perspective=0;
     this.fruit.update();
     this.cows.update(this.net.now(), this.camera.position, this.net.canPlay && !this.exam.active);
+    this.gtr.update(renderTime,this.net.canPlay&&!this.exam.active);
     this.traffic.render(renderTime);
     this.trafficEditor?.update();
     if (this.trafficEditor?.active) {
@@ -383,6 +387,7 @@ export class MapGame {
         this.lastCanDrop = mate.dropStartedAt; this.audio.effect("canDrop");
       }
     }
+    const gtrSound=this.gtr.audioSource;if(gtrSound&&playing)sources.set("gtr-donuts",gtrSound);
     const listener = this.bus.active ? this.bus.focus : this.listener;
     this.audio.update(sources, listener, { paused: !playing || this.controlsPaused, duck: this.npcs.active || this.mate.active || this.publiBikes.active });
     if (this.net.canPlay && !this.exam.active && !this.npcs.active) this.audio.movement(dt, body, this.local.pushing, this.net.now());
@@ -406,7 +411,7 @@ export class MapGame {
     this.spectator.dispose();this.net.onSpectate=undefined;
     this.maps.dispose(); this.hud.dispose(); this.trickScore.dispose(); this.stuckHint.dispose();
     this.coordinates.dispose(); this.collisions.dispose();
-    this.cows.dispose(); this.trafficEditor?.dispose(); this.traffic.dispose();
+    this.gtr.dispose();this.cows.dispose(); this.trafficEditor?.dispose(); this.traffic.dispose();
     this.menuScene.dispose();
     this.medals.destroy(); this.net.onMedal = undefined;
     this.exam.dispose();
