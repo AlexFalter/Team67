@@ -181,7 +181,7 @@ export class PubliBikeFeature {
         ctx.clearRect(0, 0, 768, 192);
         ctx.fillStyle = "#071a2480"; ctx.fillRect(8, 8, 760, 184);
         ctx.fillStyle = "#102731"; ctx.fillRect(0, 0, 760, 184);
-        ctx.strokeStyle = "#b38dc9"; ctx.lineWidth = 4; ctx.strokeRect(2, 2, 756, 180);
+        ctx.strokeStyle = "#a82779"; ctx.lineWidth = 4; ctx.strokeRect(2, 2, 756, 180);
         ctx.fillStyle = "#ffffff12"; ctx.fillRect(4, 4, 752, 4); ctx.fillRect(4, 8, 4, 168);
         ctx.fillStyle = "#00000044"; ctx.fillRect(8, 176, 748, 4); ctx.fillRect(752, 8, 4, 168);
         ctx.textAlign = "center"; ctx.fillStyle = "#c3d5cc";
