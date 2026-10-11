@@ -84,11 +84,13 @@ export function GameOverlay({ resolution, onResolutionChange }: {
         <p id="room-message" role="status"></p>
         <ul id="room-roster" aria-label="Players in this room"></ul>
         <button id="room-ready" hidden>Ready</button>
-        <table id="room-results" hidden>
-          <caption>Round results</caption>
-          <thead><tr><th scope="col">Player</th><th scope="col">Hits landed</th><th scope="col">Hits received</th></tr></thead>
-          <tbody></tbody>
-        </table>
+        <div id="room-results-scroll" role="region" aria-label="Round results" tabIndex={0}>
+          <table id="room-results" hidden>
+            <caption>Round results</caption>
+            <thead><tr><th scope="col">Player</th><th scope="col">Hits landed</th><th scope="col">Hits received</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
         <button id="room-restart" hidden>Return room to lobby</button>
         <button id="room-leave">Leave room</button>
       </div>
@@ -120,7 +122,6 @@ export function GameOverlay({ resolution, onResolutionChange }: {
     </section>
     <div id="battle-bus-intro" hidden role="status" aria-live="polite"></div>
     <div id="activity-feed" hidden role="log" aria-live="polite" aria-label="Activity feed"></div>
-    <button id="play" hidden>Click to play <span aria-hidden="true">↗</span></button>
     <div id="crosshair" hidden aria-hidden="true">+</div>
     <div id="combat-actions" hidden role="group" aria-label="Player actions">
       <div className="combat-action">
@@ -147,6 +148,7 @@ export function GameOverlay({ resolution, onResolutionChange }: {
         <h2>Game menu</h2>
         <p>Your controls are paused. The multiplayer world keeps running.</p>
         <button id="resume">Resume game</button>
+        <button id="respawn">Respawn at bus drop-off</button>
         <button id="perspective">View: First person</button>
         <label><input id="bob" type="checkbox" defaultChecked /> Walking / running bob</label>
         <label><input id="vehicle-sounds" type="checkbox" defaultChecked /> Movement and vehicle sounds</label>

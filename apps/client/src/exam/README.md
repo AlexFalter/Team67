@@ -66,7 +66,7 @@ stored locally at `public/assets/eth-zurich.svg` and displayed in white.
 
 Development builds show “DEBUG · Teleport to Polyterrasse”. Create/join a
 room and ready up first, then click it. It moves you eight metres outside
-the portal; click to play and walk forward into the ring. Shift-click the button
+the portal; walk forward into the ring. Shift-click the button
 to enter directly and test the full transition. The server module
 `apps/server/src/examDebug.ts` confirms the move and sends a position
 correction, so normal movement validation keeps working. It rejects lobby,

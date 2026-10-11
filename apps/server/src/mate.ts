@@ -2,12 +2,14 @@ import type { Client } from "colyseus";
 import * as C from "@race/shared";
 import { Mate, type RaceState } from "./state.ts";
 
-// One cabinet/flavor per room; independent transactions and one reward per player.
+// Two working selections per room; independent transactions and one reward per player.
 export class MateMachine {
-  private workingFlavor: number;
+  private workingFlavors: Set<number>;
   private lastTick: number;
   constructor(private state: RaceState, private world: C.MovementWorld, random = Math.random, now = Date.now()) {
-    this.workingFlavor = Math.floor(random() * C.MATE_FLAVORS.length);
+    const first = Math.floor(random() * C.MATE_FLAVORS.length);
+    const others = C.MATE_FLAVORS.map((_, i) => i).filter(i => i !== first);
+    this.workingFlavors = new Set([first, others[Math.floor(random() * others.length)]]);
     this.lastTick = now;
   }
   join(id: string) { this.state.mates.set(id, new Mate()); }
@@ -25,8 +27,8 @@ export class MateMachine {
     if (p.vehicleId || p.knockdownUntil > now) return reply(false, "Use Mate when on foot.");
     if (action === "use") {
       if (!p.mateCount || p.mateBoostMs > 0) return reply(false, "No Mate available to drink.");
-      p.mateCount--; p.mateBoostMs = C.MATE_BOOST_MS;
-      return reply(true, "Mate rush · +35% speed");
+      p.mateCount--; p.mateBoostMs = C.MATE_BOOST_MS; p.mateDrinkStartedAt = now;
+      return reply(true, "Mate rush · 2× speed · 8s");
     }
     if (!C.nearMate(p, this.world)) return reply(false, "Move to the front of the vending machine.");
     this.advance(state, now);
@@ -42,13 +44,13 @@ export class MateMachine {
       state.phase = "loading"; state.readyAt = now + C.MATE_LOADING_MS;
     } else if (action === "collect") {
       if (state.phase !== "collect") return reply(false, "Wait for the can to land in the tray.");
-      state.phase = "success"; p.mateCount++;
+      state.phase = "success"; p.mateCount++; p.mateFlavor = state.selected;
     } else return reply(false, "Unknown vending action.");
     reply(true, action === "collect" ? "Mate added to inventory" : "");
   }
   private advance(state: C.MateState, now: number) {
     if (state.phase === "loading" && now >= state.readyAt) {
-      if (state.selected === this.workingFlavor) { state.phase = "dropping"; state.dropStartedAt = state.readyAt; }
+      if (this.workingFlavors.has(state.selected)) { state.phase = "dropping"; state.dropStartedAt = state.readyAt; }
       else { state.phase = "failure"; state.retryAt = state.readyAt + (state.attempts % 2 ? 1000 : 2000); }
     }
     if (state.phase === "dropping" && now >= state.dropStartedAt + C.MATE_DROP_MS) state.phase = "collect";

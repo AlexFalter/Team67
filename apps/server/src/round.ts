@@ -30,12 +30,21 @@ export class RoundManager {
     member.ready = ready;
     if (id === this.state.hostId && ready) this.start(now);
   }
+  thankBusDriver(id: string, run: unknown, now = Date.now()) {
+    const member = this.state.members.get(id);
+    const arrivalAt = this.state.introStartedAt + (this.state.startedAt - this.state.introStartedAt) * C.BATTLE_BUS_ARRIVAL_MS / C.BATTLE_BUS_DURATION_MS;
+    if (!C.inBattleBusIntro(this.state) || this.state.skipIntro || run !== this.state.introStartedAt ||
+      now < this.state.introStartedAt || now >= arrivalAt ||
+      !member || member.spectator || member.introSeat < 0 || !this.state.players.has(id) || member.thankedBusDriver) return;
+    member.thankedBusDriver = true;
+  }
   private start(now: number) {
     const members = [...this.state.members];
     if (!members.length) return;
     this.scores.clear(); this.state.results.clear();
     for (const [slot, [id, member]] of members.entries()) {
       member.introSeat = slot;
+      member.thankedBusDriver = false;
       this.scores.set(id, { name: member.name, hitsLanded: 0, hitsReceived: 0, examScore: 0, examCorrect: 0, examCompleted: false, examStartedAt: 0 });
     }
     this.state.phase = C.RoomPhase.Running;
@@ -96,7 +105,7 @@ export class RoundManager {
     this.state.startedAt = this.state.endsAt = this.state.finishedAt = 0;
     this.state.introStartedAt = 0; this.state.introComplete = false; this.state.scooterArrivalAt = 0;
     this.scores.clear(); this.state.results.clear();
-    for (const member of this.state.members.values()) { member.ready = false; member.spectator = false; member.introSeat = -1; }
+    for (const member of this.state.members.values()) { member.ready = false; member.spectator = false; member.introSeat = -1; member.thankedBusDriver = false; }
     this.onReset();
   }
 }

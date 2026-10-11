@@ -69,16 +69,16 @@ test('rail smoothing removes survey ripples, preserves endpoints and shares conn
  for(const value of g.attributes.position.array)assert(Number.isFinite(value));g.dispose();
 });
 
-test('derail camera suspends controls without disabling movement or showing click-to-play on return',()=>{
+test('derail camera suspends controls without disabling movement and resumes on return',()=>{
  const original=Object.getOwnPropertyDescriptor(globalThis,'document');
- const canvas={},play={hidden:false},crosshair={hidden:false},menu={hidden:true};
+ const canvas={focus(){},async requestPointerLock(){}},crosshair={hidden:false},menu={hidden:true};
  let releases=0,suspended=true;
- Object.defineProperty(globalThis,'document',{configurable:true,value:{pointerLockElement:canvas,exitPointerLock(){releases++;},querySelector(){return {textContent:''};}}});
+ Object.defineProperty(globalThis,'document',{configurable:true,value:{hasFocus:()=>true,pointerLockElement:canvas,exitPointerLock(){releases++;},querySelector(){return {textContent:''};}}});
  try{
   const controls=Object.create(GameControls.prototype) as GameControls;
   const local={enabled:true,clear(){}},view={perspective:0,look(){}};
-  Object.assign(controls,{local,view,canvas,menu,play,crosshair,captured:true,edge:{x:0,y:0},ready:()=>true,suspended:()=>suspended});
-  controls.update();assert(local.enabled);assert(play.hidden);assert.equal(releases,0);
-  suspended=false;controls.update();assert(local.enabled);assert(play.hidden);assert.equal(releases,0);
+  Object.assign(controls,{local,view,canvas,menu,crosshair,captured:true,edge:{x:0,y:0},ready:()=>true,suspended:()=>suspended});
+  controls.update();assert(local.enabled);assert(menu.hidden);assert.equal(releases,0);
+  suspended=false;controls.update();assert(local.enabled);assert(menu.hidden);assert.equal(releases,0);
  }finally{if(original)Object.defineProperty(globalThis,'document',original);else Reflect.deleteProperty(globalThis,'document');}
 });

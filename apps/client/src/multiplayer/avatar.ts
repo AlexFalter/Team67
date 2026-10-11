@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { updatePlayerIdentity, disposePlayerIdentity } from "./playerIdentity.ts";
-import { LIME_KIND, impactPose, ATTACK_COOLDOWN_MS, SLIDE_ANIM, tramDerailFrame, type VehicleState, TRAM_KIND, POLYBAHN_KIND, type PlayerState } from "@race/shared";
+import { LIME_KIND, LIME_SPEED, LIME_BOOST_SPEED, impactPose, ATTACK_COOLDOWN_MS, SLIDE_ANIM, tramDerailFrame, type VehicleState, TRAM_KIND, POLYBAHN_KIND, type PlayerState } from "@race/shared";
 
 // The seated owner can turn through their torso; show the body in third person
 // and to other players, while keeping the owning rail camera clear.
@@ -17,7 +17,9 @@ interface Limb { joint: THREE.Group; bend: THREE.Group; tip: THREE.Group; foot?:
 interface Rig {
   torso: THREE.Group; chest: THREE.Group; head: THREE.Group; neck: THREE.Group; arms: Limb[]; legs: Limb[];
   viewArms?: THREE.Group;
-  phase: number; fall: number; speed: number; grounded: boolean; landing: number; air: number; firstPerson: boolean; slide: number; airPhase: number;
+  can?: THREE.Group;
+  canFlavor?: number;
+  phase: number; fall: number; speed: number; grounded: boolean; landing: number; air: number; firstPerson: boolean; slide: number;
 }
 const rigs = new WeakMap<THREE.Group, Rig>();
 export function avatar(color: string, character = 0, firstPerson = false) {
@@ -132,11 +134,23 @@ export function avatar(color: string, character = 0, firstPerson = false) {
     viewArms = new THREE.Group(); viewArms.name = "view-arms"; viewArms.position.set(0, 1.6, 0.15); root.add(viewArms);
     for (const arm of arms) { arm.joint.position.set(arm.joint.position.x < 0 ? -0.34 : 0.34, -0.32, 0.12); viewArms.add(arm.joint); }
   }
-  rigs.set(root, { torso, chest, head, neck, arms, legs, viewArms, slide: 0, airPhase: 0, phase: 0, fall: 0, speed: 0, grounded: true, landing: 0, air: 0, firstPerson });
+  rigs.set(root, { torso, chest, head, neck, arms, legs, viewArms, slide: 0, phase: 0, fall: 0, speed: 0, grounded: true, landing: 0, air: 0, firstPerson });
   return root;
 }
 
 // Roughly 3–4 alternating footfalls per second, not six tiny sprint steps.
+// Can clones share immutable resources owned by MateFeature, never by the rig.
+export function equipMateCan(mesh: THREE.Group, source: THREE.Group, flavor: number) {
+  const r = rigs.get(mesh);
+  if (!r || r.canFlavor === flavor) return;
+  r.can?.removeFromParent();
+  const can = new THREE.Group(), model = source.clone(true);
+  const bounds = new THREE.Box3().setFromObject(model), center = bounds.getCenter(new THREE.Vector3());
+  const scale = .16 / Math.max(.001, bounds.max.y - bounds.min.y);
+  model.position.sub(center); can.add(model); can.scale.setScalar(scale);
+  can.position.set(0, -.015, .045); can.visible = false; can.name = `held-mate-${flavor}`;
+  r.arms[1].tip.add(can); r.can = can; r.canFlavor = flavor;
+}
 export function gaitRate(speed: number) { return Math.PI * 2 * (1.15 + Math.min(speed, 16.5) * 0.055) * Math.min(1, speed / 2); }
 export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, camera?: THREE.PerspectiveCamera, knifeEquipped = false) {
   const r = rigs.get(mesh)!;
@@ -145,6 +159,10 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
   const impact = impactPose(p);
   const sliding = p.anim === SLIDE_ANIM && !down;
   r.slide += ((sliding ? 1 : 0) - r.slide) * blend;
+  const drinkAge = (p.simTime - (p.mateDrinkStartedAt ?? 0)) / 1000;
+  const drinking = !down && !p.vehicleId && (p.mateDrinkStartedAt ?? 0) > 0 && drinkAge >= 0 && drinkAge < 1.3;
+  const sip = drinking ? THREE.MathUtils.smoothstep(drinkAge, 0, .3) * (1 - THREE.MathUtils.smoothstep(drinkAge, .95, 1.3)) : 0;
+  if (r.can) r.can.visible = drinking;
   mesh.scale.setScalar(p.vehicleId && p.cabinStanding ? .85 : 1);
   const riding = !!p.vehicleId && !p.cabinStanding, bike = riding && p.vehicleKind === 2, scooter=riding&&p.vehicleKind===LIME_KIND;
   r.speed += ((down || riding ? 0 : Math.hypot(p.vx, p.vz)) - r.speed) * blend;
@@ -154,8 +172,9 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
   r.grounded = p.grounded; r.landing *= Math.exp(-10 * dt);
   const run = Math.min(1, r.speed / 9), airborne = !p.grounded && !riding && !down;
   r.air += ((airborne ? 1 : 0) - r.air) * blend;
-  if (airborne) r.airPhase += dt * 10; else r.airPhase = 0;
-  const rise = THREE.MathUtils.clamp(p.vy / 8, 0, 1), descend = THREE.MathUtils.clamp(-p.vy / 8, 0, 1);
+  const scooterSpeed = scooter ? Math.hypot(p.vx, p.vz) : 0;
+  const scooterBoost = THREE.MathUtils.clamp((scooterSpeed - LIME_SPEED) / (LIME_BOOST_SPEED - LIME_SPEED), 0, 1);
+  const scooterLean = scooter && p.seat === 0 ? .08 + scooterBoost * .10 : 0;
   const stride = run * (1 - r.air) * (1 - r.slide);
   const forward = (p.vx * Math.sin(p.rotY) + p.vz * Math.cos(p.rotY)) / Math.max(0.1, Math.hypot(p.vx, p.vz));
   const sideways = (p.vx * Math.cos(p.rotY) - p.vz * Math.sin(p.rotY)) / Math.max(0.1, Math.hypot(p.vx, p.vz));
@@ -172,16 +191,17 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
       mesh.worldToLocal(r.viewArms.position);
     } else r.viewArms.position.set(0, 1.6 - r.slide * 0.78, 0.15);
   }
-  r.torso.position.y = (riding&&!scooter ? 0.25 : 0.75) - r.fall * 0.47 - r.slide * 0.49 - r.landing * 0.09 + Math.sin(r.phase * 2) * stride * 0.025;
-  r.torso.rotation.set(-r.fall * 1.52 + stride * forward * 0.14 - r.slide * 0.42 + (bike ? 0.30 : 0), 0, Math.cos(r.phase) * (bike ? Math.min(1, Math.hypot(p.vx, p.vz) / 8) * 0.025 : stride * 0.025));
-  r.chest.rotation.set(r.air * rise * 0.07 + r.landing * 0.12, Math.sin(r.phase) * stride * 0.06 + punch * (-0.20 + hookSweep * 0.55), 0);
+  r.torso.position.y = (scooter ? .70 : riding ? 0.25 : 0.75) - r.fall * 0.47 - r.slide * 0.49 - r.landing * 0.09 + Math.sin(r.phase * 2) * stride * 0.025;
+  r.torso.position.z = scooter ? (p.seat === 0 ? .30 : -.08) : 0;
+  r.torso.rotation.set(-r.fall * 1.52 + stride * forward * 0.14 - r.slide * 0.42 + (bike ? 0.30 : scooterLean), 0, Math.cos(r.phase) * (bike ? Math.min(1, Math.hypot(p.vx, p.vz) / 8) * 0.025 : stride * 0.025));
+  r.chest.rotation.set(r.landing * 0.12, Math.sin(r.phase) * stride * 0.06 + punch * (-0.20 + hookSweep * 0.55), 0);
   r.head.rotation.set(0, punch * -0.15, Math.sin(p.simTime / 1100) * 0.018);
   r.arms.forEach((arm, i) => {
     const swing = Math.sin(r.phase + i * Math.PI);
     const gait = -swing * stride * (r.firstPerson ? 0.16 : 0.72);
-    let upper = scooter ? (p.seat===0?-1.1:.55) : bike ? -1.05 : riding ? -0.8 : r.firstPerson ? gait - 0.62 - run * 0.22 - r.air * rise * 0.20 : gait - r.air * (0.25 + rise * 0.55 - descend * 0.15);
-    let elbow = bike ? -0.42 : r.firstPerson ? -(0.85 + run * 0.25 + swing * stride * 0.12) : -(0.20 + run * 0.85 + Math.max(0, swing) * stride * 0.25 + r.air * rise * 0.4);
-    if(scooter)elbow=p.seat===0?-.2:-1.1;
+    let upper = scooter ? (p.seat===0?-1.22 - scooterLean:.35) : bike ? -1.05 : riding ? -0.8 : r.firstPerson ? gait - 0.62 - run * 0.22 : gait;
+    let elbow = bike ? -0.42 : r.firstPerson ? -(0.85 + run * 0.25 + swing * stride * 0.12) : -(0.20 + run * 0.85 + Math.max(0, swing) * stride * 0.25);
+    if(scooter)elbow=p.seat===0?-.24:-.95;
     upper = upper * (1 - r.slide) + (r.firstPerson ? -0.55 : -0.4) * r.slide;
     elbow = elbow * (1 - r.slide) - r.slide * 0.85;
     if (r.firstPerson) {
@@ -200,8 +220,12 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
     upper += (-1.4 - upper) * action;
     elbow += (-0.20 - elbow) * action;
     if (i === 0) { upper -= punch * 0.45; elbow -= punch * 0.35; }
+    if (i === 1) {
+      upper += (-1.15 - upper) * sip; elbow += (-2.1 - elbow) * sip;
+      if (r.firstPerson) { arm.joint.position.x += .28 * sip; arm.joint.position.y += .16 * sip; }
+    }
     const swayYaw = r.firstPerson ? (i ? -1 : 1) * Math.sin(r.phase + i * Math.PI) * stride * 0.16 : 0;
-    arm.joint.rotation.y += (swayYaw + action * (-0.9 + hookSweep * 1.9) - arm.joint.rotation.y) * blend;
+    arm.joint.rotation.y += (swayYaw + action * (-0.9 + hookSweep * 1.9) + (i === 1 ? .32 * sip : 0) - arm.joint.rotation.y) * blend;
     arm.bend.rotation.z += (action * 1.35 - arm.bend.rotation.z) * blend;
     arm.joint.rotation.x += (upper - arm.joint.rotation.x) * blend;
     arm.joint.rotation.z += ((i === 0 ? 1 : -1) * (-0.10 + r.fall * 0.55 - (r.firstPerson ? 0.12 + Math.cos(r.phase + i * Math.PI) * stride * 0.08 : 0)) - arm.joint.rotation.z) * blend;
@@ -210,13 +234,12 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
   });
   r.legs.forEach((leg, i) => {
     const swing = Math.sin(r.phase + i * Math.PI);
-    const flail = Math.sin(r.airPhase + i * Math.PI) * r.air * (0.40 + rise * 0.35);
-    const upper = scooter ? (i?-.12:.06) : bike ? -0.85 + swing * 0.48 : riding ? -1.35 : swing * stride * forward * 0.85 - r.air * ((0.22 + i * 0.20) * rise + 0.08 * descend) - r.slide * (i ? 1.5 : 0.98) + flail;
-    const knee = scooter ? (i?.16:.09) : bike ? 1.35 - swing * 0.62 : riding ? 1.3 : Math.pow(Math.max(0, -swing * forward), 1.5) * stride * 1.55 + r.air * (0.20 + rise * 0.75 - descend * 0.12) + r.landing * 0.45 + r.slide * (i ? 1.6 : 0.18) + Math.max(0, -flail) * 1.4;
+    const upper = scooter ? (i?.26:.12) : bike ? -0.85 + swing * 0.48 : riding ? -1.35 : swing * stride * forward * 0.85 - r.slide * (i ? 1.5 : 0.98);
+    const knee = scooter ? (i?.32:.18) : bike ? 1.35 - swing * 0.62 : riding ? 1.3 : Math.pow(Math.max(0, -swing * forward), 1.5) * stride * 1.55 + r.landing * 0.45 + r.slide * (i ? 1.6 : 0.18);
     leg.joint.rotation.x += (upper - leg.joint.rotation.x) * blend;
     leg.joint.rotation.z += (swing * stride * sideways * 0.3 - leg.joint.rotation.z) * blend;
     leg.bend.rotation.x += (knee - leg.bend.rotation.x) * blend;
-    leg.tip.rotation.x += ((bike ? -upper - knee - 0.30 : -knee * 0.3 + Math.max(0, swing * forward) * stride * 0.22) - leg.tip.rotation.x) * blend;
+    leg.tip.rotation.x += ((scooter ? -upper - knee - scooterLean : bike ? -upper - knee - 0.30 : -knee * 0.3 + Math.max(0, swing * forward) * stride * 0.22) - leg.tip.rotation.x) * blend;
   });
   if (impact.active || r.fall > 0.015) {
     const force = Math.hypot(p.impactX ?? 0, p.impactZ ?? 0);
@@ -259,6 +282,7 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
   updatePlayerIdentity(mesh, p);
 }
 export function disposeAvatar(mesh: THREE.Group) {
+  rigs.get(mesh)?.can?.removeFromParent();
   disposePlayerIdentity(mesh);
   const materials = new Set<THREE.Material>();
   mesh.traverse(child => { if (child instanceof THREE.Mesh) materials.add(child.material as THREE.Material); });

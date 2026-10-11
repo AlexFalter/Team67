@@ -46,3 +46,7 @@ body.eater-conversation header,body.eater-conversation .mission,body.eater-conve
 #scooter-photo button:focus-visible{outline:3px solid #83efbb;outline-offset:3px}
 #scooter-framing{position:absolute;bottom:14px;left:0;right:0;text-align:center;font:11px monospace;color:#dcf6c2;text-shadow:0 2px 5px #000}
 #scooter-preview{position:absolute;inset:0;background:#10151c;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+
+.scooter-photo-key-hint { position:absolute; bottom:max(24px,env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); z-index:2; padding:12px 20px; border:1px solid #b4ed6770; border-radius:4px; background:#102c3df2; color:#c2ed90; font:600 14px ui-monospace,monospace; white-space:nowrap; pointer-events:none; box-shadow:0 3px 15px #0008; }
+.scooter-photo-key-hint kbd { font:inherit; color:#efffe6; }
+#scooter-photo:not([data-phase="framing"]) .scooter-photo-key-hint { display:none; }

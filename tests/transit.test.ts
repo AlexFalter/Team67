@@ -27,7 +27,8 @@ test("tram grants eighteen distinct seats, rejects overflow and forged driving, 
   for (const [i, c] of clients.entries()) manager.enter(c.client, "tram-1", now + i * 100);
   assert.equal(new Set([...state.players.values()].filter(p => p.vehicleId === "tram-1").map(p => p.seat)).size, 18);
   assert.equal(clients[18].messages.at(-1)?.ok, false); assert.equal(v.driver, "");
-  assert.equal(v.departureAt, now + C.TRANSIT_BOARDING_MS);
+  assert.equal(v.departureAt, now + 15000, 'first passenger starts a fifteen-second tram boarding window; later passengers keep its deadline');
+  manager.tick(now + 14999, () => {}); assert.equal(v.traveling, false);
   const x = v.x; manager.move(clients[0].client, ["tram-1", 100, 100, 0, 10, 0], now + 2000); assert.equal(v.x, x);
   manager.enter(clients[18].client, "tram-1", v.departureAt); assert.equal(clients[18].messages.at(-1)?.ok, false);
   manager.tick(v.departureAt + C.TRANSIT_DOOR_MS + 5000, () => {});

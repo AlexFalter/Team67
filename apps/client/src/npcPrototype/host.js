@@ -43,7 +43,6 @@ export class NpcFeature {
   this.ui=document.createElement('div');this.ui.className='npc-ui-root';canvas.parentElement.append(this.ui);
   this.hint=document.createElement('div');this.hint.id='npc-hint';this.hint.hidden=true;this.ui.append(this.hint);
   this.boundaryWarning=document.createElement('aside');this.boundaryWarning.className='property-boundary-warning';this.boundaryWarning.hidden=true;this.boundaryWarning.textContent='PRIVATE PROPERTY · TURN BACK';this.ui.append(this.boundaryWarning);
-  this.passengerPrompt=document.createElement('div');this.passengerPrompt.className='polybahn-talk-prompt';this.passengerPrompt.hidden=true;this.passengerPrompt.innerHTML='<kbd>E</kbd><span></span>';this.ui.append(this.passengerPrompt);
   this.message=document.createElement('section');this.message.id='npc-message';this.message.hidden=true;this.message.setAttribute('role','dialog');this.message.setAttribute('aria-modal','true');this.message.classList.add('rpg-dialogue-compact');this.message.innerHTML='<div class="rpg-dialogue-name">Jane Street</div><p></p><div class="rpg-dialogue-options"><button type="button"></button></div>';styleRPGDialogue(this.message);this.ui.append(this.message);
   this.message.querySelector('button').onclick=()=>{const kind=this.message.dataset.kind;this.message.hidden=true;if(kind==='invitation'){this.limo?.requestRide();}else if(kind==='rejection')this.limo?.readRejection();this.syncLock();};
   this.phoneSounds=createPhoneSounds();
@@ -121,7 +120,9 @@ export class NpcFeature {
   }catch(error){this.cleanupFeatures();disposeOwnedObject(this.root);this.ui.remove();throw error;}
  }
  get active(){return !!this.pending||!!this.travel||!!this.limePhotoPending||!this.message.hidden||this.features.some(f=>f.active?.()&&f!==this.limo)||!!this.limo?.modal()||!!this.limo?.riding();}
- get hideAvatar(){return this.active;}
+ get ridingVehicle(){return !!this.limo&&['boarding','driving','arriving','stopped','rejection-read'].includes(this.limo.state().phase)&&this.message.hidden&&this.menu.hidden&&!this.pending;}
+ get ridePose(){const car=this.limo?.limo;return this.ridingVehicle&&car?{id:'npc-limousine',x:car.position.x,y:car.position.y,z:car.position.z,rotY:car.rotation.y+Math.PI}:null;}
+ get hideAvatar(){return this.active&&!this.currentPoly();}
  currentPoly(){return this.poly.get(this.local.body.vehicleId);}
  nearbyPolyPassenger(pair=this.currentPoly()){
   if(!pair)return null;
@@ -151,6 +152,7 @@ export class NpcFeature {
    else this.property.maybeStart(this.travel.source,true,this.travel.target,this.camera);
   }else if(result.action==='finish'){
    if(result.target)Object.assign(this.local.body,result.target,{vx:0,vy:0,vz:0,anim:0,grounded:true});this.travel=null;
+   if(result.kind==='property'&&Number.isFinite(result.facing)){this.local.body.rotY=result.facing;this.playerView.yaw=result.facing-Math.PI;this.playerView.pitch=0;this.local.clear();}
   }
   this.syncLock();
  }
@@ -168,20 +170,29 @@ export class NpcFeature {
   return markers;
  }
  syncLock(){
-  const active=this.active;
+  const active=this.active&&!this.ridingVehicle;
   if(active&&!this.saved){this.saved={fov:this.camera.fov,up:this.camera.up.clone(),enabled:this.local.enabled};this.local.clear();this.local.body.vx=this.local.body.vy=this.local.body.vz=0;if(document.pointerLockElement===this.canvas)document.exitPointerLock();}
   if(!active){this.polyCameraEye=null;}
   if(!active&&this.saved){this.camera.fov=this.saved.fov;this.camera.up.copy(this.saved.up);this.camera.updateProjectionMatrix();if(this.saved.enabled&&this.net.canPlay){this.local.enabled=true;this.local.clear();this.canvas.focus();}this.saved=null;}
-  this.net.npcPaused=active&&!this.local.body.vehicleId;if(active){this.local.enabled=false;this.local.clear();}
+  if(this.ridingVehicle)this.local.clear();
+  this.net.npcPaused=this.active&&!this.local.body.vehicleId;if(active){this.local.enabled=false;this.local.clear();}
  }
  get nearbyTicket(){return !this.local.body.vehicleId&&C.nearTicket(this.local.body,C.zurichWorld);}
- get nearbyInteraction(){
+ get interactionPrompt(){
   this.position.set(this.local.body.x,this.local.body.y,this.local.body.z);
-  if(this.currentPoly())return true;
-  if(this.local.body.vehicleId)return false;
+  const pair=this.currentPoly();
+  if(pair){const person=this.nearbyPolyPassenger(pair);return person?{icon:'person',label:person===pair.kid?'Talk to 6–7 kid':'Talk to food enthusiast'}:null;}
+  if(this.local.body.vehicleId)return null;
   const laptop=this.limo?.laptop.position,pickup=this.limo?.state().pickup;
-  return !!(this.nearbyTicket||this.einstein?.near(this.position)||laptop&&this.position.distanceTo(laptop)<3||this.limo?.state().phase==='waiting'&&this.position.distanceTo(new THREE.Vector3(...pickup))<9||this.scooter?.canTalk(this.position));
+  if(this.limo?.state().phase==='waiting'&&this.position.distanceTo(new THREE.Vector3(...pickup))<9)return {icon:'cart',label:'Board your limousine'};
+  if(this.nearbyTicket)return {icon:'polybahn',label:'Buy Polybahn ticket'};
+  const einstein=this.einstein?.near(this.position);
+  if(einstein)return {icon:'person',label:einstein.replace(/^E:\s*/,'').toLowerCase().replace(/^./,c=>c.toUpperCase()).replace('albert einstein','Albert Einstein')};
+  if(laptop&&this.limo?.state().phase==='idle'&&this.position.distanceTo(laptop)<3)return {icon:'computer',label:'Use Jane Street computer'};
+  if(this.scooter?.canTalk(this.position))return {icon:'person',label:'Talk to the scooter riders'};
+  return null;
  }
+ get nearbyInteraction(){return !!this.interactionPrompt;}
  strikeKnife(){
   this.local.punch();
   if(this.scooter?.state().phase!=='parked')return false;
@@ -219,7 +230,7 @@ export class NpcFeature {
   const sitRemaining=((state?.players.get(this.net.room.sessionId)?.moodleSitUntil??0)-this.net.now())/1000;this.moodlePenalty.hidden=sitRemaining<=0;if(sitRemaining>0){this.local.body.vx=this.local.body.vy=this.local.body.vz=0;this.local.clear();this.moodlePenalty.textContent=`SUBJECT FAILED · Existential crisis: ${Math.ceil(sitRemaining)}s`;}
   this.root.visible=playable;this.attachPoly();this.position.set(this.local.body.x,this.local.body.y,this.local.body.z);
   const pair=this.currentPoly();for(const [id,p] of this.poly){p.kid.update(dt,playable&&this.local.body.vehicleId===id,!!this.inspector?.active(),this.position);p.eater.update(dt,playable&&this.local.body.vehicleId===id,this.inspector?.active()||p.kid.active(),this.position);}
-  if(!playable){this.hint.hidden=true;this.passengerPrompt.hidden=true;this.boundaryWarning.hidden=true;return;}
+  if(!playable){this.hint.hidden=true;this.boundaryWarning.hidden=true;return;}
   const own=state.npcs?.get(this.net.room.sessionId);
   if(this.ticketRequest&&this.net.now()-this.ticketRequest.at>5000){this.ticketRequest.resolve(false);this.ticketRequest=null;this.notice('Ticket machine timed out. Try again.');}
   this.ticketMachine?.update(dt);this.ticketMachine?.updateInventory(available&&!this.active&&!this.local.body.vehicleId);
@@ -243,8 +254,8 @@ export class NpcFeature {
   const boundaryVehicle=state.vehicles.get(this.local.body.vehicleId);
   this.boundaryWarning.hidden=!available||this.active||borderDistance>30||!!boundaryVehicle&&C.isPassengerVehicle(boundaryVehicle);
   if(available&&!this.active){
-   const b=boundaryBounds,vehicle=boundaryVehicle;
-   if((!vehicle||!C.isPassengerVehicle(vehicle))&&Math.min(this.position.x-b.minX,b.maxX-this.position.x,this.position.z-b.minZ,b.maxZ-this.position.z)<=12)this.send('begin','property');
+   const vehicle=boundaryVehicle;
+   if((!vehicle||!C.isPassengerVehicle(vehicle))&&C.approachingPropertyBoundary(C.zurichWorld,this.local.body))this.send('begin','property');
    if(!this.active&&!this.local.body.vehicleId){this.finance?.maybeStart(this.position);if(!this.finance?.active())this.tourists?.update(this.position,this.camera);}
   }
   this.syncLock();
@@ -271,23 +282,13 @@ export class NpcFeature {
   this.karambit?.update(dt,playable&&this.local.enabled&&!this.active&&!this.local.body.vehicleId&&this.playerView?.perspective===0,Math.hypot(this.local.body.vx,this.local.body.vz)>.5,this.local.body.anim===C.SLIDE_ANIM,{speed:Math.hypot(this.local.body.vx,this.local.body.vz),grounded:this.local.body.grounded,verticalSpeed:this.local.body.vy,yaw:this.playerView?.yaw??0,pitch:this.playerView?.pitch??0});
   if(playable)this.knifeVictims?.forEach(p=>p.knockdown.update(dt));
   for(const [actor,update] of this.skins){if(!actor.parent)this.skins.delete(actor);else update();}
-  const talkTarget=this.nearbyPolyPassenger(pair);
-  this.passengerPrompt.hidden=!available||this.active||!talkTarget;
-  if(!this.passengerPrompt.hidden){
-   const point=talkTarget.actor.localToWorld(new THREE.Vector3(0,2.1,0)).project(this.camera);
-   this.passengerPrompt.hidden=point.z< -1||point.z>1||Math.abs(point.x)>1||Math.abs(point.y)>1;
-   this.passengerPrompt.style.left=`${(point.x+1)*50}%`;this.passengerPrompt.style.top=`${(1-point.y)*50}%`;
-   this.passengerPrompt.querySelector('span').textContent=talkTarget===pair.kid?'Talk to 6–7 kid':'Talk to food enthusiast';
-  }
-  if(this.net.now()>=this.noticeUntil){const near=this.einstein?.near(this.position),laptop=this.limo?.laptop.position,pickup=this.limo?.state().pickup;
-   const text=pair?'WASD · Walk · Backspace · Leave':C.nearTicket(this.position,C.zurichWorld)?'E · Polybahn ticket machine':near||laptop&&this.position.distanceTo(laptop)<3?'E · Jane Street laptop':this.limo?.state().phase==='waiting'&&this.position.distanceTo(new THREE.Vector3(...pickup))<9?'E · Board your limousine':this.scooter?.state().pendingTalk?'Scooter riders · Stopping to talk…':this.scooter?.canTalk(this.position)?'E · Talk to the scooter riders':'';
-   this.hint.textContent=near||text;this.hint.hidden=!available||this.active||!text||!!this.local.body.vehicleId&&!pair;
-  }
+  // E hints are owned by the shared action toolbar. Keep only temporary notices here.
+  if(this.net.now()>=this.noticeUntil)this.hint.hidden=true;
  }
  reset(){
   if(this.ticketRequest){this.ticketRequest.resolve(false);this.ticketRequest=null;}
   for(const car of this.remoteLimos.values())car.visible=false;
-  this.janeRejection=false;this.limePhotoPending=null;this.limePhotoSubmitting=false;this.pending=null;this.travel=null;this.retryAt=0;this.previousPoly=null;this.lastStationPosition=null;this.inspected=false;this.passengerPrompt.hidden=true;this.boundaryWarning.hidden=true;this.message.hidden=true;
+  this.janeRejection=false;this.limePhotoPending=null;this.limePhotoSubmitting=false;this.pending=null;this.travel=null;this.retryAt=0;this.previousPoly=null;this.lastStationPosition=null;this.inspected=false;this.boundaryWarning.hidden=true;this.message.hidden=true;
   for(const feature of this.features)feature.reset?.();this.syncLock();
  }
  cleanupFeatures(){for(const car of this.remoteLimos.values())car.removeFromParent();this.remoteLimos.clear();for(const feature of this.features.splice(0))feature.dispose?.();this.poly.clear();this.skins.clear();}

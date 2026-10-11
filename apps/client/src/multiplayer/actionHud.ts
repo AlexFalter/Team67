@@ -1,4 +1,4 @@
-import { ATTACK_COOLDOWN_MS, SLIDE_MIN_SPEED, JUMP_FATIGUE_WALK_THRESHOLD, type Body } from "@race/shared";
+import { LIME_KIND, LIME_BOOST_DURATION_MS, ATTACK_COOLDOWN_MS, SLIDE_MIN_SPEED, JUMP_FATIGUE_WALK_THRESHOLD, type Body } from "@race/shared";
 import type { LocalPlayer } from "./localPlayer.ts";
 
 export function actionAvailability(p: Body, sprinting: boolean, now: number) {
@@ -16,8 +16,11 @@ export function actionAvailability(p: Body, sprinting: boolean, now: number) {
   };
 }
 
-export interface ContextAction { icon: "person" | "polybahn" | "tram" | "bike" | "mate" | "cart"; label: string; key: string; enabled: boolean; run: () => void }
+export interface ContextAction { icon: "person" | "polybahn" | "tram" | "bike" | "mate" | "cart" | "leave" | "computer" | "scooter"; label: string; key: string; enabled: boolean; run: () => void }
 const icons = {
+  computer: '<rect x="3" y="4" width="18" height="12" rx="1"/><path d="M8 20h8m-4-4v4"/>',
+  scooter: '<circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M5 19h9l3-14h-4m4 0 2 14"/>',
+  leave: '<path d="M10 3H4v18h6M10 12h11m-4-4 4 4-4 4"/>',
   person: '<circle cx="12" cy="6" r="3"/><path d="M5 21v-5a7 7 0 0 1 14 0v5M8 21v-5m8 5v-5"/>',
   bike: '<circle cx="5" cy="17" r="4"/><circle cx="19" cy="17" r="4"/><path d="m5 17 5-9 5 9H5m5-9h7l2 9M8 5h4m4 0h3l1 3"/>',
   cart: '<path d="m4 10 2-6h12l2 6v9H4zM4 10h16M8 4v6m8-6v6M4 14h16m-14 5v3m12-3v3"/><circle cx="7" cy="17" r=".5"/><circle cx="17" cy="17" r=".5"/>',
@@ -30,15 +33,29 @@ export class ActionHud {
   private punch = this.root.querySelector<HTMLButtonElement>("#punch-action")!;
   private slide = this.root.querySelector<HTMLButtonElement>("#slide-action")!;
   private context = document.createElement("div");
+  private instructions = document.createElement("div");
   private entries: { item: HTMLElement; button: HTMLButtonElement; action: ContextAction }[] = [];
   private abort = new AbortController();
+  private boost = document.createElement("button");
   constructor(private local: LocalPlayer, private now: () => number, focus: () => void, private getContext: () => ContextAction[] = () => []) {
     this.context.className = "context-actions"; this.root.prepend(this.context);
-    this.context.addEventListener("click", e => {
+    this.instructions.className = "action-instructions";
+    this.instructions.innerHTML = '<div class="interaction-instruction"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg><span></span></div>';
+    this.root.append(this.instructions);
+    this.root.addEventListener("click", e => {
       const entry = this.entries.find(item => item.button === (e.target as Element).closest("button"));
       if (entry?.action.enabled) { focus(); entry.action.run(); }
     }, { signal: this.abort.signal });
+    this.boost.type = "button"; this.boost.className = "lime-boost"; this.boost.hidden = true;
+    this.boost.innerHTML = '<i aria-hidden="true"></i><span>Shift to boost</span>';
+    this.root.append(this.boost);
     const options = { signal: this.abort.signal };
+    this.boost.addEventListener("pointerdown", e => { e.preventDefault(); focus(); local.holdBoost(true); }, options);
+    window.addEventListener("pointerup", () => local.holdBoost(false), options);
+    window.addEventListener("pointercancel", () => local.holdBoost(false), options);
+    this.boost.addEventListener("keydown", e => { if (["Space", "Enter"].includes(e.code)) { e.preventDefault(); local.holdBoost(true); } }, options);
+    this.boost.addEventListener("keyup", () => local.holdBoost(false), options);
+    this.boost.addEventListener("blur", () => local.holdBoost(false), options);
     this.punch.addEventListener("click", () => {
       if (actionAvailability(local.body, local.sprinting, now()).punch) local.punch();
       focus();
@@ -50,16 +67,32 @@ export class ActionHud {
   }
   update(visible: boolean) {
     this.root.hidden = !visible;
-    if (!visible) return;
+    if (!visible) { this.local.holdBoost(false); return; }
+    const p = this.local.body;
+    this.boost.hidden = !p.vehicleId || p.vehicleKind !== LIME_KIND || p.seat !== 0;
+    const remaining = Math.max(0, Math.min(1, (p.limeBoostMs ?? LIME_BOOST_DURATION_MS) / LIME_BOOST_DURATION_MS));
+    this.boost.style.setProperty("--boost-fill", `${remaining * 100}%`);
+    this.boost.classList.toggle("boosting", this.local.sprinting && this.local.pushing && remaining > 0 && !p.limeBoostExhausted);
+    this.boost.classList.toggle("exhausted", remaining === 0);
+    this.boost.setAttribute("aria-label", `Shift to boost, ${Math.ceil(remaining * LIME_BOOST_DURATION_MS / 1000)} seconds available`);
     const actions = this.getContext();
+    const interaction = actions.find(action => action.key === "E");
+    const hint = this.instructions.querySelector<HTMLElement>(".interaction-instruction")!;
+    hint.hidden = !interaction;
+    if (interaction) {
+      hint.querySelector("span")!.textContent = `E · ${interaction.label}`;
+      const svg = hint.querySelector("svg")!;
+      if (svg.dataset.icon !== interaction.icon) { svg.innerHTML = icons[interaction.icon]; svg.dataset.icon = interaction.icon; }
+    }
     while (this.entries.length > actions.length) this.entries.pop()!.item.remove();
     actions.forEach((action, i) => {
       let entry = this.entries[i];
       if (!entry) {
         const item = document.createElement("div"); item.className = "combat-action";
         item.innerHTML = '<kbd></kbd><button type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg></button>';
-        this.context.append(item); entry = { item, button: item.querySelector("button")!, action }; this.entries.push(entry);
+        if (action.key === "1") this.root.append(item); else this.context.append(item); entry = { item, button: item.querySelector("button")!, action }; this.entries.push(entry);
       }
+      if (action.key === "1") this.root.append(entry.item); else this.context.append(entry.item);
       entry.action = action; entry.item.querySelector("kbd")!.textContent = action.key;
       const svg = entry.button.querySelector("svg")!;
       if (svg.dataset.icon !== action.icon) { svg.innerHTML = icons[action.icon]; svg.dataset.icon = action.icon; }
@@ -77,5 +110,5 @@ export class ActionHud {
       button.setAttribute("aria-label", seconds ? `${label}, ${seconds} seconds remaining` : available ? label : `${label}, unavailable`);
     }
   }
-  dispose() { this.abort.abort(); this.root.hidden = true; this.context.remove(); }
+  dispose() { this.local.holdBoost(false); this.abort.abort(); this.root.hidden = true; this.context.remove(); this.instructions.remove(); this.boost.remove(); this.entries.forEach(entry => entry.item.remove()); }
 }

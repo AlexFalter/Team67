@@ -3,7 +3,7 @@ import { CAPSULE_HEIGHT } from "./constants.ts";
 import type { MovementWorld } from "./world.ts";
 
 export const PUBLI_BIKE_COUNT = 8;
-export const PUBLI_BIKE_BATTERY_MS = 15000;
+export const PUBLI_BIKE_BATTERY_MS = 25000;
 export const PUBLI_BIKE_LEASE_MS = 30000;
 export const PUBLI_BIKE_SCAN_MS = 2050;
 export const PUBLI_BIKE_RANGE = 2.8;

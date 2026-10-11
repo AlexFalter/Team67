@@ -4,7 +4,7 @@ Implemented on `merge-vending-machine`. The complete `mini-games/` directory was
 restored from `alex/merge-vehicles`; multiplayer imports no runtime code from it.
 
 The main game now includes the prototype's cobalt cabinet and photographic can
-labels, four flavor buttons, CHF 3.50 card swipe, 1.4-second dispensing wait,
+labels, five selection buttons (including a second Ginger), CHF 3.50 card swipe, 1.4-second dispensing wait,
 failed-flavor refunds with alternating one/two-second retries, animated can drop,
 tray collection and one-use Mate inventory. Press **E** at the front of the
 cabinet to interact, click the dispensed can or press **Enter** to collect, and
@@ -18,12 +18,10 @@ physical payment console, with the prototype's portrait framing.
 
 ## Multiplayer ownership
 
-Each room chooses one working flavor, kept on the server. As specified by the
-prototype's pure rules, each player has independent attempts, payment and
-collection state. Players can use the cabinet simultaneously; their dispenser
+Each room chooses two of the five working selections, kept on the server. Each player has independent attempts, payment and collection state. Players can use the cabinet simultaneously; their dispenser
 cans are personal renderings. Every player can obtain one can per round. This
 avoids a shared purchase lock without allowing one player to collect another's
-reward. The collectible retains the prototype's Mint can model and inventory icon.
+reward. The collectible, inventory icon and drinking animation use the selected flavour's can; the fifth choice reuses Ginger.
 
 The server owns selection, paid attempts, dispensing/drop deadlines, inventory
 and boost duration. It validates proximity, front-side access, round identity,
@@ -33,7 +31,7 @@ items. Closing cancels an unpaid selection; a paid purchase continues and can
 be reopened. Disconnect removes purchase state; restarting resets all purchases,
 inventory and boosts, including players who waited during the previous round.
 
-Drinking grants **+35% walking/sprinting speed for 15 seconds** and is the only optional speed boost. It does not change vehicle speed. The server timer pauses
+Drinking grants **+50% walking/sprinting speed for 15 seconds** and is the only optional speed boost. It does not change vehicle speed. The server timer pauses
 while riding and freezes with room results. In multiplayer it continues while
 the player's menu is open; opening a menu does not pause the room. Clients use
 replicated boost state in the existing shared movement code; movement reports
@@ -70,3 +68,5 @@ Completed checks:
   line-ending conversion. `git diff --check` passed.
 
 The shared `MATE_POSITION` places the cabinet at (-130, 83), on the pavement in front of the Coop beside Bahnhofbrücke. Its controls face the bridge (-Z). Rendering, interaction distance and collision all use this same placement.
+
+The acquired flavour appears beside the bottom hotbar for five seconds, then only the 1 drink action remains. Drinking raises the matching can to the mouth in both views. A green Matee rush label appears above the hotbar during the boost.

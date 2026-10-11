@@ -2,7 +2,7 @@
 
 This adds the prototype's eight-bike station, bike model, rear QR scanner,
 working-bike gold highlighting, and a fully available fleet. All eight bikes
-start working and remain charged while riding. Riding and falling use the existing multiplayer bike controller,
+start working and have 25 seconds of riding time each. Riding and falling use the existing multiplayer bike controller,
 physics, interpolation, and collision handling. Other game content, the
 map, battle bus, normal camera controls, and ordinary vehicles remain intact.
 
@@ -24,7 +24,7 @@ On the current map its center is approximately `(-205.478, 54.448)`.
   The small home control, Esc or E closes the scanner.
 - Use the existing riding controls. E returns the bike to a free nearby
   station slot, or parks it where it is if away from the station.
-- All bikes remain charged and usable. The riding status shows E to get off.
+- Each bike has 25 seconds of cumulative riding time. The riding status shows remaining battery and E to get off. Empty batteries dismount the rider safely, emit an electric spark burst followed by continuous small sparks, and remain unavailable for the rest of the round; parking and rescanning do not recharge them. A fresh round resets the fleet.
 - Nearby actions appear left of the punch and slide toolbar with E and a
   human, Polybahn, tram, bike or can icon. Buttons use the same path as
   keyboard interaction. Owned Mate cans show a separate manual drink action

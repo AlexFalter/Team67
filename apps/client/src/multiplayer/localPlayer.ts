@@ -6,6 +6,7 @@ export class LocalPlayer {
   body = createBody();
   enabled = false;
   private keys = new Set<string>();
+  private boostHeld = false;
   private jump = false;
   private slide = false;
   private interaction = false;
@@ -28,21 +29,21 @@ export class LocalPlayer {
     window.addEventListener("blur", () => this.clear(), { signal: this.abort.signal });
   }
   clear() {
-    this.keys.clear(); this.slide = this.jump = this.interaction = this.hit = false;
+    this.boostHeld = false; this.keys.clear(); this.slide = this.jump = this.interaction = this.hit = false;
   }
   dispose() { this.abort.abort(); this.enabled = false; this.clear(); }
   punch() { if (this.enabled) this.hit = true; }
   requestInteraction() { if (this.enabled) this.interaction = true; }
   requestSlide() { if (this.enabled) this.slide = true; }
-  get sprinting() { return this.keys.has("ShiftLeft") || this.keys.has("ShiftRight"); }
+  holdBoost(held: boolean) { this.boostHeld = held && this.enabled; }
+  get sprinting() { return this.boostHeld || this.keys.has("ShiftLeft") || this.keys.has("ShiftRight"); }
   /** Movement keys are held (used to tell a wall bump from simply letting go). */
   get pushing() { return this.enabled && ["KeyW", "KeyA", "KeyS", "KeyD"].some(code => this.keys.has(code)); }
   controls(yaw: number) {
     if (!this.enabled) this.clear();
     const direction = keyboardMovement(this.keys, yaw);
     this.input.x = direction.x; this.input.z = direction.z;
-    this.input.sprint =
-      this.keys.has("ShiftLeft") || this.keys.has("ShiftRight");
+    this.input.sprint = this.sprinting;
     this.input.slide = this.slide; this.slide = false;
     this.input.jump = this.jump;
     this.jump = false;

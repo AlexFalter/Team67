@@ -12,6 +12,7 @@ import {
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { disposeMap, loadZurichMap } from "../maps/zurich/loadZurichMap";
 import { GameOverlay } from "../multiplayer/GameOverlay";
+import { TrafficEditor } from "../multiplayer/trafficEditor";
 import { MapGame } from "../multiplayer/MapGame";
 import { ExamOverlay } from "../exam/ExamOverlay";
 import { ExamDebugButton } from "../exam/ExamDebugButton";
@@ -24,7 +25,7 @@ import { createColorGrade, mountGradePanel, type ColorGradeHandle } from "./colo
 
 export function MapViewer({ examPreview = false }: { examPreview?: boolean }) {
   const [examSession, setExamSession] = useState<ExamSession>(emptyExamSession);
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(!(import.meta.env.DEV && new URLSearchParams(location.search).has("trafficEditor")));
   const [resolution, setResolution] = useState<"performance" | "high">("high");
   return (
     <div className="map-viewer" data-playing={playing} data-exam-active={examSession.stage !== "world"}>
@@ -79,6 +80,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
       disposeLook: (() => void) | undefined,
       grade: ColorGradeHandle | undefined,
       disposeGradePanel: (() => void) | undefined;
+    let trafficEditor: TrafficEditor | undefined;
     const scene = new Scene();
     const theme = activeTheme();
     scene.background = new Color(theme.sky);
@@ -168,6 +170,10 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
           controls.maxDistance = 2500;
           controls.maxPolarAngle = Math.PI / 2 - 0.02;
           controls.update();
+          if (import.meta.env.DEV) {
+            trafficEditor = new TrafficEditor(scene, camera, canvas!, map, true);
+            controls.enabled = !trafficEditor.active;
+          }
         }
         const fit = () => {
           const { width, height } = canvas!.getBoundingClientRect();
@@ -192,7 +198,8 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
         const previewDuration = new URLSearchParams(location.search).has("time") ? readDuration(location.search) : ROUND_DURATION_MS / 1000;
         renderer.setAnimationLoop(() => {
           const now = performance.now();
-          controls?.update();
+          if (controls) { controls.enabled = !trafficEditor?.active; if (controls.enabled) controls.update(); }
+          trafficEditor?.update();
           game?.update((now - previous) / 1000, now);
           if (preview && previewStarted !== undefined) {
             preview.update(previewBody, true, true, 1, examSecondsRemaining(previewStarted + previewDuration * 1000, now), now);
@@ -232,6 +239,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
       fitRef.current = undefined;
       renderer?.setAnimationLoop(null);
       resize?.disconnect();
+      trafficEditor?.dispose();
       controls?.dispose();
       game?.dispose();
       preview?.dispose();

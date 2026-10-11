@@ -4,6 +4,7 @@ import { resolveHouses } from "./flatObstacles.ts";
 import { flatWorld, type MovementWorld } from "./world.ts";
 import { createVehicle, stepCart, seatPosition } from "./vehicles.ts";
 import { MATE_SPEED_MULTIPLIER } from "./mate.ts";
+import { raceSpawnPoint } from "./battleBus.ts";
 export function createBody(): Body {
   return {
     x: 0,
@@ -27,23 +28,25 @@ export function createBody(): Body {
     simTime: 0,
     vehicleKind: -1,
     attackReadyAt: 0,
+    limeBoostMs: C.LIME_BOOST_DURATION_MS, limeBoostExhausted: false,
     mateCount: 0,
-    mateBoostMs: 0,
+    mateBoostMs: 0, mateFlavor: 2, mateDrinkStartedAt: 0,
   };
 }
 export function respawn(p: Body, world: MovementWorld = flatWorld) {
   // Respawns must be deterministic during rollback/replay.
-  Object.assign(p, world.spawn);
+  Object.assign(p, raceSpawnPoint(world));
   p.y = world.height(p.x, p.z) ?? p.y;
   p.vx = p.vy = p.vz = 0;
   p.grounded = true;
-  p.knockdownUntil = 0;
+  p.knockdownUntil = 0; p.invincibleUntil = 0;
   p.impactStartedAt = p.impactX = p.impactZ = p.impactStrength = 0;
   p.groundTime = p.simTime; p.jumpUntil = 0; p.jumpReadyAt = 0;
   p.jumpFatigue = 0; p.jumpSprintLocked = false;
   p.slideUntil = p.slideReadyAt = p.slideBufferedUntil = 0; p.sprintJump = false;
 }
 export function applyImpulse(p: Body, hit: Impulse, now: number) {
+  if ((hit.at ?? now) < (p.invincibleUntil ?? 0)) return;
   p.vx += hit.ix;
   p.vy += hit.iy;
   p.vz += hit.iz;
@@ -55,6 +58,7 @@ export function applyImpulse(p: Body, hit: Impulse, now: number) {
     p.impactStartedAt = at; p.impactX = hit.ix; p.impactZ = hit.iz;
     p.impactStrength = Math.hypot(hit.ix, hit.iy, hit.iz);
     p.knockdownUntil = Math.max(p.knockdownUntil, at + (hit.durationMs ?? C.KNOCKDOWN_DURATION_MS));
+    p.invincibleUntil = p.knockdownUntil + (hit.recoveryProtectionMs ?? 1000);
     p.anim = 3;
   }
 }
@@ -197,7 +201,15 @@ export function stepPlayer(p: Body, input: Input, dt: number, world: MovementWor
       const v = createVehicle(p.vehicleKind, p.x, p.z);
       v.y = p.y - (p.vehicleKind === C.LIME_KIND ? C.LIME_DECK_HEIGHT : p.vehicleKind===2 ? C.BIKE_SEAT_HEIGHT : C.CART_SEAT_HEIGHT);
       v.vx = p.vx; v.vz = p.vz; v.rotY = p.rotY;
-      impact = stepCart(v, input, dt, world);
+      let drivingInput = input;
+      if (p.vehicleKind === C.LIME_KIND) {
+        const remaining = p.limeBoostMs ?? C.LIME_BOOST_DURATION_MS;
+        const boosting = input.sprint && Math.hypot(input.x, input.z) > 0 && !p.limeBoostExhausted && remaining > 0;
+        p.limeBoostMs = Math.max(0, Math.min(C.LIME_BOOST_DURATION_MS, remaining - (boosting ? dt * 1000 : 0)));
+        if (p.limeBoostMs === 0) p.limeBoostExhausted = true;
+        drivingInput = { ...input, sprint: boosting };
+      }
+      impact = stepCart(v, drivingInput, dt, world);
       seatPosition(v, p.seat, p);
       p.vx = v.vx; p.vz = v.vz; p.vy = 0; p.rotY = v.rotY;
     }

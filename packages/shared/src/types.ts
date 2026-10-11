@@ -19,6 +19,7 @@ export interface PlayerState {
   groundTime: number;
   jumpUntil: number;
   knockdownUntil: number;
+  invincibleUntil?: number;
   impactStartedAt?: number;
   impactX?: number;
   impactZ?: number;
@@ -29,8 +30,15 @@ export interface PlayerState {
   attackReadyAt: number;
   mateCount: number;
   mateBoostMs: number;
+  mateFlavor?: number;
+  mateDrinkStartedAt?: number;
 }
 export interface WorldState {
+  trafficCars?: Map<string, import("./traffic.ts").TrafficCarState>;
+  trafficNetwork?: string;
+  trafficDensity?: number;
+  trafficSpawnInterval?: number;
+  trafficSpeedMultiplier?: number;
   npcs?: Map<string, import("./npc.ts").NpcState>;
   serverTime: number;
   phase: string;
@@ -58,6 +66,7 @@ export interface WorldState {
 }
 export interface RoomMember {
   introSeat: number;
+  thankedBusDriver?: boolean;
   name: string;
   character: number;
   ready: boolean;
@@ -103,6 +112,7 @@ export interface VehicleResult {
   message: string;
 }
 export interface Impulse {
+  recoveryProtectionMs?: number;
   from: string;
   ix: number;
   iy: number;
@@ -130,6 +140,8 @@ export interface Input {
   facing?: number;
 }
 export interface Body extends PlayerState {
+  limeBoostMs?: number;
+  limeBoostExhausted?: boolean;
   jumpReadyAt?: number;
   jumpFatigue?: number;
   jumpSprintLocked?: boolean;

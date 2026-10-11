@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Box3, Mesh, MeshStandardMaterial, PerspectiveCamera, Vector3, Raycaster } from "three";
-import { avatar, pose, disposeAvatar, CHARACTERS, gaitRate } from "../apps/client/src/multiplayer/avatar.ts";
+import { Box3, Group, BoxGeometry, Mesh, MeshStandardMaterial, PerspectiveCamera, Vector3, Raycaster } from "three";
+import { avatar, pose, disposeAvatar, CHARACTERS, gaitRate, equipMateCan } from "../apps/client/src/multiplayer/avatar.ts";
 import { PlayerView } from "../apps/client/src/multiplayer/view.ts";
-import { createBody, ATTACK_COOLDOWN_MS } from "../packages/shared/src/index.ts";
+import { createBody, LIME_KIND, LIME_SPEED, LIME_BOOST_SPEED, ATTACK_COOLDOWN_MS } from "../packages/shared/src/index.ts";
 
 test("four low-poly rigs animate locomotion, punches, falls and recovery without snapping", () => {
   for (let i = 0; i < CHARACTERS.length; i++) {
@@ -19,11 +19,11 @@ test("four low-poly rigs animate locomotion, punches, falls and recovery without
     const leg = mesh.getObjectByName("left-leg")!, beforeJump = leg.rotation.x;
     pose(mesh, p); assert.ok(Math.abs(leg.rotation.x - beforeJump) < 0.25, "jump pose starts blended");
     for (let n = 0; n < 30; n++) pose(mesh, p);
-    assert.ok(leg.rotation.x < -0.15, "takeoff tucks legs");
-    const knee = mesh.getObjectByName("left-knee")!, tucked = knee.rotation.x;
+    const airPose = leg.rotation.x;
     p.vy = -8;
-    for (let n = 0; n < 30; n++) pose(mesh, p);
-    assert.ok(knee.rotation.x < tucked * 0.5, "falling extends legs in preparation for landing");
+    for (let n = 0; n < 60; n++) pose(mesh, p);
+    assert.ok(Math.abs(leg.rotation.x) < .01, "airborne legs settle without a jump/flailing animation");
+    assert.ok(Math.abs(airPose) < .02);
     p.grounded = true; p.anim = 0; pose(mesh, p);
     assert.ok(torso.position.y < 0.75, "landing compresses the rig");
     p.attackReadyAt = ATTACK_COOLDOWN_MS - 210;
@@ -108,11 +108,11 @@ test("original outfit meshes have chest, elbow, knee, wrist and ankle articulati
   }
 });
 
-test("airborne legs alternate rather than freeze; first-person arms sway laterally", () => {
+test("airborne legs stay calm without flailing; first-person arms sway laterally", () => {
   const mesh = avatar("#ffffff"), p = createBody(); p.grounded = false; p.vy = 4;
   const angles = new Set<number>();
   for (let i = 0; i < 60; i++) { pose(mesh, p); angles.add(mesh.getObjectByName("left-leg")!.rotation.x); }
-  assert.ok(Math.max(...angles) - Math.min(...angles) > 0.6);
+  assert.ok(Math.max(...angles) - Math.min(...angles) < .01);
   const first = avatar("#ffffff", 0, true); p.grounded = true; p.vz = 11;
   const offsets = new Set<number>();
   for (let i = 0; i < 120; i++) { pose(first, p); offsets.add(first.getObjectByName("left-arm")!.position.x); }
@@ -149,4 +149,50 @@ test("first-person slide shows its leading shoe at neutral gaze after the camera
   const ray = new Raycaster(camera.position, position.sub(camera.position).normalize());
   assert.equal(ray.intersectObject(mesh, true)[0]?.object, shoe, "body does not cover the foot");
   disposeAvatar(mesh);
+});
+
+
+test("drinking lifts the right hand with the matching can in both rigs, then lowers it", () => {
+  const can = new Group(), material = new MeshStandardMaterial({ color: "#8dcf61" });
+  const geometry = new BoxGeometry(.06, .16, .06); can.add(new Mesh(geometry, material));
+  for (const first of [false, true]) {
+    const mesh = avatar("#fff", 0, first), p = createBody();
+    equipMateCan(mesh, can, 2);
+    p.simTime = 1000; pose(mesh, p);
+    const held = mesh.getObjectByName("held-mate-2")!;
+    assert.equal(held.visible, false);
+    const hand = mesh.getObjectByName("right-arm")!.getObjectByName("hand")!;
+    const before = hand.getWorldPosition(new Vector3());
+    p.mateDrinkStartedAt = 1000; p.simTime = 1600;
+    for (let i = 0; i < 20; i++) pose(mesh, p);
+    assert.equal(held.visible, true);
+    assert.ok(hand.getWorldPosition(new Vector3()).y > before.y + .15, "right hand rises toward the mouth");
+    p.simTime = 2500; pose(mesh, p); assert.equal(held.visible, false);
+    equipMateCan(mesh, can, 3); assert.ok(mesh.getObjectByName("held-mate-3")); assert.equal(held.parent, null);
+    disposeAvatar(mesh);
+  }
+  geometry.dispose(); material.dispose();
+});
+
+
+test("Lime riders brace on the deck and the driver leans further during boost", () => {
+  for (let character = 0; character < CHARACTERS.length; character++) {
+    const mesh = avatar("#ffffff", character), p = createBody();
+    p.vehicleId = "lime"; p.vehicleKind = LIME_KIND; p.seat = 0; p.vz = LIME_SPEED;
+    const torso = mesh.getObjectByName("torso")!, arm = mesh.getObjectByName("left-arm")!;
+    for (let n = 0; n < 90; n++) pose(mesh, p);
+    const normalLean = torso.rotation.x;
+    assert.ok(arm.rotation.x < -1.2, "driver reaches the handlebars");
+    mesh.updateMatrixWorld(true);
+    for (const side of ["left", "right"]) {
+      assert.ok(mesh.getObjectByName(`${side}-knee`)!.rotation.x > .1);
+      const foot = mesh.getObjectByName(`${side}-ankle`)!.getWorldPosition(new Vector3());
+      assert.ok(foot.y > -.04 && foot.y < .15, "feet stay near the deck");
+    }
+    p.vz = LIME_BOOST_SPEED; for (let n = 0; n < 90; n++) pose(mesh, p);
+    assert.ok(torso.rotation.x > normalLean + .08);
+    p.seat = 1; for (let n = 0; n < 90; n++) pose(mesh, p);
+    assert.ok(Math.abs(torso.rotation.x) < .01, "rear passenger keeps a balanced stance");
+    disposeAvatar(mesh);
+  }
 });

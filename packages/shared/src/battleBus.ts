@@ -14,6 +14,11 @@ export function inBattleBusIntro(state: Pick<WorldState, "phase" | "introComplet
   return state.phase === RoomPhase.Running && !state.introComplete;
 }
 
+export function battleBusThanksVisible(state: Pick<WorldState, "phase" | "introStartedAt" | "introComplete" | "startedAt" | "skipIntro">, now: number) {
+  return state.phase === RoomPhase.Running && !state.skipIntro && state.introStartedAt > 0 &&
+    (!state.introComplete || now < state.startedAt + 10000);
+}
+
 // Absolute server time, rather than accumulated frame time, also handles hidden tabs.
 export function battleBusElapsed(state: Pick<WorldState, "introStartedAt" | "startedAt">, now: number) {
   const duration = state.startedAt - state.introStartedAt;
@@ -36,6 +41,11 @@ export function battleBusDropoffs(world: MovementWorld, count: number): GroundPo
   }
   if (points.length !== count) throw new Error("Not enough clear battle bus drop-off positions.");
   return points;
+}
+
+/** The race's common respawn is the first safe bus drop-off. */
+export function raceSpawnPoint(world: MovementWorld): GroundPoint {
+  return world.name === 'flat' ? { ...world.spawn } : battleBusDropoffs(world, 1)[0];
 }
 
 // The prototype's twelve seats, followed by standing places for larger existing rooms.

@@ -6,7 +6,7 @@ export function collisionImpact(from: string, ix: number, iy: number, iz: number
   const strength = Math.hypot(ix, iy, iz), scale = strength > 25 ? 25 / strength : 1;
   const durationMs = kind === "character" ? Math.min(2000, 1200 + strength * 35)
     : kind === "bike" ? Math.min(3200, 1900 + strength * 60) : Math.min(4200, 2300 + strength * 90);
-  return { from, ix: ix * scale, iy: Math.max(0, Math.min(5, iy * scale)), iz: iz * scale, knockdown, durationMs };
+  return { from, ix: ix * scale, iy: Math.max(0, Math.min(5, iy * scale)), iz: iz * scale, knockdown, durationMs, recoveryProtectionMs: kind === "bike" ? 2000 : kind === "character" ? 1000 : 3000 };
 }
 
 const smooth = (n: number) => { const t = Math.max(0, Math.min(1, n)); return t * t * (3 - 2 * t); };
