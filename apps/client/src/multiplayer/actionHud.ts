@@ -96,8 +96,8 @@ export class ActionHud {
       entry.action = action; entry.item.querySelector("kbd")!.textContent = action.key;
       const svg = entry.button.querySelector("svg")!;
       if (svg.dataset.icon !== action.icon) { svg.innerHTML = icons[action.icon]; svg.dataset.icon = action.icon; }
-      entry.button.disabled = !action.enabled; entry.button.title = `${action.label} · ${action.key}`;
-      entry.button.setAttribute("aria-label", entry.button.title);
+      entry.button.disabled = !action.enabled;
+      entry.button.setAttribute("aria-label", `${action.label} · ${action.key}`);
     });
     const state = actionAvailability(this.local.body, this.local.sprinting, this.now());
     for (const [button, available, seconds, label] of [

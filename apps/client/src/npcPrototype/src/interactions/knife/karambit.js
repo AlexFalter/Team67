@@ -29,14 +29,14 @@ export async function createKarambit(camera,{onStrike=()=>false,uiRoot=document.
  const hand=await makeFirstPersonHand();hand.name='Blender student hand';wrist.add(hand);
  const motion=createKnifeMotion();let motionState={};
  root.traverse(o=>{if(o.isMesh){o.layers.set(0);o.material.depthTest=true;o.material.depthWrite=true;o.renderOrder=2200;o.frustumCulled=false;}});
- const hint=document.createElement('aside');hint.id='karambit-hint';hint.hidden=true;uiRoot.append(hint);
- const inventory=document.createElement('aside');inventory.id='knife-inventory';inventory.hidden=true;inventory.innerHTML='<small>KARAMBIT DOPPLER</small><button type="button">3 · EQUIP / HOLSTER</button>';uiRoot.append(inventory);inventory.querySelector('button').onclick=()=>toggle();
+ const inventory=document.createElement('aside');inventory.id='knife-inventory';inventory.hidden=true;inventory.innerHTML='<small>KARAMBIT DOPPLER</small><div id="karambit-hint" hidden></div><button type="button">3 · EQUIP / HOLSTER</button>';uiRoot.append(inventory);inventory.querySelector('button').onclick=()=>toggle();
+ const hint=inventory.querySelector('#karambit-hint');
  let owned=false,equipped=false,age=0,bobAge=0,phase='idle',spins=0,swings=0,hits=0,strikePending=false,attackVariant=0;
  function inspect(){if(!owned||!equipped||phase!=='idle')return false;phase='inspect';age=0;spins++;return true;}
  function attack(){if(!owned||!equipped||phase!=='idle')return false;phase='attack';age=0;attackVariant=swings%2;swings++;strikePending=true;return true;}
  function give(){if(owned)return false;owned=equipped=true;inspect();return true;}
  function toggle(){if(!owned)return false;equipped=!equipped;phase='idle';age=0;return true;}
- function update(dt,visible,moving=false,sliding=false,movement={}){inventory.hidden=!owned||!visible;root.visible=owned&&equipped&&visible;hint.hidden=!owned||!visible;hint.textContent=equipped?'KARAMBIT · CLICK / Q: SLASH · F: SPIN · 3: HOLSTER':'3: EQUIP KARAMBIT';if(!root.visible){if(phase==='attack'){phase='idle';strikePending=false;age=0;}return;}
+ function update(dt,visible,moving=false,sliding=false,movement={}){inventory.hidden=!owned||!visible;root.visible=owned&&equipped&&visible;hint.hidden=!owned||!visible||!equipped;const text='CLICK / Q: SLASH · F: SPIN';if(hint.textContent!==text)hint.textContent=text;if(!root.visible){if(phase==='attack'){phase='idle';strikePending=false;age=0;}return;}
   motionState=motion.update(dt,{speed:moving?6:0,...movement,sliding});
   age+=dt;bobAge+=dt;root.position.set(.25,-.12,-.65);root.rotation.set(-.12,-.55,.3);grip.rotation.set(0,0,-.22);wrist.rotation.set(0,0,0);
   if(phase==='inspect'){
