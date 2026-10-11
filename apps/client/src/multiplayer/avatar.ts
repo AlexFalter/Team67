@@ -1,7 +1,7 @@
 import {applyDancePose} from './emotes/dancePose.ts';
 import * as THREE from "three";
 import { updatePlayerIdentity, disposePlayerIdentity } from "./playerIdentity.ts";
-import { LIME_KIND, LIME_SPEED, LIME_BOOST_SPEED, impactPose, ATTACK_COOLDOWN_MS, SLIDE_ANIM, tramDerailFrame, type VehicleState, TRAM_KIND, POLYBAHN_KIND, type PlayerState } from "@race/shared";
+import { CHARACTER_NAMES, LIME_KIND, LIME_SPEED, LIME_BOOST_SPEED, impactPose, ATTACK_COOLDOWN_MS, SLIDE_ANIM, tramDerailFrame, type VehicleState, TRAM_KIND, POLYBAHN_KIND, type PlayerState } from "@race/shared";
 
 // The seated owner can turn through their torso; show the body in third person
 // and to other players, while keeping the owning rail camera clear.
@@ -10,8 +10,9 @@ export function firstPersonBodyVisible(p: Pick<PlayerState, "anim" | "vehicleId"
 }
 
 // Original articulated models: all outfits share geometry, joints and motion.
-export const CHARACTERS = ["CS Student Boy", "CS Student Girl", "Albert Einstein", "Rector Dissertori"];
+export const CHARACTERS = CHARACTER_NAMES;
 const cube = new THREE.BoxGeometry(1, 1, 1), facet = new THREE.DodecahedronGeometry(1, 0);
+const logShape = new THREE.CylinderGeometry(0.5, 0.5, 1, 12);
 const tapered = new THREE.CylinderGeometry(0.5, 0.42, 1, 8);
 const shoeShape = new THREE.CapsuleGeometry(0.5, 0.45, 1, 6).rotateX(Math.PI / 2);
 interface Limb { joint: THREE.Group; bend: THREE.Group; tip: THREE.Group; foot?: THREE.Mesh; toe?: THREE.Group }
@@ -36,11 +37,12 @@ export function avatar(color: string, character = 0, firstPerson = false) {
     mesh.scale.set(size[0], size[1], size[2]); mesh.position.set(at[0], at[1], at[2]);
     mesh.castShadow = true; mesh.receiveShadow = true; parent.add(mesh); return mesh;
   };
-  const female = character === 1, einstein = character === 2, rector = character === 3;
-  const skin = female ? "#e8bea1" : rector ? "#dfb69d" : einstein ? "#e3b797" : "#d9a37a";
-  const shirt = female ? "#688c82" : rector ? "#343d4a" : einstein ? "#85887e" : "#386889";
-  const pants = female ? "#344457" : rector ? shirt : einstein ? "#555b5b" : "#263947";
+  const female = character === 1, einstein = character === 2, rector = character === 3, sahur = character === 4;
+  const skin = sahur ? "#a8713e" : female ? "#e8bea1" : rector ? "#dfb69d" : einstein ? "#e3b797" : "#d9a37a";
+  const shirt = sahur ? skin : female ? "#688c82" : rector ? "#343d4a" : einstein ? "#85887e" : "#386889";
+  const pants = sahur ? skin : female ? "#344457" : rector ? shirt : einstein ? "#555b5b" : "#263947";
   const hair = female ? "#d8b766" : rector ? "#a9aaa7" : "#302a31";
+  if (!sahur) {
   part(torso, [female ? 0.44 : 0.47, 0.48, 0.28], [0, 0.28, 0], shirt, false, tapered);
   part(torso, [0.41, 0.14, 0.27], [0, 0.02, 0], pants, false, tapered);
   if (!firstPerson) part(torso, [0.16, 0.12, 0.15], [0, 0.59, 0], skin);
@@ -55,9 +57,23 @@ export function avatar(color: string, character = 0, firstPerson = false) {
     for (const y of [0.18, 0.25]) part(torso, [0.018, 0.018, 0.025], [0.025, y, 0.165], "#1f2630");
   }
   part(torso, [rector ? 0.055 : 0.10, rector ? 0.025 : 0.085, 0.018], [-0.14, 0.40, rector ? 0.182 : 0.152], color);
+  }
   const neck = new THREE.Group(); neck.name = "neck"; neck.position.y = 0.66;
   torso.add(neck); neck.add(head); head.position.y = 0.16;
   head.visible = !firstPerson; // The owning camera must never see inside its head/hair.
+  if (sahur) {
+    // Two aligned wooden sections retain the existing neck/chest articulation.
+    part(torso,[.52,.7,.46],[0,.29,0],skin,false,logShape);
+    part(head,[.52,.55,.46],[0,-.035,0],skin,false,logShape);
+    for (const side of [-1,1]) {
+      part(head,[.12,.14,.045],[side*.115,.035,.222],"#eee5d2",true);
+      part(head,[.045,.06,.025],[side*.115,.035,.248],"#21150f",true);
+      part(head,[.13,.025,.025],[side*.115,.14,.225],"#80502b");
+    }
+    part(head,[.055,.08,.18],[0,-.075,.35],skin,true);
+    part(head,[.15,.025,.025],[0,-.18,.228],"#21150f");
+    for (const x of [-.17,-.055,.09,.19]) part(torso,[.008,.6,.008],[x,.28,Math.sqrt(.23*.23-x*x)],"#80502b");
+  } else {
   part(head, [0.22, 0.265, 0.20], [0, 0, 0], skin, true);
   part(head, [0.045, 0.06, 0.07], [0, -0.03, 0.20], skin, true);
   for (const side of [-1, 1]) {
@@ -100,6 +116,7 @@ export function avatar(color: string, character = 0, firstPerson = false) {
       }
     }
   }
+  }
   const limb = (x: number, y: number, length: number, width: number, upper: string, lower: string, leg = false): Limb => {
     const joint = new THREE.Group(), bend = new THREE.Group(), tip = new THREE.Group();
     joint.position.set(x, y, 0); torso.add(joint);
@@ -107,7 +124,7 @@ export function avatar(color: string, character = 0, firstPerson = false) {
     bend.position.y = -length; joint.add(bend);
     part(bend, [width * 0.85, length * 0.9, width * 0.9], [0, -length * 0.45, 0], lower, false, tapered);
     tip.position.y = -length * 0.95; bend.add(tip);
-    const foot = part(tip, leg ? [0.19, 0.11, 0.22] : [0.055, 0.065, 0.065], [0, 0, leg ? 0.07 : 0], leg ? rector ? "#20252b" : "#e8dfcb" : skin, !leg, leg ? shoeShape : facet);
+    const foot = part(tip, leg ? [0.19, 0.11, 0.22] : [0.055, 0.065, 0.065], [0, 0, leg ? 0.07 : 0], leg ? sahur ? skin : rector ? "#20252b" : "#e8dfcb" : skin, !leg, leg ? shoeShape : facet);
     foot.name = leg ? "shoe" : "hand";
     let toe: THREE.Group | undefined;
     if (leg) { toe = new THREE.Group(); toe.position.z = 0.07; tip.add(toe); toe.add(foot); foot.position.z = 0; }
@@ -122,6 +139,16 @@ export function avatar(color: string, character = 0, firstPerson = false) {
     limb.tip.name = `${name}-${i ? "ankle" : "wrist"}`;
     if (limb.toe) limb.toe.name = `${name}-toe`;
   }));
+  if (sahur) {
+    // Attach his oversized wooden club to the wrist so every existing pose
+    // carries it naturally, including the lobby and first-person arms.
+    const stick = new THREE.Group(); stick.name = "sahur-stick";
+    stick.rotation.x = Math.PI / 2;
+    arms[1].tip.add(stick);
+    part(stick, [.09, .32, .09], [0, -.08, 0], "#69401f", false, logShape);
+    part(stick, [.19, .9, .19], [0, .52, 0], "#a8713e", false, tapered);
+    part(stick, [.12, .055, .12], [0, -.25, 0], "#69401f", false, logShape);
+  }
   // Split at the waist without changing any of the original mesh pieces.
   chest.name = "chest"; torso.add(chest);
   for (const child of [...torso.children]) {

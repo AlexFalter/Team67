@@ -33,7 +33,7 @@ export async function createTikiPerformer(scene,world,solver,{placement,avoid=[]
  if(signal?.aborted){disposeOwnedObject(gltf.scene);signal.throwIfAborted();}
  const group=new THREE.Group();group.name='Tiki Tiki · street performer';group.position.copy(center);group.rotation.y=site.heading??0;group.add(gltf.scene);
  gltf.scene.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
- const clip=gltf.animations.length?new THREE.AnimationClip('Tiki dance',Math.max(...gltf.animations.map(a=>a.duration)),gltf.animations.flatMap(a=>a.tracks)):null;
+ const clip=gltf.animations.length?new THREE.AnimationClip('Tiki backflips',Math.max(...gltf.animations.map(a=>a.duration)),gltf.animations.flatMap(a=>a.tracks)):null;
  if(!clip){disposeOwnedObject(group);throw Error('Tiki performer has no dance animation');}
  const mixer=new THREE.AnimationMixer(gltf.scene);mixer.clipAction(clip).play();scene.add(group);group.updateMatrixWorld(true);
  const speaker=group.getObjectByName('MusicBox'),speakerPosition=new THREE.Vector3();

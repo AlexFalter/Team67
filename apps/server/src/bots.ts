@@ -18,7 +18,7 @@ process.on("SIGTERM", () => void stop());
 try {
   for (let i = 0; i < count; i++) {
     const client = new Client(process.env.COLYSEUS_URL || "ws://localhost:2567");
-    const options = { name: `Bot ${i + 1}`, character: (i + 1) % 4 };
+    const options = { name: `Bot ${i + 1}`, character: (i + 1) % C.CHARACTER_NAMES.length };
     const room = process.env.ROOM_CODE
       ? await client.joinById<C.WorldState>(process.env.ROOM_CODE, options)
       : await client.joinOrCreate<C.WorldState>("race", options);

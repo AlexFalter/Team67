@@ -17,7 +17,7 @@ export function actionAvailability(p: Body, sprinting: boolean, now: number) {
 }
 
 export interface ContextAction { icon: "football" | "emote" | "bag" | "knife" | "spin" | "holster" | "equip" | "person" | "polybahn" | "tram" | "bike" | "mate" | "cart" | "leave" | "computer" | "scooter"; label: string; key: string; enabled: boolean; run: () => void }
-export interface WeaponAction { kind?: "knife" | "bag" | "football"; enabled: boolean; run: () => void }
+export interface WeaponAction { kind?: "knife" | "bag" | "football" | "tomato"; enabled: boolean; run: () => void }
 const icons = {
   emote: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5m0 7V21M4.2 7.5 9 10.3m6 3.4 4.8 2.8M4.2 16.5 9 13.7m6-3.4 4.8-2.8"/>',
   bag: '<path d="M7 8V6a5 5 0 0 1 10 0v2M5 8h14l2 14H3zM8 13l4 5 4-5"/>',
@@ -120,7 +120,7 @@ export class ActionHud {
     });
     const weapon = this.primary ? undefined : this.getWeapon();
     const punchSvg = this.punch.querySelector('svg')!;
-    const isBag=weapon?.kind==='bag',isFootball=weapon?.kind==='football',verb=isBag?'Throw bag':isFootball?'Kick football':'Slash';
+    const isBag=weapon?.kind==='bag'||weapon?.kind==='tomato',isFootball=weapon?.kind==='football',verb=isBag?(weapon?.kind==='tomato'?'Throw tomato':'Throw bag'):isFootball?'Kick football':'Slash';
     const icon = this.primary?.icon ?? (weapon ? (isBag?'bag':isFootball?'football':'knife') : 'punch');
     if(punchSvg.dataset.icon!==icon){punchSvg.innerHTML=this.primary ? icons[this.primary.icon] : weapon?icons[isBag?"bag":isFootball?"football":"knife"]:this.punchIcon;punchSvg.dataset.icon=icon;}
     this.punch.parentElement!.querySelector('kbd')!.textContent=this.primary || weapon?'Q':'Click';

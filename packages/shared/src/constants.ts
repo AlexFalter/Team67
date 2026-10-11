@@ -71,3 +71,5 @@ export const BIKE_SEAT_HEIGHT = 0.65;
 export const SLIDE_BUFFER_MS = 1000;
 export const LIME_BOOST_DURATION_MS = 7000;
 export const LIME_KIND = 7, LIME_DECK_HEIGHT = .37, LIME_SPEED = 12, LIME_BOOST_SPEED = 14.4;
+
+export const CHARACTER_NAMES = ["CS Student Boy", "CS Student Girl", "Albert Einstein", "Rector Dissertori", "Tung Tung Tung Sahur"] as const;

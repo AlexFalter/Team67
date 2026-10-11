@@ -11,7 +11,7 @@ export class RoundManager {
   join(id: string, options: { name?: unknown; character?: unknown }) {
     const member = new RoomMember({
       name: C.playerName(options.name),
-      character: options.character === 1 || options.character === 2 || options.character === 3 ? options.character : 0,
+      character: typeof options.character === "number" && Number.isInteger(options.character) && options.character >= 0 && options.character < C.CHARACTER_NAMES.length ? options.character : 0,
       spectator: this.state.phase !== C.RoomPhase.Lobby,
     });
     this.state.members.set(id, member);

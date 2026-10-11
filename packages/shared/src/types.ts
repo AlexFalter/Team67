@@ -13,7 +13,7 @@ export interface PlayerState {
   vz: number;
   anim: number;
   color: string;
-  character: number; // 0: CS student boy, 1: CS student girl, 2: Einstein, 3: Rector Dissertori
+  character: number; // 0: CS student boy, 1: CS student girl, 2: Einstein, 3: Rector Dissertori, 4: Tung Tung Tung Sahur
   vehicleId: string;
   seat: number;
   cabinStanding?: boolean;
@@ -53,6 +53,7 @@ export interface WorldState {
   serverTime: number;
   phase: string;
   hostId: string;
+  fruitStock?:number;
   moodleEnabled?:boolean;
   noCarCollisions?:boolean;
   moodleEventId?:number;

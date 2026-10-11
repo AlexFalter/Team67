@@ -76,7 +76,8 @@ export class PubliBikeFeature {
       this.targetYaw = THREE.MathUtils.clamp(this.targetYaw - delta.x / rect.width * 1.6, -1.3, 1.3);
       this.targetPitch = THREE.MathUtils.clamp(this.targetPitch - delta.y / rect.height * 1.2, -1, 1);
     }, options);
-    document.addEventListener("pointerout",e=>{if(!e.relatedTarget)this.mouse.reset();},options);
+    // Preserve edge turning at the browser boundary; losing focus stops it.
+    window.addEventListener("blur",()=>this.mouse.reset(),options);
     document.addEventListener("pointercancel",()=>this.mouse.reset(),options);
     document.addEventListener("pointerup",e=>{if(e.pointerType==="touch")this.mouse.reset();},options);
     window.addEventListener("resize", () => this.mouse.reset(), options);
