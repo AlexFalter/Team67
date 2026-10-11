@@ -56,7 +56,10 @@ test('Lime uses terrain collision and accelerates to a higher speed with Shift',
  const ride=(sprint:boolean)=>{const v=C.createVehicle(C.LIME_KIND);for(let i=0;i<180;i++)C.stepCart(v,{...C.IDLE_INPUT,x:0,z:1,sprint},1/60,clearWorld);return v;};
  assert.ok(Math.abs(ride(false).vz-C.LIME_SPEED)<.1);assert.ok(Math.abs(ride(true).vz-C.LIME_BOOST_SPEED)<.1);
  const v=C.createVehicle(C.LIME_KIND,0,C.flatWorld.bounds.maxZ-1);for(let i=0;i<60;i++)C.stepCart(v,{...C.IDLE_INPUT,z:1},1/60);assert.ok(v.z<=C.flatWorld.bounds.maxZ-C.vehicleRadius(v));
- const state=new RaceState(),manager=new VehicleManager(state,C.zurichWorld);const lime=state.vehicles.get('lime-1');assert.ok(lime,'configured Lime must spawn on the current map');assert.equal(lime.kind,C.LIME_KIND);assert.ok(Math.hypot(lime.x-C.NPC_LAYOUT.lime.position[0],lime.z-C.NPC_LAYOUT.lime.position[1])<5);void manager;
+ const state=new RaceState();new VehicleManager(state,C.zurichWorld);
+ const scooters=[...state.vehicles.values()].filter(v=>v.kind===C.LIME_KIND);
+ assert.equal(scooters.length,2,'only the two configured Lime scooters spawn');
+ assert.deepEqual(scooters.map(v=>[v.x,v.y,v.z]),[[-58.78,9.34,57.53],[-21.84,8.32,124.78]]);
 });
 
 test('Lime boost lasts seven seconds at twenty percent less speed, never recharges, even on foot or after remounting',()=>{

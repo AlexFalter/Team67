@@ -28,8 +28,8 @@ export class VehicleManager {
     if (legacyTraffic) addNear("npc-car", 3, -20, 6);
     addNear("loose-ball", 4, 10, -5, 7, 3);
     if (world.name === "zurich") {
-      const [x,z]=C.NPC_LAYOUT.lime.position,site=C.findGround(world,x,z);
-      if(site)this.add("lime-1",{...C.createVehicle(C.LIME_KIND,site.x,site.z),y:site.y});
+      C.NPC_LAYOUT.lime.positions.forEach(([x,y,z],i)=>
+        this.add(`lime-${i+1}`,{...C.createVehicle(C.LIME_KIND,x,z),y}));
       const tram = C.createVehicle(C.TRAM_KIND); tram.capacity = 18; tram.railDistance = C.TRAM_START_DISTANCE;
       Object.assign(tram, C.railFrame(tram)); this.add("tram-1", tram);
       for (let i = 0; i < 2; i++) {
