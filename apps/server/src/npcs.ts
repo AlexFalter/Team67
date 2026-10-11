@@ -47,7 +47,7 @@ export class NpcEncounters {
     }
     let target: C.GroundPoint | undefined;
     if (cmd.kind === "einstein") {
-      const site = C.NPC_LAYOUT.einstein.site, actor = [site[0]-2.2, this.world.height(site[0]-2.2,site[2]) ?? site[1], site[2]];
+      const site = C.NPC_LAYOUT.einstein.site, actor = C.NPC_LAYOUT.einstein.position;
       if (npc.teleportUsed || (!near(site, 3.2) && !near(actor, 3.3))) return reply(false, "The teleporter has one charge per round. Move closer to Einstein.");
       const candidates = C.NPC_LAYOUT.destinations.map(stop => C.findGround(this.world,stop.point[0],stop.point[1]))
         .filter((point): point is C.GroundPoint => !!point && Math.hypot(point.x-p.x,point.z-p.z)>30 &&
@@ -63,7 +63,7 @@ export class NpcEncounters {
     } else {
       const b = C.npcBounds(this.world);
       if (!boundaryVehicle && Math.min(p.x-b.minX,b.maxX-p.x,p.z-b.minZ,b.maxZ-p.z)>13) return reply(false, "You are already on public property.");
-      target = this.world.spawn;
+      target = C.propertyReturnPoint(this.world, p);
     }
     if (!target) return reply(false, "No safe landing is available.");
     npc.kind = cmd.kind!; npc.startedAt = now;
@@ -78,7 +78,8 @@ export class NpcEncounters {
     const car=pose?.car;
     if(!Array.isArray(car)||car.length!==5||!car.every(Number.isFinite))return;
     const [cx,cy,cz,yaw,pitch]=car,carElapsed=Math.min(1,(now-(this.carReports.get(id)??now))/1000);
-    if(!C.NPC_LAYOUT.interview.samples.some(point=>Math.hypot(point[0]-cx,point[2]-cz)<8)||Math.abs(cy-(this.world.height(cx,cz)??Infinity))>1)return;
+    const carRoute=npc.kind==='limousine'?C.NPC_LAYOUT.interview.samples:[...C.NPC_LAYOUT.interview.samples,...C.NPC_LAYOUT.interview.approachSamples];
+    if(!carRoute.some(point=>Math.hypot(point[0]-cx,point[2]-cz)<8)||Math.abs(cy-(this.world.height(cx,cz)??Infinity))>1)return;
     if(npc.limoVisible&&Math.hypot(cx-npc.limoX,cz-npc.limoZ)>50*carElapsed+1)return;
     Object.assign(npc,{limoVisible:true,limoX:cx,limoY:cy,limoZ:cz,limoYaw:yaw,limoPitch:pitch});this.carReports.set(id,now);
     if(npc.kind!=="limousine")return;
@@ -88,6 +89,10 @@ export class NpcEncounters {
     Object.assign(p,{x,y,z,rotY,anim:0,vx:0,vy:0,vz:0,simTime:now});this.reports.set(id,now);
   }
   tick(now = Date.now()) {
+    if (!this.state.scooterArrivalAt && this.state.phase === C.RoomPhase.Running && this.state.introComplete && now>=this.state.startedAt && now<this.state.endsAt) {
+      const [x,z]=C.NPC_LAYOUT.scooter.ridePoints.at(-1)!,y=this.world.height(x,z);
+      if(y!==undefined&&[...this.state.players].some(([id,p])=>this.state.members.has(id)&&!this.state.members.get(id)!.spectator&&Math.hypot(p.x-x,p.z-z)<C.NPC_LAYOUT.scooter.triggerDistance&&Math.abs(p.y-y)<3))this.state.scooterArrivalAt=now;
+    }
     for (const [id, npc] of this.state.npcs) if (npc.kind && (this.state.phase !== C.RoomPhase.Running || now-npc.startedAt>90000)) {
       npc.kind=""; npc.limoVisible=false;const p=this.state.players.get(id);if(p)this.correct(id,p);
     }

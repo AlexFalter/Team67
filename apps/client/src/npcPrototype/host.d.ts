@@ -7,6 +7,10 @@ export class NpcFeature {
   constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, net: Network,
     local: LocalPlayer, vehicles: Vehicles, canvas: HTMLCanvasElement, map: THREE.Object3D,
     capture: () => void);
+  externalPhoneBusy?:()=>boolean;
+  onResume?: () => void;
+  playerView?: import("../multiplayer/view.ts").PlayerView;
+  karambit?: { occupiesHands(): boolean };
   readonly ready: Promise<void>;
   readonly root: THREE.Group;
   readonly active: boolean;

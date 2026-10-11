@@ -135,17 +135,12 @@ export class TransitScenery {
     const canvas = document.createElement("canvas"); canvas.width = 768; canvas.height = 128;
     const ctx = canvas.getContext("2d")!; ctx.fillStyle = color; ctx.fillRect(0, 0, 768, 128); ctx.fillStyle = "white"; ctx.textAlign = "center"; ctx.font = "bold 34px Arial"; ctx.fillText(text, 384, 52); ctx.font = "27px Arial"; ctx.fillText("E TO BOARD · SHARED DEPARTURE", 384, 104);
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
-    // Face the street approach. Separate faces keep text readable from behind.
+    // Sprites face the rendered camera automatically, including orbit and pitch.
     const heading = Math.atan2(p.x - track.x, p.z - track.z);
-    const panel = new THREE.Group(); panel.position.set(p.x, p.y + (inside ? 2.6 : 3.5), p.z); panel.rotation.y = heading;
+    const panel = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, toneMapped: false, depthWrite: false }));
+    panel.position.set(p.x, p.y + (inside ? 2.6 : 3.5), p.z);
+    panel.scale.set(inside ? 2.5 : 5, (inside ? 2.5 : 5) / 6, 1);
     panel.name = `${text} boarding sign`;
-    const geometry = new THREE.PlaneGeometry(inside ? 2.5 : 5, inside ? 2.5 / 6 : 5 / 6);
-    const material = new THREE.MeshBasicMaterial({ map: texture, toneMapped: false });
-    for (const back of [false, true]) {
-      const face = new THREE.Mesh(geometry, material);
-      face.position.z = back ? -.015 : .015; face.rotation.y = back ? Math.PI : 0;
-      panel.add(face);
-    }
     this.root.add(panel);
     const sign = { kind: inside ? C.POLYBAHN_KIND : C.TRAM_KIND, distance, objects: [panel] as THREE.Object3D[] };
     panel.visible = false;

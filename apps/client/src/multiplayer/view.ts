@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { WALK_SPEED, SPRINT_SPEED, impactPose, SLIDE_ANIM, TRAM_KIND, POLYBAHN_KIND, type MovementWorld, type PlayerState } from "@race/shared";
+import { LIME_KIND, WALK_SPEED, SPRINT_SPEED, impactPose, SLIDE_ANIM, TRAM_KIND, POLYBAHN_KIND, type MovementWorld, type PlayerState } from "@race/shared";
 import { gaitRate } from "./avatar.ts";
 
 export const PERSPECTIVES = ["First person", "Third person — behind", "Third person — front"];
@@ -44,11 +44,12 @@ export class PlayerView {
     if (previous === 0 && this.perspective !== 0) this.springLength = 0;
   }
   update(p: PlayerState, dt: number, railFrame?: { rotY: number; pitch: number }) {
+    const cabinYaw = railFrame?.rotY ?? p.rotY;
     const rail = p.vehicleKind === TRAM_KIND || p.vehicleKind === POLYBAHN_KIND;
     if (rail && p.vehicleId) {
-      if (this.railRide === p.vehicleId) this.yaw += Math.atan2(Math.sin(p.rotY - this.railYaw), Math.cos(p.rotY - this.railYaw));
+      if (this.railRide === p.vehicleId) this.yaw += Math.atan2(Math.sin(cabinYaw - this.railYaw), Math.cos(cabinYaw - this.railYaw));
       else this.yaw = p.rotY + Math.PI;
-      this.railRide = p.vehicleId; this.railYaw = p.rotY;
+      this.railRide = p.vehicleId; this.railYaw = cabinYaw;
     } else this.railRide = "";
     const blend = 1 - Math.exp(-10 * dt), speed = Math.hypot(p.vx, p.vz);
     const down = p.anim === 3 || p.knockdownUntil > p.simTime;
@@ -62,7 +63,7 @@ export class PlayerView {
     // Distance-driven steps, but no bone-driven camera or oscillating horizon.
     if (walking) this.phase += gaitRate(speed) * dt;
     this.amplitude += ((this.bob && walking ? Math.min(0.018, speed * 0.0015) : 0) - this.amplitude) * blend;
-    this.eye += ((down ? 1.6 - fall * 1.18 - Math.sin(impact.rise * Math.PI) * 0.2 : sliding ? 0.82 : p.vehicleKind === TRAM_KIND ? 1.65 : rail ? 1.4 : p.vehicleId ? 1.05 : 1.6) - this.eye) * blend;
+    this.eye += ((down ? 1.6 - fall * 1.18 - Math.sin(impact.rise * Math.PI) * 0.2 : sliding ? 0.82 : p.vehicleKind === TRAM_KIND ? 1.65 : rail ? (p.cabinStanding ? 1.42 : 1.4) : p.vehicleId ? (p.vehicleKind===LIME_KIND?1.6:1.05) : 1.6) - this.eye) * blend;
     const strafe = p.vx * Math.cos(this.yaw) - p.vz * Math.sin(this.yaw);
     this.roll += ((down ? sideHit * fall * 0.5 : this.bob && walking ? THREE.MathUtils.clamp(-strafe * 0.001, -0.008, 0.008) : 0) - this.roll) * blend;
     this.landing *= Math.exp(-14 * dt);

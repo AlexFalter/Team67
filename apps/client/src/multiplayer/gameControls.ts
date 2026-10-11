@@ -9,6 +9,8 @@ export class GameControls {
   private abort = new AbortController();
   private captured = false;
   private captureNeeded = false;
+  private resumeAttempt = 0;
+  private discardMouseDelta = false;
   private actions: ActionHud;
   private edge = { x: 0, y: 0 };
   constructor(private canvas: HTMLCanvasElement, private local: LocalPlayer, private view: PlayerView, private ready: () => boolean, private suspended: () => boolean = () => false, now: () => number = () => Date.now(), context: () => ContextAction[] = () => []) {
@@ -22,7 +24,8 @@ export class GameControls {
     document.querySelector<HTMLInputElement>("#sensitivity")!.addEventListener("input", e => { view.sensitivity = Number((e.target as HTMLInputElement).value) / 10000; }, options);
     canvas.addEventListener("click", () => { if (local.enabled && this.captured) local.punch(); else void this.resume(); }, options);
     document.addEventListener("mousemove", e => {
-      if (this.suspended() || !local.enabled || (!this.captured && e.target !== canvas)) return;
+      if (this.suspended() || !local.enabled || !document.hasFocus() || (!this.captured && e.target !== canvas)) return;
+      if(this.discardMouseDelta){this.discardMouseDelta=false;return;}
       view.look(e.movementX, e.movementY);
       const rect = canvas.getBoundingClientRect();
       this.edge = edgeTurn(e.clientX - rect.left, e.clientY - rect.top, rect.width, rect.height);
@@ -30,6 +33,7 @@ export class GameControls {
     canvas.addEventListener("mouseleave", () => { this.edge = { x: 0, y: 0 }; }, options);
     canvas.addEventListener("wheel", e => { if (local.enabled) e.preventDefault(); }, { passive: false, signal: this.abort.signal });
     document.addEventListener("pointerlockchange", () => {
+      if(document.pointerLockElement===canvas&&(!local.enabled||!ready()||this.suspended()||!document.hasFocus())){document.exitPointerLock();return;}
       this.syncPointerLock();
     }, options);
     document.addEventListener("pointerlockerror", () => this.fallback(), options);
@@ -43,18 +47,19 @@ export class GameControls {
       if (local.enabled && ["F5", "KeyV"].includes(e.code)) { e.preventDefault(); if (!e.repeat) view.cycle(); this.update(); }
     }, options);
   }
-  dispose() { this.actions.dispose(); this.abort.abort(); this.local.enabled = false; if (document.pointerLockElement === this.canvas) document.exitPointerLock(); }
+  dispose() { this.actions.dispose(); this.abort.abort(); this.resumeAttempt++; this.local.enabled = false; if (document.pointerLockElement === this.canvas) document.exitPointerLock(); }
   private syncPointerLock() {
     const captured = document.pointerLockElement === this.canvas;
     const released = this.captured && !captured;
     this.captured = captured;
-    if (captured) this.captureNeeded = false;
+    if (captured) {this.captureNeeded = false;this.discardMouseDelta=true;}
     // Scanner/map releases are intentional; they must not leave a pause overlay
     // behind when an asynchronous pointerlockchange arrives after dismissal.
     if (released && this.local.enabled && this.ready() && !this.suspended()) this.pause();
   }
+  resumeAfterInteraction() {this.restoreGameplay();}
   restoreGameplay() {
-    if (!this.ready() || this.suspended()) return;
+    if (!this.ready() || this.suspended() || !document.hasFocus()) return;
     this.captured = document.pointerLockElement === this.canvas;
     this.menu.hidden = true; this.local.clear(); this.edge = { x: 0, y: 0 };
     this.local.enabled = true; this.canvas.focus(); this.update();
@@ -62,12 +67,13 @@ export class GameControls {
   }
   private fallback() {
     if (this.abort.signal.aborted) return;
-    this.captureNeeded = true;
+    if(!this.ready()||this.suspended()||!document.hasFocus())return;
+    this.captureNeeded = false;
     this.update();
     this.menu.querySelector<HTMLElement>("[role=status]")!.textContent = "Your browser rejected cursor capture. Move over the game to look; holding at an edge keeps turning.";
   }
   async resume() {
-    if (!this.ready()) return;
+    if (!this.ready()||this.suspended()||!document.hasFocus()) return;
     this.menu.hidden = true; this.local.clear(); this.edge = { x: 0, y: 0 }; this.local.enabled = true; this.canvas.focus(); this.update();
     this.menu.querySelector<HTMLElement>("[role=status]")!.textContent = "";
     await this.captureCursor();
@@ -75,9 +81,11 @@ export class GameControls {
   private async captureCursor() {
     if (document.pointerLockElement === this.canvas || !this.ready() || this.suspended()) return;
     this.captureNeeded = false;
-    try { await this.canvas.requestPointerLock(); } catch { this.fallback(); }
+    const attempt=++this.resumeAttempt;
+    try { await this.canvas.requestPointerLock(); } catch { if(attempt===this.resumeAttempt)this.fallback(); }
   }
   pause() {
+    this.resumeAttempt++;
     this.local.enabled = false; this.local.clear(); this.menu.hidden = !this.ready();
     if (document.pointerLockElement === this.canvas) document.exitPointerLock();
     this.update(); if (this.ready()) document.querySelector<HTMLButtonElement>("#resume")!.focus();

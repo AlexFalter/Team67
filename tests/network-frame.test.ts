@@ -7,7 +7,7 @@ function fixture() {
   const net = new Network(), messages: { type: string; data: unknown }[] = [];
   net.initialized = true;
   const body = Object.assign(C.createBody(), C.zurichWorld.spawn, { simTime: Date.now() });
-  net.room = { sessionId: "local", state: { phase: C.RoomPhase.Running, introComplete: true, startedAt: 0, endsAt: Date.now() + 60000, players: new Map([["local", body]]),
+  net.room = { sessionId: "local", state: { phase: C.RoomPhase.Running, introComplete: true, startedAt: 0, endsAt: Date.now() + 60000, players: new Map([["local", body]]), vehicles: new Map(),
     members: new Map([["local", { name: "Player", spectator: false }]]) },
     send: (type: string, data: unknown) => messages.push({ type, data }) } as unknown as typeof net.room;
   return { net, body, messages };

@@ -10,7 +10,7 @@ import type {
   VehicleMove,
   VehicleResult,
 } from "@race/shared";
-import { CLIENT_SEND_RATE, packMove, zurichWorld, snapshot, stepPlayer, applyImpulse, CART_MIN_HIT_SPEED, RoomPhase } from "@race/shared";
+import { stepCabin, POLYBAHN_KIND, CLIENT_SEND_RATE, packMove, zurichWorld, snapshot, stepPlayer, applyImpulse, CART_MIN_HIT_SPEED, RoomPhase } from "@race/shared";
 export class Network {
   room!: Room<object, WorldState>;
   private disposed = false;
@@ -25,6 +25,10 @@ export class Network {
   private best = Infinity;
   private pending = new Set<number>();
   vehicleMove?: () => VehicleMove | undefined;
+  onMoodleResult?: (data:{id:number;passed:boolean;course:string;roundStartedAt:number})=>void;
+  onLimePhotoRequired?: (vehicleId:string)=>void;
+  onLimePhotoResult?: (ok:boolean)=>void;
+  onMedal?: (award: import("@race/shared").MedalAward) => void;
   onVehicleResult?: (result: VehicleResult) => void;
   onBikeUnlockResult?: (result: import("@race/shared").BikeUnlockResult) => void;
   onMateResult?: (result: import("@race/shared").MateResult) => void;
@@ -58,7 +62,7 @@ export class Network {
     this.room.onStateChange((state) => {
       if (this.disposed) return;
       const own = state.players.get(this.room.sessionId);
-      if (own && (!this.initialized || (!this.introComplete && state.introComplete) || own.vehicleId !== body.vehicleId ||
+      if (own && (!this.initialized || (!this.introComplete && state.introComplete) || own.vehicleId !== body.vehicleId || (own.vehicleId && own.seat !== body.seat) ||
         (this.phase !== state.phase && state.phase !== RoomPhase.Finished))) {
         if (!this.initialized) this.offset = state.serverTime - Date.now();
         snapshot(own, body);
@@ -72,6 +76,7 @@ export class Network {
       if (own) {
         body.mateCount = own.mateCount; body.mateBoostMs = own.mateBoostMs;
         body.attackReadyAt = Math.max(body.attackReadyAt, own.attackReadyAt);
+        body.moodleSitUntil=own.moodleSitUntil??0;
         body.knockdownUntil = Math.max(body.knockdownUntil, own.knockdownUntil);
         if ((own.impactStartedAt ?? 0) > (body.impactStartedAt ?? 0)) {
           body.impactStartedAt = own.impactStartedAt; body.impactX = own.impactX;
@@ -82,10 +87,16 @@ export class Network {
       this.introComplete = state.introComplete;
       onPatch(state, this.room.sessionId);
     });
+    this.room.onMessage<{id:number;passed:boolean;course:string;roundStartedAt:number}>('moodleResult',data=>{if(data.roundStartedAt===this.room.state.startedAt)this.onMoodleResult?.(data);});
     this.room.onMessage<PlayerCorrection>("playerCorrection", correction => {
       Object.assign(body, correction);
     });
     this.room.onMessage<Impulse>("impulse", hit => applyImpulse(body, hit, this.now()));
+    this.room.onMessage<import("@race/shared").MedalAward>("medal", award => {
+      if (award.roundStartedAt === this.room.state.startedAt) this.onMedal?.(award);
+    });
+    this.room.onMessage<{vehicleId:string;roundStartedAt:number}>("limePhotoRequired",data=>{if(data.roundStartedAt===this.room.state.startedAt)this.onLimePhotoRequired?.(data.vehicleId);});
+    this.room.onMessage<{ok:boolean;roundStartedAt:number}>("limePhotoResult",data=>{if(data.roundStartedAt===this.room.state.startedAt)this.onLimePhotoResult?.(data.ok);});
     this.room.onMessage<VehicleResult>("vehicleResult", (result) =>
       this.onVehicleResult?.(result),
     );
@@ -120,6 +131,8 @@ export class Network {
       setInterval(() => {
         if (!this.canPlay || this.npcPaused) return;
         if (body.vehicleId) {
+          if (body.vehicleKind === POLYBAHN_KIND && body.cabinStanding)
+            this.room.send("cabinMove", [body.vehicleId, body.cabinX, body.cabinZ, body.cabinYaw, body.anim]);
           const move = this.vehicleMove?.();
           if (move) this.room.send("vehicleMove", move);
         } else this.room.send("move", packMove(body));
@@ -138,6 +151,8 @@ export class Network {
       impact = Math.max(impact, stepPlayer(body, first ? cmd : { ...cmd, slide: false, jump: false, hit: false }, step, zurichWorld) ?? 0);
       first = false; remaining -= step;
     }
+    const cabin = this.room.state.vehicles.get(body.vehicleId);
+    if (cabin?.kind === POLYBAHN_KIND) stepCabin(body, cmd, Math.min(.1, dt), cabin);
     // Report pose before actions so the server uses the current facing/position.
     if (cmd.hit || impact >= CART_MIN_HIT_SPEED) {
       if (body.vehicleId) this.room.send("vehicleMove", [body.vehicleId, body.x, body.z, body.rotY, body.vx, body.vz]);

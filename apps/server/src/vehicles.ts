@@ -3,6 +3,7 @@ import * as C from "@race/shared";
 import { Vehicle, type RaceState, type Player } from "./state.ts";
 
 export class VehicleManager {
+  private parkingPhotos = new Map<string, string>();
   private reports = new Map<string, number>();
   private trafficStart: number;
   private hitTimes = new Map<string, Map<string, number>>();
@@ -27,6 +28,8 @@ export class VehicleManager {
     addNear("npc-car", 3, -20, 6);
     addNear("loose-ball", 4, 10, -5, 7, 3);
     if (world.name === "zurich") {
+      const [x,z]=C.NPC_LAYOUT.lime.position,site=C.findGround(world,x,z);
+      if(site)this.add("lime-1",{...C.createVehicle(C.LIME_KIND,site.x,site.z),y:site.y});
       const tram = C.createVehicle(C.TRAM_KIND); tram.capacity = 18; tram.railDistance = C.TRAM_START_DISTANCE;
       Object.assign(tram, C.railFrame(tram)); this.add("tram-1", tram);
       for (let i = 0; i < 2; i++) {
@@ -46,6 +49,8 @@ export class VehicleManager {
     if (!p || !v) return this.result(client, false, "Vehicle not found.");
     if (this.state.publiBikes.has(data as string) && !scanned)
       return this.result(client, false, "Scan the PubliBike QR code to unlock it.");
+    if (this.parkingPhotos.has(client.sessionId) || [...this.parkingPhotos.values()].includes(data as string))
+      return this.result(client,false,"Finish your Lime parking photo first.");
     if (!C.isRideable(v)) return this.result(client, false, "This object cannot be ridden.");
     if (now < v.fallenUntil) return this.result(client, false, "Give the bike a moment to recover.");
     if (p.vehicleId)
@@ -75,7 +80,7 @@ export class VehicleManager {
       return this.result(
         client,
         false,
-        v.kind === 0 ? "This cart is occupied." : "The shuttle is full.",
+        v.kind === C.LIME_KIND ? "Both Lime riding positions are occupied." : v.kind === 0 ? "This cart is occupied." : "The shuttle is full.",
       );
     if (v.kind === C.POLYBAHN_KIND) {
       const npc = this.state.npcs.get(client.sessionId);
@@ -84,13 +89,14 @@ export class VehicleManager {
     p.vehicleId = data as string;
     p.vehicleKind = v.kind;
     p.seat = seat;
+    p.cabinStanding = false; p.cabinX = p.cabinZ = p.cabinYaw = 0;
     p.vx = p.vy = p.vz = 0;
     p.anim = 0;
-    if (!C.isPassengerVehicle(v)) {
+    if (!C.isPassengerVehicle(v) && (v.kind!==C.LIME_KIND || seat===0)) {
       v.driver = client.sessionId;
       this.reports.set(data as string, now);
       this.hitTimes.get(data as string)!.clear();
-    } else if (v.departureAt === 0) {
+    } else if (C.isPassengerVehicle(v) && v.departureAt === 0) {
       v.departureAt = now + (C.isRail(v) ? C.TRANSIT_BOARDING_MS : C.SHUTTLE_COUNTDOWN_MS);
       if (v.kind === C.POLYBAHN_KIND) for (const other of this.state.vehicles.values())
         if (other.kind === C.POLYBAHN_KIND) other.departureAt = v.departureAt;
@@ -99,7 +105,7 @@ export class VehicleManager {
     this.result(
       client,
       true,
-      !C.isPassengerVehicle(v)
+      v.kind===C.LIME_KIND&&seat===1?"Rear riding position claimed. E to get off.":!C.isPassengerVehicle(v)
         ? "Vehicle claimed. WASD to drive."
         : "Boarded. Waiting for departure.",
     );
@@ -110,10 +116,18 @@ export class VehicleManager {
     if (!p || !v) return;
     if (v.traveling || (C.isRail(v) && v.departureAt > 0 && this.state.serverTime >= v.departureAt))
       return this.result(client, false, "Stay aboard until the next stop.");
-    this.release(p);
-    this.result(client, true, "Exited vehicle.");
+    const id=p.vehicleId;this.release(p);
+    if(v.kind===C.LIME_KIND&&!this.occupied(id))this.parkingPhotos.set(client.sessionId,id);
+    this.result(client, true, this.parkingPhotos.has(client.sessionId)?"Parked. Take your Lime parking photo.":"Exited vehicle.");
+  }
+  photoRequired(id:string){return this.parkingPhotos.get(id);}
+  finishParkingPhoto(id:string,vehicle:unknown){
+    const pending=this.parkingPhotos.get(id),p=this.state.players.get(id),v=pending&&this.state.vehicles.get(pending);
+    if(!pending||vehicle!==pending||!p||!v||p.vehicleId||Math.hypot(p.x-v.x,p.z-v.z)>12)return false;
+    this.parkingPhotos.delete(id);return true;
   }
   disconnect(id: string) {
+    this.parkingPhotos.delete(id);
     const p = this.state.players.get(id);
     if (p?.vehicleId) this.release(p);
     for (const hits of this.hitTimes.values()) hits.delete(id);
@@ -145,11 +159,14 @@ export class VehicleManager {
       Object.assign(p, landing ?? this.world.spawn);
       p.grounded = true; p.groundTime = p.simTime;
       if (!C.isPassengerVehicle(v)) {
-        this.reports.delete(id);
-        v.driver = "";
-        v.vx = v.vz = 0;
+        const remaining=v.kind===C.LIME_KIND?[...this.state.players].find(([,other])=>other!==p&&other.vehicleId===id):undefined;
+        if(!remaining||seat===0){
+          this.reports.delete(id);v.driver="";v.vx=v.vz=0;
+          if(remaining){const [driver,rider]=remaining;rider.seat=0;v.driver=driver;this.reports.set(id,Date.now());this.attach(rider,v);}
+        }
       }
     }
+    p.cabinStanding = false; this.cabinReports.delete(p);
     p.vehicleId = "";
     p.vehicleKind = -1;
     p.seat = -1;
@@ -190,7 +207,7 @@ export class VehicleManager {
       p = this.state.players.get(client.sessionId);
     if (
       !v ||
-      (v.kind !== 0 && v.kind !== 2) ||
+      (v.kind !== 0 && v.kind !== 2 && v.kind !== C.LIME_KIND) ||
       v.driver !== client.sessionId ||
       p?.vehicleId !== data[0]
     )
@@ -231,9 +248,28 @@ export class VehicleManager {
   syncDriver(id: string) {
     const p = this.state.players.get(id), v = p && this.state.vehicles.get(p.vehicleId);
     if (!p || !v || v.driver !== id) return;
-    v.x = p.x; v.y = p.y - (v.kind === 2 ? C.BIKE_SEAT_HEIGHT : C.CART_SEAT_HEIGHT); v.z = p.z; v.rotY = p.rotY; v.vx = p.vx; v.vz = p.vz;
+    v.x = p.x; v.y = p.y - (v.kind === C.LIME_KIND ? C.LIME_DECK_HEIGHT : v.kind===2 ? C.BIKE_SEAT_HEIGHT : C.CART_SEAT_HEIGHT); v.z = p.z; v.rotY = p.rotY; v.vx = p.vx; v.vz = p.vz;
+  }
+  private cabinReports = new WeakMap<Player, number>();
+  walkCabin(id: string, data: unknown) {
+    const p = this.state.players.get(id), v = p && this.state.vehicles.get(p.vehicleId);
+    if (!p || !v || v.kind !== C.POLYBAHN_KIND || !Array.isArray(data) || data.length !== 5 || data[0] !== p.vehicleId || !data.slice(1).every(Number.isFinite)) return;
+    const now = Date.now(), elapsed = Math.min(.25, Math.max(0, (now - (this.cabinReports.get(p) ?? now - 100)) / 1000));
+    const bounds = C.cabinBounds(data[1], data[2]);
+    const startZ = p.cabinStanding ? p.cabinZ : C.railSeat(v, p.seat).z;
+    if (bounds.x !== data[1] || bounds.z !== data[2] || Math.hypot(data[1] - (p.cabinStanding ? p.cabinX : 0), data[2] - startZ) > C.CABIN_SPEED * elapsed + .12) return;
+    C.standInCabin(p, v);
+    p.cabinX = data[1]; p.cabinZ = data[2]; p.cabinYaw = data[3] % (2*Math.PI); p.anim = data[4] === 1 ? 1 : 0;
+    this.cabinReports.set(p, now); this.attach(p, v);
   }
   private attach(p: Player, v: Vehicle) {
+    if (v.kind === C.POLYBAHN_KIND && p.cabinStanding) {
+      C.cabinPosition(v, p);
+      p.vx = p.anim ? Math.sin(p.rotY) * C.CABIN_SPEED : 0;
+      p.vz = p.anim ? Math.cos(p.rotY) * C.CABIN_SPEED : 0;
+      p.vy = 0;
+      return;
+    }
     C.seatPosition(v, p.seat, p);
     p.rotY = C.passengerYaw(v, p.seat);
     p.vx = v.vx;
@@ -278,6 +314,7 @@ export class VehicleManager {
     for (const [id, v] of this.state.vehicles) {
       if (v.driver && now - (this.reports.get(id) ?? now) > C.VEHICLE_STALE_MS) v.vx = v.vz = 0;
       if (v.fallenUntil && now >= v.fallenUntil) v.fallenUntil = 0;
+      if(v.kind===C.LIME_KIND)for(const p of this.state.players.values())if(p.vehicleId===id)this.attach(p,v);
       if (v.kind === 1) {
         if (!v.traveling && v.departureAt > 0 && now >= v.departureAt) {
           v.traveling = true;

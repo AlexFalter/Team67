@@ -24,7 +24,7 @@ export async function createEinsteinTeleporter(scene,world,solver,{camera,onTrav
   site=p;approach=a;break search;
  }
  if(!site)throw Error('No accessible flat Einstein teleporter site');
- portal.position.copy(site);actor.position.copy(site).add(new THREE.Vector3(-2.2,0,0));actor.position.y=world.height(actor.position.x,actor.position.z);actor.rotation.y=Math.atan2(approach.x-actor.position.x,approach.z-actor.position.z);
+ portal.position.copy(site);actor.position.copy(site).add(new THREE.Vector3(-2.2,0,0));if(placement.fixedActor)actor.position.set(...placement.fixedActor);else actor.position.y=world.height(actor.position.x,actor.position.z);actor.rotation.y=Math.atan2(approach.x-actor.position.x,approach.z-actor.position.z);
  for(const model of [actor,portal]){model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});scene.add(model);}
  const dialogue=createRPGDialogue({uiRoot,id:'einstein-dialogue',compact:true,speaker:'ALBERT EINSTEIN',lines:[
   '“Care to test my teleporter? One charge. No express service to ETH.”',
