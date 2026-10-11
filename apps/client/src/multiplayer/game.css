@@ -319,3 +319,10 @@ body:has(:is(#pause, #lobby, #room-screen):not([hidden])) .lime-trick-score { di
   box-shadow: 0 4px 20px #0006;
 }
 .stuck-hint[hidden] { display: none; }
+/* Keep every action readable without requiring hover. */
+#combat-actions { flex-wrap: wrap; justify-content: center; gap: 10px; width: max-content; max-width: min(820px, calc(100vw - 340px)); }
+#combat-actions .context-actions { display: contents; }
+#combat-actions .combat-action { width: 76px; }
+#combat-actions .action-label { width: 76px; min-height: 24px; font: 11px/1.15 Arial, sans-serif; text-align: center; overflow-wrap: anywhere; }
+@media (max-width: 700px) { #combat-actions { max-width: calc(100vw - 24px); gap: 6px; } #combat-actions .combat-action, #combat-actions .action-label { width: 62px; } }
+#combat-actions { z-index: 46; }

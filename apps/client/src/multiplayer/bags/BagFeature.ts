@@ -73,6 +73,7 @@ export class BagFeature {
  get canThrow(){return !!this.local.body.bagId&&!this.pending&&this.phase==='carry'&&this.canUse()&&!this.local.body.vehicleId&&this.local.body.knockdownUntil<=this.net.now();}
  private send(action:string,id?:string){if(!this.net.canPlay||this.pending)return;this.pending=true;this.sentAt=this.net.now();this.net.room.send('move',packMove(this.local.body));this.net.room.send('bag',{action,id,aim:this.camera.getWorldDirection(new THREE.Vector3()).toArray(),roundStartedAt:this.net.room.state.startedAt});}
  throwBag(){if(this.canThrow){this.throwingId=this.local.body.bagId??'';this.handoff=undefined;this.play('Throw','throw');this.send('throw');}}
+ avatarFor(id:string){return this.dummies.get(id);}
  get nearby(){if(!this.canUse()||this.local.body.bagId||this.local.body.vehicleId)return undefined;const p=this.local.body;return [...(this.net.room?.state.bags??[])].filter(([,b])=>!b.flying&&!b.throwAt&&(!b.owner||this.net.room.state.dummies?.has(b.owner))&&Math.abs(b.y-p.y)<1.5&&Math.hypot(b.x-p.x,b.z-p.z)<2.4).sort((a,b)=>Math.hypot(a[1].x-p.x,a[1].z-p.z)-Math.hypot(b[1].x-p.x,b[1].z-p.z))[0]?.[0];}
  interact(){const id=this.nearby;if(!id)return false;this.send('pickup',id);return true;}
  update(dt:number,own:THREE.Group,remotes:Iterable<[string,{mesh:THREE.Group}]>){

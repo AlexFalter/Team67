@@ -1,0 +1,60 @@
+{
+  "archive": "Call of Duty Black Ops III Multiplayer Beta Sound, VO & Music.zip",
+  "source": "https://steamcommunity.com/groups/bizarchivistsoundproject/discussions/2/152391995421803915/",
+  "entries": [
+    {
+      "name": "Black Ops III Multiplayer Beta Sound, VO & Music/snd/all/fly/weapon/reload/sniper/dsr50/fly_dsr50_bolt_back_00.LN100.pc.snd.flac",
+      "method": 8,
+      "compressed": 19590,
+      "size": 19580,
+      "offset": 497588136,
+      "crc": 51675942,
+      "output": "audio/awp/bo3-bolt-back.mp3"
+    },
+    {
+      "name": "Black Ops III Multiplayer Beta Sound, VO & Music/snd/all/fly/weapon/reload/sniper/dsr50/fly_dsr50_bolt_down_00.LN100.pc.snd.flac",
+      "method": 8,
+      "compressed": 32165,
+      "size": 32847,
+      "offset": 497607884,
+      "crc": 3411856110,
+      "output": "audio/awp/bo3-bolt-down.mp3"
+    },
+    {
+      "name": "Black Ops III Multiplayer Beta Sound, VO & Music/snd/all/fly/weapon/reload/sniper/dsr50/fly_dsr50_bolt_forward_00.LN100.pc.snd.flac",
+      "method": 8,
+      "compressed": 25956,
+      "size": 26155,
+      "offset": 497640207,
+      "crc": 1126887389,
+      "output": "audio/awp/bo3-bolt-forward.mp3"
+    },
+    {
+      "name": "Black Ops III Multiplayer Beta Sound, VO & Music/snd/all/fly/weapon/reload/sniper/dsr50/fly_dsr50_bolt_up_00.LN100.pc.snd.flac",
+      "method": 8,
+      "compressed": 34746,
+      "size": 34817,
+      "offset": 497666324,
+      "crc": 1312228026,
+      "output": "audio/awp/bo3-bolt-up.mp3"
+    },
+    {
+      "name": "Black Ops III Multiplayer Beta Sound, VO & Music/snd/all/fly/weapon/reload/sniper/dsr50/fly_dsr50_mag_in_00.LN100.pc.snd.flac",
+      "method": 8,
+      "compressed": 18831,
+      "size": 18913,
+      "offset": 497701226,
+      "crc": 235308087,
+      "output": "audio/awp/bo3-mag-in.mp3"
+    },
+    {
+      "name": "Black Ops III Multiplayer Beta Sound, VO & Music/snd/all/fly/weapon/reload/sniper/dsr50/fly_dsr50_mag_out_00.LN100.pc.snd.flac",
+      "method": 8,
+      "compressed": 18087,
+      "size": 18161,
+      "offset": 497720212,
+      "crc": 2799691962,
+      "output": "audio/awp/bo3-mag-out.mp3"
+    }
+  ]
+}

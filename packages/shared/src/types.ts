@@ -13,6 +13,12 @@ export interface PlayerState {
   vz: number;
   anim: number;
   color: string;
+  awpOwned?: boolean;
+  awpEquipped?: boolean;
+  awpAmmo?: number;
+  awpReserve?: number;
+  awpInspectUntil?: number;
+  awpReloadUntil?: number;
   character: number; // 0: CS student boy, 1: CS student girl, 2: Einstein, 3: Rector Dissertori, 4: Tung Tung Tung Sahur
   vehicleId: string;
   seat: number;

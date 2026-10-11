@@ -1,0 +1,15 @@
+{
+  "title": "Nerf Hammershot Dart Shot",
+  "author": "ImAFoley",
+  "source": "https://freesound.org/people/ImAFoley/sounds/516745/",
+  "download": "https://cdn.freesound.org/previews/516/516745_7117640-hq.mp3",
+  "license": "CC0-1.0",
+  "output": "audio/awp/nerf-fire.mp3",
+  "sha256": "27a63934164f8286d0ea71d5a1e86cde794fb13dc814fc3d71e7a375f5bdeeef",
+  "trim": {
+    "startSeconds": 2.474,
+    "durationSeconds": 0.46
+  },
+  "processing": "Mono 48kHz; highpass 80Hz; lowpass 12kHz; final 120ms fade; mild transient compression; MP3 160kbps",
+  "gain": 0.65
+}

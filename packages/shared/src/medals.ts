@@ -1,4 +1,6 @@
 export const PLAYER_MEDALS = {
+ sharpshooter: {title:'Sharpshooter',detail:'Land a Nerf AWP headshot',icon:'scope'},
+ longShot: {title:'Long Shot',detail:'Hit a player from at least 30 metres',icon:'scope'},
  bagged: {title: 'Bagged', detail: 'Hit a player with an Ersti bag', icon: 'bag'},
  firstBlood: { title: 'First Blood', detail: 'First confirmed hit of the round', icon: 'skull' },
  bicycleHit: { title: 'Road Rage', detail: 'Run over a real player with a bicycle', icon: 'wheel' },

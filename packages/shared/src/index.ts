@@ -37,3 +37,5 @@ export * from "./football.ts";
 export * from "./karambit.ts";
 export * from './fruit.ts';
 export * from "./limeTailwhip.ts";
+
+export * from "./awp.ts";

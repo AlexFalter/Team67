@@ -3358,5 +3358,6 @@
     "heading": 0
   }
 ,
+  "awpRack": {"position": [-149.83, 10.09, 91.82], "approach": [-152.50, 8.54, 91.82], "heading": 1.5707963267948966},
   "fruitStand": {"position": [-124, 8.6975, 83], "heading": 0}
 }
