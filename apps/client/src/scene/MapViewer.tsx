@@ -23,7 +23,7 @@ import { createColorGrade, mountGradePanel, type ColorGradeHandle } from "./colo
 export function MapViewer() {
   const [examSession, setExamSession] = useState<ExamSession>(emptyExamSession);
   const [playing, setPlaying] = useState(true);
-  const [resolution, setResolution] = useState<"performance" | "high">("performance");
+  const [resolution, setResolution] = useState<"performance" | "high">("high");
   return (
     <div className="map-viewer" data-playing={playing} data-exam-active={examSession.stage !== "world"}>
       <MapCanvas key={playing ? "play" : "inspect"} playing={playing}
