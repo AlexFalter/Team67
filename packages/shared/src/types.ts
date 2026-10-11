@@ -133,6 +133,8 @@ export interface Input {
   facing?: number;
 }
 export interface Body extends PlayerState {
+  limeBoostMs?: number;
+  limeBoostExhausted?: boolean;
   jumpReadyAt?: number;
   jumpFatigue?: number;
   jumpSprintLocked?: boolean;
