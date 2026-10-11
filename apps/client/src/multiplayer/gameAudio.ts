@@ -7,7 +7,7 @@ import * as C from "@race/shared";
 
 const BASE = `${(import.meta.env?.BASE_URL ?? "/")}audio/`;
 type DroneSample = `drone/bo3-${DroneSound}`;
-type Sample = DroneSample | "helicopter-rotor" | "bus-engine" | "car-engine" | "rail-running" | "vehicle-door" | "footstep-left"
+type Sample = "tire-squeal" | DroneSample | "helicopter-rotor" | "bus-engine" | "car-engine" | "rail-running" | "vehicle-door" | "footstep-left"
   | "footstep-right" | "collision-thud" | "bo3-medal-earned" | "cow-moo";
 const SAMPLES: Sample[] = ["drone/bo3-ready","drone/bo3-request","drone/bo3-tablet","drone/bo3-online","drone/bo3-scan","drone/bo3-end","helicopter-rotor", "bus-engine", "car-engine", "rail-running", "vehicle-door", "footstep-left",
   "footstep-right", "collision-thud", "bo3-medal-earned", "cow-moo"];
@@ -17,7 +17,7 @@ export type EffectKind = "step" | "jump" | "land" | "collision" | "door" | "cras
 /** One looping engine/rail bed, keyed by vehicle id. */
 export interface LoopSource {
   /** Omitted for vehicles that only produce one-shots (PubliBike crashes). */
-  sample?: "helicopter-rotor" | "bus-engine" | "car-engine" | "rail-running";
+  sample?: "tire-squeal" | "helicopter-rotor" | "bus-engine" | "car-engine" | "rail-running";
   active: boolean;
   /** Motors idle quietly when stopped; rail beds are silent when stopped. */
   motor: boolean;
@@ -28,6 +28,9 @@ export interface LoopSource {
   aboard: boolean;
   /** Engine playback speed; omitted preserves the recording. */
   rate?: number;
+  /** Hearing radius in metres and gain multiplier; defaults preserve other vehicles. */
+  range?: number;
+  volume?: number;
   door?: boolean;
   crashed?: boolean;
 }
@@ -82,6 +85,17 @@ export class GameAudio {
       this.noise = context.createBuffer(1, context.sampleRate * 2, context.sampleRate);
       const data = this.noise.getChannelData(0);
       for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      // Original procedural tire squeal: a rough, wavering tone over friction noise.
+      // One shared loop buffer, using the same proximity/mute/lifecycle as engines.
+      const squeal = context.createBuffer(1, context.sampleRate * 2, context.sampleRate);
+      const tire = squeal.getChannelData(0);
+      for (let i = 0; i < tire.length; i++) {
+        const t = i / context.sampleRate, wobble = 8 * Math.sin(Math.PI * 4 * t);
+        const phase = Math.PI * 2 * 920 * t + wobble;
+        const seam = Math.min(1, i / (context.sampleRate * .015), (tire.length - 1 - i) / (context.sampleRate * .015));
+        tire[i] = seam * (.36 * Math.sin(phase) + .15 * Math.sin(phase * 2) + .1 * (Math.random() * 2 - 1));
+      }
+      this.buffers.set("tire-squeal", squeal);
       for (const name of SAMPLES) this.load(name);
     }
     void this.context.resume().catch(() => {});
@@ -247,11 +261,11 @@ export class GameAudio {
       const voice = this.voice(key), old = this.previous.get(key);
       const helicopter = s.sample === "helicopter-rotor";
       const distance = Math.hypot(listener.x - s.x, listener.z - s.z, s.y === undefined ? 0 : (listener.y ?? s.y) - s.y);
-      const proximity = s.aboard ? 1 : Math.max(0, 1 - distance / (helicopter ? 100 : 30)) ** 2;
+      const proximity = s.aboard ? 1 : Math.max(0, 1 - distance / (s.range ?? (helicopter ? 100 : 30))) ** 2;
       const audible = this.settings.vehicleSounds && !this.paused && s.active && !s.crashed;
       const moving = Math.abs(s.speed) > 0.1;
       const level = helicopter ? (moving ? 0.36 : 0.28) : s.motor ? (moving ? 0.23 : 0.12) : moving ? 0.17 : 0;
-      const target = audible && s.sample ? proximity * (duck && !helicopter ? 0.3 : 1) * level : 0;
+      const target = audible && s.sample ? proximity * (duck && !helicopter ? 0.3 : 1) * level * (s.volume ?? 1) : 0;
       if (target > 0.001 && s.sample && this.buffers.has(s.sample)) {
         voice.target = target;
         if (!voice.source) {

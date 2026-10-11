@@ -414,6 +414,7 @@ export class MapGame {
       }
     }
     const gtrSound=this.gtr.audioSource;if(gtrSound&&playing)sources.set("gtr-donuts",gtrSound);
+    const gtrSkid=this.gtr.skidAudioSource;if(gtrSkid&&playing)sources.set("gtr-donuts-tires",gtrSkid);
     const listener = this.bus.active ? this.bus.focus : this.listener;
     this.audio.update(sources, listener, { paused: !playing || this.controlsPaused, duck: this.npcs.active || this.mate.active || this.publiBikes.active });
     if (this.net.canPlay && !this.exam.active && !this.npcs.active) this.audio.movement(dt, body, this.local.pushing, this.net.now());

@@ -70,6 +70,12 @@ export class TrafficManager {
     let remaining = Math.max(0, Math.min(dt, 0.2));
     while (remaining > 0.00001) { const step = Math.min(remaining, 0.05); this.step(step, obstacles, hit, canHit, hitBike); remaining -= step; }
   }
+  /** Reuse traffic impacts for independently animated cars such as the donut GT-R. */
+  collideCar(id: string, car: TrafficCarState, hit?: Parameters<VehicleManager['tick']>[1], canHit: (id: string) => boolean = () => true, hitBike?: BikeHit, impactHeading = car.rotY) {
+    if (this.state.noCarCollisions) return;
+    if (hitBike) this.hitBikes(id, car, hitBike);
+    if (hit) this.hitPlayers(id, car, hit, canHit, impactHeading);
+  }
   private touches(car: TrafficCarState, body: {x:number;y:number;z:number}, radius: number) {
     if (body.y > car.y + 1.5 || body.y + CAPSULE_HEIGHT < car.y) return false;
     const dx=body.x-car.x, dz=body.z-car.z, fx=Math.sin(car.rotY), fz=Math.cos(car.rotY);
@@ -81,9 +87,9 @@ export class TrafficManager {
     for (const [bikeId,bike] of this.state.vehicles) if ((bike.kind===2 || bike.kind===LIME_KIND) &&
       this.state.serverTime>=bike.fallenUntil && this.touches(car,bike,vehicleRadius(bike))) hit(bikeId,id,car);
   }
-  private hitPlayers(id: string, car: TrafficCarState, hit: Parameters<VehicleManager['tick']>[1], canHit: (id: string) => boolean) {
+  private hitPlayers(id: string, car: TrafficCarState, hit: Parameters<VehicleManager['tick']>[1], canHit: (id: string) => boolean, impactHeading = car.rotY) {
     if (car.speed < CART_MIN_HIT_SPEED) return;
-    const now = this.state.serverTime, forwardX = Math.sin(car.rotY), forwardZ = Math.cos(car.rotY);
+    const now = this.state.serverTime, forwardX = Math.sin(impactHeading), forwardZ = Math.cos(impactHeading);
     for (const [target, player] of this.state.players) {
       const vehicle = player.vehicleId ? this.state.vehicles.get(player.vehicleId) : undefined;
       if ((player.vehicleId && (!vehicle || isPassengerVehicle(vehicle))) || !canHit(target) || now < player.knockdownUntil || now < player.invincibleUntil ||
@@ -175,8 +181,7 @@ export class TrafficManager {
         driver.distance = Math.max(driver.distance, distance); Object.assign(car, pose);
       } else speed = 0;
       car.speed = speed;
-      if (hitBike) this.hitBikes(id,car,hitBike);
-      if (hit) this.hitPlayers(id, car, hit, canHit);
+      this.collideCar(id, car, hit, canHit, hitBike);
       driver.waiting = driver.distance > previousDistance + 0.0001 ? 0 : (driver.waiting ?? 0) + dt;
       // Release only after the rear has cleared the junction.
       if (driver.clearing && driver.reservation && driver.distance >= Math.min(5, lane.length / 2)) {
