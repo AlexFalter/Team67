@@ -1,14 +1,15 @@
-import { examPortalPosition, isRideable, npcBounds, polybahnPath, tramPath, zurichWorld } from "@race/shared";
+import { examPortalPosition, isRideable, npcBounds, polybahnPath, raceSpawnPoint, tramPath, zurichWorld } from "@race/shared";
 import data from "./city-map-data.json";
 import type { Network } from "./net.ts";
 import type { MapPoint, MapProjection } from "./raceHudModel.ts";
-import { distanceToEth, projectPoint, zoomMap } from "./raceHudModel.ts";
+import { distanceToEth, projectPoint, raceMapRoute, zoomMap } from "./raceHudModel.ts";
 
 export type EncounterMarker = MapPoint & { label: string };
 const help = "Scroll to zoom · Drag to pan · + / − zoom · F fit all · C find me";
 // Adapted from mini-games-2's map-controls and encounter-map. Drawn by MapGame's
 // existing loop; the cartography uses the native LV95 origin and is cached once.
 export class RaceMap {
+  private route = raceMapRoute(zurichWorld);
   active = false;
   private root = document.querySelector<HTMLElement>("#city-map")!;
   private radar = document.querySelector<HTMLElement>("#race-radar")!;
@@ -150,7 +151,7 @@ export class RaceMap {
       ctx.beginPath(); points.forEach((point, i) => { const v = p(point); if (i) ctx.lineTo(v.x, v.y); else ctx.moveTo(v.x, v.y); });
       ctx.strokeStyle = color; ctx.lineWidth = full ? 3 : 2; ctx.setLineDash(dashed ? [5, 4] : []); ctx.stroke(); ctx.setLineDash([]);
     };
-    line([...zurichWorld.route, examPortalPosition], "#ffd271");
+    line(this.route, "#ffd271");
     line(tramPath.points, "#75b9ff", true); line(polybahnPath.points, "#ff8eaa");
     const bounds = this.bounds, a = p({ x: bounds.minX, z: bounds.minZ }), c = p({ x: bounds.maxX, z: bounds.maxZ });
     ctx.strokeStyle = "#a1beb180"; ctx.lineWidth = 1; ctx.setLineDash([3, 5]); ctx.strokeRect(a.x, a.y, c.x - a.x, c.y - a.y); ctx.setLineDash([]);
@@ -163,7 +164,7 @@ export class RaceMap {
       if (id === this.net.room.sessionId || this.net.room.state.members.get(id)?.spectator) continue;
       const v = p(player); ctx.beginPath(); ctx.arc(v.x, v.y, full ? 5 : 3, 0, Math.PI * 2); ctx.fillStyle = "#ec9dce"; ctx.fill();
     }
-    for (const [point, label, color] of [[zurichWorld.spawn, "HB / START", "#c4ded2"], [examPortalPosition, "ETH HG / EXAM", "#ffd271"]] as const) {
+    for (const [point, label, color] of [[raceSpawnPoint(zurichWorld), "BUS DROP-OFF / START", "#c4ded2"], [examPortalPosition, "ETH HG / EXAM", "#ffd271"]] as const) {
       const v = p(point); ctx.fillStyle = color; ctx.beginPath(); ctx.arc(v.x, v.y, full ? 7 : 5, 0, Math.PI * 2); ctx.fill();
       if (full) { ctx.font = "bold 11px system-ui"; const w = ctx.measureText(label).width; ctx.fillStyle = "#10242eef"; ctx.fillRect(v.x - w / 2 - 7, v.y - 28, w + 14, 20); ctx.fillStyle = color; ctx.fillText(label, v.x, v.y - 18); }
     }

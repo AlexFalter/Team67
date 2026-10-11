@@ -33,6 +33,11 @@ export interface PlayerState {
   mateDrinkStartedAt?: number;
 }
 export interface WorldState {
+  trafficCars?: Map<string, import("./traffic.ts").TrafficCarState>;
+  trafficNetwork?: string;
+  trafficDensity?: number;
+  trafficSpawnInterval?: number;
+  trafficSpeedMultiplier?: number;
   npcs?: Map<string, import("./npc.ts").NpcState>;
   serverTime: number;
   phase: string;

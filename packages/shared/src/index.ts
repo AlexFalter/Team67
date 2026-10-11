@@ -21,3 +21,4 @@ export * from "./impact.ts";
 export * from "./ticket.ts";
 
 export * from "./medals.ts";
+export * from "./traffic.ts";
