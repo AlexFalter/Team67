@@ -106,7 +106,7 @@ test('Polybahn body axis follows the inclined rails on both lanes',()=>{
   }
  });
 
- test('station approaches accept diagonal walking from either side without invisible choke points',()=>{
+ test('station approaches pass either side of the centered ticket machine without invisible choke points',()=>{
   const approaches=[
    ...[108,110,114,117].map(z=>({start:{x:3,y:8.625,z},target:C.polybahnPlatforms[0]})),
    ...[-3,-1,1,3].map(offset=>{const across=offset-1.1;return {start:{x:185+.903*10+.430*across,y:48.875,z:75-.430*10+.903*across},target:C.polybahnPlatforms[1]};}),
@@ -116,7 +116,8 @@ test('Polybahn body axis follows the inclined rails on both lanes',()=>{
    let stopped=0;
    // Cross the visible doorway, then turn towards the lobby marker.
    const doorway=target.x<20?{x:8,y:8.625,z:112.5}:{x:185+.903*7-.430*1.1,y:48.875,z:75-.430*7-.903*1.1};
-   for(const waypoint of [doorway,target]){
+   const aroundMachine=target.x<20?[{x:3,y:8.625,z:start.z<=C.TICKET_POSITION.z?110.5:114.5},{x:8,y:8.625,z:start.z<=C.TICKET_POSITION.z?110.5:114.5}]:[];
+   for(const waypoint of [...aroundMachine,doorway,target]){
     for(let tick=0;tick<600&&Math.hypot(p.x-waypoint.x,p.z-waypoint.z)>.15;tick++){
      const dx=waypoint.x-p.x,dz=waypoint.z-p.z,length=Math.hypot(dx,dz),before={x:p.x,z:p.z};
      C.stepMovement(p,{x:dx/length,z:dz/length,sprint:false,jump:false},1/60,tick*1000/60,C.zurichWorld);

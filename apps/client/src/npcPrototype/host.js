@@ -114,6 +114,7 @@ export class NpcFeature {
   try{
    const ticketPoint=new THREE.Vector3().copy(C.ticketSite(C.zurichWorld));
    this.ticketProps=createTicketProps(this.root,[ticketPoint]);
+   this.ticketProps[0].group.rotation.y=C.TICKET_ROTATION_Y;
    const ticketRail={ticketProps:this.ticketProps,ticketPoints:[ticketPoint],nearTicketIndex:position=>C.nearTicket(position,C.zurichWorld)?0:-1,
     state:()=>({ticketCount:this.net.room?.state.npcs?.get(this.net.room.sessionId)?.ticketCount??0}),collectTicket:()=>this.requestTicket('collect')};
    this.ticketMachine=this.own(createPolybahnTicketMachine(ticketRail,{camera,canvas:this.canvas,uiRoot,
