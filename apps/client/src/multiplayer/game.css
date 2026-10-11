@@ -297,10 +297,10 @@ body:has(:is(#pause, #lobby, #room-screen):not([hidden])) .drowned-overlay { dis
 #lobby .buttons button { border-radius: 2px; border-width: 2px; box-shadow: inset 2px 2px 0 #ffffff18, inset -2px -2px 0 #0004, 2px 2px 0 #071a2480; }
 
 .lime-trick-score {
-  position: absolute; left: 50%; bottom: 32%; z-index: 30;
-  display: flex; align-items: baseline; gap: 14px;
+  position: absolute; left: 50%; bottom: 26%; z-index: 30;
+  display: flex; align-items: baseline; gap: 10px;
   transform: translateX(-50%) rotate(-6deg); pointer-events: none;
-  font: italic 900 clamp(30px, 4vw, 56px)/1.1 Arial, sans-serif;
+  font: italic 900 clamp(24px, 3vw, 44px)/1.1 Arial, sans-serif;
   color: #fff; white-space: nowrap;
   text-shadow: -2px -2px 0 #13251b, 2px -2px 0 #13251b, -2px 2px 0 #13251b, 3px 4px 0 #13251b;
 }

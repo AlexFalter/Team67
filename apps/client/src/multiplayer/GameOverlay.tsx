@@ -1,3 +1,4 @@
+import type { RenderingQuality } from "../scene/shadowQuality.ts";
 import { useState } from "react";
 import { PixelPanel } from "./PixelPanel";
 import "./game.css";
@@ -5,8 +6,8 @@ import "./raceHud.css";
 import { CHARACTERS as characters } from "./avatar.ts";
 
 export function GameOverlay({ resolution, onResolutionChange }: {
-  resolution: "performance" | "high";
-  onResolutionChange: (resolution: "performance" | "high") => void;
+  resolution: RenderingQuality;
+  onResolutionChange: (resolution: RenderingQuality) => void;
 }) {
   const [character, setCharacter] = useState(0);
   const cycleCharacter = (direction: number) => setCharacter(current => (current + direction + characters.length) % characters.length);
@@ -166,11 +167,12 @@ export function GameOverlay({ resolution, onResolutionChange }: {
         <input id="sensitivity" type="range" min="8" max="60" defaultValue="25" />
         <label htmlFor="render-resolution">Rendering resolution</label>
         <select id="render-resolution" value={resolution}
-          onChange={event => onResolutionChange(event.target.value === "high" ? "high" : "performance")}>
+          onChange={event => onResolutionChange(event.target.value === "high" ? "high" : event.target.value === "medium" ? "medium" : "performance")}>
           <option value="performance">Performance</option>
-          <option value="high">High — sharper image</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
         </select>
-        <p>Performance reduces rendering resolution for smoother play. High uses more GPU power.</p>
+        <p>Performance: low resolution and shadows. Medium: high resolution, low shadows. High: high resolution and longer shadows.</p>
         <p>Mouse / trackpad: look · click to punch.<br />
           WASD run · Shift sprint · Space jump · C slide while sprinting · E ride<br />
           M city map · F change view · Esc menu<br />1 drink Mate · Backspace leave Polybahn</p>

@@ -1,3 +1,4 @@
+import { applyShadowQuality, type RenderingQuality } from "./shadowQuality.ts";
 import {guardAnimationFrame} from "./guardAnimationFrame";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -27,7 +28,7 @@ import { createColorGrade, mountGradePanel, type ColorGradeHandle } from "./colo
 export function MapViewer({ examPreview = false }: { examPreview?: boolean }) {
   const [examSession, setExamSession] = useState<ExamSession>(emptyExamSession);
   const [playing, setPlaying] = useState(examPreview || !(import.meta.env.DEV && new URLSearchParams(location.search).has("trafficEditor")));
-  const [resolution, setResolution] = useState<"performance" | "high">("high");
+  const [resolution, setResolution] = useState<RenderingQuality>("high");
   return (
     <div className="map-viewer" data-playing={playing} data-exam-active={examSession.stage !== "world" && examSession.stage !== "spectate"}>
       <MapCanvas key={playing ? "play" : "inspect"} playing={playing}
@@ -47,8 +48,8 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
   examSession: ExamSession;
   onExamChange: (session: ExamSession) => void;
   playing: boolean;
-  resolution: "performance" | "high";
-  onResolutionChange: (resolution: "performance" | "high") => void;
+  resolution: RenderingQuality;
+  onResolutionChange: (resolution: RenderingQuality) => void;
 }) {
   const gameRef = useRef<MapGame | undefined>(undefined);
   const previewRef = useRef<ExamSequence | undefined>(undefined);
@@ -128,15 +129,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
         const sunDir = { x: Math.sin(az) * Math.cos(el), y: Math.sin(el), z: -Math.cos(az) * Math.cos(el) };
         sun.position.set(sunDir.x * 900, sunDir.y * 900, sunDir.z * 900);
         sun.castShadow = playing;
-        sun.shadow.mapSize.set(1024, 1024);
-        Object.assign(sun.shadow.camera, {
-          left: -30,
-          right: 30,
-          top: 30,
-          bottom: -30,
-          near: 1,
-          far: 120,
-        });
+        let shadowDistance = applyShadowQuality(sun, resolutionRef.current);
         sun.shadow.bias = -0.0005;
         scene.add(sun, sun.target);
         if (theme.skyDome) {
@@ -177,9 +170,10 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
           }
         }
         const fit = () => {
+          shadowDistance = applyShadowQuality(sun, resolutionRef.current);
           const { width, height } = canvas!.getBoundingClientRect();
           // Keep the default drawing buffer near 1080p even on large/HiDPI displays.
-          const density = resolutionRef.current === "high"
+          const density = resolutionRef.current !== "performance"
             ? Math.min(window.devicePixelRatio, 2)
             : Math.min(window.devicePixelRatio, 1,
               Math.sqrt(1920 * 1080 / (Math.max(width, 1) * Math.max(height, 1))));
@@ -208,7 +202,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
           previous = now;
           if (game || preview) {
             const p = game?.focus ?? examPortalPosition;
-            sun.position.set(p.x + sunDir.x * 50, p.y + sunDir.y * 50, p.z + sunDir.z * 50);
+            sun.position.set(p.x + sunDir.x * shadowDistance, p.y + sunDir.y * shadowDistance, p.z + sunDir.z * shadowDistance);
             sun.target.position.set(p.x, p.y, p.z);
             sun.target.updateMatrixWorld();
           }
