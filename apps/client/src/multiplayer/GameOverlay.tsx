@@ -84,11 +84,13 @@ export function GameOverlay({ resolution, onResolutionChange }: {
         <p id="room-message" role="status"></p>
         <ul id="room-roster" aria-label="Players in this room"></ul>
         <button id="room-ready" hidden>Ready</button>
-        <table id="room-results" hidden>
-          <caption>Round results</caption>
-          <thead><tr><th scope="col">Player</th><th scope="col">Hits landed</th><th scope="col">Hits received</th></tr></thead>
-          <tbody></tbody>
-        </table>
+        <div id="room-results-scroll" role="region" aria-label="Round results" tabIndex={0}>
+          <table id="room-results" hidden>
+            <caption>Round results</caption>
+            <thead><tr><th scope="col">Player</th><th scope="col">Hits landed</th><th scope="col">Hits received</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
         <button id="room-restart" hidden>Return room to lobby</button>
         <button id="room-leave">Leave room</button>
       </div>
