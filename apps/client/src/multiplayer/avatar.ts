@@ -6,7 +6,7 @@ import { CHARACTER_NAMES, LIME_KIND, LIME_SPEED, LIME_BOOST_SPEED, impactPose, A
 // The seated owner can turn through their torso; show the body in third person
 // and to other players, while keeping the owning rail camera clear.
 export function firstPersonBodyVisible(p: Pick<PlayerState, "anim" | "vehicleId" | "vehicleKind" | "cabinStanding">, perspective: number) {
-  return perspective === 0 && !(p.vehicleId && !p.cabinStanding && (p.vehicleKind === TRAM_KIND || p.vehicleKind === POLYBAHN_KIND));
+  return perspective === 0 && !(p.vehicleId && (p.vehicleKind === TRAM_KIND || p.vehicleKind === POLYBAHN_KIND));
 }
 
 // Original articulated models: all outfits share geometry, joints and motion.

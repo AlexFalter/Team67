@@ -25,7 +25,7 @@ export class GameControls {
   constructor(private canvas: HTMLCanvasElement, private local: LocalPlayer, private view: PlayerView, private ready: () => boolean, private suspended: () => boolean = () => false, now: () => number = () => Date.now(), context: () => ContextAction[] = () => [], weapon: () => WeaponAction | undefined = () => undefined, respawn: () => void = () => {}) {
     const options = { signal: this.abort.signal };
     canvas.tabIndex = 0;
-    this.capturePrompt.className="capture-continue";this.capturePrompt.style.pointerEvents="none";this.capturePrompt.textContent="Press WASD or Enter to continue";this.capturePrompt.hidden=true;canvas.parentElement!.append(this.capturePrompt);
+    this.capturePrompt.className="capture-continue pixel-panel";this.capturePrompt.style.pointerEvents="none";this.capturePrompt.textContent="Press WASD or Enter to continue";this.capturePrompt.hidden=true;canvas.parentElement!.append(this.capturePrompt);
     this.actions = new ActionHud(local, now, () => canvas.focus(), context, weapon);
     document.querySelector("#respawn")!.addEventListener("click", () => { if (ready() && !this.suspended()) { local.clear(); respawn(); } }, options);
     document.querySelector("#resume")!.addEventListener("click", () => void this.resume(), options);

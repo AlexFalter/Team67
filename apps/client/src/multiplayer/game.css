@@ -261,7 +261,7 @@ main:has(.game-loading) > :is(header, footer) { display: none; }
 
 .combat-action{align-content:start}.action-label{font:10px/1.3 var(--ui-font);color:var(--ui-heading);text-shadow:0 1px 3px #000}.action-label[hidden]{display:none}
 
-.capture-continue{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);z-index:70;padding:7px 12px;border-radius:6px;background:#102132dc;color:#fff;font:12px Arial,sans-serif;pointer-events:none}.capture-continue[hidden]{display:none}.capture-continue:focus-visible{outline:2px solid #d7f87a;outline-offset:3px}
+.map-viewer .capture-continue{--panel-border:var(--ui-border);--panel-background:var(--ui-background);position:absolute;left:50%;bottom:96px;transform:translateX(-50%);z-index:70;box-sizing:border-box;width:max-content;max-width:calc(100% - 32px);padding:10px 14px;border:2px solid var(--ui-border);border-radius:0;background:var(--ui-background);color:var(--ui-heading);font:600 12px/1.5 var(--ui-font);text-align:center;pointer-events:none}.capture-continue[hidden]{display:none}.capture-continue:focus-visible{outline:2px solid #d7f87a;outline-offset:3px}
 
 /* Drowning timeout (drowning.ts): 10 s with the meme music, then the same respawn as the Respawn button. */
 .drowned-overlay {

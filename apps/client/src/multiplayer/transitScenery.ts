@@ -66,9 +66,21 @@ export function carveTransitPassages(source: THREE.BufferGeometry) {
   result.computeBoundingBox(); result.computeBoundingSphere(); g.dispose();
   return { geometry: result, removed };
 }
+function paintStationSign(canvas: HTMLCanvasElement, title: string, instruction: string) {
+  const ctx = canvas.getContext("2d")!, w = canvas.width - 12, h = canvas.height - 12;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#071a2480"; ctx.fillRect(10, 10, w, h);
+  ctx.fillStyle = "#102731"; ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = "#b9d4cb70"; ctx.lineWidth = 4; ctx.strokeRect(2, 2, w - 4, h - 4);
+  ctx.fillStyle = "#ffffff12"; ctx.fillRect(4, 4, w - 8, 6); ctx.fillRect(4, 10, 6, h - 20);
+  ctx.fillStyle = "#00000044"; ctx.fillRect(10, h - 10, w - 14, 6); ctx.fillRect(w - 10, 10, 6, h - 20);
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillStyle = "#c3d5cc"; ctx.font = "bold 34px monospace"; ctx.fillText(title, w / 2, 63, w - 48);
+  ctx.fillStyle = "#d7f87a"; ctx.font = "28px monospace"; ctx.fillText(instruction, w / 2, 127, w - 48);
+}
 export class TransitScenery {
   private root = new THREE.Group();
-  private boardingSigns: { kind: number; distance: number; objects: THREE.Object3D[] }[] = [];
+  private boardingSigns: { kind: number; distance: number; objects: THREE.Object3D[]; canvas: HTMLCanvasElement; texture: THREE.CanvasTexture; title: string; instruction: string }[] = [];
   private originals = new Map<THREE.Mesh, THREE.BufferGeometry>();
   constructor(scene: THREE.Scene, map: THREE.Object3D) {
     this.root.name = "Tram and Polybahn tracks"; scene.add(this.root);
@@ -132,17 +144,18 @@ export class TransitScenery {
     }
   }
   private station(p: C.GroundPoint, text: string, color: string, track: C.GroundPoint, distance: number, inside = false) {
-    const canvas = document.createElement("canvas"); canvas.width = 768; canvas.height = 128;
-    const ctx = canvas.getContext("2d")!; ctx.fillStyle = color; ctx.fillRect(0, 0, 768, 128); ctx.fillStyle = "white"; ctx.textAlign = "center"; ctx.font = "bold 34px Arial"; ctx.fillText(text, 384, 52); ctx.font = "27px Arial"; ctx.fillText("E TO BOARD · SHARED DEPARTURE", 384, 104);
+    const canvas = document.createElement("canvas"); canvas.width = 768; canvas.height = 192;
+    const instruction = "E TO BOARD · SHARED DEPARTURE";
+    paintStationSign(canvas, text, instruction);
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
     // Sprites face the rendered camera automatically, including orbit and pitch.
     const heading = Math.atan2(p.x - track.x, p.z - track.z);
     const panel = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, toneMapped: false, depthWrite: false }));
     panel.position.set(p.x, p.y + (inside ? 2.6 : 3.5), p.z);
-    panel.scale.set(inside ? 2.5 : 5, (inside ? 2.5 : 5) / 6, 1);
+    panel.scale.set(inside ? 2.5 : 5, (inside ? 2.5 : 5) / 4, 1);
     panel.name = `${text} boarding sign`;
     this.root.add(panel);
-    const sign = { kind: inside ? C.POLYBAHN_KIND : C.TRAM_KIND, distance, objects: [panel] as THREE.Object3D[] };
+    const sign = { kind: inside ? C.POLYBAHN_KIND : C.TRAM_KIND, distance, objects: [panel] as THREE.Object3D[], canvas, texture, title: text, instruction };
     panel.visible = false;
     this.boardingSigns.push(sign);
     // The cabin owns the moving, server-matched Polybahn boarding circle.
@@ -167,12 +180,17 @@ export class TransitScenery {
     marker.visible = pole.visible = false;
     sign.objects.push(marker, pole);
   }
-  update(vehicles: Iterable<C.VehicleState>, now: number, canPlay: boolean) {
+  update(vehicles: Iterable<C.VehicleState>, now: number, canPlay: boolean, passengerVehicle?: C.VehicleState) {
     const rides = [...vehicles];
     for (const sign of this.boardingSigns) {
       const visible = canPlay && rides.some(v => v.kind === sign.kind && !v.traveling && !v.derailStartedAt &&
         Math.abs(v.railDistance - sign.distance) < .5 && (!v.departureAt || now < v.departureAt));
       for (const object of sign.objects) object.visible = visible;
+      const aboard = sign.kind === C.POLYBAHN_KIND && passengerVehicle?.kind === sign.kind && Math.abs(passengerVehicle.railDistance - sign.distance) < .5;
+      const instruction = aboard ? "BACKSPACE TO LEAVE" : "E TO BOARD · SHARED DEPARTURE";
+      if (sign.instruction !== instruction) {
+        sign.instruction = instruction; paintStationSign(sign.canvas, sign.title, instruction); sign.texture.needsUpdate = true;
+      }
     }
   }
   dispose() {
