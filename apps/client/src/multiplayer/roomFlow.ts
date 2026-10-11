@@ -3,8 +3,9 @@ import { RoomPhase, finalScore, type WorldState, type RoundResult } from "@race/
 import type { Network } from "./net.ts";
 
 // Final leaderboard: ETH arrivals first (bonus + exam points), then everyone else by distance left.
+// Someone standing right at the entrance without entering can tie an arrival with no exam points.
 export function rankedResults(results: ReadonlyMap<string, RoundResult>) {
-  return [...results].sort((a, b) => finalScore(b[1]) - finalScore(a[1]) || b[1].hitsLanded - a[1].hitsLanded || a[1].name.localeCompare(b[1].name));
+  return [...results].sort((a, b) => finalScore(b[1]) - finalScore(a[1]) || Number(b[1].examStartedAt > 0) - Number(a[1].examStartedAt > 0) || b[1].hitsLanded - a[1].hitsLanded || a[1].name.localeCompare(b[1].name));
 }
 
 export class RoomFlow {
