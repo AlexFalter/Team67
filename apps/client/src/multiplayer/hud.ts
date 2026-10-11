@@ -1,4 +1,5 @@
 import type { Network } from "./net.ts";
+import { RoomPhase } from "@race/shared";
 import { raceStandings, type MapPoint } from "./raceHudModel.ts";
 export class Hud {
   private root: HTMLElement;
@@ -16,12 +17,13 @@ export class Hud {
   update(dt: number, net: Network, local: MapPoint) {
     const dev = !!net.room?.state.devMode;
     this.root.dataset.devMode = String(dev);
-    this.element.hidden = !dev;
+    const running = net.room?.state.phase === RoomPhase.Running;
+    this.element.hidden = !running;
     this.leaderboard.hidden = !net.canPlay;
     this.elapsed += dt;
     this.frames++;
     if (this.elapsed < 0.25) return;
-    if (dev) {
+    if (running) {
       const fps = Math.round(this.frames / this.elapsed);
       this.element.textContent = `${fps} FPS · ${net.offline ? "OFFLINE" : `${net.rtt} ms ping`} · ${net.room?.state?.players?.size ?? 0} players`;
     }

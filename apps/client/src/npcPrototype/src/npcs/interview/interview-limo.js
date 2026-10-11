@@ -67,7 +67,7 @@ export async function createInterviewLimo(scene,world,solver,{onClose,onBoard,on
  const path={length,sample:d=>pickup.clone().lerp(landing,THREE.MathUtils.clamp(d/length,0,1)),tangent:()=>landing.clone().sub(pickup).normalize()};
  const approachPath=null;
  const chute=createParachute();scene.add(chute);chute.visible=false;
- const chuteHint=document.createElement('div');chuteHint.className='limo-look-hint';chuteHint.hidden=true;chuteHint.style.bottom='140px';uiRoot.append(chuteHint);
+ const chuteHint=document.createElement('div');chuteHint.className='limo-look-hint helicopter-parachute-hint';chuteHint.hidden=true;uiRoot.append(chuteHint);
  const flightKeys=new Set(),flightAbort=new AbortController();window.addEventListener('keyup',e=>flightKeys.delete(e.code),{signal:flightAbort.signal});window.addEventListener('blur',()=>flightKeys.clear(),{signal:flightAbort.signal});
  let fallSpeed=0,deployed=false;
  const throwOrigin=new THREE.Vector3(),throwOrientation=new THREE.Quaternion(),throwEye=new THREE.Vector3(),throwCameraRotation=new THREE.Quaternion();

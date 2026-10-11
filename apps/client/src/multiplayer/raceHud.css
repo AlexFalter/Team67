@@ -144,10 +144,12 @@
   --panel-border: var(--ui-border);
 }
 .map-viewer .game-hud.pixel-panel { border: 2px solid var(--ui-border); background: var(--ui-background); }
+.map-viewer[data-dev-mode=false] .game-hud { top: 18px; }
+@media(max-width:980px) and (min-width:541px){.map-viewer[data-dev-mode=false] .game-hud{top:148px}}
 #open-city-map:hover { color: var(--ui-accent); }
 #race-leaders li[data-you=true] b { color: var(--ui-accent); }
 @media (max-width: 540px) {
-  .map-viewer .game-hud { top: 126px; right: 12px; font-size: 10px; padding: 6px 8px; }
+  .map-viewer .game-hud, .map-viewer[data-dev-mode=false] .game-hud { top: 126px; right: 12px; font-size: 10px; padding: 6px 8px; }
   .city-map-panel header { align-items: flex-start; gap: 10px; }
   .city-map-panel h2 { font-size: 18px; }
   .distance-note { font-size: 9px; }
