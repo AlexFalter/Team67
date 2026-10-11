@@ -1,6 +1,21 @@
 {
-  "football": { "position": [191.52, 50.70, 149.16], "heading": 0 },
-  "tikiPerformer": { "position": [10.93, 28.05, -222.59], "heading": 0 },
+  "singingCyclist": {"position": [205.81, 50.70, 180.38]},
+  "football": {
+    "position": [
+      191.52,
+      50.7,
+      149.16
+    ],
+    "heading": 0
+  },
+  "tikiPerformer": {
+    "position": [
+      10.93,
+      28.05,
+      -222.59
+    ],
+    "heading": 0
+  },
   "finance": {
     "position": [
       -22.969515407383014,
@@ -3346,5 +3361,13 @@
         37.98
       ]
     ]
+  },
+  "cat": {
+    "position": [
+      64.74,
+      32.6,
+      -27.87
+    ],
+    "heading": 0
   }
 }

@@ -27,3 +27,5 @@ export * from "./emotes.ts";
 
 export * from "./bags.ts";
 export * from "./water.ts";
+
+export * from "./football.ts";

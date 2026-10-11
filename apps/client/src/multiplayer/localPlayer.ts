@@ -5,6 +5,7 @@ import {
 export class LocalPlayer {
   body = createBody();
   enabled = false;
+  movementMultiplier = 1;
   private keys = new Set<string>();
   private boostHeld = false;
   private jump = false;
@@ -48,7 +49,8 @@ export class LocalPlayer {
   controls(yaw: number) {
     if (!this.enabled) this.clear();
     const direction = keyboardMovement(this.keys, yaw);
-    this.input.x = direction.x; this.input.z = direction.z;
+    const multiplier=this.body.vehicleId?1:Math.max(0,Math.min(1,this.movementMultiplier));
+    this.input.x = direction.x*multiplier; this.input.z = direction.z*multiplier;
     this.input.sprint = this.sprinting;
     this.input.slide = this.slide; this.slide = false;
     this.input.jump = this.jump;

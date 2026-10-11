@@ -56,3 +56,12 @@ Fortnite emote clip sources and filenames are listed in [emotes/CREDITS.md](emot
 
 - `helicopter-rotor.mp3`: 39–49 s of “Chinook helicopter flying over Greenwich in London”, JoBrodie (2016), https://commons.wikimedia.org/wiki/File:Chinook_helicopter_flying_over_Greenwich_in_London.ogg . CC0 1.0 https://creativecommons.org/publicdomain/zero/1.0/ . Edited into a 9.6-second mono loop with 70 Hz high-pass / 6.5 kHz low-pass filters, -18 LUFS normalization and a 400 ms wraparound crossfade. General helicopter rotor recording; not an exact recording of the modeled aircraft.
 `let-me-know.mp3`: "Let Me Know - Meme Sound Effect" (Future, "Let Me Know"), 11.7 s meme clip, copied unchanged. Rights remain with the original artist and label. It plays during the 10 s drowning timeout before a player respawns at the start.
+
+## Bench cat
+
+- `cat-meow.mp3`: “Meow.ogg”, cat Silas recorded by Dan Crosby (Dcrosby). Source: https://commons.wikimedia.org/wiki/File:Meow.ogg . Licensed CC BY-SA 3.0: https://creativecommons.org/licenses/by-sa/3.0/ . This adapted recording remains CC BY-SA 3.0. Changes: loudness normalization to -19 LUFS / -3 dBTP, MP3 encoding at 96 kbps.
+- `cat-purr.mp3`: “Whiskers' purr.ogg”, recorded by Adam Cuerden. Source: https://commons.wikimedia.org/wiki/File:Whiskers%27_purr.ogg . Released into the public domain by its author. Changes: 45 Hz high-pass / 2500 Hz low-pass, -22 LUFS / -4 dBTP normalization, edge fades, MP3 encoding at 96 kbps.
+
+- `cat-angry-yowl.mp3`: “Cat, Screaming, A.wav” by InspectorJ (www.jshaw.co.uk) of Freesound.org. Source: https://freesound.org/people/InspectorJ/sounds/415209/ . CC BY 4.0: https://creativecommons.org/licenses/by/4.0/ . Derived from the publicly served HQ preview; full cat scream, -15 LUFS / -2 dBTP normalization, 10 ms attack / 70 ms tail fades, 128 kbps MP3.
+
+- `cycling-kid-gut-genug-chorus.mp3`: restored existing original chorus edit from `origin/mini-games-2`; KITSCHKRIEG feat. Blumengarten & Shirin David, “Gut genug”, official video https://www.youtube.com/watch?v=0GnA8VYOfko (00:13.30–00:21.80). Edit metadata: `src/npcPrototype/src/npcs/cycling-kid/song.json`.
