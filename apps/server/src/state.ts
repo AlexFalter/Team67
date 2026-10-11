@@ -130,6 +130,7 @@ export const Npc = schema({
 export const TrafficCar = schema({
   x: t.number().default(0), y: t.number().default(0), z: t.number().default(0),
   rotY: t.number().default(0), speed: t.number().default(0),
+  kind: t.number().default(0), color: t.number().default(0),
 }, "TrafficCar");
 export const Bag = schema({x:t.number().default(0),y:t.number().default(0),z:t.number().default(0),vx:t.number().default(0),vy:t.number().default(0),vz:t.number().default(0),owner:t.string().default(''),thrower:t.string().default(''),flying:t.boolean().default(false),throwAt:t.number().default(0),releasedAt:t.number().default(0),spin:t.number().default(0)},'Bag');
 export type Bag = SchemaType<typeof Bag>;

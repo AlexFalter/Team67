@@ -22,6 +22,7 @@ export * from "./ticket.ts";
 
 export * from "./medals.ts";
 export * from "./traffic.ts";
+export * from "./trafficAppearance.ts";
 
 export * from "./bridgeCows.ts";
 
