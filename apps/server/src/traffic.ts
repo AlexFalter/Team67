@@ -84,7 +84,7 @@ export class TrafficManager {
     const now = this.state.serverTime, forwardX = Math.sin(car.rotY), forwardZ = Math.cos(car.rotY);
     for (const [target, player] of this.state.players) {
       const vehicle = player.vehicleId ? this.state.vehicles.get(player.vehicleId) : undefined;
-      if ((player.vehicleId && (!vehicle || isPassengerVehicle(vehicle))) || !canHit(target) || now < player.knockdownUntil ||
+      if ((player.vehicleId && (!vehicle || isPassengerVehicle(vehicle))) || !canHit(target) || now < player.knockdownUntil || now < player.invincibleUntil ||
         now - (this.playerHits.get(target) ?? -Infinity) < PAIR_COOLDOWN_MS) continue;
       const body = vehicle ?? player, radius = vehicle ? vehicleRadius(vehicle) : CAPSULE_RADIUS;
       // Capsule versus the car's oriented footprint; don't hit nearby sidewalk pedestrians.

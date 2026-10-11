@@ -19,6 +19,7 @@ export interface PlayerState {
   groundTime: number;
   jumpUntil: number;
   knockdownUntil: number;
+  invincibleUntil?: number;
   impactStartedAt?: number;
   impactX?: number;
   impactZ?: number;
@@ -107,6 +108,7 @@ export interface VehicleResult {
   message: string;
 }
 export interface Impulse {
+  recoveryProtectionMs?: number;
   from: string;
   ix: number;
   iy: number;

@@ -74,7 +74,7 @@ export class ActionHud {
     this.boost.style.setProperty("--boost-fill", `${remaining * 100}%`);
     this.boost.classList.toggle("boosting", this.local.sprinting && this.local.pushing && remaining > 0 && !p.limeBoostExhausted);
     this.boost.classList.toggle("exhausted", remaining === 0);
-    this.boost.setAttribute("aria-label", `Shift to boost, ${Math.ceil(remaining * 10)} seconds available`);
+    this.boost.setAttribute("aria-label", `Shift to boost, ${Math.ceil(remaining * LIME_BOOST_DURATION_MS / 1000)} seconds available`);
     const actions = this.getContext();
     const interaction = actions.find(action => action.key === "E");
     const hint = this.instructions.querySelector<HTMLElement>(".interaction-instruction")!;

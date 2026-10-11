@@ -10,7 +10,8 @@ import { withServer, until, startRound, delay } from "./fixture.ts";
 
 function setup() {
   const state = new RaceState({ phase: C.RoomPhase.Running, startedAt: 1000, endsAt: 100000, introComplete: true });
-  const machine = new MateMachine(state, C.flatWorld, () => .5, 1000);
+  let draw = 0;
+  const machine = new MateMachine(state, C.flatWorld, () => draw++ === 0 ? .5 : .999, 1000);
   const clients = ["a", "b"].map(id => {
     state.members.set(id, new RoomMember());
     state.players.set(id, new Player({ ...C.mateSite(C.flatWorld), z: -14 })); machine.join(id);
@@ -40,7 +41,7 @@ test("independent purchases enforce payment, refunds, retry delay, timed drop an
 
 test("invalid, remote, mounted, knocked-down, spectator, stale-round and finished commands cannot grant inventory", () => {
   const { state, machine, clients, send } = setup(), p = state.players.get("a")!, s = state.mates.get("a")!;
-  for (const flavor of [-1, 5, NaN, Infinity, .5, "2"]) machine.command(clients[0], { action: "select", flavor, roundStartedAt: 1000 }, 1000);
+  for (const flavor of [-1, 4, 5, NaN, Infinity, .5, "2"]) machine.command(clients[0], { action: "select", flavor, roundStartedAt: 1000 }, 1000);
   machine.command(clients[0], null, 1000); assert.equal(s.phase, "idle");
   p.z = -10; send(0, "select", 1000, 2); assert.equal(s.phase, "idle", "no back-wall interaction");
   p.z = -20; send(0, "select", 1000, 2); assert.equal(s.phase, "idle"); p.z = -14;
@@ -53,11 +54,11 @@ test("invalid, remote, mounted, knocked-down, spectator, stale-round and finishe
   machine.leave("a"); assert.equal(state.mates.has("a"), false);
 });
 
-test("drinking is single-use, gives 50% more walking and sprinting speed, and pauses the server timer while riding", () => {
+test("drinking is single-use, doubles walking and sprinting speed for eight seconds, and pauses the server timer while riding", () => {
   const { state, send, machine } = setup(), p = state.players.get("a")!;
   p.mateCount = 1; send(0, "use", 1000); send(0, "use", 1001);
   assert.equal(p.mateCount, 0); assert.equal(p.mateBoostMs, C.MATE_BOOST_MS);
-  assert.equal(p.mateDrinkStartedAt, 1000); assert.equal(C.MATE_SPEED_MULTIPLIER, 1.5);
+  assert.equal(p.mateDrinkStartedAt, 1000); assert.equal(C.MATE_SPEED_MULTIPLIER, 2); assert.equal(C.MATE_BOOST_MS, 8000);
   const normal = C.createBody(), boosted = C.createBody(); boosted.mateBoostMs = C.MATE_BOOST_MS;
   for (let i = 0; i < 60; i++) {
     C.stepPlayer(normal, { ...C.IDLE_INPUT, x: 1, sprint: true }, 1 / 60);
@@ -127,13 +128,13 @@ test("live clients buy independently; duplicate collection cannot steal rewards,
 });
 
 
-test("five selections include duplicate Ginger and exactly two work per round", () => {
-  assert.deepEqual(C.MATE_FLAVORS, ["Basic", "Light", "Mint", "Ginger", "Ginger"]);
+test("four distinct selections and exactly two work per round", () => {
+  assert.deepEqual(C.MATE_FLAVORS, ["Basic", "Light", "Mint", "Ginger"]);
   for (const randomValue of [0, .25, .5, .75, .999]) {
     const state = new RaceState({ phase: C.RoomPhase.Running, startedAt: 1000, endsAt: 100000, introComplete: true });
     const machine = new MateMachine(state, C.flatWorld, () => randomValue, 1000);
     let working = 0;
-    for (let flavor = 0; flavor < 5; flavor++) {
+    for (let flavor = 0; flavor < 4; flavor++) {
       const id = `choice-${flavor}`;
       state.members.set(id, new RoomMember());
       state.players.set(id, new Player({ ...C.mateSite(C.flatWorld), z: -14 })); machine.join(id);

@@ -14,6 +14,7 @@ export const TRAM_START_DISTANCE = 2 * TRAM_CARRIAGE_SPACING;
 export const POLYBAHN_TRACK_START = 2.75, POLYBAHN_START_DISTANCE = 5.5;
 export const railStart = (v: Pick<VehicleState, "kind">) => v.kind === TRAM_KIND ? TRAM_START_DISTANCE : POLYBAHN_START_DISTANCE;
 export const TRANSIT_BOARDING_MS = 5000, TRANSIT_DOOR_MS = 900;
+export const TRAM_BOARDING_MS = 15000;
 export const isRail = (v: Pick<VehicleState, "kind">) => v.kind === TRAM_KIND || v.kind === POLYBAHN_KIND;
 export const isPassengerVehicle = (v: Pick<VehicleState, "kind">) => v.kind === 1 || isRail(v);
 export const isRideable = (v: Pick<VehicleState, "kind">) => v.kind < 3 || v.kind === 7 || isRail(v);

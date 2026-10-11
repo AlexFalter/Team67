@@ -40,12 +40,12 @@ test('Lime uses terrain collision and accelerates to a higher speed with Shift',
  const state=new RaceState(),manager=new VehicleManager(state,C.zurichWorld);const lime=state.vehicles.get('lime-1');assert.ok(lime,'configured Lime must spawn on the current map');assert.equal(lime.kind,C.LIME_KIND);assert.ok(Math.hypot(lime.x-C.NPC_LAYOUT.lime.position[0],lime.z-C.NPC_LAYOUT.lime.position[1])<5);void manager;
 });
 
-test('Lime boost lasts ten seconds, never recharges, even on foot or after remounting',()=>{
+test('Lime boost lasts seven seconds at twenty percent less speed, never recharges, even on foot or after remounting',()=>{
  const world={...C.flatWorld,name:'zurich' as const,height:()=>0,blocked:()=>false,bounds:{minX:-10000,maxX:10000,minZ:-10000,maxZ:10000}};
  const p=C.createBody();Object.assign(p,{vehicleId:'lime',vehicleKind:C.LIME_KIND,seat:0,y:C.LIME_DECK_HEIGHT});
  const boost={...C.IDLE_INPUT,z:1,sprint:true};
- for(let i=0;i<99;i++)C.stepPlayer(p,boost,.1,world);
- assert.equal(p.limeBoostMs,100);assert.ok(p.vz>C.LIME_SPEED+5);
+ for(let i=0;i<69;i++)C.stepPlayer(p,boost,.1,world);
+ assert.equal(p.limeBoostMs,100);assert.ok(Math.abs(p.vz-C.LIME_BOOST_SPEED)<.01);assert.equal(C.LIME_BOOST_SPEED,18*.8);assert.equal(C.LIME_BOOST_DURATION_MS,7000);
  C.stepPlayer(p,boost,.1,world);assert.equal(p.limeBoostMs,0);
  for(let i=0;i<20;i++)C.stepPlayer(p,boost,.1,world);
  assert.equal(p.limeBoostMs,0);assert.ok(Math.abs(p.vz-C.LIME_SPEED)<.01,'empty boost returns to cruising');
@@ -57,9 +57,9 @@ test('Lime boost lasts ten seconds, never recharges, even on foot or after remou
  assert.equal(p.limeBoostMs,0,'remounting cannot recharge');
  const fresh=C.createBody();Object.assign(fresh,{vehicleId:'lime',vehicleKind:C.LIME_KIND,seat:0});
  C.stepPlayer(fresh,{...C.IDLE_INPUT,sprint:true},.1,world);assert.equal(fresh.limeBoostMs,C.LIME_BOOST_DURATION_MS,'stationary does not spend boost');
- C.stepPlayer(fresh,boost,.1,world);assert.equal(fresh.limeBoostMs,9900);
- C.stepPlayer(fresh,{...boost,sprint:false},.1,world);assert.equal(fresh.limeBoostMs,9900,'releasing preserves unused boost');
- fresh.seat=1;C.stepPlayer(fresh,boost,.1,world);assert.equal(fresh.limeBoostMs,9900,'rear passenger cannot spend boost');
+ C.stepPlayer(fresh,boost,.1,world);assert.equal(fresh.limeBoostMs,6900);
+ C.stepPlayer(fresh,{...boost,sprint:false},.1,world);assert.equal(fresh.limeBoostMs,6900,'releasing preserves unused boost');
+ fresh.seat=1;C.stepPlayer(fresh,boost,.1,world);assert.equal(fresh.limeBoostMs,6900,'rear passenger cannot spend boost');
 });
 
 

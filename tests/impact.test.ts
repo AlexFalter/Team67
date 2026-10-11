@@ -70,3 +70,43 @@ test("directional fall and articulated get-up agree with the first-person camera
     assert.ok(camera.position.y > 1.59); disposeAvatar(mesh);
   }
 });
+
+test('recovery protection blocks repeat impulses for 3s after cars, 2s after bikes and 1s after punches', () => {
+  for (const kind of ["vehicle", "bike", "punch"] as const) {
+    const p = C.createBody();
+    const hit = kind !== 'punch' ? C.collisionImpact(kind, 12, 4, 0, kind)
+      : { from: 'punch', ix: 8, iy: 1.5, iz: 0, knockdown: true, durationMs: 1600 };
+    C.applyImpulse(p, hit, 1000);
+    const expiry = p.knockdownUntil + (kind === "vehicle" ? 3000 : kind === "bike" ? 2000 : 1000);
+    assert.equal(p.invincibleUntil, expiry);
+    const before = { vx: p.vx, vy: p.vy, until: p.knockdownUntil };
+    for (const at of [1500, p.knockdownUntil, expiry - 1]) {
+      C.applyImpulse(p, { ...C.collisionImpact('bike', 9, 2, 0, 'bike'), at }, at);
+      assert.equal(p.vx, before.vx); assert.equal(p.vy, before.vy); assert.equal(p.knockdownUntil, before.until);
+    }
+    C.applyImpulse(p, { ...hit, at: expiry }, expiry);
+    assert.ok(p.knockdownUntil > expiry, 'can be hit again exactly when protection ends');
+    C.respawn(p); assert.equal(p.invincibleUntil, 0);
+  }
+});
+
+test('car ejection carries bike riders farther than a solo bike crash and protection preserves remounted riders', () => {
+  const travel = (car: boolean) => {
+    const state = new RaceState(), manager = new VehicleManager(state), v = state.vehicles.get('bike-1')!;
+    v.driver = 'rider'; v.rotY = Math.PI / 2;
+    const p = C.createBody(); Object.assign(p, { vehicleId: 'bike-1', vehicleKind: 2 });
+    state.players.set('rider', new Player(p));
+    manager.crashBike('bike-1', 1000, (from, _target, _x, _y, _z, ix, iy, iz, down, kind) => {
+      p.vehicleId = ''; C.applyImpulse(p, C.collisionImpact(from, ix, iy, iz, kind === 3 ? 'vehicle' : 'bike', down), 1000);
+    }, 10, car ? { from: 'car', rotY: Math.PI / 2, kind: 3 } : undefined);
+    for (let i = 0; i < 60; i++) C.stepMovement(p, C.IDLE_INPUT, 1 / 60, 1000 + i * 1000 / 60);
+    return p.x;
+  };
+  assert.ok(travel(true) > travel(false) * 2, 'car impact launches the rider farther in actual movement');
+  const state = new RaceState(), manager = new VehicleManager(state), v = state.vehicles.get('bike-1')!;
+  state.serverTime = 5000; v.driver = 'rider';
+  state.players.set('rider', new Player({ vehicleId: 'bike-1', vehicleKind: 2, invincibleUntil: 6000 }));
+  let hits = 0;
+  manager.runOver('bike-1', 5000, () => hits++, 20, { from: 'car', rotY: 0, kind: 3 });
+  assert.equal(hits, 0); assert.equal(v.driver, 'rider'); assert.equal(v.fallenUntil, 0);
+});

@@ -37,7 +37,10 @@ test('moving traffic runs over road pedestrians once while leaving sidewalks, pa
   foot.knockdownUntil=state.serverTime+2500;foot.x=car.x;
   state.serverTime+=500;manager.tick(.05,[],hit,id=>id!=='spectator');
   assert.equal(hits.length,1,'already knocked-down players are not hit again');
-  foot.knockdownUntil=0;foot.x=car.x;state.serverTime+=500;
+  foot.knockdownUntil=0;foot.invincibleUntil=state.serverTime+3000;foot.x=car.x;state.serverTime+=500;
+  manager.tick(.05,[],hit,id=>id!=='spectator');
+  assert.equal(hits.length,1,'standing players remain protected after getting up');
+  foot.invincibleUntil=0;foot.x=car.x;state.serverTime+=500;
   manager.settings({density:1,spawnInterval:.25,speedLimit:1});
   manager.tick(.05,[],hit,id=>id!=='spectator');
   assert.equal(hits.length,1,'traffic below the impact speed threshold does not knock players down');
@@ -63,7 +66,9 @@ test('Colyseus traffic impacts send the victim an impulse and replicate knockdow
     const impact=impulses.find(h=>h.from.startsWith('traffic-'))!;
     assert(impact.durationMs>=2300&&impact.durationMs<=4200,'uses the vehicle recovery timeline from main');
     assert(impact.at>0);assert(Math.hypot(impact.ix,impact.iy,impact.iz)<=25.001,'shared impact force limit');
-    assert(host.state.players.get(guest.sessionId)!.impactStrength!>0,'new impact animation state replicates');
+    const replicated = host.state.players.get(guest.sessionId)!;
+    assert(replicated.impactStrength!>0,'new impact animation state replicates');
+    assert.equal(replicated.invincibleUntil,replicated.knockdownUntil+3000,'observer receives three seconds of recovery protection');
     await until(()=>hostBumps.some(b=>b.a.startsWith('traffic-')&&b.b===guest.sessionId)&&guestBumps.some(b=>b.a.startsWith('traffic-')&&b.b===guest.sessionId),'traffic bump replicated to both clients');
   });
 });
