@@ -57,3 +57,17 @@ test("dead bikes keep sparking at a bounded rate and each particle expires", () 
   effects.battery("bike", 25000, p, 2000); assert.equal(scene.children.length, 0, "fresh round stops sparks");
   geometry.dispose();
 });
+
+test("jump takeoff and landing emit no dust while slides retain their ground trail", () => {
+  const scene = new Scene(), geometry = new SphereGeometry(.07, 6, 4);
+  const effects = Object.create(Effects.prototype) as Effects;
+  Object.assign(effects, { scene, geometry, particles: [], motion: new Map(), queue: [] });
+  const p = createBody(); p.vz = 11; p.sprintJump = true;
+  effects.trail("player", p, 0);
+  p.grounded = false; p.vy = 8; p.anim = 2; effects.trail("player", p, 100);
+  p.grounded = true; p.vy = 0; p.anim = 1; effects.trail("player", p, 200);
+  assert.equal(scene.children.length, 0);
+  p.anim = SLIDE_ANIM; effects.trail("player", p, 300);
+  assert.equal(scene.children.length, 3);
+  effects.update(300, 2); geometry.dispose();
+});

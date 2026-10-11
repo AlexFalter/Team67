@@ -135,8 +135,11 @@ export class MapGame {
   private contextActions(): ContextAction[] {
     if (this.npcs.active) return [];
     const p = this.local.body, actions: ContextAction[] = [];
-    const icon = p.vehicleId ? "leave" : this.npcs.nearbyTicket ? "polybahn" : this.npcs.nearbyInteraction ? "person" : this.mate.nearby ? "mate" : this.vehicles.interactionKind(p);
-    if (icon) actions.push({ icon, key: "E", label: p.vehicleId ? "Leave vehicle" : this.npcs.nearbyTicket ? "Buy Polybahn ticket" : icon === "person" ? "Talk / interact" : icon === "mate" ? "Use Mate machine" : p.vehicleId ? "Get off" : icon === "bike" ? "Ride / scan PubliBike" : "Board transport", enabled: p.knockdownUntil <= this.net.now(), run: () => this.local.requestInteraction() });
+    const npcPrompt = this.npcs.interactionPrompt;
+    const near = this.vehicles.items.get(this.vehicles.nearestId(p))?.latest;
+    const icon = npcPrompt?.icon ?? (p.vehicleId ? "leave" : this.mate.nearby ? "mate" : this.vehicles.interactionKind(p));
+    const label = npcPrompt?.label ?? (p.vehicleId ? "Leave vehicle" : this.mate.nearby ? "Use Mate machine" : near?.kind === C.LIME_KIND ? "Ride Lime scooter" : icon === "bike" ? (this.net.room?.state.publiBikes?.has(this.vehicles.nearestId(p)) ? "Unlock PubliBike" : "Ride bike") : near && C.isRail(near) ? `Enter ${C.transitName(near)}` : "Enter vehicle");
+    if (icon) actions.push({ icon, key: "E", label, enabled: p.knockdownUntil <= this.net.now(), run: () => this.local.requestInteraction() });
     if (p.mateCount > 0) actions.push({ icon: "mate", key: "1", label: "Drink Mate", enabled: this.mate.canConsume, run: () => this.mate.consume() });
     return actions;
   }
@@ -171,7 +174,7 @@ export class MapGame {
       this.firstBody.visible = this.avatarReady && firstPersonBodyVisible(this.local.body, this.view.perspective);
       if(this.view.perspective===0&&this.npcs.karambit?.occupiesHands()&&!this.local.body.vehicleId)this.firstBody.visible=false;
       if (this.publiBikes.active || this.mate.active || this.npcs.hideAvatar) this.mesh.visible = this.firstBody.visible = false;
-      this.effects.trail(this.net.room.sessionId, this.local.body, now, this.view.perspective !== 0);
+      this.effects.trail(this.net.room.sessionId, this.local.body, now);
       if (!this.publiBikes.active && !this.mate.active && !this.npcs.active) {
         const vehicle = this.vehicles.items.get(this.local.body.vehicleId)?.rendered;
         this.view.update(this.local.body, dt, vehicle && isRail(vehicle) ? railFrame(vehicle, railSeat(vehicle, this.local.body.seat).part) : undefined);
@@ -180,7 +183,7 @@ export class MapGame {
       if((this.local.body.moodleSitUntil??0)>this.net.now()&&!this.npcs.active){this.mesh.visible=this.avatarReady;this.firstBody.visible=false;const p=this.local.body;this.view.camera.position.set(p.x+Math.sin(this.view.yaw)*3.6,p.y+1.7,p.z+Math.cos(this.view.yaw)*3.6);this.view.camera.lookAt(p.x,p.y+.55,p.z);}
     }
     if (!this.net.canPlay || this.exam.active) { this.mesh.visible = this.firstBody.visible = false; this.vehicles.stopDriving(); }
-    this.effects.speed(this.local.body, this.view.camera, dt, this.net.canPlay && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.view.perspective === 0);
+    this.effects.speed(this.local.body, this.view.camera, dt, this.net.canPlay && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active && (this.view.perspective === 0 || !!this.local.body.vehicleId));
     this.roomFlow.update();
     this.vehicles.render(renderTime, dt, "other"); this.remotes.render(renderTime, this.vehicles.items, dt);
     for (const [id, remote] of this.remotes.players) {

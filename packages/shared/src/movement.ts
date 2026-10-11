@@ -27,6 +27,7 @@ export function createBody(): Body {
     simTime: 0,
     vehicleKind: -1,
     attackReadyAt: 0,
+    limeBoostMs: C.LIME_BOOST_DURATION_MS, limeBoostExhausted: false,
     mateCount: 0,
     mateBoostMs: 0, mateFlavor: 2, mateDrinkStartedAt: 0,
   };
@@ -197,7 +198,15 @@ export function stepPlayer(p: Body, input: Input, dt: number, world: MovementWor
       const v = createVehicle(p.vehicleKind, p.x, p.z);
       v.y = p.y - (p.vehicleKind === C.LIME_KIND ? C.LIME_DECK_HEIGHT : p.vehicleKind===2 ? C.BIKE_SEAT_HEIGHT : C.CART_SEAT_HEIGHT);
       v.vx = p.vx; v.vz = p.vz; v.rotY = p.rotY;
-      impact = stepCart(v, input, dt, world);
+      let drivingInput = input;
+      if (p.vehicleKind === C.LIME_KIND) {
+        const remaining = p.limeBoostMs ?? C.LIME_BOOST_DURATION_MS;
+        const boosting = input.sprint && Math.hypot(input.x, input.z) > 0 && !p.limeBoostExhausted && remaining > 0;
+        p.limeBoostMs = Math.max(0, Math.min(C.LIME_BOOST_DURATION_MS, remaining - (boosting ? dt * 1000 : 0)));
+        if (p.limeBoostMs === 0) p.limeBoostExhausted = true;
+        drivingInput = { ...input, sprint: boosting };
+      }
+      impact = stepCart(v, drivingInput, dt, world);
       seatPosition(v, p.seat, p);
       p.vx = v.vx; p.vz = v.vz; p.vy = 0; p.rotY = v.rotY;
     }
