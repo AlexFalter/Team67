@@ -20,6 +20,7 @@ export class GameControls {
   private releasePauseAt = 0;
   private playgroundPaused = false;
   private interactionEscapeHeld = false;
+  private interactionInputPending = false;
   private actions: ActionHud;
   constructor(private canvas: HTMLCanvasElement, private local: LocalPlayer, private view: PlayerView, private ready: () => boolean, private suspended: () => boolean = () => false, now: () => number = () => Date.now(), context: () => ContextAction[] = () => [], weapon: () => WeaponAction | undefined = () => undefined, respawn: () => void = () => {}) {
     const options = { signal: this.abort.signal };
@@ -43,7 +44,7 @@ export class GameControls {
       if(this.externalCapture?.()){
         const released=this.captured&&document.pointerLockElement!==canvas;
         this.recovery?.cancel();this.capturePending=false;this.captured=document.pointerLockElement===canvas;
-        if(released&&this.externalMenuReady?.()&&this.menu.hidden){this.releasePauseAt=Date.now();this.pause();}return;
+        if(released&&!this.interactionInputPending&&this.externalMenuReady?.()&&this.menu.hidden){this.releasePauseAt=Date.now();this.pause();}return;
       }
       if(document.pointerLockElement===canvas)this.cursor.changed();
       else {this.recovery?.changed();this.syncPointerLock();}
@@ -53,9 +54,7 @@ export class GameControls {
       this.resumeKeys.delete(e.code);
       if(e.code==='Escape') {
         this.releasePauseAt=0;
-        const dismissed = this.interactionEscapeHeld;
         this.interactionEscapeHeld = false;
-        if (dismissed && this.menu.hidden) this.restoreGameplay();
       }
     }, options);
     window.addEventListener("blur", () => { if (local.enabled||this.capturePending) {this.pause();this.recaptureOnInput=true;} }, options);
@@ -88,11 +87,15 @@ export class GameControls {
     // A captured cursor released during gameplay is Escape, even before the
     // first mouse movement after an interaction. Intentional releases clear
     // capture ownership or make gameplay unavailable before releasing it.
-    if (released && !this.interactionEscapeHeld && this.menu.hidden && this.ready() && !this.suspended()){this.releasePauseAt=Date.now();this.pause();}
+    if (released && !this.interactionEscapeHeld && !this.interactionInputPending && this.menu.hidden && this.ready() && !this.suspended()){this.releasePauseAt=Date.now();this.pause();}
   }
   resumeAfterInteraction() {this.restoreGameplay();}
   restoreGameplay() {
-    if (this.playgroundPaused || this.interactionEscapeHeld) return;
+    if (this.interactionEscapeHeld || this.interactionInputPending) {
+      this.local.enabled = false; this.local.clear(); this.recaptureOnInput = true;
+      return;
+    }
+    if (this.playgroundPaused) return;
     if (!this.ready() || this.suspended() || !document.hasFocus()) return;
     this.available=true;this.recaptureOnInput=true;
     this.captured = document.pointerLockElement === this.canvas;
@@ -117,6 +120,7 @@ export class GameControls {
     this.local.enabled=false;this.local.clear();this.menu.hidden=true;this.recaptureOnInput=true;this.update();
   }
   async resume() {
+    this.interactionInputPending = false;
     this.playgroundPaused = false;
     if(this.externalMenuReady?.()&&!this.suspended()&&document.hasFocus()){
       this.menu.hidden=true;this.local.enabled=false;this.local.clear();this.canvas.focus();
@@ -147,7 +151,12 @@ export class GameControls {
     this.update(); if (!this.menu.hidden) document.querySelector<HTMLButtonElement>("#resume")!.focus();
   }
   holdPlaygroundMenu() { this.playgroundPaused = true; this.pause(); }
-  holdInteractionEscape() { this.interactionEscapeHeld = true; }
+  holdInteractionEscape() {
+    this.interactionEscapeHeld = true;
+    this.interactionInputPending = true;
+    this.recaptureOnInput = true;
+    this.recovery?.cancel(); this.capturePending = false;
+  }
   suspendForMap() {this.suspendForInteraction();this.menu.hidden=true;}
   suspendForInteraction() {
     this.recovery?.cancel();this.resumeKeys?.clear();this.capturePending=false;
@@ -161,7 +170,7 @@ export class GameControls {
     const available=this.ready()&&!this.suspended();
     const returned=available&&!this.available;this.available=available;
     if(returned&&this.menu.hidden)this.restoreGameplay();
-    if(!this.interactionEscapeHeld&&(this.ready()||(this.externalCapture?.()&&this.externalMenuReady?.()))&&!this.suspended()&&this.captured&&!this.capturePending&&this.menu.hidden&&document.pointerLockElement!==this.canvas){
+    if(!this.interactionEscapeHeld&&!this.interactionInputPending&&(this.ready()||(this.externalCapture?.()&&this.externalMenuReady?.()))&&!this.suspended()&&this.captured&&!this.capturePending&&this.menu.hidden&&document.pointerLockElement!==this.canvas){
       // The frame may observe Escape before pointerlockchange is delivered.
       this.captured=false;this.releasePauseAt=Date.now();this.pause();
     }

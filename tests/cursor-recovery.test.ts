@@ -16,7 +16,7 @@ async function fixture(run: (controls: GameControls, local: { enabled: boolean; 
 }
 function sync(controls: GameControls) { (controls as unknown as { syncPointerLock(): void }).syncPointerLock(); }
 
-test('Escape dismissing an interaction waits for release before recapturing and never opens pause', async () => {
+test('Escape dismissing an interaction waits for fresh gameplay input and never opens pause', async () => {
   await fixture(async (controls, local, menu, doc) => {
     controls.holdInteractionEscape();
     local.enabled = false;
@@ -28,6 +28,10 @@ test('Escape dismissing an interaction waits for release before recapturing and 
     assert.equal(menu.hidden, true, 'dismissal is not a pause gesture');
     Object.assign(controls, { interactionEscapeHeld: false });
     await controls.restoreGameplay();
+    assert.equal(doc.pointerLockElement, null, 'keyup and later frames cannot recapture during native Escape processing');
+    controls.update(); sync(controls);
+    assert.equal(menu.hidden, true, 'late native cursor release cannot open settings');
+    await controls.resume();
     assert.notEqual(doc.pointerLockElement, null);
     assert.equal(menu.hidden, true);
     doc.pointerLockElement = null;
