@@ -62,7 +62,7 @@ button:disabled { cursor: wait; opacity: 0.6; }
 #lobby .hint { font-size: 11px; }
 #lobby [role=status] { color: #ffd38a; }
 #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; text-shadow: 0 1px 3px #000; pointer-events: none; }
-#pause { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; background: #0c1728bf; overflow: auto; }
+#pause { position: absolute; inset: 0; z-index: 300; display: grid; place-items: center; background: #0c1728bf; overflow: auto; }
 #pause > div { width: min(440px, calc(100% - 48px)); padding: 24px; background: #142333; border: 1px solid #60768a; border-radius: 12px; }
 #pause button { display: block; width: 100%; margin: 10px 0; }
 #pause label { display: block; margin: 16px 0 8px; }
@@ -245,3 +245,8 @@ main:has(.game-loading) > :is(header, footer) { display: none; }
 @keyframes boost-shimmer { from { transform:translateX(-100%); } to { transform:translateX(100%); } }
 @media (prefers-reduced-motion:reduce) { #combat-actions .lime-boost.boosting::after { animation:none; } }
 @media (max-width:600px) { #combat-actions .lime-boost { right:auto; left:50%; transform:translateX(-50%); bottom:calc(100% + 56px); width:168px; height:36px; } }
+@media(max-width:420px){#combat-actions,.context-actions{gap:8px}#combat-actions button{width:42px;height:42px;padding:7px}}
+
+.combat-action{align-content:start}.action-label{font:10px/1.1 Arial,sans-serif;color:#edf1ef;text-shadow:0 1px 3px #000}.action-label[hidden]{display:none}
+
+.capture-continue{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);z-index:70;padding:7px 12px;border-radius:6px;background:#102132dc;color:#fff;font:12px Arial,sans-serif;pointer-events:none}.capture-continue[hidden]{display:none}.capture-continue:focus-visible{outline:2px solid #d7f87a;outline-offset:3px}

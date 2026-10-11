@@ -45,3 +45,13 @@ Tourist randomized Mandarin dialogue: twelve original game lines rendered with t
 `bus-engine.mp3`, `car-engine.mp3`, `rail-running.mp3`, `vehicle-door.mp3`, `footstep-left.mp3`, `footstep-right.mp3` and `collision-thud.mp3` are the recordings credited above, copied unchanged from mini-games-2. In this game: carts, the NPC car and the Jane Street limousine use the car engine; the shuttle uses the bus engine; tram and Polybahn use the rail bed and door sound; footsteps, jump, landing and wall bumps use the movement recordings; punches and run-overs use the collision thud.
 
 `bo3-medal-earned.mp3`: the Call of Duty: Black Ops III "medal earned" sound, copied unchanged from mini-games-2 (no further source details were recorded there). Rights remain with Activision / Treyarch. It plays when you run another player over with a cart or PubliBike (once per player per round) and when you accept the Frankfurt scooter gift.
+
+## Michael Jackson moonwalk NPC
+
+`michael-jackson-hee-hee.mp3` is the existing mini-games-2 sample from [Myinstants](https://www.myinstants.com/en/instant/michael-jackson-hee-hee-40277/) uploaded by isaiah29. Original recording, approximately 1.4 seconds, normalized to -14 LUFS / -1 dBTP with fades, 128 kbps MP3. Attribution records its source and does not grant redistribution rights.
+
+Fortnite emote clip sources and filenames are listed in [emotes/CREDITS.md](emotes/CREDITS.md).
+
+## Interview helicopter
+
+- `helicopter-rotor.mp3`: 39–49 s of “Chinook helicopter flying over Greenwich in London”, JoBrodie (2016), https://commons.wikimedia.org/wiki/File:Chinook_helicopter_flying_over_Greenwich_in_London.ogg . CC0 1.0 https://creativecommons.org/publicdomain/zero/1.0/ . Edited into a 9.6-second mono loop with 70 Hz high-pass / 6.5 kHz low-pass filters, -18 LUFS normalization and a 400 ms wraparound crossfade. General helicopter rotor recording; not an exact recording of the modeled aircraft.

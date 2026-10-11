@@ -6,6 +6,25 @@ import {Player,RaceState} from '../apps/server/src/state.ts';
 import {VehicleManager} from '../apps/server/src/vehicles.ts';
 import {Vehicles} from '../apps/client/src/multiplayer/vehicles.ts';
 
+test('normal client interaction boards the free rear position, hides full scooters, and keeps single-seat vehicles exclusive',()=>{
+ const state=new RaceState(),manager=new VehicleManager(state),sent:unknown[][]=[];
+ const a={sessionId:'a',send:()=>{}} as unknown as Client,b={sessionId:'b',send:()=>{}} as unknown as Client;
+ state.players.set('a',new Player());state.players.set('b',new Player());
+ manager.add('lime-1',C.createVehicle(C.LIME_KIND));
+ const lime=state.vehicles.get('lime-1')!,body=C.createBody();
+ const client=Object.assign(Object.create(Vehicles.prototype),{
+  items:new Map([['lime-1',{latest:lime,rendered:lime}]]),
+  net:{now:()=>1000,room:{state,send:(...args:unknown[])=>sent.push(args)}},
+ }) as Vehicles;
+ manager.enter(a,'lime-1',1000);
+ assert.equal(client.nearestId(body),'lime-1','an occupied front position must not prevent rear boarding');
+ client.interact(body);assert.deepEqual(sent.pop(),['vehicleEnter','lime-1']);
+ manager.enter(b,'lime-1',1000);assert.equal(client.nearestId(body),'','a full scooter is unavailable');
+ manager.exit(b);assert.equal(client.nearestId(body),'lime-1','rear exit makes the scooter available again');
+ lime.kind=2;assert.equal(client.nearestId(body),'','an occupied bicycle stays exclusive');
+ lime.kind=C.LIME_KIND;lime.fallenUntil=2000;assert.equal(client.nearestId(body),'','recovery still blocks boarding');
+});
+
 test('Lime holds two riders, only the front steers, and the last exit needs a parking photo',()=>{
  const state=new RaceState(),manager=new VehicleManager(state),messages:C.VehicleResult[]=[];
  const clients=['a','b','c'].map(sessionId=>({sessionId,send:(_type:string,data:C.VehicleResult)=>messages.push(data)}) as unknown as Client);

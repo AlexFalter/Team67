@@ -1,5 +1,5 @@
 .phone-handset .phone-speaker{width:64px;height:5px;background:#12212b;border-radius:5px;margin:0 auto 12px}
-#game-phone{position:fixed;right:30px;bottom:80px;z-index:90;font-family:Arial,sans-serif}
+#game-phone{position:fixed;right:30px;bottom:80px;z-index:190;font-family:Arial,sans-serif}
 #phone-toggle{position:absolute;right:0;bottom:0;white-space:nowrap;background:#18212de8;color:white;border:1px solid #ffffff50;border-radius:5px;padding:10px 14px;cursor:pointer}
 #phone-toggle b{background:#ee7840;border-radius:20px;padding:3px 6px;margin-left:8px}
 #phone-notification{position:absolute;right:0;bottom:55px;width:290px;background:#18212df5;border:0;border-left:4px solid #ee7840;color:white;padding:15px;text-align:left;cursor:pointer;box-shadow:0 8px 24px #0006;animation:phone-alert .25s ease-out}
@@ -69,4 +69,4 @@
 #phone-device{z-index:170}#phone-toggle,#phone-notification{pointer-events:auto}#game-phone:not(.open) #phone-device{pointer-events:none}
 
 .phone-moodle-setting{display:flex;align-items:center;gap:6px;background:#edf0f4;color:#234579;padding:8px;font:11px Arial}.moodle-penalty{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#152030ed;border:1px solid #db716a;border-radius:8px;padding:14px 20px;z-index:85;color:#fff;font:bold 14px Arial}#game-phone{pointer-events:none}#game-phone button,#game-phone.open #phone-device{pointer-events:auto}
-@media(max-width:600px){#game-phone{right:14px;bottom:70px}}
+@media(max-width:600px){#game-phone{right:14px;bottom:110px}}

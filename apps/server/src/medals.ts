@@ -6,11 +6,12 @@ export class PlayerMedals {
  private sequence = 0;
  private punches = new Map<string, Map<string, number>>();
  private bikes = new Map<string, Set<string>>();
- record(attacker: string, target: string, kind: 'punch' | 'bicycle', roundStartedAt: number): MedalAward | undefined {
+ record(attacker: string, target: string, kind: 'punch' | 'bicycle' | 'bag', roundStartedAt: number): MedalAward | undefined {
   if (!attacker || !target || attacker === target) return;
   const ids: PlayerMedalId[] = [];
   if (!this.firstBlood) { this.firstBlood = true; ids.push('firstBlood'); }
-  if (kind === 'bicycle') {
+  if (kind === 'bag') {ids.push('bagged');}
+  else if (kind === 'bicycle') {
    const victims = this.bikes.get(attacker) ?? new Set<string>(); this.bikes.set(attacker, victims);
    if (!victims.has(target)) { victims.add(target); ids.push('bicycleHit'); }
   } else {
@@ -21,6 +22,7 @@ export class PlayerMedals {
   }
   return ids.length ? { ids, eventKey: `${roundStartedAt}:${++this.sequence}`, roundStartedAt } : undefined;
  }
+ practiceBag(roundStartedAt:number):MedalAward {return {ids:['bagged'],eventKey:`${roundStartedAt}:${++this.sequence}:practice`,roundStartedAt};}
  leave(id: string) { this.punches.delete(id); this.bikes.delete(id); }
  reset() { this.firstBlood = false; this.sequence = 0; this.punches.clear(); this.bikes.clear(); }
 }

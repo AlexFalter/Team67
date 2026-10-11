@@ -1,3 +1,4 @@
+import {bagHillLift} from "./bags.ts";
 import data from "./zurich-world.json";
 import * as C from "./constants.ts";
 import { raceSpawnPoint } from "./battleBus.ts";
@@ -167,7 +168,7 @@ export const zurichWorld: MovementWorld = {
   // surface at or just above the feet; e.g. the street under the Polybahn bridge vs. the track above it,
   // or a hall floor vs. the corridor floor below it. Without `y` (placement queries) the corridor wins.
   height: (x, z, y) => {
-    const floor = passageFloor(x, z), ground = groundHeight(x, z);
+    const floor = passageFloor(x, z), native = groundHeight(x, z), ground = native === undefined ? undefined : native + bagHillLift(x,z);
     if (floor === undefined || ground === undefined) return floor ?? ground;
     if (y === undefined) return floor;
     const reach = y + C.MAX_GROUND_STEP;

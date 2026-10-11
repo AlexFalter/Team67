@@ -34,6 +34,15 @@ export class Network {
   onMateResult?: (result: import("@race/shared").MateResult) => void;
   onNpcResult?: (result: import("@race/shared").NpcResult) => void;
   onTicketResult?: (result: import('@race/shared').TicketResult) => void;
+  onBagResult?: (data:{ok:boolean;action:string;message:string;roundStartedAt:number})=>void;
+  onEmoteChallengeResult?: (data:{ok:boolean;step:number;unlocked:boolean;reason?:string;roundStartedAt:number})=>void;
+  private emoteUnlockRound?: number;
+  get emotesUnlocked() { return !!this.room && (this.room.state.players.get(this.room.sessionId)?.emotesUnlocked === true || this.emoteUnlockRound === this.room.state.startedAt); }
+  onMapTeleport?: (data:{from:{x:number;y:number;z:number};target:{x:number;y:number;z:number};roundStartedAt:number})=>void;
+  private spectatorRound?:number;
+  onSpectate?:()=>void;
+  get spectating(){return !!this.room&&this.room.state.phase===RoomPhase.Running&&this.spectatorRound===this.room.state.startedAt;}
+  requestSpectate(){if(this.canPlay)this.room.send("spectate",{roundStartedAt:this.room.state.startedAt});}
   npcPaused = false;
   now() {
     return Date.now() + this.offset;
@@ -49,7 +58,7 @@ export class Network {
       : `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}`;
     const client = new Client(url);
     const room = selection.mode === "create"
-      ? await client.create<WorldState>("race", { code: selection.code, character: selection.character, name: selection.name, devMode: selection.devMode, skipIntro: selection.skipIntro, goldPubliBikes: selection.goldPubliBikes, railCrashProtection: selection.railCrashProtection })
+      ? await client.create<WorldState>("race", { code: selection.code, character: selection.character, name: selection.name, devMode: selection.devMode, adminMode: selection.adminMode, moodleEnabled: selection.moodleEnabled, noCarCollisions: selection.noCarCollisions, mapTeleport:selection.mapTeleport, skipIntro: selection.skipIntro, goldPubliBikes: selection.goldPubliBikes, railCrashProtection: selection.railCrashProtection })
       : await client.joinById<WorldState>(selection.code, { character: selection.character, name: selection.name });
     // This prototype releases seats on disconnect and has no server reconnection grace.
     room.reconnection.enabled = false;
@@ -57,6 +66,8 @@ export class Network {
       await room.leave().catch(() => {});
       return;
     }
+    this.spectatorRound=undefined;
+    this.emoteUnlockRound = undefined;
     this.room = room;
     this.status = "Connected";
     this.room.onStateChange((state) => {
@@ -74,6 +85,7 @@ export class Network {
         this.initialized = true;
       }
       if (own) {
+        body.bagId=own.bagId;
         body.mateCount = own.mateCount; body.mateBoostMs = own.mateBoostMs;
         body.mateFlavor = own.mateFlavor; body.mateDrinkStartedAt = own.mateDrinkStartedAt;
         body.attackReadyAt = Math.max(body.attackReadyAt, own.attackReadyAt);
@@ -88,6 +100,10 @@ export class Network {
       this.introComplete = state.introComplete;
       onPatch(state, this.room.sessionId);
     });
+    this.room.onMessage<{ok:boolean;roundStartedAt:number}>('spectateResult',data=>{if(data.ok&&data.roundStartedAt===this.room.state.startedAt){this.spectatorRound=data.roundStartedAt;this.onSpectate?.();}});
+    this.room.onMessage<{from:{x:number;y:number;z:number};target:{x:number;y:number;z:number};roundStartedAt:number}>('mapTeleportResult',data=>{if(data.roundStartedAt===this.room.state.startedAt)this.onMapTeleport?.(data);});
+    this.room.onMessage<{ok:boolean;action:string;message:string;roundStartedAt:number}>('bagResult',data=>{if(data.roundStartedAt===this.room.state.startedAt)this.onBagResult?.(data);});
+    this.room.onMessage<{ok:boolean;step:number;unlocked:boolean;reason?:string;roundStartedAt:number}>('emoteChallengeResult',data=>{if(data.roundStartedAt!==this.room.state.startedAt)return;if(data.ok&&data.unlocked)this.emoteUnlockRound=data.roundStartedAt;this.onEmoteChallengeResult?.(data);});
     this.room.onMessage<{id:number;passed:boolean;course:string;roundStartedAt:number}>('moodleResult',data=>{if(data.roundStartedAt===this.room.state.startedAt)this.onMoodleResult?.(data);});
     this.room.onMessage<PlayerCorrection>("playerCorrection", correction => {
       Object.assign(body, correction);

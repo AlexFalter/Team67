@@ -1,3 +1,5 @@
+import {BagManager} from './bags.ts';
+import {EmoteChallenge} from './emotes.ts';
 import {MoodleEvents} from './moodle.ts';
 import {PlayerMedals} from "./medals.ts";
 import { Room, type Client } from "colyseus";
@@ -5,6 +7,8 @@ import * as C from "@race/shared";
 import { Player, RaceState } from "./state.ts";
 import { VehicleManager } from "./vehicles.ts";
 import { ContactWorld } from "./physics.ts";
+import { enterSpectator } from "./spectator.ts";
+import { registerMapTeleport } from "./mapTeleport.ts";
 import { registerExamDebug } from "./examDebug.ts";
 import { RoundManager } from "./round.ts";
 import { PubliBikes } from "./publiBikes.ts";
@@ -19,10 +23,12 @@ const codes = new Set<string>();
 export class Race extends Room<{ state: RaceState }> {
   maxClients = 40;
   state = new RaceState();
+  private bags!:BagManager;
   private moodle!:MoodleEvents;
   private medals = new PlayerMedals();
   private lastMoves = new Map<string, number>();
   private world = process.env.GAME_WORLD === "flat" ? C.flatWorld : C.zurichWorld;
+  private emotes = new EmoteChallenge(this.state, this.world);
   private contact = C.createContact();
   private physics!: ContactWorld;
   private vehicles!: VehicleManager;
@@ -34,13 +40,17 @@ export class Race extends Room<{ state: RaceState }> {
   private traffic!: TrafficManager;
   private trafficTime = Date.now();
   private trafficEdits = new Map<string, number>();
-  async onCreate(options: { code?: unknown; devMode?: unknown; skipIntro?: unknown; goldPubliBikes?: unknown; railCrashProtection?: unknown } = {}) {
+  async onCreate(options: { code?: unknown; mapTeleport?: unknown; devMode?: unknown; adminMode?: unknown; moodleEnabled?: unknown; noCarCollisions?: unknown; skipIntro?: unknown; goldPubliBikes?: unknown; railCrashProtection?: unknown } = {}) {
     if (options.code !== undefined) {
       const code = C.roomCode(options.code);
       if (codes.has(code)) throw new Error("That code is already in use. Join it or choose another.");
       codes.add(code); this.code = code; this.roomId = code;
     }
     this.state.devMode = options.devMode === true;
+    this.state.adminMode = this.state.devMode && options.adminMode === true;
+    this.state.moodleEnabled = options.moodleEnabled !== false;
+    this.state.noCarCollisions = options.noCarCollisions === true;
+    this.state.mapTeleport=this.state.devMode&&options.mapTeleport===true;
     this.state.railCrashProtection=this.state.devMode&&options.railCrashProtection===true;
     this.state.goldPubliBikes = options.goldPubliBikes !== false;
     this.state.skipIntro = this.state.devMode && options.skipIntro === true;
@@ -50,8 +60,16 @@ export class Race extends Room<{ state: RaceState }> {
     this.publiBikes = this.createPubliBikes();
     this.mate = new MateMachine(this.state, this.world);
     this.npcs = this.createNpcs();
+    this.bags=new BagManager(this.state,this.world,(from,target,bag,practice)=>!!this.bagHit(from,target,bag,practice),id=>!!this.npcs.busy(id));
     this.moodle=new MoodleEvents(this.state,(id,result)=>this.clients.find(c=>c.sessionId===id)?.send('moodleResult',result),id=>!this.npcs.busy(id));
+    this.onMessage('bag',(client,data:unknown)=>this.bags.command(client,data,Date.now()));
+    this.onMessage('debugDummies',(client,data:unknown)=>this.bags.setDummies(client,data));
+    this.onMessage('emoteChallenge',(client,data:unknown)=>{const result=this.npcs.busy(client.sessionId)?{ok:false,step:0,unlocked:false}:this.emotes.answer(client.sessionId,data,Date.now());client.send('emoteChallengeResult',{...result,roundStartedAt:this.state.startedAt});});
+    this.onMessage('emote',(client,data:unknown)=>{if(!this.npcs.busy(client.sessionId))this.emotes.dance(client.sessionId,data,Date.now());});
     this.onMessage('moodleAnswer',(client,data:unknown)=>this.moodle.answer(client.sessionId,data,Date.now()));
+    this.onMessage('carCollisionSettings', (client, data: unknown) => {
+      if (client.sessionId === this.state.hostId && typeof data === 'boolean') this.state.noCarCollisions = data;
+    });
     this.onMessage('moodleSettings',(client,data:unknown)=>{if(client.sessionId===this.state.hostId&&typeof data==='boolean')this.moodle.enabled(data);});
     this.traffic = new TrafficManager(this.state);
     const tickets = new TicketMachine(this.state,this.world);
@@ -86,12 +104,14 @@ export class Race extends Room<{ state: RaceState }> {
         client.send("trafficResult", { ok: true, message: "Traffic updated." });
       } catch (error) { client.send("trafficResult", { ok: false, message: error instanceof Error ? error.message : "Invalid traffic edit." }); }
     });
+    registerMapTeleport(this, this.world, this.lastMoves, id => this.rounds.canPlay(id), id => this.npcs.busy(id));
     this.onMessage("ready", (client, ready: unknown) => this.rounds.ready(client.sessionId, ready));
     this.onMessage("thankBusDriver", (client, run: unknown) => this.rounds.thankBusDriver(client.sessionId, run));
     this.onMessage("restartRound", client => this.rounds.restart(client.sessionId));
     this.onMessage("finishRound", client => {
       if (client.sessionId === this.state.hostId) this.rounds.finish();
     });
+    this.onMessage("spectate",(client,data:unknown)=>{const ok=!this.npcs.busy(client.sessionId)&&enterSpectator(this.state,client.sessionId,data,()=>this.rounds.canPlay(client.sessionId),()=>this.removeGameplayPlayer(client));client.send("spectateResult",{ok,roundStartedAt:this.state.startedAt});});
     this.onMessage("move", (client, data: unknown) => this.move(client, data));
     this.onMessage('respawn', client => {
       const p = this.state.players.get(client.sessionId), now = Date.now();
@@ -166,7 +186,7 @@ export class Race extends Room<{ state: RaceState }> {
     this.npcs.join(id);
   }
   private resetRound() {
-    this.medals.reset();this.moodle.reset();
+    this.bags.reset();this.emotes.reset();this.medals.reset();this.moodle.reset();
     const colors = new Map([...this.state.players].map(([id, p]) => [id, p.color]));
     this.state.players.clear(); this.state.vehicles.clear(); this.state.publiBikes.clear(); this.lastMoves.clear();
     this.physics.sync(new Map(), new Map());
@@ -186,21 +206,22 @@ export class Race extends Room<{ state: RaceState }> {
       this.lastMoves.set(id, p.simTime);
     }
   }
-  onLeave(client: Client) {
+  private removeGameplayPlayer(client:Client){
     const id = this.state.players.get(client.sessionId)?.vehicleId;
-    this.publiBikes.disconnect(client.sessionId);
+    this.bags.leave(client.sessionId);this.publiBikes.disconnect(client.sessionId);
     this.mate.leave(client.sessionId);
     this.npcs.leave(client.sessionId);
     this.vehicles.disconnect(client.sessionId);
     if (id) this.publiBikes.park(id);
     this.state.players.delete(client.sessionId);
     this.lastMoves.delete(client.sessionId);
-    this.medals.leave(client.sessionId);
+    this.emotes.leave(client.sessionId);this.medals.leave(client.sessionId);
     this.trafficEdits.delete(client.sessionId);
-    this.rounds.leave(client.sessionId);
+  }
+  onLeave(client:Client){this.removeGameplayPlayer(client);this.rounds.leave(client.sessionId);
   }
   onDispose() { this.physics?.dispose(); if (this.code) codes.delete(this.code); }
-  private hit(target: string, hit: C.Impulse, kind?: "punch" | "bicycle") {
+  private hit(target: string, hit: C.Impulse, kind?: "punch" | "bicycle" | "bag") {
     const p = this.state.players.get(target);
     if (p && this.rounds.canPlay(target) && !this.npcs.busy(target)) {
       if (Date.now() < p.invincibleUntil) return false;
@@ -222,6 +243,11 @@ export class Race extends Room<{ state: RaceState }> {
       return true;
     }
     return false;
+  }
+  private bagHit(from:string,target:string,bag:C.BagState,practice:boolean){
+    const hit:C.Impulse={from,ix:bag.vx*.55,iy:2,iz:bag.vz*.55,knockdown:true,durationMs:3000};
+    if(practice){const p=this.state.dummies.get(target),attacker=this.clients.find(c=>c.sessionId===from);if(!p||!attacker||!this.rounds.canPlay(from))return false;C.applyImpulse(p,hit,Date.now());attacker.send('medal',this.medals.practiceBag(this.state.startedAt));return true;}
+    return this.hit(target,hit,'bag');
   }
   private bump(a: string, b: string, x: number, y: number, z: number) {
     this.broadcast("bump", { a, b, x, y, z, t: this.state.serverTime } satisfies C.Bump);
@@ -291,7 +317,7 @@ export class Race extends Room<{ state: RaceState }> {
   private attack(client: Client) {
     if (!this.rounds.canPlay(client.sessionId) || this.npcs.busy(client.sessionId)) return;
     const p = this.state.players.get(client.sessionId), now = Date.now();
-    if (!p || p.vehicleId || now < p.knockdownUntil || now < p.moodleSitUntil || now < p.attackReadyAt) return;
+    if (!p || p.vehicleId || p.bagId || now < p.knockdownUntil || now < p.moodleSitUntil || now < p.attackReadyAt) return;
     p.simTime = now; p.attackReadyAt = now + C.ATTACK_COOLDOWN_MS;
     for (const [target, other] of this.state.players) if (target !== client.sessionId && !other.vehicleId && C.inHitCone(p, other, this.world)) {
       if (this.hit(target, { from: client.sessionId, ix: Math.sin(p.rotY) * 8, iy: 1.5, iz: Math.cos(p.rotY) * 8,
@@ -301,7 +327,7 @@ export class Race extends Room<{ state: RaceState }> {
   }
   private tick() {
     const now = this.state.serverTime = Date.now(), vehicleHit = this.vehicleHit;
-    this.rounds.tick(now);
+    this.rounds.tick(now);this.emotes.tick(now);
     const trafficDt = (now - this.trafficTime) / 1000;
     this.trafficTime = now;
     if ((this.state.phase === C.RoomPhase.Running && this.state.introComplete) || (this.state.devMode && this.state.phase === C.RoomPhase.Lobby)) {
@@ -320,7 +346,7 @@ export class Race extends Room<{ state: RaceState }> {
     this.mate.tick(now);
     this.npcs.tick(now);
     if (this.state.phase !== C.RoomPhase.Running || !this.state.introComplete) return;
-    this.moodle.tick(now);
+    this.moodle.tick(now);this.bags.tick(now);
     const positions = new Map([...this.state.players].map(([id, p]) => [id, this.correction(p)]));
     for (const p of this.state.players.values()) {
       p.simTime = now;

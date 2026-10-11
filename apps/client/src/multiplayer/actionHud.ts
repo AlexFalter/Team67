@@ -16,8 +16,16 @@ export function actionAvailability(p: Body, sprinting: boolean, now: number) {
   };
 }
 
-export interface ContextAction { icon: "person" | "polybahn" | "tram" | "bike" | "mate" | "cart" | "leave" | "computer" | "scooter"; label: string; key: string; enabled: boolean; run: () => void }
+export interface ContextAction { icon: "emote" | "bag" | "knife" | "spin" | "holster" | "equip" | "person" | "polybahn" | "tram" | "bike" | "mate" | "cart" | "leave" | "computer" | "scooter"; label: string; key: string; enabled: boolean; run: () => void }
+export interface WeaponAction { kind?: "knife" | "bag"; enabled: boolean; run: () => void }
 const icons = {
+  emote: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5m0 7V21M4.2 7.5 9 10.3m6 3.4 4.8 2.8M4.2 16.5 9 13.7m6-3.4 4.8-2.8"/>',
+  bag: '<path d="M7 8V6a5 5 0 0 1 10 0v2M5 8h14l2 14H3zM8 13l4 5 4-5"/>',
+  holster: '<path d="M6 11h7v7a3.5 3.5 0 0 1-7 0zM8 11V4h3v7M6 4h7M18 3v10m-3-3 3 3 3-3"/>',
+  equip: '<path d="M6 13h7v5a3.5 3.5 0 0 1-7 0zM8 10V3h3v7M6 3h7M18 13V3m-3 3 3-3 3 3"/>',
+  knife: '<path d="M19 3c1 8-2 12-8 12l-3-3c4-1 7-4 11-9ZM8 12l-4 5 3 3 5-6"/><circle cx="5" cy="20" r="2"/>',
+  spin: '<path d="M20 9a8 8 0 0 0-14-4L3 8m0-5v5h5M4 15a8 8 0 0 0 14 4l3-3m0 5v-5h-5"/><path d="m10 15 4-6m-5 7 2 1"/>',
+
   computer: '<rect x="3" y="4" width="18" height="12" rx="1"/><path d="M8 20h8m-4-4v4"/>',
   scooter: '<circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M5 19h9l3-14h-4m4 0 2 14"/>',
   leave: '<path d="M10 3H4v18h6M10 12h11m-4-4 4 4-4 4"/>',
@@ -31,13 +39,16 @@ const icons = {
 export class ActionHud {
   private root = document.querySelector<HTMLElement>("#combat-actions")!;
   private punch = this.root.querySelector<HTMLButtonElement>("#punch-action")!;
+  private punchIcon = this.punch.querySelector("svg")!.innerHTML;
+  private punchLabel = document.createElement("small");
   private slide = this.root.querySelector<HTMLButtonElement>("#slide-action")!;
   private context = document.createElement("div");
   private instructions = document.createElement("div");
   private entries: { item: HTMLElement; button: HTMLButtonElement; action: ContextAction }[] = [];
   private abort = new AbortController();
   private boost = document.createElement("button");
-  constructor(private local: LocalPlayer, private now: () => number, focus: () => void, private getContext: () => ContextAction[] = () => []) {
+  constructor(private local: LocalPlayer, private now: () => number, focus: () => void, private getContext: () => ContextAction[] = () => [], private getWeapon: () => WeaponAction | undefined = () => undefined) {
+    this.punchLabel.className="action-label";this.punchLabel.hidden=true;this.punch.parentElement!.append(this.punchLabel);
     this.context.className = "context-actions"; this.root.prepend(this.context);
     this.instructions.className = "action-instructions";
     this.instructions.innerHTML = '<div class="interaction-instruction"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg><span></span></div>';
@@ -57,7 +68,8 @@ export class ActionHud {
     this.boost.addEventListener("keyup", () => local.holdBoost(false), options);
     this.boost.addEventListener("blur", () => local.holdBoost(false), options);
     this.punch.addEventListener("click", () => {
-      if (actionAvailability(local.body, local.sprinting, now()).punch) local.punch();
+      const weapon = this.getWeapon();
+      if(weapon){if(weapon.enabled)weapon.run();}else if(actionAvailability(local.body,local.sprinting,now()).punch)local.punch();
       focus();
     }, options);
     this.slide.addEventListener("click", () => {
@@ -89,19 +101,29 @@ export class ActionHud {
       let entry = this.entries[i];
       if (!entry) {
         const item = document.createElement("div"); item.className = "combat-action";
-        item.innerHTML = '<kbd></kbd><button type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg></button>';
+        item.innerHTML = '<kbd></kbd><button type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg></button><small class="action-label" hidden></small>';
         if (action.key === "1") this.root.append(item); else this.context.append(item); entry = { item, button: item.querySelector("button")!, action }; this.entries.push(entry);
       }
       if (action.key === "1") this.root.append(entry.item); else this.context.append(entry.item);
       entry.action = action; entry.item.querySelector("kbd")!.textContent = action.key;
       const svg = entry.button.querySelector("svg")!;
       if (svg.dataset.icon !== action.icon) { svg.innerHTML = icons[action.icon]; svg.dataset.icon = action.icon; }
+      const caption=entry.item.querySelector<HTMLElement>('.action-label')!;
+      caption.hidden=action.icon!=='holster'&&action.icon!=='equip';caption.textContent=action.icon==='holster'?'Holster':'Equip';
       entry.button.disabled = !action.enabled; entry.button.title = `${action.label} · ${action.key}`;
       entry.button.setAttribute("aria-label", entry.button.title);
     });
+    const weapon = this.getWeapon();
+    const punchSvg = this.punch.querySelector('svg')!;
+    const isBag=weapon?.kind==='bag',verb=isBag?'Throw bag':'Slash';
+    const icon = weapon ? (isBag?'bag':'knife') : 'punch';
+    if(punchSvg.dataset.icon!==icon){punchSvg.innerHTML=weapon?icons[isBag?"bag":"knife"]:this.punchIcon;punchSvg.dataset.icon=icon;}
+    this.punch.parentElement!.querySelector('kbd')!.textContent=weapon?'Q':'F';
+    this.punchLabel.hidden=!weapon;this.punchLabel.textContent=isBag?"Throw":"Slash";
+    this.punch.title=weapon?`${verb} · Q or click`:'Right hook · F or click';
     const state = actionAvailability(this.local.body, this.local.sprinting, this.now());
     for (const [button, available, seconds, label] of [
-      [this.punch, state.punch, state.punchSeconds, "Punch (F)"],
+      [this.punch, (isBag?weapon!.enabled:state.punch && (!weapon || weapon.enabled)), isBag?0:state.punchSeconds, weapon ? `${verb} (Q / click)` : "Punch (F)"],
       [this.slide, state.slide, state.slideSeconds, "Slide (C)"],
     ] as const) {
       button.disabled = !available;
@@ -110,5 +132,5 @@ export class ActionHud {
       button.setAttribute("aria-label", seconds ? `${label}, ${seconds} seconds remaining` : available ? label : `${label}, unavailable`);
     }
   }
-  dispose() { this.local.holdBoost(false); this.abort.abort(); this.root.hidden = true; this.context.remove(); this.instructions.remove(); this.boost.remove(); this.entries.forEach(entry => entry.item.remove()); }
+  dispose() { this.local.holdBoost(false); this.instructions.remove(); this.boost.remove(); this.entries.forEach(entry => entry.item.remove()); this.abort.abort(); this.root.hidden = true; this.context.remove();this.punchLabel.remove();const svg=this.punch.querySelector("svg")!;svg.innerHTML=this.punchIcon;delete svg.dataset.icon;this.punch.parentElement!.querySelector("kbd")!.textContent="F";this.punch.title="Right hook · F or click";this.punch.setAttribute("aria-label","Punch (F)"); }
 }
