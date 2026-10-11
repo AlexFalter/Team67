@@ -74,8 +74,9 @@ export class RoundManager {
   }
   beginExam(id: string, roundStartedAt: unknown, now = Date.now()) {
     const result = this.scores.get(id), player = this.state.players.get(id);
-    if (roundStartedAt !== this.state.startedAt || !this.canPlay(id, now) || !result || result.examStartedAt || !player || player.vehicleId || !C.insideExamPortal(player)) return;
+    if (roundStartedAt !== this.state.startedAt || !this.canPlay(id, now) || !result || result.examStartedAt || !player || player.vehicleId || !C.insideExamPortal(player)) return false;
     result.examStartedAt = now;
+    return true;
   }
   examProgress(id: string, data: unknown, now = Date.now()) {
     if (!data || typeof data !== 'object' || this.state.phase !== C.RoomPhase.Running || !this.state.introComplete ||

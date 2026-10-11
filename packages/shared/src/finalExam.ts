@@ -1,3 +1,6 @@
+import { CAPSULE_HEIGHT, CAPSULE_RADIUS } from './constants.ts';
+import type { GroundPoint, MovementWorld } from './world.ts';
+
 /** Independent of the GLB: Swiss LV95 metres, matching the shared world origin. */
 export const FINAL_EXAM_LOCATION = {
   originLV95: [2683475, 1248000, 400],
@@ -13,6 +16,18 @@ export function examMapPoint(point: readonly [number, number, number]) {
 }
 export const examPortalPosition = examMapPoint(FINAL_EXAM_LOCATION.portalLV95);
 export const examDebugPosition = { ...examPortalPosition, z: examPortalPosition.z + 8 };
+/** A quiet, walkable map location for exam takers, far from the Polyterrasse gameplay area. */
+export function examSoundproofPosition(world: MovementWorld): GroundPoint | undefined {
+  const inset = 75, { minX, maxX, minZ, maxZ } = world.bounds;
+  const candidates = [
+    [minX + inset, minZ + inset], [minX + inset, maxZ - inset],
+    [maxX - inset, minZ + inset], [maxX - inset, maxZ - inset],
+  ].flatMap(([x, z]) => {
+    const y = world.height(x, z);
+    return y === undefined || world.blocked(x, y, z, CAPSULE_RADIUS, CAPSULE_HEIGHT) ? [] : [{ x, y, z }];
+  });
+  return candidates.sort((a, b) => distanceToEth(b) - distanceToEth(a))[0];
+}
 export function examFlyoverPosition(progress: number) {
   const focus = examMapPoint(FINAL_EXAM_LOCATION.ethFocusLV95);
   const angle = Math.PI * 0.9 + Math.max(0, Math.min(1, progress)) * Math.PI * 1.15;

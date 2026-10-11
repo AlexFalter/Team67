@@ -65,6 +65,7 @@ export const Player = schema(
     emotesUnlocked: t.boolean().default(false),
     emoteId: t.string().default(""),
     emoteStartedAt: t.number().default(0),
+    examSheltered: t.boolean().default(false),
     mateCount: t.uint8().default(0),
     mateBoostMs: t.number().default(0),
     mateFlavor: t.uint8().default(2),

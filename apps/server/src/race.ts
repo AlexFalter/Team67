@@ -99,7 +99,16 @@ export class Race extends Room<{ state: RaceState }> {
       onArrival: () => this.arriveFromBus(),
     });
     registerExamDebug(this, this.world, this.lastMoves, id => this.rounds.canPlay(id));
-    this.onMessage("examStart", (client, roundStartedAt: unknown) => this.rounds.beginExam(client.sessionId, roundStartedAt));
+    this.onMessage("examStart", (client, roundStartedAt: unknown) => {
+      const id = client.sessionId;
+      if (!this.rounds.beginExam(id, roundStartedAt)) return;
+      const player = this.state.players.get(id), point = C.examSoundproofPosition(this.world);
+      if (!player || !point) return;
+      const now = Date.now();
+      Object.assign(player, point, { vx: 0, vy: 0, vz: 0, anim: 0, grounded: true, examSheltered: true, simTime: now });
+      this.lastMoves.set(id, now);
+      client.send("playerCorrection", this.correction(player));
+    });
     this.onMessage("examProgress", (client, data: unknown) => this.rounds.examProgress(client.sessionId, data));
     this.onMessage("trafficEdit", (client, data: unknown) => {
       if (!this.state.devMode || client.sessionId !== this.state.hostId) {

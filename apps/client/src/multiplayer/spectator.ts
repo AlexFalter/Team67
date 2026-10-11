@@ -1,4 +1,5 @@
 import {Vector3,Euler,type PerspectiveCamera,type Group} from 'three';
+import { examPortalPosition } from '@race/shared';
 import type {Network} from './net.ts';
 
 /** Spectator camera only: never creates a gameplay body or sends movement. */
@@ -62,17 +63,19 @@ export class Spectator {
   if(this.flying){const facing=new Euler().setFromQuaternion(this.camera.quaternion,'YXZ');this.yaw=facing.y;this.pitch=facing.x;void this.capture();}
   else {this.release();this.pitch=.35;}
  }
- private cycle(direction:number){if(!this.ids.length)return;const i=this.ids.indexOf(this.target);this.target=this.ids[(Math.max(0,i)+direction+this.ids.length)%this.ids.length];}
+ private cycle(direction:number){if(!this.ids.length)return;if(!this.target){this.target=direction>0?this.ids[0]:this.ids[this.ids.length-1];return;}const i=this.ids.indexOf(this.target);this.target=this.ids[(Math.max(0,i)+direction+this.ids.length)%this.ids.length];}
  update(dt:number,remotes:Map<string,{mesh:Group}>,visible=true){
   const shown=this.net.spectating&&visible;
-  if(this.shown&&!shown)this.release();this.shown=shown;this.root.hidden=!shown;
+  if(this.shown&&!shown)this.release();
+  if(!this.shown&&shown){this.target='';this.yaw=0;this.pitch=.35;this.distance=7;}
+  this.shown=shown;this.root.hidden=!shown;
   const settings=document.querySelector<HTMLElement>('#spectator-settings');if(settings)settings.hidden=!shown;
   const flightButton=document.querySelector<HTMLElement>('#spectator-flight');if(flightButton)flightButton.textContent=this.flying?'Follow players':'Free flight';
   if(!shown){this.dragging=false;this.keys.clear();return;}
   if(document.querySelector<HTMLElement>('#pause')?.hidden===false){this.root.hidden=true;this.keys.clear();return;}
   this.flight.textContent=this.flying?'Follow players':'Free flight';
   this.previous.hidden=this.next.hidden=this.flying;
-  this.previous.disabled=this.next.disabled=this.ids.length<2;
+  this.previous.disabled=this.next.disabled=this.ids.length===0;
   if(this.flying){
    this.label.textContent='SPECTATING · FREE FLIGHT';this.hint.textContent='WASD fly · Space up · Shift down · Ctrl faster · Escape menu';
    if(document.pointerLockElement===this.canvas){
@@ -81,11 +84,11 @@ export class Spectator {
    this.camera.rotation.set(this.pitch,this.yaw,0,'YXZ');this.camera.up.set(0,1,0);this.camera.updateMatrixWorld(true);return;
   }
   this.ids=[...remotes].filter(([,r])=>r.mesh.visible).map(([id])=>id);
-  if(!this.ids.includes(this.target))this.target=this.ids[0]??'';
+  if(this.target&&!this.ids.includes(this.target))this.target='';
   const remote=remotes.get(this.target);
-  this.label.textContent=remote?`WATCHING · ${this.net.room.state.members.get(this.target)?.name??'Player'}`:'SPECTATING · Waiting for players';
-  this.hint.textContent='← / → switch player · Drag to look · Scroll to zoom';
-  if(remote)remote.mesh.getWorldPosition(this.focus);else this.focus.set(226,50.7,149);
+  this.label.textContent=remote?`WATCHING · ${this.net.room.state.members.get(this.target)?.name??'Player'}`:this.ids.length?'SPECTATING · POLYTERRASSE':'SPECTATING · POLYTERRASSE · Waiting for players';
+  this.hint.textContent=remote?'← / → switch player · Drag to look · Scroll to zoom':'At Polyterrasse · Select a player to watch';
+  if(remote)remote.mesh.getWorldPosition(this.focus);else this.focus.set(examPortalPosition.x,examPortalPosition.y,examPortalPosition.z);
   this.focus.y+=1.4;const horizontal=Math.cos(this.pitch)*this.distance;
   this.position.set(this.focus.x+Math.sin(this.yaw)*horizontal,this.focus.y+Math.sin(this.pitch)*this.distance,this.focus.z+Math.cos(this.yaw)*horizontal);
   this.camera.position.lerp(this.position,1-Math.exp(-Math.max(0,dt)*12));this.camera.up.set(0,1,0);this.camera.lookAt(this.focus);this.camera.updateMatrixWorld(true);
