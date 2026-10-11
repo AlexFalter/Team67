@@ -118,12 +118,12 @@ export class ActionHud {
     const isBag=weapon?.kind==='bag',verb=isBag?'Throw bag':'Slash';
     const icon = weapon ? (isBag?'bag':'knife') : 'punch';
     if(punchSvg.dataset.icon!==icon){punchSvg.innerHTML=weapon?icons[isBag?"bag":"knife"]:this.punchIcon;punchSvg.dataset.icon=icon;}
-    this.punch.parentElement!.querySelector('kbd')!.textContent=weapon?'Q':'F';
+    this.punch.parentElement!.querySelector('kbd')!.textContent=weapon?'Q':'Click';
     this.punchLabel.hidden=!weapon;this.punchLabel.textContent=isBag?"Throw":"Slash";
-    this.punch.title=weapon?`${verb} · Q or click`:'Right hook · F or click';
+    this.punch.title=weapon?`${verb} · Q or click`:'Right hook · click';
     const state = actionAvailability(this.local.body, this.local.sprinting, this.now());
     for (const [button, available, seconds, label] of [
-      [this.punch, (isBag?weapon!.enabled:state.punch && (!weapon || weapon.enabled)), isBag?0:state.punchSeconds, weapon ? `${verb} (Q / click)` : "Punch (F)"],
+      [this.punch, (isBag?weapon!.enabled:state.punch && (!weapon || weapon.enabled)), isBag?0:state.punchSeconds, weapon ? `${verb} (Q / click)` : "Punch (click)"],
       [this.slide, state.slide, state.slideSeconds, "Slide (C)"],
     ] as const) {
       button.disabled = !available;
@@ -132,5 +132,5 @@ export class ActionHud {
       button.setAttribute("aria-label", seconds ? `${label}, ${seconds} seconds remaining` : available ? label : `${label}, unavailable`);
     }
   }
-  dispose() { this.local.holdBoost(false); this.instructions.remove(); this.boost.remove(); this.entries.forEach(entry => entry.item.remove()); this.abort.abort(); this.root.hidden = true; this.context.remove();this.punchLabel.remove();const svg=this.punch.querySelector("svg")!;svg.innerHTML=this.punchIcon;delete svg.dataset.icon;this.punch.parentElement!.querySelector("kbd")!.textContent="F";this.punch.title="Right hook · F or click";this.punch.setAttribute("aria-label","Punch (F)"); }
+  dispose() { this.local.holdBoost(false); this.instructions.remove(); this.boost.remove(); this.entries.forEach(entry => entry.item.remove()); this.abort.abort(); this.root.hidden = true; this.context.remove();this.punchLabel.remove();const svg=this.punch.querySelector("svg")!;svg.innerHTML=this.punchIcon;delete svg.dataset.icon;this.punch.parentElement!.querySelector("kbd")!.textContent="Click";this.punch.title="Right hook · click";this.punch.setAttribute("aria-label","Punch (click)"); }
 }

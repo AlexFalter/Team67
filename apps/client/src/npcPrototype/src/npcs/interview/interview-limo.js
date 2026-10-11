@@ -127,7 +127,7 @@ export async function createInterviewLimo(scene,world,solver,{onClose,onBoard,on
     ejectPlayer.position.copy(position);ejectRig.pose(0,deployed,rideLook.state().firstPerson);
     chute.visible=deployed;chute.position.copy(position);chute.rotation.z=Math.sin(age*2)*.035;
     if(deployed)chute.scale.setScalar(Math.min(1,(chute.scale.x||.05)+dt*3));else chute.scale.setScalar(.05);
-    chuteHint.hidden=false;chuteHint.textContent=deployed?'PARACHUTE · WASD: STEER · MOUSE: LOOK · V: VIEW':'SPACE: OPEN PARACHUTE';
+    chuteHint.hidden=false;chuteHint.textContent=deployed?'PARACHUTE · WASD: STEER · MOUSE: LOOK · F: VIEW':'SPACE: OPEN PARACHUTE';
     rideLook.update(dt,ejectPlayer,camera,{eye:[0,1.55,0],yaw:0},world);
     if(age<.6){const blend=THREE.MathUtils.smoothstep(age,0,.6);camera.position.lerp(throwEye,1-blend);camera.quaternion.slerp(throwCameraRotation,1-blend);}
     if(position.y<=floor+.02){phase='landing';age=0;ejectionStage='land';drop.copy(position);landingEye.copy(camera.position);landingRotation.copy(camera.quaternion);chuteHint.hidden=true;rideLook.pause();onLanding(rideLook.state());}

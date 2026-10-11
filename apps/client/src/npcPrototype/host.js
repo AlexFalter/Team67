@@ -85,7 +85,7 @@ export class NpcFeature {
    if(e.code==='Backspace'&&this.local.enabled&&this.currentPoly()&&!this.active){e.preventDefault();if(this.net.canPlay)this.net.room.send('vehicleExit');return;}
    if(!this.active&&this.local.enabled&&this.net.canPlay&&!this.local.body.bagId&&this.karambit?.owns()){
     if(e.code==='Digit3'&&!e.repeat){this.karambit.toggle();if(this.playerView)this.playerView.perspective=0;e.preventDefault();e.stopImmediatePropagation();return;}
-    if(this.playerView?.perspective===0&&this.karambit.occupiesHands()&&['KeyF','KeyQ'].includes(e.code)){if(!e.repeat){if(e.code==='KeyF')this.karambit.inspect();else this.karambit.attack();}e.preventDefault();e.stopImmediatePropagation();return;}
+    if(this.playerView?.perspective===0&&this.karambit.occupiesHands()&&['KeyR','KeyQ'].includes(e.code)){if(!e.repeat){if(e.code==='KeyR')this.karambit.inspect();else this.karambit.attack();}e.preventDefault();e.stopImmediatePropagation();return;}
    }
    if(!this.active)return;
    if(this.limePhotoPending&&!this.limePhoto?.active()){e.preventDefault();e.stopImmediatePropagation();return;}

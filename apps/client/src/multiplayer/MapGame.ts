@@ -178,7 +178,7 @@ export class MapGame {
     const knife=this.npcs.karambit;
     if(knife?.owns()&&!p.vehicleId&&!this.bags.occupiesHands){
       actions.push({icon:knife.occupiesHands()?'holster':'equip',key:'3',label:knife.occupiesHands()?'Holster karambit':'Equip karambit',enabled:p.knockdownUntil<=this.net.now(),run:()=>{knife.toggle();this.view.perspective=0;}});
-      if(knife.occupiesHands()&&this.view.perspective===0)actions.push({icon:'spin',key:'F',label:'Spin karambit',enabled:knife.state().phase==='idle'&&p.knockdownUntil<=this.net.now(),run:()=>knife.inspect()});
+      if(knife.occupiesHands()&&this.view.perspective===0)actions.push({icon:'spin',key:'R',label:'Spin karambit',enabled:knife.state().phase==='idle'&&p.knockdownUntil<=this.net.now(),run:()=>knife.inspect()});
     }
     if(this.emotes)actions.push({icon:"emote",key:"B",label:"Emote wheel",enabled:this.emotes.available,run:()=>this.emotes.open()});
     return actions;
@@ -341,6 +341,7 @@ export class MapGame {
     if (enterPortal) void this.controls.resume();
     this.net.room.send("debugTeleportToPolyterrasse", enterPortal ? "portal" : "terrace");
   }
+  renderMenuPreview(renderer: THREE.WebGLRenderer) { this.menuScene.renderPreview(renderer); }
   afterRender() { this.publiBikes.renderPreview(); this.npcs.afterRender(); }
   dispose() {
     this.spectator.dispose();this.net.onSpectate=undefined;

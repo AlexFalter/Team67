@@ -19,15 +19,16 @@ export class MenuScene {
   private active = false;
   private elapsed = 0;
   private preview = new THREE.Group();
-  private previewBackdrop = new THREE.Mesh(
-    new THREE.PlaneGeometry(1, 1),
-    new THREE.MeshBasicMaterial({ color: "#102731", fog: false, toneMapped: false }),
-  );
+  private previewScene = new THREE.Scene();
+  private previewCamera = new THREE.OrthographicCamera(-1.5, 1.5, 2.05, -.15, .1, 30);
+  private previewContext: CanvasRenderingContext2D | null;
+  private previewTarget = new THREE.WebGLRenderTarget(1, 1);
+  private previewPixels = new Uint8Array(4);
+  private previewImage?: ImageData;
   private previewModels = CHARACTERS.map((_, character) => avatar("#d7f87a", character));
   private previewBody = createBody();
-  private previewStage = document.querySelector<HTMLElement>("#character-stage")!;
+  private previewStage = document.querySelector<HTMLCanvasElement>("#character-stage")!;
   private characterField = document.querySelector<HTMLInputElement>("#character")!;
-  private viewport = document.querySelector<HTMLElement>(".map-viewer")!;
   constructor(scene: THREE.Scene, private camera: THREE.PerspectiveCamera) {
     scene.add(this.group);
     this.ring = new THREE.Mesh(this.ringGeometry, this.material);
@@ -37,38 +38,20 @@ export class MenuScene {
     const pedestal = new THREE.Mesh(this.padGeometry, this.material);
     pedestal.rotation.x = -Math.PI / 2; pedestal.position.y = -.015;
     this.preview.add(pedestal); this.preview.visible = false;
-    scene.add(this.preview);
-    this.previewBackdrop.visible = false;
-    scene.add(this.previewBackdrop);
+    this.previewScene.background = new THREE.Color("#102731");
+    this.previewTarget.texture.colorSpace = THREE.SRGBColorSpace;
+    this.previewScene.add(this.preview, new THREE.HemisphereLight("#f1f8e9", "#526f7b", 2.5));
+    const light = new THREE.DirectionalLight("#fff3d4", 3);
+    light.position.set(-3, 5, 4);
+    this.previewScene.add(light);
+    this.previewCamera.position.set(0, 0, 10);
+    this.previewCamera.lookAt(0, 0, 0);
+    this.previewContext = this.previewStage.getContext("2d");
   }
   private updatePreview(dt: number) {
-    const stage = this.previewStage.getBoundingClientRect();
-    const viewport = this.viewport.getBoundingClientRect();
-    if (!stage.width || !stage.height) { this.preview.visible = this.previewBackdrop.visible = false; return; }
-    this.preview.visible = true;
-    this.previewBackdrop.visible = true;
     const selected = Number(this.characterField.value);
-    const distance = 12;
-    const halfHeight = distance * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
-    const modelHeight = 2 * halfHeight * stage.height / viewport.height * .84;
-    const x = ((stage.left + stage.width / 2 - viewport.left) / viewport.width * 2 - 1) * halfHeight * this.camera.aspect;
-    const y = (1 - (stage.top + stage.height / 2 - viewport.top) / viewport.height * 2) * halfHeight - modelHeight / 2;
-    this.camera.updateMatrixWorld();
-    this.preview.position.set(x, y, -distance).applyMatrix4(this.camera.matrixWorld);
-    this.preview.quaternion.copy(this.camera.quaternion);
-    this.preview.scale.setScalar(modelHeight / 1.8);
-    // A camera-facing opaque stage keeps the city out of the character window.
-    const picker = this.previewStage.parentElement!.getBoundingClientRect();
-    const card = this.previewStage.closest("form")!.getBoundingClientRect();
-    const backdropDistance = 14;
-    const backdropHalfHeight = backdropDistance * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
-    const backdropX = ((card.left + card.width / 2 - viewport.left) / viewport.width * 2 - 1) * backdropHalfHeight * this.camera.aspect;
-    const backdropY = (1 - (picker.top + picker.height / 2 - viewport.top) / viewport.height * 2) * backdropHalfHeight;
-    this.previewBackdrop.position.set(backdropX, backdropY, -backdropDistance).applyMatrix4(this.camera.matrixWorld);
-    this.previewBackdrop.quaternion.copy(this.camera.quaternion);
-    this.previewBackdrop.scale.set(2 * backdropHalfHeight * this.camera.aspect * (card.width - 2) / viewport.width, 2 * backdropHalfHeight * picker.height / viewport.height, 1);
     this.previewBody.simTime = this.elapsed * 1000;
-    this.previewBody.rotY = -.25 + Math.sin(this.elapsed * .6) * .12;
+    this.previewBody.rotY = -.25;
     this.previewBody.grounded = true;
     for (const [index, mesh] of this.previewModels.entries()) {
       mesh.visible = index === selected;
@@ -79,7 +62,6 @@ export class MenuScene {
     const staging = state?.phase === RoomPhase.Lobby;
     const visible = !state || staging;
     this.preview.visible = !state;
-    this.previewBackdrop.visible = !state;
     this.group.visible = !!staging;
     if (!visible) {
       if (this.active) { this.camera.fov = 60; this.camera.updateProjectionMatrix(); }
@@ -140,6 +122,50 @@ export class MenuScene {
       this.updatePreview(dt);
     }
   }
+  /** Uses the owner's renderer/loop, then copies into the card's clipped DOM canvas. */
+  renderPreview(renderer: THREE.WebGLRenderer) {
+    const context = this.previewContext;
+    if (!this.preview.visible || !context || this.previewStage.closest<HTMLElement>("#lobby")?.hidden) return;
+    const stage = this.previewStage.getBoundingClientRect();
+    const viewport = renderer.domElement.getBoundingClientRect();
+    if (!stage.width || !stage.height || stage.bottom <= viewport.top || stage.top >= viewport.bottom) return;
+    const density = renderer.getPixelRatio();
+    const width = Math.max(1, Math.round(stage.width * density));
+    const height = Math.max(1, Math.round(stage.height * density));
+    if (this.previewTarget.width !== width || this.previewTarget.height !== height || !this.previewImage) {
+      this.previewStage.width = width; this.previewStage.height = height;
+      this.previewTarget.setSize(width, height);
+      this.previewPixels = new Uint8Array(width * height * 4);
+      this.previewImage = context.createImageData(width, height);
+    }
+    const halfWidth = 1.1 * stage.width / stage.height;
+    this.previewCamera.left = -halfWidth; this.previewCamera.right = halfWidth;
+    this.previewCamera.updateProjectionMatrix();
+    const savedViewport = renderer.getViewport(new THREE.Vector4());
+    const savedScissor = renderer.getScissor(new THREE.Vector4());
+    const savedScissorTest = renderer.getScissorTest();
+    const savedTarget = renderer.getRenderTarget();
+    try {
+      // Render into a dedicated texture, independent of the city framebuffer
+      // and the stage's fractional CSS position or scroll offset.
+      renderer.setRenderTarget(this.previewTarget);
+      renderer.setScissorTest(false);
+      renderer.clear();
+      renderer.render(this.previewScene, this.previewCamera);
+      renderer.readRenderTargetPixels(this.previewTarget, 0, 0, width, height, this.previewPixels);
+      const stride = width * 4;
+      // WebGL reads from the bottom left; ImageData starts at the top left.
+      for (let row = 0; row < height; row++) {
+        const source = (height - row - 1) * stride;
+        this.previewImage.data.set(this.previewPixels.subarray(source, source + stride), row * stride);
+      }
+      context.putImageData(this.previewImage, 0, 0);
+    } finally {
+      renderer.setRenderTarget(savedTarget);
+      renderer.setViewport(savedViewport); renderer.setScissor(savedScissor);
+      renderer.setScissorTest(savedScissorTest);
+    }
+  }
   private clearActors() {
     for (const actor of this.actors) {
       (actor.mesh.userData.menuPad as THREE.Mesh).removeFromParent();
@@ -150,8 +176,10 @@ export class MenuScene {
   dispose() {
     for (const mesh of this.previewModels) disposeAvatar(mesh);
     this.preview.removeFromParent();
-    this.previewBackdrop.removeFromParent();
-    this.previewBackdrop.geometry.dispose(); this.previewBackdrop.material.dispose();
+    this.previewScene.clear();
+    this.previewTarget.dispose();
+    this.previewImage = undefined;
+    this.previewPixels = new Uint8Array(0);
     this.clearActors(); this.group.removeFromParent();
     this.ringGeometry.dispose(); this.padGeometry.dispose(); this.material.dispose();
   }
