@@ -34,6 +34,7 @@ export const Player = schema(
     groundTime: t.number().default(0),
     jumpUntil: t.number().default(0),
     knockdownUntil: t.number().default(0),
+    invincibleUntil: t.number().default(0),
     impactStartedAt: t.number().default(0),
     impactX: t.number().default(0),
     impactZ: t.number().default(0),

@@ -202,6 +202,7 @@ export class Race extends Room<{ state: RaceState }> {
   private hit(target: string, hit: C.Impulse, kind?: "punch" | "bicycle") {
     const p = this.state.players.get(target);
     if (p && this.rounds.canPlay(target) && !this.npcs.busy(target)) {
+      if (Date.now() < p.invincibleUntil) return false;
       const standing = Date.now() >= p.knockdownUntil;
       if (hit.knockdown && p.knockdownUntil > Date.now()) return;
       this.rounds.hit(hit.from, target);
@@ -226,6 +227,7 @@ export class Race extends Room<{ state: RaceState }> {
   }
   private vehicleHit: Parameters<VehicleManager["tick"]>[1] = (from, target, x, y, z, ix, iy, iz, knockdown, kind) => {
     const car = this.state.trafficCars.get(from), player = this.state.players.get(target);
+    if (player && this.state.serverTime < player.invincibleUntil) return;
     if (car && player?.vehicleId) {
       this.vehicles.runOver(player.vehicleId, this.state.serverTime, this.vehicleHit, car.speed, { from, rotY: car.rotY, kind: 3 });
       return;
@@ -307,7 +309,7 @@ export class Race extends Room<{ state: RaceState }> {
         (C.isPassengerVehicle(v) || !exposed.has(id)))
         .map(([,v]) => v)
         .map(p => ({ x: p.x, y: p.y, z: p.z, rotY: p.rotY, speed: 0 }));
-      this.traffic.tick(trafficDt, obstacles, vehicleHit, id => this.rounds.canPlay(id) && !this.npcs.busy(id), (id, from, car) => {
+      this.traffic.tick(trafficDt, obstacles, vehicleHit, id => this.rounds.canPlay(id) && !this.npcs.busy(id) && now >= (this.state.players.get(id)?.invincibleUntil ?? 0), (id, from, car) => {
         const ridden = [...this.state.players.values()].some(p => p.vehicleId === id);
         this.vehicles.runOver(id, now, vehicleHit, car.speed, { from, rotY: car.rotY, kind: 3 });
         if (!ridden) this.bump(from, id, car.x, car.y + .6, car.z);

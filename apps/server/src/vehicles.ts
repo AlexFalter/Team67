@@ -285,7 +285,7 @@ export class VehicleManager {
   }
   crashBike(id: string, now: number, hit: Parameters<VehicleManager["tick"]>[1], speed?: number, impact?: { from: string; rotY: number; kind: number }) {
     const v = this.state.vehicles.get(id);
-    if (!v || v.kind !== 2 || now < v.fallenUntil) return;
+    if (!v || v.kind !== 2 || now < v.fallenUntil || now < (this.state.players.get(v.driver)?.invincibleUntil ?? 0)) return;
     speed ??= Math.hypot(v.vx, v.vz);
     v.fallenUntil = now + 2500;
     this.ejectDriver(v, impact?.from ?? id, speed, hit, impact?.rotY ?? v.rotY, impact?.kind ?? v.kind);
@@ -293,7 +293,7 @@ export class VehicleManager {
   /** Traffic ejects exposed riders at the impact point, using the normal vehicle impact. */
   runOver(id: string, now: number, hit: Parameters<VehicleManager['tick']>[1], speed: number, impact: { from: string; rotY: number; kind: number }) {
     const v = this.state.vehicles.get(id);
-    if (!v || C.isPassengerVehicle(v)) return;
+    if (!v || C.isPassengerVehicle(v) || [...this.state.players.values()].some(p => p.vehicleId === id && now < p.invincibleUntil)) return;
     if (v.kind === 2) this.crashBike(id, now, hit, speed, impact);
     else {
       v.fallenUntil = now + 2500;
@@ -304,17 +304,20 @@ export class VehicleManager {
     for (const [target, rider] of this.state.players) if (rider.vehicleId === id) {
       rider.vehicleId = ''; rider.vehicleKind = -1; rider.seat = -1; rider.cabinStanding = false;
       hit(impact.from, target, rider.x, rider.y + 0.8, rider.z,
-        Math.sin(impact.rotY) * speed * 0.6, 2, Math.cos(impact.rotY) * speed * 0.6, true, impact.kind);
+        Math.sin(impact.rotY) * speed * 1.35, 4, Math.cos(impact.rotY) * speed * 1.35, true, impact.kind);
     }
   }
   private ejectDriver(v: Vehicle, from: string, speed: number, hit: Parameters<VehicleManager["tick"]>[1], rotY = v.rotY, sourceKind = v.kind) {
     const rider = this.state.players.get(v.driver), driver = v.driver;
+    if (rider && this.state.serverTime < rider.invincibleUntil) return;
+    const carHit = sourceKind === 3 && (v.kind === 2 || v.kind === C.LIME_KIND);
+    const force = speed * (carHit ? 1.35 : .6), lift = carHit ? 4 : 2;
     v.driver = ""; v.vx = v.vz = 0;
     if (rider) {
       // Keep the rider at the impact point; reconciliation blends the ejection.
       rider.vehicleId = ""; rider.vehicleKind = -1; rider.seat = -1;
       hit(from, driver, rider.x, rider.y + 0.8, rider.z,
-        Math.sin(rotY) * speed * 0.6, 2, Math.cos(rotY) * speed * 0.6, true, sourceKind);
+        Math.sin(rotY) * force, lift, Math.cos(rotY) * force, true, sourceKind);
     }
   }
   tick(

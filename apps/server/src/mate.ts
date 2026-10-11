@@ -28,7 +28,7 @@ export class MateMachine {
     if (action === "use") {
       if (!p.mateCount || p.mateBoostMs > 0) return reply(false, "No Mate available to drink.");
       p.mateCount--; p.mateBoostMs = C.MATE_BOOST_MS; p.mateDrinkStartedAt = now;
-      return reply(true, "Mate rush · +50% speed");
+      return reply(true, "Mate rush · 2× speed · 8s");
     }
     if (!C.nearMate(p, this.world)) return reply(false, "Move to the front of the vending machine.");
     this.advance(state, now);

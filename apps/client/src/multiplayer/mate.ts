@@ -35,7 +35,7 @@ export class MateFeature {
     this.prize.name = "Collectible Mate can"; this.prize.visible = false; this.machine.add(this.prize);
     this.collectionBox = new THREE.Mesh(new THREE.BoxGeometry(1.1, .36, .28), new THREE.MeshBasicMaterial({ visible: false }));
     this.collectionBox.position.set(.34, .35, -.4); this.machine.add(this.collectionBox); scene.add(this.machine);
-    this.ready = Promise.allSettled([loadMateModel("mate-machine", this.abort.signal), ...(["mate-can-basic", "mate-can-light", "mate-can-mint", "mate-can-ginger", "mate-can-ginger"] as const).map(name => loadMateModel(name, this.abort.signal))]).then(results => {
+    this.ready = Promise.allSettled([loadMateModel("mate-machine", this.abort.signal), ...(["mate-can-basic", "mate-can-light", "mate-can-mint", "mate-can-ginger"] as const).map(name => loadMateModel(name, this.abort.signal))]).then(results => {
       const failure = results.find(r => r.status === "rejected");
       if (failure || this.abort.signal.aborted) {
         results.forEach(r => { if (r.status === "fulfilled") disposeMap(r.value); });
@@ -53,7 +53,7 @@ export class MateFeature {
     this.message = this.modal.querySelector<HTMLElement>(".mate-message")!;
     this.buttons = Array.from(this.modal.querySelectorAll<HTMLButtonElement>(".mate-selection"));
     this.inventory.id = "mate-inventory"; this.inventory.hidden = true;
-    this.inventory.innerHTML = `<img src="${asset("cans/mint.png")}" alt="Mint Mate"><span>El Tony Mate <b></b><small>+50% speed · 15s · Press 1 to drink</small></span>`;
+    this.inventory.innerHTML = `<img src="${asset("cans/mint.png")}" alt="Mint Mate"><span>El Tony Mate <b></b><small>2× speed · 8s · Press 1 to drink</small></span>`;
     this.rush.id = "mate-rush"; this.rush.hidden = true; this.rush.setAttribute("role", "status");
     this.effects.id = "mate-speed-effects"; this.effects.hidden = true; this.effects.setAttribute("aria-hidden", "true");
     document.querySelector("#combat-actions")!.append(this.inventory, this.rush);
@@ -136,7 +136,7 @@ export class MateFeature {
       this.inventory.querySelector("b")!.textContent = flavor;
     }
     this.rush.hidden = !this.net.canPlay || p.mateBoostMs <= 0;
-    this.rush.textContent = p.mateBoostMs > 0 ? `Matee rush · +50% · ${Math.ceil(p.mateBoostMs / 1000)}s` : "";
+    this.rush.textContent = p.mateBoostMs > 0 ? `Matee rush · 2× speed · ${Math.ceil(p.mateBoostMs / 1000)}s` : "";
     this.effects.hidden = !this.net.canPlay || this.active || !!p.vehicleId || p.mateBoostMs <= 0;
     if (!this.active || !state) return;
     this.modal.dataset.phase = state.phase;

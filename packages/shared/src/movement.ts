@@ -39,13 +39,14 @@ export function respawn(p: Body, world: MovementWorld = flatWorld) {
   p.y = world.height(p.x, p.z) ?? p.y;
   p.vx = p.vy = p.vz = 0;
   p.grounded = true;
-  p.knockdownUntil = 0;
+  p.knockdownUntil = 0; p.invincibleUntil = 0;
   p.impactStartedAt = p.impactX = p.impactZ = p.impactStrength = 0;
   p.groundTime = p.simTime; p.jumpUntil = 0; p.jumpReadyAt = 0;
   p.jumpFatigue = 0; p.jumpSprintLocked = false;
   p.slideUntil = p.slideReadyAt = p.slideBufferedUntil = 0; p.sprintJump = false;
 }
 export function applyImpulse(p: Body, hit: Impulse, now: number) {
+  if ((hit.at ?? now) < (p.invincibleUntil ?? 0)) return;
   p.vx += hit.ix;
   p.vy += hit.iy;
   p.vz += hit.iz;
@@ -57,6 +58,7 @@ export function applyImpulse(p: Body, hit: Impulse, now: number) {
     p.impactStartedAt = at; p.impactX = hit.ix; p.impactZ = hit.iz;
     p.impactStrength = Math.hypot(hit.ix, hit.iy, hit.iz);
     p.knockdownUntil = Math.max(p.knockdownUntil, at + (hit.durationMs ?? C.KNOCKDOWN_DURATION_MS));
+    p.invincibleUntil = p.knockdownUntil + (hit.recoveryProtectionMs ?? 1000);
     p.anim = 3;
   }
 }
