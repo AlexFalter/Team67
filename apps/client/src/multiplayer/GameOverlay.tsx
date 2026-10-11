@@ -120,7 +120,6 @@ export function GameOverlay({ resolution, onResolutionChange }: {
     </section>
     <div id="battle-bus-intro" hidden role="status" aria-live="polite"></div>
     <div id="activity-feed" hidden role="log" aria-live="polite" aria-label="Activity feed"></div>
-    <button id="play" hidden>Click to play <span aria-hidden="true">↗</span></button>
     <div id="crosshair" hidden aria-hidden="true">+</div>
     <div id="combat-actions" hidden role="group" aria-label="Player actions">
       <div className="combat-action">

@@ -54,7 +54,7 @@ export class RemotePlayers {
         vehicleKind: p.vehicleKind,
         attackReadyAt: p.attackReadyAt,
         mateCount: p.mateCount,
-        mateBoostMs: p.mateBoostMs,
+        mateBoostMs: p.mateBoostMs, mateFlavor: p.mateFlavor, mateDrinkStartedAt: p.mateDrinkStartedAt,
         t: state.serverTime,
       };
       if (r.snapshots.at(-1)?.t === s.t)
@@ -95,6 +95,7 @@ export class RemotePlayers {
       p.attackReadyAt = (f < 1 ? a : b).attackReadyAt;
       p.simTime = a.simTime + (b.simTime - a.simTime) * f;
       const membership = f < 1 ? a : b;
+      p.mateBoostMs = membership.mateBoostMs; p.mateFlavor = membership.mateFlavor; p.mateDrinkStartedAt = membership.mateDrinkStartedAt;
       p.vehicleId = membership.vehicleId;
       p.seat = membership.seat;
       p.cabinStanding = membership.cabinStanding;

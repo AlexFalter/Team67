@@ -75,6 +75,7 @@ export class Network {
       }
       if (own) {
         body.mateCount = own.mateCount; body.mateBoostMs = own.mateBoostMs;
+        body.mateFlavor = own.mateFlavor; body.mateDrinkStartedAt = own.mateDrinkStartedAt;
         body.attackReadyAt = Math.max(body.attackReadyAt, own.attackReadyAt);
         body.moodleSitUntil=own.moodleSitUntil??0;
         body.knockdownUntil = Math.max(body.knockdownUntil, own.knockdownUntil);

@@ -29,6 +29,8 @@ export interface PlayerState {
   attackReadyAt: number;
   mateCount: number;
   mateBoostMs: number;
+  mateFlavor?: number;
+  mateDrinkStartedAt?: number;
 }
 export interface WorldState {
   npcs?: Map<string, import("./npc.ts").NpcState>;
