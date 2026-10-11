@@ -11,6 +11,7 @@ import { decoratePlayer } from "./playerIdentity.ts";
 import * as THREE from "three";
 import * as C from "@race/shared";
 import { BATTLE_BUS_HEADING, INTERP_DELAY_MS, IDLE_INPUT, zurichWorld, isRail, railFrame, railSeat, tramDerailFrame, examSecondsRemaining, RoomPhase } from "@race/shared";
+import { BridgeCows } from "./bridgeCows.ts";
 import { TrafficRenderer } from "./traffic.ts";
 import { TrafficRoadSurface } from "./trafficRoadSurface.ts";
 import { TrafficEditor } from "./trafficEditor.ts";
@@ -47,6 +48,7 @@ export class MapGame {
   private explosionEvents=new Set<string>();
   private net = new Network();
   private traffic: TrafficRenderer;
+  private cows: BridgeCows;
   private trafficEditor?: TrafficEditor;
   private local = new LocalPlayer();
   private remotes: RemotePlayers;
@@ -86,6 +88,7 @@ export class MapGame {
     hud: HTMLDivElement, hints: HTMLDivElement, map: THREE.Object3D, capture: () => void, onExamChange: (session: ExamSession) => void = () => {}) {
     this.medals = createMedals({root: canvas.parentElement!, definitions: PLAYER_MEDALS});
     this.net.onMedal = award => this.medals.awardMany(award.ids, award.eventKey);
+    this.cows = new BridgeCows(scene, this.audio);
     this.traffic = new TrafficRenderer(scene, TrafficRoadSurface.forMap(map));
     this.exam = new ExamSequence(scene, camera, onExamChange);
     this.transitScenery = new TransitScenery(scene, map);
@@ -115,9 +118,9 @@ export class MapGame {
     this.npcs.playerView = this.view;
     scene.add(camera);
     this.bus = new BattleBusIntro(scene, camera, this.net, canvas, () => this.view.sensitivity);
-    this.ready = Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready, this.npcs.ready,this.bags.ready]).then(() => {});
+    this.ready = Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready, this.npcs.ready, this.cows.ready, this.bags.ready]).then(() => {});
     this.roomFlow = new RoomFlow(this.net, this.ready, () => this.bus.unlockAudio(), () => this.audio.effect("timer"));
-    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.trafficEditor?.active && !this.emotes?.opened && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active, () => this.net.now()<this.derailUntil || !!this.maps?.active || (this.local.body.moodleSitUntil??0)>this.net.now(), () => this.net.now(), () => this.contextActions(), () => {if(this.bags.occupiesHands)return {kind:"bag",enabled:this.bags.canThrow,run:()=>this.bags.throwBag()};if(this.football.occupiesHands)return {kind:"football",enabled:this.football.canKick,run:()=>this.football.kick()};const knife=this.npcs.karambit;return knife?.occupiesHands()&&!this.local.body.vehicleId&&this.view.perspective===0?{enabled:knife.state().phase==='idle',run:()=>knife.attack()}:undefined;}, () => this.net.room.send('respawn'));
+    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.trafficEditor?.active && !this.emotes?.opened && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active, () => this.net.now()<this.derailUntil || !!this.maps?.active || (this.local.body.moodleSitUntil??0)>this.net.now(), () => this.net.now(), () => this.contextActions(), () => {if(this.bags.occupiesHands)return {kind:"bag",enabled:this.bags.canThrow,run:()=>this.bags.throwBag()};if(this.football.occupiesHands)return {kind:"football",enabled:this.football.canKick,run:()=>this.football.kick()};const knife=this.npcs.karambit;return knife?.occupiesHands()&&!this.local.body.vehicleId&&this.view.perspective===0?{enabled:this.npcs.canUseKarambit()&&knife.state().phase!=='attack'&&this.local.body.attackReadyAt<=this.net.now(),run:()=>this.npcs.attackKarambit()}:undefined;}, () => this.net.room.send('respawn'));
     this.emotes=new EmoteFeature(this.net,this.local,this.view,canvas.parentElement!,()=>this.net.canPlay&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.npcs.active&&!this.maps?.active&&this.net.now()>=this.derailUntil&&!!document.querySelector<HTMLElement>('#pause')?.hidden,()=>this.controls.resumeAfterInteraction());
     this.spectator=new Spectator(this.net,camera,canvas,()=>{this.controls.suspendForMap();this.exam.returnToExam();},()=>{void this.controls.resume();});
     this.net.onSpectate=()=>{this.maps.closeForTeleport();this.local.enabled=false;this.local.clear();this.exam.spectate();this.controls.suspendForMap();};
@@ -180,10 +183,14 @@ export class MapGame {
     else if(this.bags.nearby)actions.push({icon:"bag",key:"E",label:"Pick up Ersti bag",enabled:p.knockdownUntil<=this.net.now(),run:()=>this.local.requestInteraction()});
     else if (icon) actions.push({ icon, key: "E", label, enabled: p.knockdownUntil <= this.net.now(), run: () => this.local.requestInteraction() });
     if (p.mateCount > 0) actions.push({ icon: "mate", key: "1", label: "Drink Mate", enabled: this.mate.canConsume, run: () => this.mate.consume() });
-    const knife=this.npcs.karambit;
-    if(knife?.owns()&&!p.vehicleId&&!this.bags.occupiesHands){
-      actions.push({icon:knife.occupiesHands()?'holster':'equip',key:'3',label:knife.occupiesHands()?'Holster karambit':'Equip karambit',enabled:p.knockdownUntil<=this.net.now(),run:()=>{this.football.holster();knife.toggle();this.view.perspective=0;}});
-      if(knife.occupiesHands()&&this.view.perspective===0)actions.push({icon:'spin',key:'F',label:'Spin karambit',enabled:knife.state().phase==='idle'&&p.knockdownUntil<=this.net.now(),run:()=>knife.inspect()});
+    const knife = this.npcs.karambit;
+    if (knife?.owns() && !p.bagId) {
+      const enabled = this.npcs.canUseKarambit(), equipped = knife.occupiesHands();
+      actions.push({ icon: "knife", key: "3", label: equipped ? "Holster Karambit" : "Equip Karambit", enabled, run: () => {this.football.holster();this.npcs.toggleKarambit();} });
+      if (equipped && this.view.perspective === 0 && !p.vehicleId) {
+        const ready = enabled && knife.state().phase !== "attack" && p.attackReadyAt <= this.net.now();
+        actions.push({ icon: "knife", key: "F", label: "Slash", enabled: ready, run: () => this.npcs.attackKarambit() });
+      }
     }
     if(this.football.owns)actions.push({icon:"football",key:"4",label:this.football.occupiesHands?"Put away football":"Equip football",enabled:this.football.available,run:()=>this.football.toggle()});
     if(this.emotes)actions.push({icon:"emote",key:"B",label:"Emote wheel",enabled:this.emotes.available,run:()=>this.emotes.open()});
@@ -192,6 +199,7 @@ export class MapGame {
   update(elapsed: number, now: number) {
     const dt = Math.min(0.1, elapsed), renderTime = this.net.now() - INTERP_DELAY_MS;
     const state = this.net.room?.state;
+    this.cows.update(this.net.now(), this.camera.position, this.net.canPlay && !this.exam.active);
     this.traffic.render(renderTime);
     this.trafficEditor?.update();
     if (this.trafficEditor?.active) {
@@ -205,8 +213,8 @@ export class MapGame {
     if(this.exam.spectating&&!this.net.spectating)this.exam.returnToWorld();
     const examWasActive = this.exam.active;
     // Encounters keep camera ownership until they finish; vehicles also block exam entry.
-    this.exam.update(this.local.body, (this.net.canPlay||this.net.spectating) && !state?.adminMode, this.local.enabled && !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now()>=this.derailUntil, state?.startedAt ?? 0, remaining, now);
-    if (!examWasActive && this.exam.active) this.controls.suspendForMap();
+    this.exam.update(this.local.body, (this.net.canPlay||this.net.spectating) && !state?.adminMode, this.local.enabled && !this.publiBikes.active && !this.mate.active && !this.npcs.active && !this.emotes.opened && this.net.now()>=this.derailUntil, state?.startedAt ?? 0, remaining, now);
+    if (!examWasActive && this.exam.active) { this.net.beginExam(this.local.body); this.controls.suspendForMap(); }
     this.vehicles.render(renderTime, dt, "rail");
     this.transitScenery.update(state?.vehicles?.values() ?? [], this.net.now(), this.net.canPlay);
     this.view.setVehicle(this.local.body.vehicleId, this.local.body.rotY);
@@ -340,6 +348,7 @@ export class MapGame {
   spectate(){if(this.net.spectating)this.exam.spectate();else if(this.exam.active)this.net.requestSpectate();}
   skipExamTransition() { this.exam.skipTransition(); }
   completeExam(score: number) { this.exam.complete(score); }
+  reportExamProgress(progress: import("@race/shared").ExamScore) { this.net.reportExamProgress(progress); }
   returnFromExam() { if(this.net.spectating){this.exam.spectate();return;}this.exam.returnToWorld(); this.controls.restoreGameplay(); }
   debugTeleportToTerrace(enterPortal = false) {
     if (!import.meta.env.DEV || !this.net.room?.state.devMode || !this.net.canPlay || this.maps.active || this.exam.active || this.mate.active || this.publiBikes.active || this.npcs.active || this.net.now()<this.derailUntil) return;
@@ -352,8 +361,8 @@ export class MapGame {
   dispose() {
     this.spectator.dispose();this.net.onSpectate=undefined;
     this.maps.dispose(); this.hud.dispose();
-    this.coordinates.dispose();this.collisions.dispose();
-    this.trafficEditor?.dispose(); this.traffic.dispose();
+    this.coordinates.dispose(); this.collisions.dispose();
+    this.cows.dispose(); this.trafficEditor?.dispose(); this.traffic.dispose();
     this.menuScene.dispose();
     this.medals.destroy(); this.net.onMedal = undefined;
     this.exam.dispose();

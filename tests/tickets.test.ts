@@ -11,7 +11,7 @@ function fixture() {
   const state=new RaceState({phase:C.RoomPhase.Running,introComplete:true,startedAt:1000,endsAt:100000}), now=2000;
   const machine=new TicketMachine(state,C.zurichWorld), site=C.ticketSite(C.zurichWorld), replies:C.TicketResult[]=[];
   const clients=['alice','bob'].map(sessionId=>{
-    state.players.set(sessionId,new Player({...site,z:site.z-1.4}));state.members.set(sessionId,new RoomMember());state.npcs.set(sessionId,new Npc());
+    state.players.set(sessionId,new Player({...site,x:site.x-1.4}));state.members.set(sessionId,new RoomMember());state.npcs.set(sessionId,new Npc());
     return {sessionId,send:(type:string,result:C.TicketResult)=>{if(type==='ticketResult')replies.push(result);}} as unknown as Client;
   });
   const command=(i:number,action:C.TicketCommand['action'],extra:Partial<C.TicketCommand>={},at=now)=>machine.command(clients[i],{action,roundStartedAt:state.startedAt,...extra},at);
@@ -32,7 +32,7 @@ test('tickets reject stale rounds, spectators, invalid captcha, rear access, veh
   f.command(0,'pay',{...valid,roundStartedAt:0});assert.equal(f.replies.at(-1)!.ok,false);
   member.spectator=true;f.command(0,'pay',valid);assert.equal(f.replies.at(-1)!.ok,false);member.spectator=false;
   for(const tiles of [[0,4,4],[0,4,8,1],['0',4,8] as unknown as number[]]){f.command(0,'pay',{tiles});assert.equal(f.replies.at(-1)!.ok,false);}
-  p.z=f.site.z+1;f.command(0,'pay',valid);assert.equal(f.replies.at(-1)!.ok,false);p.z=f.site.z-1.4;
+  p.x=f.site.x+1;f.command(0,'pay',valid);assert.equal(f.replies.at(-1)!.ok,false);p.x=f.site.x-1.4;
   p.vehicleId='cart-1';f.command(0,'pay',valid);assert.equal(f.replies.at(-1)!.ok,false);p.vehicleId='';
   p.knockdownUntil=f.now+1;f.command(0,'pay',valid);assert.equal(f.replies.at(-1)!.ok,false);p.knockdownUntil=0;
   assert.equal(f.state.npcs.get('alice')!.ticketReadyAt,0);
@@ -52,7 +52,7 @@ test('successful Polybahn boarding consumes one ticket; failed boarding and othe
 });
 
 test('current map has reachable ticket access, solid cabinet collision, and all stations inside the story boundary',()=>{
-  const site=C.ticketSite(C.zurichWorld),front={...site,z:site.z-1.4};
+  const site=C.ticketSite(C.zurichWorld),front={...site,x:site.x-1.4};
   assert.ok(C.nearTicket(front,C.zurichWorld));assert.equal(C.zurichWorld.blocked(front.x,front.y,front.z,C.CAPSULE_RADIUS,C.CAPSULE_HEIGHT),false);
   assert.equal(C.zurichWorld.blocked(site.x,site.y,site.z,C.CAPSULE_RADIUS,C.CAPSULE_HEIGHT),true);
   const bounds=C.npcBounds(C.zurichWorld);

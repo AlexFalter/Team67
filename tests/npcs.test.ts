@@ -138,6 +138,17 @@ test("scooter arrival starts once near an active player and shares the server cl
  f.encounters.tick(f.now+1000);assert.equal(f.state.scooterArrivalAt,f.now,'nearby players do not restart the animation');
 });
 
+
+test("scooter riders arrive in the open plaza after the bridge over clear terrain", () => {
+ const points=C.NPC_LAYOUT.scooter.ridePoints,[x,z]=points.at(-1)!;
+ assert.ok(x>-50&&x<-35&&z>70&&z<85);
+ for(let t=0;t<=1;t+=.01){
+  const x=points[0][0]+(points[1][0]-points[0][0])*t,z=points[0][1]+(points[1][1]-points[0][1])*t;
+  const y=C.zurichWorld.height(x,z)!;
+  assert.ok(y>8.8&&y<9.2);assert.equal(C.zurichWorld.blocked(x,y+.15,z,.65,3),false);
+ }
+});
+
 test('Einstein uses the requested location and has a reachable adjacent teleporter',()=>{
  assert.deepEqual(C.NPC_LAYOUT.einstein.position,[44.32,11.77,140.83]);
  for(const [x,y,z] of [C.NPC_LAYOUT.einstein.position,C.NPC_LAYOUT.einstein.site,C.NPC_LAYOUT.einstein.approach]){

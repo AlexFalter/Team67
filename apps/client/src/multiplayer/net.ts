@@ -47,6 +47,15 @@ export class Network {
   now() {
     return Date.now() + this.offset;
   }
+  beginExam(body: Body) {
+    if (!this.canPlay) return;
+    this.room.send("move", packMove(body));
+    this.room.send("examStart", this.room.state.startedAt);
+  }
+  reportExamProgress(progress: import("@race/shared").ExamScore) {
+    if (!this.initialized || !this.room) return;
+    this.room.send("examProgress", { ...progress, roundStartedAt: this.room.state.startedAt } satisfies import("@race/shared").ExamProgress);
+  }
   async connect(
     body: Body,
     onPatch: (state: WorldState, id: string) => void,
@@ -85,7 +94,7 @@ export class Network {
         this.initialized = true;
       }
       if (own) {
-        body.bagId=own.bagId;
+        body.bagId=own.bagId; body.karambitOwned=own.karambitOwned;
         body.mateCount = own.mateCount; body.mateBoostMs = own.mateBoostMs;
         body.mateFlavor = own.mateFlavor; body.mateDrinkStartedAt = own.mateDrinkStartedAt;
         body.attackReadyAt = Math.max(body.attackReadyAt, own.attackReadyAt);
@@ -177,7 +186,7 @@ export class Network {
     if (cmd.hit || impact >= CART_MIN_HIT_SPEED) {
       if (body.vehicleId) this.room.send("vehicleMove", [body.vehicleId, body.x, body.z, body.rotY, body.vx, body.vz]);
       else this.room.send("move", packMove(body));
-      if (cmd.hit) this.room.send("hit");
+      if (cmd.hit) this.room.send("hit", cmd.karambit ? {karambit:true} : undefined);
       if (body.vehicleKind === 2 && impact >= CART_MIN_HIT_SPEED) this.room.send("bikeCrash");
     }
   }

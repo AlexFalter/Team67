@@ -1,3 +1,4 @@
+import {stepScooterPursuit} from '@race/shared';
 import {createLimeModel} from '../../vehicles/scooter/lime-model.js';
 import {createDialogueAudio} from '../../shared/dialogue/dialogue-audio.js';
 import {disposeOwnedObject} from '../../shared/runtime/feature-lifecycle.js';
@@ -61,6 +62,9 @@ export function createBridgeScooter(scene,world,{horns=gameConfig.npcs.scooter.h
  const audio=createDialogueAudio('/audio/frankfurt-dialogue.mp3?v=2'),clips=[audio];for(const audio of clips){audio.preload='auto';audio.volume=gameConfig.npcs.scooter.volume;}
  const caption=document.createElement('aside');caption.id='bridge-scooter-caption';caption.hidden=true;caption.setAttribute('aria-live','polite');uiRoot.append(caption);styleEncounterLine(caption);caption.classList.add('encounter-subtitle');
  let distance=0,age=0,used=false,moving=false,playing=false,played=false,failed=false,line=-1,generation=0,cooldown=0,speed=0,heading=0,stopDistance=length,phase='waiting',diverted=false,lastScan=-1;
+ const [homeX,homeZ]=bridge.at(-1),pursuit={x:homeX,y:world.height(homeX,homeZ),z:homeZ,homeX,homeZ,heading:0,speed:0,chasing:false,returning:false,lean:0};
+ const pursuitWorld={height:world.height,blocked:(x,y,z,r,h)=>world.isWater(x,z)||world.bodyBlocked(x,y,z,r,h)};
+ let pursuing=false;
  let conversation=false,completed=false,greeted=false,conversationAge=0,offerAge=0,shortBraking=false,pendingTalk=false;
  const frozen=new THREE.Vector3();
  const gift=knifeModel?.clone(true)??new THREE.Group();gift.name='Offered Karambit Doppler';gift.visible=false;gift.position.set(0,-.225,-.01);gift.rotation.set(Math.PI/2,0,.3);gift.scale.setScalar(.65);gift.traverse(o=>{if(o.isMesh){o.geometry=o.geometry.clone();o.material=o.material.clone();}o.layers.set(0);o.renderOrder=0;});riders[0].elbows[0].add(gift);
@@ -83,19 +87,14 @@ export function createBridgeScooter(scene,world,{horns=gameConfig.npcs.scooter.h
    if(!collect.hidden){const p=gift.getWorldPosition(new THREE.Vector3()).project(camera);collect.style.left=`${(p.x+1)*innerWidth/2}px`;collect.style.top=`${(1-p.y)*innerHeight/2}px`;}
   },
   near(position){return Math.hypot(position.x-group.position.x,position.z-group.position.z)<gameConfig.npcs.scooter.interactionDistance&&Math.abs(position.y-group.position.y)<3;},
-  canTalk(position){return !conversation&&!moving&&!completed&&(!shortArrival||phase==='parked')&&this.near(position);},
-  interact(position){if(conversation)return true;if(shortArrival&&moving&&!completed&&this.near(position)){pendingTalk=true;if(!shortBraking){shortBraking=true;stopDistance=Math.min(length,distance+speed*speed/8);}return true;}if(!this.canTalk(position))return false;audio.pause();generation++;conversation=true;conversationAge=0;frozen.copy(position);phase='dialogue';play();return true;},
+  canTalk(position){return !conversation&&(!moving||pursuing)&&!completed&&(!shortArrival||phase==='parked'||pursuing)&&this.near(position);},
+  interact(position){if(conversation)return true;if(shortArrival&&!pursuing&&moving&&!completed&&this.near(position)){pendingTalk=true;if(!shortBraking){shortBraking=true;stopDistance=Math.min(length,distance+speed*speed/8);}return true;}if(!this.canTalk(position))return false;audio.pause();generation++;conversation=true;conversationAge=0;frozen.copy(position);speed=pursuit.speed=0;moving=false;phase='dialogue';play();return true;},
   blocked(x,z,y){if(Math.abs(y-group.position.y)>2)return false;const dx=x-group.position.x,dz=z-group.position.z,lx=Math.cos(heading)*dx-Math.sin(heading)*dz,lz=Math.sin(heading)*dx+Math.cos(heading)*dz;return Math.abs(lx)<.68&&Math.abs(lz)<1.42;},
   update(dt,position,enabled=true,{elapsed}={}){
    updateDialogueVolume(audio,position,group.position,{dt,volume:gameConfig.npcs.scooter.volume,near:gameConfig.npcs.scooter.audioNearDistance,far:gameConfig.npcs.scooter.audioFarDistance});
    if(conversation||!enabled||!Number.isFinite(dt)||dt<=0)return;
-   if(shortArrival){
+   if(shortArrival&&!pursuing){
     const waiting=Number.isFinite(elapsed)&&elapsed<0,duration=placement.arrivalSeconds??8,time=Number.isFinite(elapsed)?Math.max(0,elapsed):age+dt;
-    if(!waiting&&!shortBraking&&phase!=='parked'){
-     let closest=Infinity,projected=length;
-     for(let d=distance;d<=length;d+=.25){const p=point(d),gap=Math.hypot(p.x-position.x,p.z-position.z);if(gap<closest&&Math.abs(p.y-position.y)<3){closest=gap;projected=d;}}
-     if(closest<3){shortBraking=true;stopDistance=Math.max(distance,projected-Math.sqrt(Math.max(0,Math.min(2.6,gameConfig.npcs.scooter.interactionDistance-.3)**2-closest**2)));}
-    }
     let next=distance;
     if(shortBraking){
      const left=Math.max(0,stopDistance-distance);
@@ -111,10 +110,21 @@ export function createBridgeScooter(scene,world,{horns=gameConfig.npcs.scooter.h
     used=true;const travel=next-distance;distance=next;
     wheels.forEach(w=>w.rotation.x-=travel/.21);pose();
    }
+   if(!pursuing&&phase==='parked'){
+    pursuing=true;Object.assign(pursuit,{x:group.position.x,y:group.position.y,z:group.position.z,heading,speed:0});
+   }
+   if(pursuing){
+    const x=group.position.x,z=group.position.z;
+    stepScooterPursuit(pursuit,position,dt,pursuitWorld);
+    group.position.set(pursuit.x,pursuit.y,pursuit.z);heading=pursuit.heading;group.rotation.y=heading;
+    speed=pursuit.speed;moving=speed>.05;phase=moving?(pursuit.chasing?'chasing':'returning'):'parked';
+    const travel=Math.hypot(group.position.x-x,group.position.z-z);
+    wheels.forEach(w=>w.rotation.x-=travel/.21);group.updateMatrixWorld(true);
+   }
    for(let remaining=Math.min(dt,10);remaining>0;){
     const step=Math.min(.05,remaining);remaining-=step;age+=step;cooldown=Math.max(0,cooldown-step);
     if(!used){used=true;moving=true;phase='arriving';}
-    if(moving&&!shortArrival){
+    if(moving&&!shortArrival&&!pursuing){
      // Once on the bridge, use a clear short spur if the player is beside the lane.
      if(!diverted&&stopDistance===length&&distance>=bridgeStart&&Math.hypot(position.x-bridge[0][0],position.z-bridge[0][1])<40&&Math.abs(position.y-group.position.y)<3){
       const from=point(distance),toward=from.clone().sub(position);toward.y=0;
@@ -143,15 +153,22 @@ export function createBridgeScooter(scene,world,{horns=gameConfig.npcs.scooter.h
      phase=distance<bridgeStart-30?'arriving':'approaching';
      if(stopDistance-distance<.01){distance=stopDistance;speed=0;moving=false;phase='parked';pose();}
     }
-    if(!conversation&&!moving&&phase==='parked'&&pendingTalk){pendingTalk=false;if(this.near(position)){greeted=true;this.interact(position);}}
+    if(!conversation&&(!moving||pursuing)&&pendingTalk){pendingTalk=false;if(this.near(position)){greeted=true;this.interact(position);}}
     if(!conversation&&!moving&&(!shortArrival||phase==='parked')&&!greeted&&this.near(position)){greeted=true;play();}if(!conversation)syncCaption();
-    const sway=Math.sin(age*5)*Math.min(1,speed/5);
-    riders[0].player.rotation.x=.06*Math.min(1,speed/5);
-    riders[1].player.rotation.z=sway*.015;riders[2].player.rotation.z=sway*.035;
+    const amount=Math.min(1,speed/4.3),sway=Math.sin(age*7)*amount,bounce=Math.sin(age*14)*.012*amount,lean=pursuing?pursuit.lean:0;
+    scooter.rotation.z=lean;
+    riders[0].player.position.y=.34+bounce;riders[0].player.rotation.x=.06*amount;riders[0].player.rotation.z=lean*.7;
+    riders[1].player.position.y=.34+bounce*.7;riders[1].player.rotation.z=sway*.025+lean*.8;
+    riders[2].player.position.y=.77+bounce;riders[2].player.rotation.z=sway*.04+lean*.4;
+    for(let i=0;i<2;i++){
+     riders[0].limbs[i*2].rotation.x=1.1+.035*sway;riders[0].elbows[i].rotation.x=.2+.04*amount;
+     riders[0].knees[i].rotation.x=-.08*amount-.03*sway;
+    }
+
    }
   },
   setHorns(enabled){riders.forEach(r=>r.player.getObjectByName('Optional tall horns').visible=enabled);},
-  reset(){conversation=completed=greeted=shortBraking=pendingTalk=false;conversationAge=offerAge=0;gift.visible=false;collect.hidden=true;riders[0].limbs[0].rotation.z=0;riders[0].limbs[0].rotation.x=1.1;generation++;clips.forEach(a=>{a.pause();a.currentTime=0;});caption.hidden=true;distance=age=cooldown=speed=0;spans.length=0;length=0;for(let i=1;i<nodes.length;i++){const size=Math.hypot(nodes[i].x-nodes[i-1].x,nodes[i].z-nodes[i-1].z);if(size<.001)continue;spans.push({a:nodes[i-1],b:nodes[i],start:length,size});length+=size;}stopDistance=length;phase='waiting';diverted=false;lastScan=-1;used=moving=playing=played=failed=false;line=-1;wheels.forEach(w=>w.rotation.x=0);riders.forEach(r=>r.player.rotation.set(0,0,0));pose();if(parked)this.park();},
-  state:()=>({conversation,completed,greeted,offerAge,giftVisible:gift.visible,collectVisible:!collect.hidden,passengers:passengers.state(),used,moving,playing,played,failed,line,distance,length,speed,phase,diverted,stopDistance,bridgeStart,entry,voidStart:nodes[0].toArray(),route,position:group.position.toArray(),riders:3,piggyback:riders[2].player.parent===riders[1].player,volume:audio.volume,audioTime:audio.currentTime,audioPaused:audio.paused,shortArrival,shortBraking,pendingTalk,horns:riders[0].player.getObjectByName('Optional tall horns').visible})
+  reset(){pursuing=false;Object.assign(pursuit,{x:homeX,y:world.height(homeX,homeZ),z:homeZ,heading:0,speed:0,chasing:false,returning:false,lean:0});scooter.rotation.z=0;riders[0].player.position.y=riders[1].player.position.y=.34;riders[2].player.position.y=.77;conversation=completed=greeted=shortBraking=pendingTalk=false;conversationAge=offerAge=0;gift.visible=false;collect.hidden=true;riders[0].limbs[0].rotation.z=0;riders[0].limbs[0].rotation.x=1.1;generation++;clips.forEach(a=>{a.pause();a.currentTime=0;});caption.hidden=true;distance=age=cooldown=speed=0;spans.length=0;length=0;for(let i=1;i<nodes.length;i++){const size=Math.hypot(nodes[i].x-nodes[i-1].x,nodes[i].z-nodes[i-1].z);if(size<.001)continue;spans.push({a:nodes[i-1],b:nodes[i],start:length,size});length+=size;}stopDistance=length;phase='waiting';diverted=false;lastScan=-1;used=moving=playing=played=failed=false;line=-1;wheels.forEach(w=>w.rotation.x=0);riders.forEach(r=>r.player.rotation.set(0,0,0));pose();if(parked)this.park();},
+  state:()=>({pursuing,chasing:pursuit.chasing,returning:pursuit.returning,lean:pursuit.lean,conversation,completed,greeted,offerAge,giftVisible:gift.visible,collectVisible:!collect.hidden,passengers:passengers.state(),used,moving,playing,played,failed,line,distance,length,speed,phase,diverted,stopDistance,bridgeStart,entry,voidStart:nodes[0].toArray(),route,position:group.position.toArray(),riders:3,piggyback:riders[2].player.parent===riders[1].player,volume:audio.volume,audioTime:audio.currentTime,audioPaused:audio.paused,shortArrival,shortBraking,pendingTalk,horns:riders[0].player.getObjectByName('Optional tall horns').visible})
  };
 }

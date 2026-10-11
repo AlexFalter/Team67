@@ -1,3 +1,4 @@
+import { bridgeCowSweepBlocked, resolveBridgeCows } from "./bridgeCows.ts";
 import * as C from "./constants.ts";
 import type { Input, PlayerState, VehicleState } from "./types.ts";
 import { resolveHouses } from "./flatObstacles.ts";
@@ -32,7 +33,7 @@ export function createVehicle(kind = 0, x = 0, z = 0): VehicleState {
   };
 }
 
-export function stepCart(v: VehicleState, input: Input, dt: number, world: MovementWorld = flatWorld) {
+export function stepCart(v: VehicleState, input: Input, dt: number, world: MovementWorld = flatWorld, now = 0) {
   const previous = { x: v.x, y: v.y, z: v.z };
   const speed = v.kind === C.LIME_KIND && input.sprint ? C.LIME_BOOST_SPEED : vehicleSpeed(v);
   const length = Math.hypot(input.x, input.z),
@@ -67,7 +68,7 @@ export function stepCart(v: VehicleState, input: Input, dt: number, world: Movem
       // Missing ground / an unrideable height step stops motion safely, but
       // is not evidence of a wall impact and must not eject a bike rider.
       if (y === undefined || Math.abs(y - v.y) > C.MAX_GROUND_STEP) return "terrain";
-      return world.blocked(x, y, z, radius, C.CART_HIT_HEIGHT) ? "solid" : "clear";
+      return (world.blocked(x, y, z, radius, C.CART_HIT_HEIGHT) || bridgeCowSweepBlocked({ x: previous.x, y, z: previous.z }, x, z, radius, C.CART_HIT_HEIGHT, now, world)) ? "solid" : "clear";
     };
     const xMove = canMove(body.x, previous.z);
     if (xMove !== "clear") { if (xMove === "solid") impactX = body.vx; body.x = previous.x; body.vx = 0; }
@@ -75,6 +76,7 @@ export function stepCart(v: VehicleState, input: Input, dt: number, world: Movem
     if (zMove !== "clear") { if (zMove === "solid") impactZ = body.vz; body.z = previous.z; body.vz = 0; }
     v.y = world.height(body.x, body.z, v.y) ?? v.y;
   }
+  resolveBridgeCows(body, now, world, radius, C.CART_HIT_HEIGHT);
   v.x = body.x; v.z = body.z; v.vx = body.vx; v.vz = body.vz;
   return world.name === "flat" ? Math.hypot(vx - v.vx, vz - v.vz) : Math.hypot(impactX, impactZ);
 }

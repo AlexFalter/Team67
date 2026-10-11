@@ -60,7 +60,7 @@ export class NpcFeature {
   this.moodleSettings=document.createElement('label');this.moodleSettings.className='phone-moodle-setting';this.moodleSettings.innerHTML='<input type="checkbox" checked> Random Moodle quizzes';this.ui.querySelector('#phone-device .phone-screen').append(this.moodleSettings);this.moodleSettings.querySelector('input').onchange=e=>this.net.room.send('moodleSettings',e.target.checked);
   this.moodlePenalty=document.createElement('aside');this.moodlePenalty.className='moodle-penalty';this.moodlePenalty.hidden=true;this.ui.append(this.moodlePenalty);
   window.addEventListener('keydown',e=>this.keydown(e),{capture:true,signal:this.abort.signal});
-  canvas.addEventListener('click',e=>{if(!this.active&&this.local.enabled&&this.playerView?.perspective===0&&this.karambit?.occupiesHands()){this.karambit.attack();e.preventDefault();e.stopImmediatePropagation();}},{capture:true,signal:this.abort.signal});
+  canvas.addEventListener('click',e=>{if(!this.active&&this.local.enabled&&this.playerView?.perspective===0&&this.karambit?.occupiesHands()){this.attackKarambit();e.preventDefault();e.stopImmediatePropagation();}},{capture:true,signal:this.abort.signal});
   net.onLimePhotoRequired=id=>{this.limePhotoPending=id;this.syncLock();};
   net.onLimePhotoResult=ok=>{if(ok){this.limePhotoSubmitting=false;this.limePhotoPending=null;this.phone.receive({sender:'Lime',text:'Thank you for riding with Lime! Your parking photo was accepted. Ride ended.',color:'#39b54a'});}else {this.limePhotoSubmitting=false;this.notice('Parking photo could not be submitted. Try again.');}this.syncLock();if(ok&&this.local.enabled)this.onResume?.();};
   net.onNpcResult=result=>this.result(result);
@@ -86,14 +86,15 @@ export class NpcFeature {
     return;
    }
    if(e.code==='Backspace'&&this.local.enabled&&this.currentPoly()&&!this.active){e.preventDefault();if(this.net.canPlay)this.net.room.send('vehicleExit');return;}
-   if(!this.active&&this.local.enabled&&this.net.canPlay&&!this.local.body.bagId&&this.karambit?.owns()){
-    if(e.code==='Digit3'&&!e.repeat){this.karambit.toggle();if(this.playerView)this.playerView.perspective=0;e.preventDefault();e.stopImmediatePropagation();return;}
-    if(this.playerView?.perspective===0&&this.karambit.occupiesHands()&&['KeyF','KeyQ'].includes(e.code)){if(!e.repeat){if(e.code==='KeyF')this.karambit.inspect();else this.karambit.attack();}e.preventDefault();e.stopImmediatePropagation();return;}
+   if(this.canUseKarambit()){
+    if(e.code==='Digit3'&&!e.repeat){this.toggleKarambit();e.preventDefault();e.stopImmediatePropagation();return;}
+    if(this.playerView?.perspective===0&&this.karambit.occupiesHands()&&e.code==='KeyF'){if(!e.repeat){this.attackKarambit();}e.preventDefault();e.stopImmediatePropagation();return;}
    }
    if(!this.active)return;
    if(this.limePhotoPending&&!this.limePhoto?.active()){e.preventDefault();e.stopImmediatePropagation();return;}
    if(this.limo?.riding()&&this.limo.keydown(e)){e.preventDefault();e.stopImmediatePropagation();return;}
    if(!this.message.hidden){if(e.code==='Enter')this.message.querySelector('button').click();e.preventDefault();e.stopImmediatePropagation();return;}
+   if(this.scooter?.active()&&this.scooter.keydown?.(e)){e.preventDefault();e.stopImmediatePropagation();this.syncLock();return;}
    if(this.pending||this.travel||this.finance?.active()||this.inspector?.active()||this.property?.active()||this.scooter?.active()){e.preventDefault();e.stopImmediatePropagation();return;}
    for(const feature of this.features)if(feature!==this.phone&&feature.keydown?.(e)){e.stopImmediatePropagation();this.syncLock();break;}
  }
@@ -116,6 +117,7 @@ export class NpcFeature {
   try{
    const ticketPoint=new THREE.Vector3().copy(C.ticketSite(C.zurichWorld));
    this.ticketProps=createTicketProps(this.root,[ticketPoint]);
+   this.ticketProps[0].group.rotation.y=C.TICKET_ROTATION_Y;
    const ticketRail={ticketProps:this.ticketProps,ticketPoints:[ticketPoint],nearTicketIndex:position=>C.nearTicket(position,C.zurichWorld)?0:-1,
     state:()=>({ticketCount:this.net.room?.state.npcs?.get(this.net.room.sessionId)?.ticketCount??0}),collectTicket:()=>this.requestTicket('collect')};
    this.ticketMachine=this.own(createPolybahnTicketMachine(ticketRail,{camera,canvas:this.canvas,uiRoot,
@@ -128,7 +130,7 @@ export class NpcFeature {
    this.property=this.own(createPrivatePropertyEncounter(this.root,world,new THREE.Vector3(),0,solver,{uiRoot}));
    this.karambit=this.own(await createKarambit(camera,{uiRoot,onStrike:()=>this.strikeKnife()}));
    if(this.abort.signal.aborted){this.cleanupFeatures();return;}
-   this.scooter=this.own(createBridgeScooter(this.root,world,{placement:{...placements.scooterEncounter,...C.NPC_LAYOUT.scooter},parked:true,uiRoot,knifeModel:this.karambit.grip,onCollect:()=>{this.karambit.give();if(this.playerView){this.playerView.perspective=0;this.playerView.pitch=0;}this.syncLock();}}));
+   this.scooter=this.own(createBridgeScooter(this.root,world,{placement:{...placements.scooterEncounter,...C.NPC_LAYOUT.scooter},shortArrival:true,uiRoot,knifeModel:this.karambit.grip,onCollect:()=>{this.net.room.send('collectKarambit');this.karambit.give();if(this.playerView){this.playerView.perspective=0;this.playerView.pitch=0;}this.syncLock();}}));
    this.knifeVictims=this.scooter.riders.map(rig=>({rig,knockdown:createNpcKnockdown(rig,world)}));
    this.own({reset:()=>this.knifeVictims.forEach(p=>p.knockdown.reset())});
    // A short fixed arrival is shared scenery; each client uses the round clock.
@@ -264,8 +266,11 @@ export class NpcFeature {
   if(this.scooter?.canTalk(this.position))return {icon:'person',label:'Talk to the scooter riders'};
   return null;
  }
+ canUseKarambit(){return !!this.karambit?.owns()&&!this.active&&this.local.enabled&&this.net.canPlay&&!this.local.body.vehicleId&&!this.local.body.bagId&&this.local.body.knockdownUntil<=this.net.now();}
+ toggleKarambit(){if(!this.canUseKarambit())return;this.karambit.toggle();if(this.karambit.occupiesHands()&&this.playerView)this.playerView.perspective=0;}
+ attackKarambit(){if(this.canUseKarambit()&&this.playerView?.perspective===0&&this.local.body.attackReadyAt<=this.net.now())this.karambit.attack();}
  strikeKnife(){
-  this.local.punch();
+  this.local.punch(true);
   if(this.scooter?.state().phase!=='parked')return false;
   const origin=this.camera.getWorldPosition(new THREE.Vector3()),direction=this.camera.getWorldDirection(new THREE.Vector3()),end=origin.clone().addScaledVector(direction,1.7);
   const candidates=(this.knifeVictims??[]).filter(p=>p.rig.player.visible&&!p.knockdown.active()).map(p=>({p,center:p.rig.player.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0,.9,0))})).sort((a,b)=>a.center.distanceTo(origin)-b.center.distanceTo(origin));

@@ -1,9 +1,11 @@
+import { attackCooldown } from "./karambit.ts";
 import * as C from "./constants.ts";
 import type { Body, Input, Impulse } from "./types.ts";
 import { resolveHouses } from "./flatObstacles.ts";
 import { flatWorld, type MovementWorld } from "./world.ts";
 import { createVehicle, stepCart, seatPosition } from "./vehicles.ts";
 import { MATE_SPEED_MULTIPLIER } from "./mate.ts";
+import { bridgeCowSweepBlocked, resolveBridgeCows } from "./bridgeCows.ts";
 import { raceSpawnPoint } from "./battleBus.ts";
 export function createBody(): Body {
   return {
@@ -28,6 +30,7 @@ export function createBody(): Body {
     simTime: 0,
     vehicleKind: -1,
     attackReadyAt: 0,
+    karambitOwned: false,
     limeBoostMs: C.LIME_BOOST_DURATION_MS, limeBoostExhausted: false,
     mateCount: 0,
     mateBoostMs: 0, mateFlavor: 2, mateDrinkStartedAt: 0,
@@ -163,7 +166,7 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
   p.vy += C.GRAVITY * dt;
   const canMove = (x: number, z: number) => {
     const ground = world.height(x, z, previousY);
-    if (world.blocked(x, p.y, z, C.CAPSULE_RADIUS, C.CAPSULE_HEIGHT)) return false;
+    if (world.blocked(x, p.y, z, C.CAPSULE_RADIUS, C.CAPSULE_HEIGHT) || bridgeCowSweepBlocked(p, x, z, C.CAPSULE_RADIUS, C.CAPSULE_HEIGHT, now, world)) return false;
     if (ground === undefined) return true;
     // grounded: at most one step up; airborne: never into terrain above the feet (+ one step), else a
     // jump against a slope moves the body inside the ground and it falls through the map
@@ -183,6 +186,7 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
     p.vy = 0;
     p.grounded = true;
   } else p.grounded = false;
+  resolveBridgeCows(p, now, world, C.CAPSULE_RADIUS, C.CAPSULE_HEIGHT);
   if (!grounded && p.grounded) startSlide();
   if (world.name === "flat") resolveHouses(p, previous);
   if (p.y < (ground ?? world.spawn.y) + C.RESPAWN_DEPTH) respawn(p, world);
@@ -193,7 +197,7 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
 export function stepPlayer(p: Body, input: Input, dt: number, world: MovementWorld = flatWorld) {
   p.simTime += dt * 1000;
   if (input.hit && !p.vehicleId && p.simTime >= p.knockdownUntil && p.simTime >= p.attackReadyAt)
-    p.attackReadyAt = p.simTime + C.ATTACK_COOLDOWN_MS;
+    p.attackReadyAt = p.simTime + attackCooldown(!!input.karambit);
   if (p.vehicleId) {
     p.slideUntil = 0; p.slideBufferedUntil = 0; p.sprintJump = false;
     let impact = 0;
@@ -209,7 +213,7 @@ export function stepPlayer(p: Body, input: Input, dt: number, world: MovementWor
         if (p.limeBoostMs === 0) p.limeBoostExhausted = true;
         drivingInput = { ...input, sprint: boosting };
       }
-      impact = stepCart(v, drivingInput, dt, world);
+      impact = stepCart(v, drivingInput, dt, world, p.simTime);
       seatPosition(v, p.seat, p);
       p.vx = v.vx; p.vz = v.vz; p.vy = 0; p.rotY = v.rotY;
     }

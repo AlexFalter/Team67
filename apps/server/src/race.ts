@@ -90,6 +90,8 @@ export class Race extends Room<{ state: RaceState }> {
       onArrival: () => this.arriveFromBus(),
     });
     registerExamDebug(this, this.world, this.lastMoves, id => this.rounds.canPlay(id));
+    this.onMessage("examStart", (client, roundStartedAt: unknown) => this.rounds.beginExam(client.sessionId, roundStartedAt));
+    this.onMessage("examProgress", (client, data: unknown) => this.rounds.examProgress(client.sessionId, data));
     this.onMessage("trafficEdit", (client, data: unknown) => {
       if (!this.state.devMode || client.sessionId !== this.state.hostId) {
         client.send("trafficResult", { ok: false, message: "Only the development room host can edit traffic." }); return;
@@ -137,7 +139,11 @@ export class Race extends Room<{ state: RaceState }> {
       const t = (data as C.Ping)?.clientTime;
       if (Number.isFinite(t)) client.send("pong", { clientTime: t, serverTime: Date.now() });
     });
-    this.onMessage("hit", client => this.attack(client));
+    this.onMessage("hit", (client, data: unknown) => this.attack(client, data));
+    this.onMessage("collectKarambit", client => {
+      const p=this.state.players.get(client.sessionId),now=Date.now();
+      if(p&&this.rounds.canPlay(client.sessionId)&&!this.npcs.busy(client.sessionId)&&now>=p.knockdownUntil&&C.canCollectKarambit(p,this.world))p.karambitOwned=true;
+    });
     this.onMessage("bikeCrash", client => {
       const p = this.state.players.get(client.sessionId), v = p && this.state.vehicles.get(p.vehicleId);
       if (!this.rounds.canPlay(client.sessionId) || !v || v.kind !== 2 || v.driver !== client.sessionId) return;
@@ -296,6 +302,9 @@ export class Race extends Room<{ state: RaceState }> {
         C.MAX_HORIZONTAL_SPEED * dt + 0.15
     )
       return;
+    if (C.bridgeCowSweepBlocked(p, data[0], data[2], C.CAPSULE_RADIUS, C.CAPSULE_HEIGHT, now, this.world)) {
+      client.send("playerCorrection", this.correction(p)); return;
+    }
     const clamp = (v: number, n: number) => Math.max(-n, Math.min(n, v));
     const bounds = this.world.bounds;
     p.x =
@@ -307,6 +316,7 @@ export class Race extends Room<{ state: RaceState }> {
       this.world.name === "flat"
         ? clamp(data[2], C.MAX_POSITION)
         : Math.max(bounds.minZ - 20, Math.min(bounds.maxZ + 20, data[2]));
+    C.resolveBridgeCows(p, now, this.world, C.CAPSULE_RADIUS, C.CAPSULE_HEIGHT);
     p.rotY = data[3] % (2 * Math.PI);
     p.vx = clamp(data[4], C.MAX_HORIZONTAL_SPEED);
     p.vy = clamp(data[5], C.MAX_VERTICAL_SPEED);
@@ -317,12 +327,14 @@ export class Race extends Room<{ state: RaceState }> {
     if (p.anim === C.SLIDE_ANIM && (!p.grounded || Math.hypot(p.vx, p.vz) < 1))
       p.anim = p.grounded ? 0 : 2;
     this.lastMoves.set(client.sessionId, now);
+    if (Math.hypot(p.x - data[0], p.z - data[2]) > .001) client.send("playerCorrection", this.correction(p));
   }
-  private attack(client: Client) {
+  private attack(client: Client, data?: unknown) {
     if (!this.rounds.canPlay(client.sessionId) || this.npcs.busy(client.sessionId)) return;
     const p = this.state.players.get(client.sessionId), now = Date.now();
     if (!p || p.vehicleId || p.bagId || now < p.knockdownUntil || now < p.moodleSitUntil || now < p.attackReadyAt) return;
-    p.simTime = now; p.attackReadyAt = now + C.ATTACK_COOLDOWN_MS;
+    const karambit = (data as {karambit?:unknown}|null)?.karambit === true && p.karambitOwned;
+    p.simTime = now; p.attackReadyAt = now + C.attackCooldown(karambit);
     for (const [target, other] of this.state.players) if (target !== client.sessionId && !other.vehicleId && C.inHitCone(p, other, this.world)) {
       if (this.hit(target, { from: client.sessionId, ix: Math.sin(p.rotY) * 8, iy: 1.5, iz: Math.cos(p.rotY) * 8,
         knockdown: true, durationMs: C.ATTACK_KNOCKDOWN_MS }, "punch"))
@@ -340,6 +352,10 @@ export class Race extends Room<{ state: RaceState }> {
         (C.isPassengerVehicle(v) || !exposed.has(id)))
         .map(([,v]) => v)
         .map(p => ({ x: p.x, y: p.y, z: p.z, rotY: p.rotY, speed: 0 }));
+      if (this.world.name === "zurich") for (const { id } of C.BRIDGE_COWS) {
+        const cow = C.bridgeCowPose(id, now, this.world);
+        obstacles.push({ x: cow.x, y: cow.y, z: cow.z, rotY: cow.rotY, speed: 0 });
+      }
       this.traffic.tick(trafficDt, obstacles, vehicleHit, id => this.rounds.canPlay(id) && !this.npcs.busy(id) && now >= (this.state.players.get(id)?.invincibleUntil ?? 0), (id, from, car) => {
         const ridden = [...this.state.players.values()].some(p => p.vehicleId === id);
         this.vehicles.runOver(id, now, vehicleHit, car.speed, { from, rotY: car.rotY, kind: 3 });
@@ -354,6 +370,7 @@ export class Race extends Room<{ state: RaceState }> {
     const positions = new Map([...this.state.players].map(([id, p]) => [id, this.correction(p)]));
     for (const p of this.state.players.values()) {
       p.simTime = now;
+      if (!p.vehicleId) C.resolveBridgeCows(p, now, this.world, C.CAPSULE_RADIUS, C.CAPSULE_HEIGHT);
       if (p.anim === 3 && now >= p.knockdownUntil)
         p.anim = !p.grounded ? 2 : Math.hypot(p.vx, p.vz) > 0.2 ? 1 : 0;
     }

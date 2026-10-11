@@ -12,6 +12,10 @@ export const RoundResult = schema({
   name: t.string().default(""),
   hitsLanded: t.number().default(0),
   hitsReceived: t.number().default(0),
+  examScore: t.number().default(0),
+  examCorrect: t.number().default(0),
+  examCompleted: t.boolean().default(false),
+  examStartedAt: t.number().default(0),
 }, "RoundResult");
 export const Player = schema(
   {
@@ -44,6 +48,7 @@ export const Player = schema(
     simTime: t.number().default(0),
     vehicleKind: t.int8().default(-1),
     attackReadyAt: t.number().default(0),
+    karambitOwned: t.boolean().default(false),
     bagId: t.string().default(""),
     emotesUnlocked: t.boolean().default(false),
     emoteId: t.string().default(""),

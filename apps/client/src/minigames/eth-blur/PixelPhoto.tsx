@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react';
 
 import { loadPhoto } from './photos';
 
-export function PixelPhoto({ src, columns, onReady, onError }: {
-  src: string; columns: number; onReady: () => void; onError: () => void;
+export function PixelPhoto({ src, columns, onReady, onError, background = '#151819' }: {
+  src: string; columns: number; onReady: () => void; onError: () => void; background?: string;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -15,7 +15,7 @@ export function PixelPhoto({ src, columns, onReady, onError }: {
       target.width = 1280; target.height = 720;
       const context = target.getContext('2d');
       if (!context) { onError(); return; }
-      context.fillStyle = '#151819'; context.fillRect(0, 0, target.width, target.height);
+      context.fillStyle = background; context.fillRect(0, 0, target.width, target.height);
       const scale = Math.min(target.width / image.naturalWidth, target.height / image.naturalHeight);
       const width = image.naturalWidth * scale, height = image.naturalHeight * scale;
       const x = (target.width - width) / 2, y = (target.height - height) / 2;
@@ -35,6 +35,6 @@ export function PixelPhoto({ src, columns, onReady, onError }: {
       onReady();
     }).catch(() => { if (!cancelled) onError(); });
     return () => { cancelled = true; };
-  }, [src, columns, onReady, onError]);
+  }, [src, columns, onReady, onError, background]);
   return <canvas ref={canvas} role="img" aria-label="Full ETH building photograph, progressively pixelated" />;
 }
