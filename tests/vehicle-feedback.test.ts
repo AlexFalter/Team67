@@ -13,7 +13,7 @@ test("timer cues fire once at 2m, 1m and 30s, tolerate clock jitter and reset ea
   const state = { phase: "Running", startedAt: 1000, endsAt: 301000 };
   const net = { canPlay: true, room: { state }, status: "Connected", now: () => state.endsAt - remaining };
   const flow = Object.create(RoomFlow.prototype) as RoomFlow;
-  Object.assign(flow, { net, moodleSetting:{hidden:true},disableMoodleToggle:{checked:false},timerRound: -1, timerCues: new Set(), timerCue: () => cues++, timer: { dataset: {}, setAttribute() {} },
+  Object.assign(flow, { net, moodleSetting:{hidden:true},disableMoodleToggle:{checked:false},carCollisionSetting:{hidden:true},noCarCollisionsToggle:{checked:false},timerRound: -1, timerCues: new Set(), timerCue: () => cues++, timer: { dataset: {}, setAttribute() {} },
     timerValue: { textContent: "", animate() { animations++; return { cancel() {} }; } }, timerFill: { style: {} }, timerLabel: {} });
   try {
     flow.update(); assert.equal(cues, 0);
