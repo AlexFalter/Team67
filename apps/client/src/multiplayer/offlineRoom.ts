@@ -12,6 +12,7 @@ import { TicketMachine } from '../../../server/src/tickets';
 import { EmoteChallenge } from '../../../server/src/emotes';
 import { BagManager } from '../../../server/src/bags';
 import { FootballManager } from '../../../server/src/football';
+import { FruitManager } from '../../../server/src/fruit';
 import { TrafficManager } from '../../../server/src/traffic';
 import { MoodleEvents } from '../../../server/src/moodle';
 import { UI_PLAYGROUND_LOCATIONS } from './uiPlaygroundLocations';
@@ -48,6 +49,7 @@ export class OfflineRoom {
   private emotes: EmoteChallenge;
   private bags: BagManager;
   private football: FootballManager;
+  private fruit: FruitManager;
   private traffic: TrafficManager;
   private moodle: MoodleEvents;
   private rounds: RoundManager;
@@ -72,6 +74,8 @@ export class OfflineRoom {
     this.traffic = new TrafficManager(state);
     this.moodle = new MoodleEvents(state, (_, result) => this.emit('moodleResult', result));
     this.rounds = new RoundManager(state, C.ROUND_DURATION_MS, () => {}, () => this.reset(), { leadMs: 0, durationMs: 0 });
+    this.fruit = new FruitManager(state, C.zurichWorld, (_, event) => this.emit('tomatoEvent', event),
+      event => this.emit('tomatoEvent', event), (key, now) => this.rounds.canPlay(key, now), key => this.npcs.busy(key));
     this.rounds.join(id, { name: 'UI playground', character });
     this.spawn(character);
     this.rounds.ready(id, true);
@@ -106,7 +110,7 @@ export class OfflineRoom {
     this.rounds.tick(now);
     this.bikes.tick(now); this.mate.tick(now); this.npcs.tick(now);
     if (this.state.phase === C.RoomPhase.Running) {
-      this.emotes.tick(now); this.bags.tick(now); this.football.tick(now); this.moodle.tick(now);
+      this.emotes.tick(now); this.bags.tick(now); this.football.tick(now); this.fruit.tick(now); this.moodle.tick(now);
       this.vehicles.tick(now, (from, target, _x, _y, _z, ix, iy, iz, knockdown) => {
         this.hit(target, C.collisionImpact(from, ix, iy, iz, 'vehicle', knockdown));
       });
@@ -127,7 +131,7 @@ export class OfflineRoom {
   }
   private reset() {
     this.bikes.disconnect(this.sessionId); this.vehicles.releaseForRespawn(this.sessionId);
-    this.emotes.reset(); this.bags.reset(); this.football.reset(); this.moodle.reset();
+    this.emotes.reset(); this.bags.reset(); this.football.reset(); this.fruit.reset(); this.moodle.reset();
     for (const id of this.state.players.keys()) if (id !== this.sessionId) { this.state.players.delete(id); this.state.members.delete(id); }
     this.state.vehicles.clear(); this.state.publiBikes.clear();
     this.vehicles = new VehicleManager(this.state, C.zurichWorld, false);
@@ -181,6 +185,7 @@ export class OfflineRoom {
       Object.assign(s.players.get(id)!, { x, y, z, rotY, vx, vy, vz, anim, simTime: Date.now() });
     });
     register('vehicleMove', data => this.vehicles.move(c, data));
+    register('limeTailwhip', data => { if (this.rounds.canPlay(id) && !this.npcs.busy(id)) C.startLimeTailwhip(s, id, data, Date.now()); });
     register('cabinMove', data => this.vehicles.walkCabin(id, data));
     register('vehicleEnter', data => this.vehicles.enter(c, data));
     register('vehicleExit', () => {
@@ -203,6 +208,7 @@ export class OfflineRoom {
     register('emoteChallenge', data => this.emit('emoteChallengeResult', { ...this.emotes.answer(id, data, Date.now()), roundStartedAt: s.startedAt }));
     register('emote', data => this.emotes.dance(id, data, Date.now()));
     register('football', data => this.football.command(c, data, Date.now()));
+    register('fruit', data => this.fruit.command(c, data, Date.now()));
     register('bag', data => this.bags.command(c, data, Date.now()));
     register('debugDummies', data => this.bags.setDummies(c, data));
     register('moodleAnswer', data => this.moodle.answer(id, data, Date.now()));

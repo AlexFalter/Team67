@@ -25,12 +25,12 @@ test("names are required, bounded and normalized; invalid joins do not create me
   assert.equal(C.playerName("<b>Ada</b>"), "<b>Ada</b>", "names stay text, rather than markup");
 });
 
-test("all four character choices are accepted and invalid choices fall back to the male student", () => {
+test("all character choices are accepted and invalid choices fall back to the male student", () => {
   const { rounds } = fixture();
-  for (let character = 0; character < 4; character++) {
+  for (let character = 0; character < C.CHARACTER_NAMES.length; character++) {
     assert.equal(rounds.join(`p${character}`, { name: `Player ${character}`, character }).character, character);
   }
-  for (const character of [-1, 4, "3", 1.5]) {
+  for (const character of [-1, C.CHARACTER_NAMES.length, "3", 1.5]) {
     assert.equal(rounds.join(`invalid${character}`, { name: "Player", character }).character, 0);
   }
 });
@@ -95,14 +95,14 @@ test("the last participant leaving finishes for waiting members and transfers th
 test("live room lifecycle gates gameplay, shows identical results to late joiners, and admits them next round", { timeout: 20000 }, async () => {
   await withServer(async (client, rooms) => {
     const a = await client.create<WireState>("race", { name: "Ada", character: 1 }); rooms.push(a);
-    const b = await client.joinById<WireState>(a.roomId, { name: "Ben", character: 3 }); rooms.push(b);
+    const b = await client.joinById<WireState>(a.roomId, { name: "Ben", character: 4 }); rooms.push(b);
     for (const room of rooms) {
       room.onMessage("bump", () => {}); room.onMessage("impulse", () => {}); room.onMessage("playerCorrection", () => {});
     }
     await until(() => a.state?.members?.size === 2 && b.state?.members?.size === 2, "lobby members");
     assert.equal(a.state.phase, C.RoomPhase.Lobby);
     assert.equal(a.state.members.get(a.sessionId)!.name, "Ada");
-    assert.equal(a.state.players.get(b.sessionId)!.character, 3, "rector character reaches the other client");
+    assert.equal(a.state.players.get(b.sessionId)!.character, 4, "Sahur character reaches the other client");
     const initial = a.state.players.get(a.sessionId)!;
     const position = { x: initial.x, y: initial.y, z: initial.z };
     a.send("move", [initial.x + 0.1, initial.y, initial.z, 0, 1, 0, 0, 1]);

@@ -13,7 +13,7 @@ export interface PlayerState {
   vz: number;
   anim: number;
   color: string;
-  character: number; // 0: CS student boy, 1: CS student girl, 2: Einstein, 3: Rector Dissertori
+  character: number; // 0: CS student boy, 1: CS student girl, 2: Einstein, 3: Rector Dissertori, 4: Tung Tung Tung Sahur
   vehicleId: string;
   seat: number;
   cabinStanding?: boolean;
@@ -53,6 +53,7 @@ export interface WorldState {
   serverTime: number;
   phase: string;
   hostId: string;
+  fruitStock?:number;
   moodleEnabled?:boolean;
   noCarCollisions?:boolean;
   moodleEventId?:number;
@@ -93,6 +94,8 @@ export interface RoundResult {
   examCorrect: number;
   examCompleted: boolean;
   examStartedAt: number;
+  /** Metres to ETH when the round ended (0 for players who reached the exam). */
+  distanceToEth: number;
 }
 export interface VehicleState {
   kind: number; // 0 cart, 1 shuttle, 2 bike, 3 NPC car, 4 ball, 5 tram, 6 Polybahn, 7 Lime scooter
@@ -119,6 +122,7 @@ export interface VehicleState {
   tripStartedAt: number;
   arrivalAt: number;
   fallenUntil: number;
+  tailwhipStartedAt: number;
 }
 export interface VehicleResult {
   ok: boolean;

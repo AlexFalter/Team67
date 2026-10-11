@@ -159,7 +159,18 @@ button:disabled { cursor: wait; opacity: 0.6; }
 #room-results-scroll:focus-visible { outline: 2px solid #d7f87a; outline-offset: 3px; }
 #room-results-scroll #room-results { table-layout: fixed; margin: 0; }
 #room-results th { position: sticky; top: 0; background: #102731; }
-#room-results :is(th, td):first-child { width: 46%; }
+#room-results :is(th, td):first-child { width: 13%; white-space: nowrap; }
+#room-results :is(th, td):nth-child(2) { width: 26%; }
+/* Final leaderboard: gold for players who reached ETH, red for those still on the way. */
+#room-results tr[data-eth=reached] td { color: #f6d77a; background: #f6d77a14; }
+#room-results tr[data-eth=reached] td:first-child { box-shadow: inset 3px 0 #f6d77a; }
+#room-results tr[data-eth=missed] td { color: #ff8f86; background: #ff5a4f12; }
+#room-results tr[data-eth=missed] td:first-child { box-shadow: inset 3px 0 #ff6b61; }
+#room-results td:nth-child(4) { white-space: nowrap; font-variant-numeric: tabular-nums; }
+#room-results td:nth-child(3) { font-weight: 700; font-variant-numeric: tabular-nums; }
+/* Podium places stand out on top of the gold/red row colour. */
+#room-results tr[data-podium] td:first-child { font-weight: 800; font-size: 12px; }
+#room-results tr[data-podium="1"] td { font-size: 12px; font-weight: 700; }
 
 #publibike-scan { position:absolute; inset:0; z-index:15; display:grid; place-items:center; touch-action:none; background:#0007; }
 #publibike-scan[hidden], #publi-bike-battery[hidden] { display:none; }
@@ -297,3 +308,31 @@ body:has(:is(#pause, #lobby, #room-screen):not([hidden])) .drowned-overlay { dis
 #pause .game-control-list > div { display: grid; grid-template-columns: 110px 1fr; gap: 12px; align-items: center; padding: 5px 0; }
 #pause .game-control-list :is(dt, dd) { margin: 0; color: var(--ui-heading); }
 #pause .game-control-list kbd { display: inline-block; min-width: 32px; padding: 3px 7px; border: 1px solid var(--ui-border); background: #18343e; font: inherit; text-align: center; }
+
+.lime-trick-score {
+  position: absolute; left: 50%; bottom: 26%; z-index: 30;
+  display: flex; align-items: baseline; gap: 10px;
+  transform: translateX(-50%) rotate(-6deg); pointer-events: none;
+  font: italic 900 clamp(24px, 3vw, 44px)/1.1 Arial, sans-serif;
+  color: #fff; white-space: nowrap;
+  text-shadow: -2px -2px 0 #13251b, 2px -2px 0 #13251b, -2px 2px 0 #13251b, 3px 4px 0 #13251b;
+}
+.lime-trick-score strong { color: #86efac; font-size: 1.3em; }
+.lime-trick-score[hidden] { display: none; }
+body:has(:is(#pause, #lobby, #room-screen):not([hidden])) .lime-trick-score { display: none; }
+
+.lime-trick-multiplier { color: #ffd368; font-size: 1.15em; }
+
+.stuck-hint {
+  position: absolute; left: 50%; top: 20%; z-index: 25;
+  transform: translateX(-50%); width: max-content; max-width: calc(100% - 48px);
+  padding: 14px 20px; border: 2px solid #ffd368; border-radius: 8px;
+  background: #13251bf2; color: #fff1bf; text-align: center;
+  font: 600 16px/1.5 system-ui, sans-serif; pointer-events: none;
+  box-shadow: 0 4px 20px #0006;
+}
+.stuck-hint[hidden] { display: none; }
+
+/* Main's new gameplay feedback uses the same UI frame. */
+.stuck-hint,.lime-trick-score{border:2px solid var(--ui-border);border-radius:2px;background:var(--ui-background);box-shadow:inset 3px 3px 0 #ffffff12,inset -3px -3px 0 #0004,4px 4px 0 #071a2480;color:var(--ui-heading);font:14px/1.5 var(--ui-font);text-shadow:none}
+.lime-trick-score{padding:10px 16px;font-weight:700}.lime-trick-score strong{color:var(--ui-accent)}

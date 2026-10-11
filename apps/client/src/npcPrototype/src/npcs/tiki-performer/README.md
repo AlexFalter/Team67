@@ -1,6 +1,6 @@
 # Tiki Tiki performer
 
-Stylized Blender NPC based on https://www.youtube.com/shorts/jWA3RldPP7w: brown fringe, charcoal hoodie, pale jeans, black/white sneakers, wheeled party speaker with twin pink LED rings. A two-second dance loops in place; the speaker remains planted on the ground.
+Stylized Blender NPC based on https://www.youtube.com/shorts/jWA3RldPP7w: brown fringe, charcoal hoodie, pale jeans, black/white sneakers, wheeled party speaker with twin pink LED rings. A five-second loop blends a crouch, jumping backflip, tucked rotation, landing and the original dance; the speaker remains planted on the ground. The hip pivot is animated in Blender independently of the music box.
 
 `await createTikiPerformer(scene, world, solver, {placement, avoid, avoidPaths, signal})` returns `group`, `center`, `audio`, `mixer`, `update(dt, listener, {active, muted})`, `reset()`, `dispose()` and `state()`. The host supplies world terrain and the `tikiPerformer` feature placement (`anchor` or `searchAnchors`, optional `heading`). Avoid vectors keep it away from nearby actors; `avoidPaths` holds vehicle polylines as `[x,z]` pairs with a 3.5 m clearance. No camera or specific map imports.
 

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
-import {BAG_HILL,BAG_THROW_RELEASE_MS,INTERP_DELAY_MS,zurichWorld,type BagState} from '@race/shared';
+import {packMove,BAG_HILL,BAG_THROW_RELEASE_MS,INTERP_DELAY_MS,zurichWorld,type BagState} from '@race/shared';
 import {decoratePlayer} from '../playerIdentity.ts';
 import {avatar,pose,disposeAvatar,bagCarryPose} from '../avatar.ts';
 import type {Network} from '../net.ts';
@@ -71,16 +71,17 @@ export class BagFeature {
  private play(clip:string,phase:string){this.mixer?.stopAllAction();this.actions.get(clip)?.reset().play();this.mixer?.update(0);this.phase=phase;this.age=0;}
  private carry(){this.play('Pickup','carry');const action=this.actions.get('Pickup');if(action){action.time=action.getClip().duration;this.mixer?.update(0);}}
  get canThrow(){return !!this.local.body.bagId&&!this.pending&&this.phase==='carry'&&this.canUse()&&!this.local.body.vehicleId&&this.local.body.knockdownUntil<=this.net.now();}
- private send(action:string,id?:string){if(!this.net.canPlay||this.pending)return;this.pending=true;this.sentAt=this.net.now();this.net.room.send('bag',{action,id,aim:this.camera.getWorldDirection(new THREE.Vector3()).toArray(),roundStartedAt:this.net.room.state.startedAt});}
+ private send(action:string,id?:string){if(!this.net.canPlay||this.pending)return;this.pending=true;this.sentAt=this.net.now();this.net.room.send('move',packMove(this.local.body));this.net.room.send('bag',{action,id,aim:this.camera.getWorldDirection(new THREE.Vector3()).toArray(),roundStartedAt:this.net.room.state.startedAt});}
  throwBag(){if(this.canThrow){this.throwingId=this.local.body.bagId??'';this.handoff=undefined;this.play('Throw','throw');this.send('throw');}}
  get nearby(){if(!this.canUse()||this.local.body.bagId||this.local.body.vehicleId)return undefined;const p=this.local.body;return [...(this.net.room?.state.bags??[])].filter(([,b])=>!b.flying&&!b.throwAt&&(!b.owner||this.net.room.state.dummies?.has(b.owner))&&Math.abs(b.y-p.y)<1.5&&Math.hypot(b.x-p.x,b.z-p.z)<2.4).sort((a,b)=>Math.hypot(a[1].x-p.x,a[1].z-p.z)-Math.hypot(b[1].x-p.x,b[1].z-p.z))[0]?.[0];}
  interact(){const id=this.nearby;if(!id)return false;this.send('pickup',id);return true;}
  update(dt:number,own:THREE.Group,remotes:Iterable<[string,{mesh:THREE.Group}]>){
   const state=this.net.room?.state,playing=this.net.canPlay;this.group.visible=playing;this.settings.hidden=!state?.devMode||state.hostId!==this.net.room?.sessionId;this.checkbox.checked=state?.debugDummies===true;
   if(state?.startedAt!==this.round){this.round=state?.startedAt??0;this.phase='idle';this.held='';this.pending=false;this.throwingId='';this.handoff=undefined;this.flights.clear();this.mixer?.stopAllAction();}
-  if(this.pending&&this.net.now()-this.sentAt>3000)this.pending=false;if(this.net.now()-this.sentAt>4000)this.hint.hidden=true;
+  if(this.pending&&this.net.now()-this.sentAt>3000){this.pending=false;if(this.phase==='throw'&&this.local.body.bagId)this.carry();}if(this.net.now()-this.sentAt>4000)this.hint.hidden=true;
   this.age+=dt;this.mixer?.update(dt);
-  if(this.phase==='pickup'&&this.age>=.68)this.phase=this.local.body.bagId?'carry':'idle';if(this.phase==='throw'&&this.age>=.91){if(this.local.body.bagId)this.carry();else this.phase='idle';}
+  if(this.phase==='pickup'&&this.age>=.68)this.phase=this.local.body.bagId?'carry':'idle';if(this.phase==='throw'&&this.age>=.91&&!this.local.body.bagId)this.phase='idle';
+  if(this.phase==='throw'&&this.age>=.91&&this.local.body.bagId&&!this.pending&&state?.bags?.get(this.throwingId)?.throwAt===0)this.carry();
   const bagId=this.local.body.bagId??'';if(bagId)this.holster();if(bagId!==this.held){this.held=bagId;if(bagId&&this.phase!=='pickup'){this.holster();this.play('Pickup','pickup');}else if(!bagId&&this.phase!=='throw')this.phase='idle';}
   if(this.rig){this.rig.visible=playing&&this.canUse()&&this.view.perspective===0&&this.occupiesHands&&!this.local.body.vehicleId&&this.local.body.knockdownUntil<=this.net.now();this.rig.position.y=this.phase==='carry'?Math.sin(performance.now()*.003)*.006:0;}
   if(this.heldModel){
@@ -102,7 +103,7 @@ export class BagFeature {
   flight.push(b,this.net.room.state.serverTime);
   const point=flight.sample(this.net.now()-(b.thrower===this.net.room.sessionId?0:INTERP_DELAY_MS));
   model.position.set(point.x,point.y,point.z);model.rotation.set(point.pitch,0,point.roll);
-  if(b.flying&&b.thrower===this.net.room.sessionId&&id===this.throwingId&&this.phase==='throw'&&this.handoff?.id!==id){
+  if(b.flying&&b.thrower===this.net.room.sessionId&&id===this.throwingId&&this.view.perspective===0&&this.handoff?.id!==id){
    this.handoff={id,at:this.net.now(),offset:this.heldPosition.clone().sub(model.position),rotation:this.heldRotation.clone(),scale:this.heldScale.clone()};
   }
   if(this.handoff?.id===id&&b.flying){

@@ -28,14 +28,14 @@ export class BagManager {
   for(const [id,p] of this.state.dummies){const home=this.dummyHomes.get(id)!;if(p.knockdownUntil>now){const body=C.createBody();C.snapshot<C.PlayerState>(p,body);C.stepPlayer(body,C.IDLE_INPUT,dt,this.world);Object.assign(p,{x:body.x,y:body.y,z:body.z,vx:body.vx,vy:body.vy,vz:body.vz,anim:body.anim,grounded:body.grounded,simTime:now});}else{Object.assign(p,home,{vx:0,vy:0,vz:0,anim:0,grounded:true,simTime:now});}}
   for(const [id,b] of this.state.bags){
    if(b.owner){const p=this.state.players.get(b.owner)??this.state.dummies.get(b.owner);if(!p||p.vehicleId){this.drop(id,b);continue;}b.x=p.x;b.y=p.y+.6;b.z=p.z;
-    if(b.throwAt&&now-b.throwAt>=C.BAG_THROW_RELEASE_MS){const a=this.pending.get(id);if(!a||!this.eligible(b.owner,now)){b.throwAt=0;this.pending.delete(id);continue;}p.bagId='';b.owner='';b.flying=true;b.releasedAt=now;b.x=p.x+a.x*.65;b.y=p.y+1.1;b.z=p.z+a.z*.65;b.vx=a.x*C.BAG_SPEED;b.vy=a.y*C.BAG_SPEED+1.8;b.vz=a.z*C.BAG_SPEED;this.pending.delete(id);}else continue;
+    if(b.throwAt&&now-b.throwAt>=C.BAG_THROW_RELEASE_MS){const a=this.pending.get(id);if(!a||!this.eligible(b.owner,now)){b.throwAt=0;this.pending.delete(id);continue;}p.bagId='';b.owner='';b.flying=true;b.releasedAt=now;Object.assign(b,C.bagLaunch(p,a));this.pending.delete(id);}else continue;
    }
    if(!b.flying)continue;
    for(let t=0;t<dt&&b.flying;t+=.01){const step=Math.min(.01,dt-t),from={x:b.x,y:b.y+.25,z:b.z};b.vy-=C.BAG_GRAVITY*step;let x=b.x+b.vx*step,y=b.y+b.vy*step,z=b.z+b.vz*step;
     const bounds=this.world.bounds;
     if(!this.clearLine(from,{x,y:y+.25,z})||x<bounds.minX+.3||x>bounds.maxX-.3||z<bounds.minZ+.3||z>bounds.maxZ-.3){b.vx*=-.3;b.vz*=-.3;x=b.x;z=b.z;}
     else{const targets=[...this.state.players].map(([target,p])=>({target,p,practice:false})).concat([...this.state.dummies].map(([target,p])=>({target,p,practice:true})));
-     for(const {target,p,practice} of targets){if(target===b.thrower||p.vehicleId||p.knockdownUntil>now||!C.bagHitsPlayer(from,{x,y:y+.25,z},p))continue;
+     for(const {target,p,practice} of targets){if(target===b.thrower||p.vehicleId||p.knockdownUntil>now||!C.bagHitsPlayer(from,{x,y:y+.25,z},p)||!this.clearLine(from,{x:p.x,y:p.y+.9,z:p.z}))continue;
       if(this.onHit(b.thrower,target,b,practice)){b.flying=false;b.throwAt=0;b.vx=b.vy=b.vz=0;if(!p.bagId){b.owner=target;p.bagId=id;b.x=p.x;b.y=p.y+.6;b.z=p.z;this.pickupAt.set(id,now);}else{b.x=x;b.z=z;b.y=(this.world.height(x,z)??p.y)+.015;}break;}
      }
     }
@@ -44,6 +44,17 @@ export class BagManager {
     if(floor===undefined||now-b.releasedAt>8000){this.home(id,b);break;}
     if(y<=floor+.015){y=floor+.015;if(Math.abs(b.vy)>2){b.vy=Math.abs(b.vy)*.22;b.vx*=.55;b.vz*=.55;}else{b.flying=false;b.vx=b.vy=b.vz=0;b.throwAt=0;}}
     b.x=x;b.y=y;b.z=z;b.spin+=step*3.5;
+   }
+  }
+  // Pick up loose bags by walking over them. Ownership is granted once,
+  // by the server, with the same encounter and line-of-sight gates as E.
+  for(const [id,p] of this.state.players){
+   if(p.bagId||!this.eligible(id,now))continue;
+   for(const [bagId,b] of this.state.bags){
+    if(b.owner||b.flying||b.throwAt||Math.hypot(p.x-b.x,p.z-b.z)>.9||Math.abs(p.y-b.y)>1.5)continue;
+    if(b.thrower===id&&now-b.releasedAt<1000)continue;
+    if(!this.clearLine({x:p.x,y:p.y+1,z:p.z},{x:b.x,y:b.y+.25,z:b.z}))continue;
+    b.owner=id;b.thrower='';p.bagId=bagId;this.pickupAt.set(bagId,now);break;
    }
   }
  }

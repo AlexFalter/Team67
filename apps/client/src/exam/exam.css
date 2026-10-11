@@ -8,3 +8,15 @@ body:has(.map-viewer[data-exam-active=true]) .traffic-editor{visibility:hidden;p
 .exam-spectate{position:absolute;right:24px;bottom:24px;z-index:45;border:1px solid #ffffff60;border-radius:7px;padding:12px 18px;background:#13232fee;color:#fff;font:14px system-ui;cursor:pointer}.exam-transition>.exam-spectate{left:auto;right:24px}.spectator-controls{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);z-index:35;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:12px 16px;border:1px solid #ffffff50;border-radius:10px;background:#13232fee;color:white;font:14px system-ui;white-space:nowrap}.spectator-controls[hidden]{display:none}.spectator-controls button{background:transparent;color:inherit;border:1px solid #ffffff40;border-radius:6px;padding:8px 12px;cursor:pointer}.spectator-controls small{grid-column:1/-1;text-align:center;font-size:11px;color:#b6c5ce}@media(max-width:500px){.spectator-controls{width:90%;box-sizing:border-box;white-space:normal}.exam-spectate{right:12px;bottom:12px}}
 
 .spectator-controls{display:flex;flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 32px);white-space:normal}.spectator-controls small{flex-basis:100%}.spectator-controls button{white-space:nowrap}
+
+/* Spectating shares the lobby's pixel chrome, including inside the exam screen. */
+.exam-spectate,.spectator-controls,.spectator-controls button{border:2px solid var(--ui-border,#b9d4cb70);border-radius:0;background:var(--ui-background,#102731);color:var(--ui-heading,#c3d5cc);font:13px/1.5 var(--ui-font,ui-monospace,monospace);box-shadow:inset 3px 3px 0 #ffffff12,inset -3px -3px 0 #0004,4px 4px 0 #071a2480}
+.exam-spectate{padding:12px 18px;color:var(--ui-accent,#d7f87a);font-weight:700}
+.exam-spectate:hover,.spectator-controls button:hover{background:#244034;border-color:#c3d5cc}
+.exam-spectate:focus-visible,.spectator-controls button:focus-visible{outline:2px solid #d7f87a;outline-offset:4px}
+.spectator-controls{display:grid;grid-template-columns:40px repeat(4,minmax(0,1fr)) 40px;gap:10px;width:min(480px,calc(100% - 32px));white-space:normal;padding:14px;box-sizing:border-box}
+.spectator-controls>span{grid-column:2/6;font-weight:700;text-align:center;overflow-wrap:anywhere}
+.spectator-controls>button:nth-of-type(3){grid-column:1/4}
+.spectator-controls>button:nth-of-type(4){grid-column:4/7;justify-self:stretch}
+.spectator-controls small{color:#b9ccc7;font:11px/1.5 var(--ui-font,ui-monospace,monospace)}
+@media(max-width:500px){.spectator-controls>button:nth-of-type(3),.spectator-controls>button:nth-of-type(4){grid-column:1/-1;justify-self:stretch;width:100%}.exam-spectate{right:16px;bottom:16px}}

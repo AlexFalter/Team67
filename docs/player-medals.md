@@ -6,7 +6,7 @@ Medal rules live in `apps/server/src/medals.ts`. Shared IDs, titles and descript
 | --- | --- |
 | First Blood | First accepted punch or bicycle run-over on another connected player, across the room. |
 | Road Rage | Knock down another connected player with a bicycle. Once per victim for each attacker. |
-| Bloodthirsty | Land punches on three different connected players. |
+| Bloodthirsty | Land three confirmed hits on connected players, using punches, bags or bicycles. Repeated hits on the same player count after they recover. |
 | Personal Grudge | Land three punches on the same connected player. Once per victim. |
 
 Only the server awards medals, after normal combat validation. NPCs, self-hits, misses and hits on already knocked-down players do not advance medal progress. The victim must recover before another punch counts. Progress resets with the round; the attacker receives the award message, not the victim.

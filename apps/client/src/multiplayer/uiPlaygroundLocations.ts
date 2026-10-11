@@ -1,4 +1,4 @@
-import { BAG_HILL, MATE_POSITION, NPC_LAYOUT, TICKET_POSITION, examDebugPosition, raceSpawnPoint, zurichWorld } from '@race/shared';
+import { BAG_HILL, FRUIT_STAND, MATE_POSITION, NPC_LAYOUT, TICKET_POSITION, examDebugPosition, raceSpawnPoint, zurichWorld } from '@race/shared';
 
 import placements from '../npcPrototype/placements.json';
 
@@ -11,7 +11,8 @@ export const UI_PLAYGROUND_LOCATIONS: readonly UiPlaygroundLocation[] = [
   { id: 'mate', label: 'Mate machine', x: MATE_POSITION.x, z: MATE_POSITION.z - 2, facing: Math.PI },
   { id: 'ticket', label: 'Polybahn tickets', x: TICKET_POSITION.x - 2, z: TICKET_POSITION.z, facing: -Math.PI / 2 },
   { id: 'bikes', label: 'PubliBikes', ...at(NPC_LAYOUT.publiBike.position), vehicle: 'publibike-4' },
-  { id: 'lime', label: 'Lime scooter', x: NPC_LAYOUT.lime.position[0], z: NPC_LAYOUT.lime.position[1], vehicle: 'lime-1' },
+  { id: 'lime', label: 'Lime scooter', x: NPC_LAYOUT.lime.positions[0][0], z: NPC_LAYOUT.lime.positions[0][1], vehicle: 'lime-1' },
+  { id: 'fruit', label: 'Tomato stand', ...at(FRUIT_STAND.position), offset: 2 },
   { id: 'finance', label: 'Finance quiz', ...at(NPC_LAYOUT.finance.access) },
   { id: 'einstein', label: 'Einstein', ...at(NPC_LAYOUT.einstein.approach) },
   { id: 'interview', label: 'Interview laptop', ...at(NPC_LAYOUT.interview.laptop), offset: 2 },

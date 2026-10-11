@@ -1,4 +1,4 @@
-import { examPortalPosition, isRideable, npcBounds, polybahnPath, raceSpawnPoint, tramPath, zurichWorld } from "@race/shared";
+import { examPortalPosition, isRideable, LIME_KIND, npcBounds, polybahnPath, raceSpawnPoint, tramPath, zurichWorld } from "@race/shared";
 import data from "./city-map-data.json";
 import type { Network } from "./net.ts";
 import type { MapPoint, MapProjection } from "./raceHudModel.ts";
@@ -132,7 +132,7 @@ export class RaceMap {
     for (const road of data.streets) { path(road.points); ctx.strokeStyle = "#73928c"; ctx.lineWidth = road.width; ctx.stroke(); }
   }
   private markers(): EncounterMarker[] {
-    const live = [...(this.net.room?.state.vehicles.values() ?? [])].filter(v => isRideable(v) && !v.derailStartedAt)
+    const live = [...(this.net.room?.state.vehicles.values() ?? [])].filter(v => isRideable(v) && v.kind !== LIME_KIND && !v.derailStartedAt)
       .map(v => ({ x: v.x, z: v.z, label: v.kind === 6 ? "Polybahn" : v.kind === 5 ? "Tram" : v.kind === 2 ? "PubliBike" : "Ride" }));
     return [...this.encounters(), ...live];
   }

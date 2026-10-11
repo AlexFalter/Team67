@@ -23,8 +23,7 @@ export function npcBounds(world: MovementWorld) {
   return { minX:Math.max(world.bounds.minX,Math.min(...points.map(p=>p.x))-55),
     maxX:Math.min(world.bounds.maxX,Math.max(...points.map(p=>p.x))+55),
     minZ:Math.max(world.bounds.minZ,Math.min(...points.map(p=>p.z))-55),
-    // Extend the southern edge (screen bottom) so the route toward Polyterrasse stays in bounds.
-    maxZ:Math.min(world.bounds.maxZ,Math.max(...points.map(p=>p.z))+180) };
+    maxZ:Math.min(world.bounds.maxZ,Math.max(...points.map(p=>p.z))+55) };
 }
 export type NpcTravelKind = "einstein" | "limousine" | "property";
 export interface NpcCommand {

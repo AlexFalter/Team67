@@ -165,3 +165,12 @@ test("cart movement accelerates and stops at plane edges; vehicle seats rotate w
   assert.ok(Math.abs(seat.z - 5.65) < 1e-9);
   assert.equal(seat.y, C.SHUTTLE_SEAT_HEIGHT);
 });
+
+
+test('Zurich spawns current transport without the old HB vehicle and ball cluster', () => {
+ const state=new RaceState();new VehicleManager(state,C.zurichWorld);
+ for(const id of ['cart-1','cart-2','cart-3','shuttle-1','bike-1','bike-2','npc-car','loose-ball'])assert.equal(state.vehicles.has(id),false,id);
+ assert.equal(state.vehicles.get('tram-1')?.kind,C.TRAM_KIND);
+ assert.equal(state.vehicles.get('polybahn-1')?.kind,C.POLYBAHN_KIND);
+ assert.equal([...state.vehicles.values()].filter(v=>v.kind===C.LIME_KIND).length,C.NPC_LAYOUT.lime.positions.length);
+});

@@ -52,7 +52,7 @@ export function EthBlur({ unlimited = false, remainingSeconds, onComplete, onPro
   useEffect(() => {
     if (visible && started && !ended && !resolving) input.current?.focus({ preventScroll: true });
   }, [visible, started, ended, resolving, index]);
-  useEffect(() => { const previous = document.title; document.title = 'Campusless · ETH Zürich'; return () => { document.title = previous; }; }, []);
+  useEffect(() => { const previous = document.title; document.title = 'Race to ETH'; return () => { document.title = previous; }; }, []);
   useEffect(() => {
     if (unlimited || !started || !ready || remainingSeconds !== undefined || ended) return;
     if (deadline.current === 0) deadline.current = Date.now() + duration * 1000;

@@ -3,7 +3,7 @@ import bpy, math, pathlib
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 bpy.ops.object.select_all(action='SELECT');bpy.ops.object.delete(use_global=False)
 bpy.context.preferences.filepaths.save_version=0
-scene=bpy.context.scene;scene.render.fps=30;scene.frame_start=1;scene.frame_end=61
+scene=bpy.context.scene;scene.render.fps=30;scene.frame_start=1;scene.frame_end=151
 
 def mat(name,color,metal=0,glow=0):
  m=bpy.data.materials.new(name);m.diffuse_color=(*color,1);m.use_nodes=True;p=m.node_tree.nodes.get('Principled BSDF');p.inputs['Base Color'].default_value=(*color,1);p.inputs['Metallic'].default_value=metal;p.inputs['Roughness'].default_value=.65
@@ -64,14 +64,27 @@ for x in [-.125,.125]:
  mesh('Pull handle rails',(x,.11,1.16),(.018,.018,.42),metal,speaker)
  wheel=mesh('Trolley wheel',(x,.1,.065),(.055,.055,.05),black,speaker,'cylinder');wheel.rotation_euler.y=math.pi/2
 mesh('Pull handle grip',(0,.11,1.37),(.29,.035,.035),black,speaker)
-for frame in range(1,62):
- t=(frame-1)/60*2*math.pi;scene.frame_set(frame)
- body.location.z=.92+.025*(1-math.cos(2*t));body.rotation_euler.z=.06*math.sin(t)
- head.rotation_euler.x=.08*math.sin(2*t)
+# The performer rotates around his hips; the music box remains on the ground.
+flip=empty('BackflipPivot',(0,0,.92),root)
+body.parent=flip;body.location.z=0
+for _,_,leg in limbs:leg.parent=flip;leg.location.z=.015
+for frame in range(1,152):
+ seconds=(frame-1)/30;scene.frame_set(frame)
+ wave=seconds*math.tau/5;air=max(0,min(1,(seconds-.65)/1.4))
+ airborne=.65<=seconds<=2.05
+ crouch=math.sin(math.pi*seconds/.65) if seconds<.65 else math.sin(math.pi*(seconds-2.05)/.5) if seconds<2.55 else 0
+ tuck=math.sin(math.pi*air)**2 if airborne else 0
+ flip.location.z=.92+(1.65*4*air*(1-air) if airborne else -.13*max(0,crouch))
+ flip.rotation_euler.x=-math.tau*(air*air*(3-2*air))
+ body.location.z=.025*(1-math.cos(2*wave))*(1-tuck)
+ body.rotation_euler.z=.04*math.sin(wave)*(1-tuck)
+ head.rotation_euler.x=.10*tuck+.08*math.sin(2*wave)*(1-tuck)
  for side,arm,leg in limbs:
-  arm.rotation_euler=(.24+.22*math.sin(t+side),side*.12,side*.12+.12*math.sin(t))
-  leg.rotation_euler.x=.035*math.sin(t+side*math.pi/2)
-  arm.keyframe_insert('rotation_euler',frame=frame);leg.keyframe_insert('rotation_euler',frame=frame)
+  arm.rotation_euler=(-1.1*tuck+.24+.22*math.sin(wave+side)*(1-tuck),side*.12,side*.12)
+  leg.rotation_euler.x=.65*tuck+.035*math.sin(wave+side*math.pi/2)*(1-tuck)
+  leg.scale.z=1-.28*tuck-.16*max(0,crouch)
+  arm.keyframe_insert('rotation_euler',frame=frame);leg.keyframe_insert('rotation_euler',frame=frame);leg.keyframe_insert('scale',frame=frame)
+ flip.keyframe_insert('location',frame=frame);flip.keyframe_insert('rotation_euler',frame=frame)
  body.keyframe_insert('location',frame=frame);body.keyframe_insert('rotation_euler',frame=frame);head.keyframe_insert('rotation_euler',frame=frame)
 # Batch static meshes per pivot; keep the speaker separate for audio origin and inspection.
 for parent in [body,head,speaker,*[a for _,a,_ in limbs],*[l for _,_,l in limbs]]:
@@ -81,7 +94,7 @@ for parent in [body,head,speaker,*[a for _,a,_ in limbs],*[l for _,_,l in limbs]
   for o in children:o.select_set(True)
   bpy.context.view_layer.objects.active=children[0];bpy.ops.object.join()
 scene.frame_set(1)
-out=ROOT/'public/models/tiki-performer';out.mkdir(parents=True,exist_ok=True)
+out=ROOT/'apps/client/public/models/tiki-performer';out.mkdir(parents=True,exist_ok=True)
 bpy.ops.wm.save_as_mainfile(filepath=str(ROOT/'assets/blender/tiki-performer.blend'))
 opts=dict(filepath=str(out/'tiki-performer.glb'),export_format='GLB',export_yup=True,export_animations=True,export_frame_range=True)
 if 'export_animation_mode' in bpy.ops.export_scene.gltf.get_rna_type().properties:opts['export_animation_mode']='SCENE'

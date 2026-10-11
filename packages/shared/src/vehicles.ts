@@ -30,6 +30,7 @@ export function createVehicle(kind = 0, x = 0, z = 0): VehicleState {
     tripStartedAt: 0,
     arrivalAt: 0,
     fallenUntil: 0,
+    tailwhipStartedAt: 0,
   };
 }
 

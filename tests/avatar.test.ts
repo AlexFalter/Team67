@@ -5,7 +5,7 @@ import { avatar, pose, disposeAvatar, CHARACTERS, gaitRate, equipMateCan } from 
 import { PlayerView } from "../apps/client/src/multiplayer/view.ts";
 import { createBody, LIME_KIND, LIME_SPEED, LIME_BOOST_SPEED, ATTACK_COOLDOWN_MS } from "../packages/shared/src/index.ts";
 
-test("four low-poly rigs animate locomotion, punches, falls and recovery without snapping", () => {
+test("all low-poly rigs animate locomotion, punches, falls and recovery without snapping", () => {
   for (let i = 0; i < CHARACTERS.length; i++) {
     const mesh = avatar("#d9ab72", i), p = createBody();
     assert.equal(mesh.name, CHARACTERS[i]);
@@ -52,7 +52,7 @@ test("first-person rigs reuse each outfit, hide the head, and show shoes when lo
     const shoe = mesh.getObjectByName("shoe")!; mesh.updateMatrixWorld(true);
     const projected = shoe.getWorldPosition(new Vector3()).project(camera);
     assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1 && projected.z < 1, "feet inside downward view");
-    assert.equal(((shoe as Mesh).material as MeshStandardMaterial).color.getHexString(), character === 3 ? "20252b" : "e8dfcb");
+    assert.equal(((shoe as Mesh).material as MeshStandardMaterial).color.getHexString(), character === 4 ? "a8713e" : character === 3 ? "20252b" : "e8dfcb");
     disposeAvatar(mesh);
   }
 });

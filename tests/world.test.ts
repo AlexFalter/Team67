@@ -74,6 +74,10 @@ test("the whole HB–ETH shuttle route follows terrain and avoids sampled buildi
 test("predicted map vehicles preserve elevation and the shuttle completes a round trip with safe exits", () => {
   const state = new RaceState(),
     manager = new VehicleManager(state, world);
+  // Explicit fixtures exercise legacy movement without adding prototype spawns to Zurich.
+  const cartHome=world.carts[0], [from,to]=world.stops;
+  manager.add('cart-1',{...C.createVehicle(0,cartHome.x,cartHome.z),y:cartHome.y});
+  manager.add('shuttle-1',{...C.createVehicle(1,from.x,from.z),y:from.y,toX:to.x,toZ:to.z,rotY:Math.atan2(to.x-from.x,to.z-from.z)});
   const messages: C.VehicleResult[] = [];
   const client = {
     sessionId: "map-player",

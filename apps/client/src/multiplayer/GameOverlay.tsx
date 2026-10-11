@@ -1,13 +1,15 @@
+import type { RenderingQuality } from "../scene/shadowQuality.ts";
 import { useState } from "react";
 import { PixelPanel } from "./PixelPanel";
 import "./game.css";
+import "./publiBikeUi.css";
 import "./raceHud.css";
 import { CHARACTERS as characters } from "./avatar.ts";
 
 export function GameOverlay({ resolution, onResolutionChange, offline = false }: {
   offline?: boolean;
-  resolution: "performance" | "high";
-  onResolutionChange: (resolution: "performance" | "high") => void;
+  resolution: RenderingQuality;
+  onResolutionChange: (resolution: RenderingQuality) => void;
 }) {
   const [character, setCharacter] = useState(0);
   const cycleCharacter = (direction: number) => setCharacter(current => (current + direction + characters.length) % characters.length);
@@ -93,7 +95,7 @@ export function GameOverlay({ resolution, onResolutionChange, offline = false }:
         <div id="room-results-scroll" role="region" aria-label="Round results" tabIndex={0}>
           <table id="room-results" hidden>
             <caption>Round results</caption>
-            <thead><tr><th scope="col">Player</th><th scope="col">Hits landed</th><th scope="col">Hits received</th></tr></thead>
+            <thead><tr><th scope="col">Place</th><th scope="col">Player</th><th scope="col">Score</th><th scope="col">Distance to ETH</th><th scope="col">Hits landed</th><th scope="col">Hits received</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -168,18 +170,19 @@ export function GameOverlay({ resolution, onResolutionChange, offline = false }:
         <input id="sensitivity" type="range" min="8" max="60" defaultValue="25" />
         <label htmlFor="render-resolution">Rendering resolution</label>
         <select id="render-resolution" value={resolution}
-          onChange={event => onResolutionChange(event.target.value === "high" ? "high" : "performance")}>
+          onChange={event => onResolutionChange(event.target.value === "high" ? "high" : event.target.value === "medium" ? "medium" : "performance")}>
           <option value="performance">Performance</option>
-          <option value="high">High — sharper image</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
         </select>
-        <p className="setting-help">Performance lowers rendering resolution; High uses more GPU power.</p>
+        <p className="setting-help">Performance: low resolution and shadows. Medium: high resolution, low shadows. High: high resolution and longer shadows.</p>
         </div></details>
         <details className="game-controls-guide"><summary>Controls</summary>
         <dl className="game-control-list">{[
           ["W A S D", "Move"], ["Shift", "Sprint"], ["Space", "Jump"], ["C", "Slide"],
           ["Click", "Punch"], ["E", "Interact"], ["F", "Change view"], ["M", "City map"],
           ["P", "Phone"], ["B", "Emotes"], ["1", "Drink Mate"], ["3", "Karambit"],
-          ["Q", "Knife slash"], ["4", "Football"], ["Backspace", "Leave Polybahn"], ["Esc", "Game menu"],
+          ["Q", "Throw / slash"], ["4", "Football"], ["5", "Tomatoes"], ["R", "Wipe tomato"], ["Backspace", "Leave Polybahn"], ["Esc", "Game menu"],
         ].map(([key, label]) => <div key={key}><dt><kbd>{key}</kbd></dt><dd>{label}</dd></div>)}</dl>
         </details>
         <p role="status"></p>

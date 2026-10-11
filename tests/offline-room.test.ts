@@ -85,3 +85,17 @@ test('offline viewer previews real player identities and bus thanks, then resets
     assert.equal(room.state.endsAt, Number.MAX_SAFE_INTEGER);
   } finally { await room.leave(); }
 });
+
+test('offline viewer uses the new tomato manager and resets its stock with the live game rules', async () => {
+  const room = new OfflineRoom();
+  try {
+    room.send('uiTeleport', 'fruit');
+    let stock = 0;
+    room.onMessage<C.TomatoEvent>('tomatoEvent', event => { if (event.kind === 'stock') stock = event.count ?? 0; });
+    room.send('fruit', { action: 'take', roundStartedAt: room.state.startedAt });
+    assert.equal(stock, C.TOMATO_CAPACITY);
+    assert.equal(room.state.fruitStock, C.TOMATO_STAND_SUPPLY - C.TOMATO_CAPACITY);
+    room.send('uiReset');
+    assert.equal(room.state.fruitStock, C.TOMATO_STAND_SUPPLY);
+  } finally { await room.leave(); }
+});

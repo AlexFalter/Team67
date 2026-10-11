@@ -32,7 +32,7 @@ test("opponent identity follows articulated poses, keeps a faint occluded outlin
 
 test("local third-person name has no enemy outline and new characters share the existing joints", () => {
   const male = avatar("#fff", 0), female = avatar("#fff", 1), rector = avatar("#fff", 3);
-  assert.equal(CHARACTERS.length, 4);
+  assert.equal(CHARACTERS.length, 5);
   assert.ok(female.getObjectByName("ponytail"));
   decoratePlayer(male, "You"); assert.ok(male.getObjectByName("player-name"));
   assert.equal(male.getObjectByName("opponent-outline"), undefined);

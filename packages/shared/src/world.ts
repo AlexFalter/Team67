@@ -1,4 +1,5 @@
 import {bagHillLift} from "./bags.ts";
+import {fruitStandBlocked} from './fruit.ts';
 import data from "./zurich-world.json";
 import * as C from "./constants.ts";
 import { raceSpawnPoint } from "./battleBus.ts";
@@ -178,6 +179,7 @@ export const zurichWorld: MovementWorld = {
     return Math.min(floor, ground);
   },
   blocked: (x, y, z, radius, height) => {
+    if(fruitStandBlocked(x,y,z,radius,height))return true;
     if (mateBlocked(x, y, z, radius, height, mateGround)) return true;
     if (ticketBlocked(x, y, z, radius, height, ticketGround)) return true;
     const floor = passageFloor(x, z);

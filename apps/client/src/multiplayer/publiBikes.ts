@@ -7,7 +7,6 @@ import type { Vehicles } from "./vehicles.ts";
 import type { LocalPlayer } from "./localPlayer.ts";
 import { disposeMap } from "../maps/zurich/loadZurichMap.ts";
 import { randomUuid } from "./randomUuid.ts";
-import "./publiBikeUi.css";
 
 export class PubliBikeFeature {
   private abort = new AbortController();
@@ -78,7 +77,8 @@ export class PubliBikeFeature {
       this.targetYaw = THREE.MathUtils.clamp(this.targetYaw - delta.x / rect.width * 1.6, -1.3, 1.3);
       this.targetPitch = THREE.MathUtils.clamp(this.targetPitch - delta.y / rect.height * 1.2, -1, 1);
     }, options);
-    document.addEventListener("pointerout",e=>{if(!e.relatedTarget)this.mouse.reset();},options);
+    // Preserve edge turning at the browser boundary; losing focus stops it.
+    window.addEventListener("blur",()=>this.mouse.reset(),options);
     document.addEventListener("pointercancel",()=>this.mouse.reset(),options);
     document.addEventListener("pointerup",e=>{if(e.pointerType==="touch")this.mouse.reset();},options);
     window.addEventListener("resize", () => this.mouse.reset(), options);
@@ -101,7 +101,7 @@ export class PubliBikeFeature {
     if (this.request) return true;
     const bike = this.net.room.state.publiBikes.get(id)!;
     if (bike.broken || bike.batteryMs <= 0) {
-      this.net.onVehicleResult?.({ ok: false, message: "This bike is out of battery. Find another bike." });
+      this.net.onVehicleResult?.({ ok: false, message: "This PubliBike seems broken. Try another bike nearby." });
       return true;
     }
     if (this.net.room.state.vehicles.get(id)?.driver || bike.reservedBy) {
