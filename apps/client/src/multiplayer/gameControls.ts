@@ -13,12 +13,13 @@ export class GameControls {
   private discardMouseDelta = false;
   private actions: ActionHud;
   private edge = { x: 0, y: 0 };
-  constructor(private canvas: HTMLCanvasElement, private local: LocalPlayer, private view: PlayerView, private ready: () => boolean, private suspended: () => boolean = () => false, now: () => number = () => Date.now(), context: () => ContextAction[] = () => []) {
+  constructor(private canvas: HTMLCanvasElement, private local: LocalPlayer, private view: PlayerView, private ready: () => boolean, private suspended: () => boolean = () => false, now: () => number = () => Date.now(), context: () => ContextAction[] = () => [], respawn: () => void = () => {}) {
     const options = { signal: this.abort.signal };
     canvas.tabIndex = 0;
     this.actions = new ActionHud(local, now, () => canvas.focus(), context);
     this.play.addEventListener("click", () => void this.resume(), options);
     document.querySelector("#resume")!.addEventListener("click", () => void this.resume(), options);
+    document.querySelector("#respawn")!.addEventListener("click", () => { if (ready() && !this.suspended()) { local.clear(); respawn(); } }, options);
     document.querySelector("#perspective")!.addEventListener("click", () => { view.cycle(); this.update(); }, options);
     document.querySelector<HTMLInputElement>("#bob")!.addEventListener("change", e => { view.bob = (e.target as HTMLInputElement).checked; }, options);
     document.querySelector<HTMLInputElement>("#sensitivity")!.addEventListener("input", e => { view.sensitivity = Number((e.target as HTMLInputElement).value) / 10000; }, options);

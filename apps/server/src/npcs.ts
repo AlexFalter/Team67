@@ -17,8 +17,8 @@ export class NpcEncounters {
     const p = this.state.players.get(id), npc = this.state.npcs.get(id), member = this.state.members.get(id);
     if (!cmd || !["einstein", "limousine", "property"].includes(cmd.kind ?? "") ||
       !["solve", "begin", "finish", "cancel"].includes(cmd.action ?? "")) return;
-    const reply = (ok: boolean, message = "", target?: C.GroundPoint) => client.send("npcResult", {
-      action: cmd.action!, kind: cmd.kind!, ok, message, target, roundStartedAt: this.state.startedAt,
+    const reply = (ok: boolean, message = "", target?: C.GroundPoint, facing?: number) => client.send("npcResult", {
+      action: cmd.action!, kind: cmd.kind!, ok, message, target, facing, roundStartedAt: this.state.startedAt,
     } satisfies C.NpcResult);
     if (!p || !npc || !member || member.spectator || this.world.name !== "zurich" ||
       this.state.phase !== C.RoomPhase.Running || !this.state.introComplete || now < this.state.startedAt ||
@@ -31,7 +31,9 @@ export class NpcEncounters {
       const minDuration = npc.kind === "einstein" ? 4500 : npc.kind === "property" ? 8400 : 8000;
       if (npc.kind !== cmd.kind || now < npc.startedAt + minDuration) return reply(false, "The encounter is still running.");
       const target = { x: npc.targetX, y: npc.targetY, z: npc.targetZ };
-      npc.kind = ""; npc.limoVisible = false; this.correct(id, target); return reply(true, "", target);
+      const facing = npc.kind === 'property' ? C.propertyReturnFacing(this.world, target) : undefined;
+      if (facing !== undefined) p.rotY = facing;
+      npc.kind = ""; npc.limoVisible = false; this.correct(id, target); return reply(true, "", target, facing);
     }
     let boundaryVehicle = false;
     if (cmd.action === 'begin' && cmd.kind === 'property' && p.vehicleId && !npc.kind && p.knockdownUntil <= now) {
@@ -63,7 +65,7 @@ export class NpcEncounters {
     } else {
       const b = C.npcBounds(this.world);
       if (!boundaryVehicle && Math.min(p.x-b.minX,b.maxX-p.x,p.z-b.minZ,b.maxZ-p.z)>13) return reply(false, "You are already on public property.");
-      target = C.propertyReturnPoint(this.world, p);
+      target = { x: p.x, y: p.y, z: p.z };
     }
     if (!target) return reply(false, "No safe landing is available.");
     npc.kind = cmd.kind!; npc.startedAt = now;

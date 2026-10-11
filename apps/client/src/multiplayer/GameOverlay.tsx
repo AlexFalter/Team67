@@ -147,6 +147,7 @@ export function GameOverlay({ resolution, onResolutionChange }: {
         <h2>Game menu</h2>
         <p>Your controls are paused. The multiplayer world keeps running.</p>
         <button id="resume">Resume game</button>
+        <button id="respawn">Respawn at bus drop-off</button>
         <button id="perspective">View: First person</button>
         <label><input id="bob" type="checkbox" defaultChecked /> Walking / running bob</label>
         <label><input id="vehicle-sounds" type="checkbox" defaultChecked /> Movement and vehicle sounds</label>

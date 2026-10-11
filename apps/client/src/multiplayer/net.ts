@@ -10,7 +10,7 @@ import type {
   VehicleMove,
   VehicleResult,
 } from "@race/shared";
-import { stepCabin, POLYBAHN_KIND, CLIENT_SEND_RATE, packMove, zurichWorld, snapshot, stepPlayer, applyImpulse, CART_MIN_HIT_SPEED, RoomPhase } from "@race/shared";
+import { stepCabin, POLYBAHN_KIND, CLIENT_SEND_RATE, packMove, respawn, zurichWorld, snapshot, stepPlayer, applyImpulse, CART_MIN_HIT_SPEED, RoomPhase } from "@race/shared";
 export class Network {
   room!: Room<object, WorldState>;
   private disposed = false;
@@ -90,6 +90,9 @@ export class Network {
     this.room.onMessage<{id:number;passed:boolean;course:string;roundStartedAt:number}>('moodleResult',data=>{if(data.roundStartedAt===this.room.state.startedAt)this.onMoodleResult?.(data);});
     this.room.onMessage<PlayerCorrection>("playerCorrection", correction => {
       Object.assign(body, correction);
+    });
+    this.room.onMessage<PlayerCorrection>('respawned', correction => {
+      respawn(body, zurichWorld); Object.assign(body, correction); body.anim = 0;
     });
     this.room.onMessage<Impulse>("impulse", hit => applyImpulse(body, hit, this.now()));
     this.room.onMessage<import("@race/shared").MedalAward>("medal", award => {

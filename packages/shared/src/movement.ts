@@ -4,6 +4,7 @@ import { resolveHouses } from "./flatObstacles.ts";
 import { flatWorld, type MovementWorld } from "./world.ts";
 import { createVehicle, stepCart, seatPosition } from "./vehicles.ts";
 import { MATE_SPEED_MULTIPLIER } from "./mate.ts";
+import { raceSpawnPoint } from "./battleBus.ts";
 export function createBody(): Body {
   return {
     x: 0,
@@ -33,7 +34,7 @@ export function createBody(): Body {
 }
 export function respawn(p: Body, world: MovementWorld = flatWorld) {
   // Respawns must be deterministic during rollback/replay.
-  Object.assign(p, world.spawn);
+  Object.assign(p, raceSpawnPoint(world));
   p.y = world.height(p.x, p.z) ?? p.y;
   p.vx = p.vy = p.vz = 0;
   p.grounded = true;

@@ -50,13 +50,15 @@ test("Jane Street validates the puzzle before granting a personal ride",()=>{
   f.command("alice","finish","limousine",{},f.now+9000);assert.equal(f.replies.at(-1)!.ok,true);assert.equal(f.encounters.busy("alice"),false);
 });
 
-test("Private property returns boundary players a short distance inward",()=>{
+test("Private property keeps the encounter and turns players inward without moving them",()=>{
   const f=fixture();f.command("alice","begin","property");assert.equal(f.replies.at(-1)!.ok,false);
   const p=f.state.players.get("alice")!,b=C.npcBounds(C.zurichWorld);Object.assign(p,{x:b.minX+10,z:b.minZ+20,y:C.zurichWorld.height(b.minX+10,b.minZ+20)});
+  const before={x:p.x,y:p.y,z:p.z};
   f.command("alice","begin","property");assert.equal(f.replies.at(-1)!.ok,true);
   f.command("alice","finish","property",{},f.now+8400);assert.equal(f.replies.at(-1)!.ok,true);
-  assert.notDeepEqual(f.replies.at(-1)!.target,C.zurichWorld.spawn);
-  assert.ok(f.replies.at(-1)!.target!.x>=b.minX+14);
+  assert.deepEqual(f.replies.at(-1)!.target,before);
+  assert.deepEqual({x:p.x,y:p.y,z:p.z},before);
+  assert.equal(p.rotY,Math.PI/2);assert.equal(f.replies.at(-1)!.facing,p.rotY);
   assert.equal(f.state.npcs.get('bob')!.kind,'');
   f.command('bob','begin','property');assert.equal(f.replies.at(-1)!.ok,false);
 });
@@ -67,16 +69,19 @@ test("Travel cancels and disconnects release the player without replenishing cha
   f.encounters.leave("alice");assert.equal(f.state.npcs.has("alice"),false);
 });
 
-test('boundary return works repeatedly on every edge and preserves other players',()=>{
+test('boundary encounter works repeatedly on every edge, stops and turns without teleporting, and preserves other players',()=>{
   const f=fixture(),p=f.state.players.get('alice')!,bounds=C.npcBounds(C.zurichWorld);
   for(const [i,point] of [{x:bounds.minX+10,z:bounds.minZ+20},{x:bounds.maxX-10,z:bounds.minZ+20},{x:bounds.minX+20,z:bounds.minZ+10},{x:bounds.minX+20,z:bounds.maxZ-10}].entries()){
     Object.assign(p,point);const now=f.now+i*10000;
     f.command('alice','begin','property',{},now);assert.equal(f.replies.at(-1)!.ok,true);
     f.command('alice','finish','property',{},now+8400);const target=f.replies.at(-1)!.target!;
     assert.ok(target);assert.notDeepEqual(target,C.zurichWorld.spawn);
-    assert.ok(Math.hypot(target.x-point.x,target.z-point.z)<=14);
-    assert.ok(Math.min(target.x-bounds.minX,bounds.maxX-target.x,target.z-bounds.minZ,bounds.maxZ-target.z)>=14);
-    assert.equal(C.zurichWorld.blocked(target.x,target.y,target.z,.5,C.CAPSULE_HEIGHT),false);
+    assert.equal(target.x,point.x);assert.equal(target.z,point.z);
+    const facing=C.propertyReturnFacing(C.zurichWorld,target);assert.equal(f.replies.at(-1)!.facing,facing);assert.equal(p.rotY,facing);
+    assert.equal(p.vx,0);assert.equal(p.vy,0);assert.equal(p.vz,0);
+    assert(!C.approachingPropertyBoundary(C.zurichWorld,p),'standing still cannot immediately repeat the encounter');
+    assert(!C.approachingPropertyBoundary(C.zurichWorld,{...target,vx:Math.sin(facing)*5,vz:Math.cos(facing)*5}),'walking inward is allowed');
+    assert(C.approachingPropertyBoundary(C.zurichWorld,{...target,vx:-Math.sin(facing)*5,vz:-Math.cos(facing)*5}),'walking outward triggers the encounter again');
     assert.equal(f.encounters.busy('bob'),false);
   }
 });
@@ -88,7 +93,8 @@ test('boundary NPC dismounts drivers before returning them, while rail passenger
   manager.enter(f.client('alice'),'cart-1',f.now);assert.equal(p.vehicleId,'cart-1');
   encounters.command(f.client('alice'),{action:'begin',kind:'property',roundStartedAt:f.state.startedAt},f.now);
   assert.equal(p.vehicleId,'');assert.equal(cart.driver,'');assert.equal(f.state.npcs.get('alice')!.kind,'property');
-  encounters.command(f.client('alice'),{action:'finish',kind:'property',roundStartedAt:f.state.startedAt},f.now+8400);assert.notEqual(p.x,C.zurichWorld.spawn.x);assert.ok(p.x>=bounds.minX+14&&p.x<=bounds.minX+24);
+  const stopped={x:p.x,y:p.y,z:p.z};
+  encounters.command(f.client('alice'),{action:'finish',kind:'property',roundStartedAt:f.state.startedAt},f.now+8400);assert.deepEqual({x:p.x,y:p.y,z:p.z},stopped);assert.equal(p.rotY,Math.PI/2);
   Object.assign(p,{vehicleId:'polybahn-1',x:bounds.minX+10,z:0});
   encounters.command(f.client('alice'),{action:'begin',kind:'property',roundStartedAt:f.state.startedAt},f.now+10000);assert.equal(p.vehicleId,'polybahn-1');assert.equal(f.state.npcs.get('alice')!.kind,'');
 });

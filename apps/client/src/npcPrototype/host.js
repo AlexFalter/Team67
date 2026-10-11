@@ -151,6 +151,7 @@ export class NpcFeature {
    else this.property.maybeStart(this.travel.source,true,this.travel.target,this.camera);
   }else if(result.action==='finish'){
    if(result.target)Object.assign(this.local.body,result.target,{vx:0,vy:0,vz:0,anim:0,grounded:true});this.travel=null;
+   if(result.kind==='property'&&Number.isFinite(result.facing)){this.local.body.rotY=result.facing;this.playerView.yaw=result.facing-Math.PI;this.playerView.pitch=0;this.local.clear();}
   }
   this.syncLock();
  }
@@ -243,8 +244,8 @@ export class NpcFeature {
   const boundaryVehicle=state.vehicles.get(this.local.body.vehicleId);
   this.boundaryWarning.hidden=!available||this.active||borderDistance>30||!!boundaryVehicle&&C.isPassengerVehicle(boundaryVehicle);
   if(available&&!this.active){
-   const b=boundaryBounds,vehicle=boundaryVehicle;
-   if((!vehicle||!C.isPassengerVehicle(vehicle))&&Math.min(this.position.x-b.minX,b.maxX-this.position.x,this.position.z-b.minZ,b.maxZ-this.position.z)<=12)this.send('begin','property');
+   const vehicle=boundaryVehicle;
+   if((!vehicle||!C.isPassengerVehicle(vehicle))&&C.approachingPropertyBoundary(C.zurichWorld,this.local.body))this.send('begin','property');
    if(!this.active&&!this.local.body.vehicleId){this.finance?.maybeStart(this.position);if(!this.finance?.active())this.tourists?.update(this.position,this.camera);}
   }
   this.syncLock();
