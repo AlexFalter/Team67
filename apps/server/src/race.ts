@@ -278,10 +278,11 @@ export class Race extends Room<{ state: RaceState }> {
     this.broadcast("bump", { a, b, x, y, z, t: this.state.serverTime } satisfies C.Bump);
   }
   private vehicleHit: Parameters<VehicleManager["tick"]>[1] = (from, target, x, y, z, ix, iy, iz, knockdown, kind) => {
-    const car = this.state.trafficCars.get(from), player = this.state.players.get(target);
+    const gtr = from===C.GTR_DONUTS_ID ? C.gtrDonutCar(this.state.serverTime,this.world) : undefined;
+    const car = gtr ?? this.state.trafficCars.get(from), player = this.state.players.get(target);
     if (player && this.state.serverTime < player.invincibleUntil) return;
     if (car && player?.vehicleId) {
-      this.vehicles.runOver(player.vehicleId, this.state.serverTime, this.vehicleHit, car.speed, { from, rotY: car.rotY, kind: 3 });
+      this.vehicles.runOver(player.vehicleId, this.state.serverTime, this.vehicleHit, car.speed, { from, rotY: gtr?.velocityHeading ?? car.rotY, kind: 3 });
       return;
     }
     if (this.hit(target, C.collisionImpact(from, ix, iy, iz, kind === 2 ? "bike" : "vehicle", knockdown), knockdown && kind===2 ? "bicycle" : undefined))
@@ -381,6 +382,11 @@ export class Race extends Room<{ state: RaceState }> {
     this.mate.tick(now);
     this.npcs.tick(now);
     if (this.state.phase !== C.RoomPhase.Running || !this.state.introComplete) return;
+    if(this.world.name==='zurich'){
+      const car=C.gtrDonutCar(now,this.world);
+      this.traffic.collideCar(C.GTR_DONUTS_ID,car,vehicleHit,id=>this.rounds.canPlay(id)&&!this.npcs.busy(id),
+        id=>this.vehicles.runOver(id,now,vehicleHit,car.speed,{from:C.GTR_DONUTS_ID,rotY:car.velocityHeading,kind:3}),car.velocityHeading);
+    }
     this.awp.tick(now);this.fruit.tick(now);this.moodle.tick(now);this.bags.tick(now);this.football.tick(now);
     const positions = new Map([...this.state.players].map(([id, p]) => [id, this.correction(p)]));
     for (const p of this.state.players.values()) {

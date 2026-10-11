@@ -46,7 +46,8 @@ export class GtrDonuts {
    this.transform.rotation.set(i*.5,age*.2,i);this.transform.updateMatrix();this.smoke.setMatrixAt(i,this.transform.matrix);
   }this.smoke.instanceMatrix.needsUpdate=true;
  }
- get audioSource():LoopSource|undefined{if(!this.root.visible)return;return {sample:'car-engine',motor:true,active:true,speed:11,x:this.root.position.x,y:this.floorY,z:this.root.position.z,aboard:false,rate:1.35};}
+ get audioSource():LoopSource|undefined{if(!this.root.visible)return;return {sample:'car-engine',motor:true,active:true,speed:11,x:this.root.position.x,y:this.floorY,z:this.root.position.z,aboard:false,rate:1.35,range:50,volume:2};}
+ get skidAudioSource():LoopSource|undefined{const engine=this.audioSource;return engine?{...engine,sample:'tire-squeal',rate:1,volume:1.2}:undefined;}
  private disposeModel(root:THREE.Object3D){const geometries=new Set<THREE.BufferGeometry>(),materials=new Set<THREE.Material>();root.traverse(o=>{if(o instanceof THREE.Mesh){geometries.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material])materials.add(m);}});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());root.removeFromParent();}
  dispose(){this.abort.abort();if(this.car)this.disposeModel(this.car);this.disposeModel(this.smoke);if(this.marks)this.disposeModel(this.marks);this.root.removeFromParent();}
 }
