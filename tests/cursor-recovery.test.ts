@@ -16,6 +16,26 @@ async function fixture(run: (controls: GameControls, local: { enabled: boolean; 
 }
 function sync(controls: GameControls) { (controls as unknown as { syncPointerLock(): void }).syncPointerLock(); }
 
+test('Escape dismissing an interaction waits for release before recapturing and never opens pause', async () => {
+  await fixture(async (controls, local, menu, doc) => {
+    controls.holdInteractionEscape();
+    local.enabled = false;
+    doc.pointerLockElement = null;
+    await controls.restoreGameplay();
+    sync(controls);
+    controls.update();
+    assert.equal(doc.pointerLockElement, null, 'no capture while the dismissal key is held');
+    assert.equal(menu.hidden, true, 'dismissal is not a pause gesture');
+    Object.assign(controls, { interactionEscapeHeld: false });
+    await controls.restoreGameplay();
+    assert.notEqual(doc.pointerLockElement, null);
+    assert.equal(menu.hidden, true);
+    doc.pointerLockElement = null;
+    sync(controls);
+    assert.equal(menu.hidden, false, 'the next Escape in gameplay still pauses');
+  });
+});
+
 test("scanner releases and a late pointer-lock event cannot pause restored gameplay", async () => {
   await fixture(async (controls, local, menu, doc) => {
     local.enabled = false; doc.pointerLockElement = null;

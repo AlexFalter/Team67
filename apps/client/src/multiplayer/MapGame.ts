@@ -47,6 +47,7 @@ export class MapGame {
   private derailRun=0;
   private explosionEvents=new Set<string>();
   private net: Network;
+  private inputAbort = new AbortController();
   private traffic: TrafficRenderer;
   private cows: BridgeCows;
   private trafficEditor?: TrafficEditor;
@@ -87,6 +88,12 @@ export class MapGame {
   constructor(scene: THREE.Scene, private camera: THREE.PerspectiveCamera, private canvas: HTMLCanvasElement,
     hud: HTMLDivElement, hints: HTMLDivElement, map: THREE.Object3D, capture: () => void, onExamChange: (session: ExamSession) => void = () => {}, offline = false) {
     this.net = new Network(import.meta.env.DEV && offline);
+    // Observe Escape before an interaction consumes it and restores gameplay.
+    window.addEventListener("keydown", event => {
+      if (event.code === "Escape" && !event.repeat && document.querySelector<HTMLElement>("#pause")?.hidden &&
+        (this.npcs?.active || this.mate?.active || this.publiBikes?.active || this.maps?.active || this.emotes?.opened))
+        this.controls?.holdInteractionEscape();
+    }, { capture: true, signal: this.inputAbort.signal });
     this.medals = createMedals({root: canvas.parentElement!, definitions: PLAYER_MEDALS});
     this.net.onMedal = award => this.medals.awardMany(award.ids, award.eventKey);
     this.cows = new BridgeCows(scene, this.audio);
@@ -385,6 +392,7 @@ export class MapGame {
   renderMenuPreview(renderer: THREE.WebGLRenderer) { this.menuScene.renderPreview(renderer); }
   afterRender() { this.publiBikes.renderPreview(); this.npcs.afterRender(); }
   dispose() {
+    this.inputAbort.abort();
     this.spectator.dispose();this.net.onSpectate=undefined;
     delete this.canvas.parentElement!.dataset.uiBusy;
     this.maps.dispose(); this.hud.dispose();
