@@ -1,0 +1,27 @@
+{
+  "title": "Gut genug",
+  "artists": [
+    "KITSCHKRIEG",
+    "Blumengarten",
+    "Shirin David"
+  ],
+  "source": "https://www.youtube.com/watch?v=0GnA8VYOfko",
+  "start": 13.3,
+  "end": 21.8,
+  "pauseSeconds": 0,
+  "file": "cycling-kid-gut-genug-chorus.mp3",
+  "verification": "Two complete chorus lines at 13.52\u201315.92 and 18.64\u201320.08. Preserve the backing track after the second line and fade it before the next line at 22.48.",
+  "section": "Main chorus around 00:15",
+  "fadeInSeconds": 0.04,
+  "fadeOutSeconds": 1.55,
+  "vocalWindows": [
+    [
+      0.22,
+      2.62
+    ],
+    [
+      5.34,
+      6.78
+    ]
+  ]
+}

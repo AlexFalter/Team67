@@ -1,10 +1,22 @@
-import { examPortalPosition, raceSpawnPoint, type MovementWorld, type WorldState } from "@race/shared";
+import { examPortalPosition, polybahnPath, polybahnPlatforms, raceSpawnPoint, type MovementWorld, type WorldState } from "@race/shared";
 
 export type MapPoint = { x: number; z: number };
 export type MapProjection = MapPoint & { scale: number; width: number; height: number };
 /** Join the existing route at its nearest segment instead of starting at the old shuttle stop. */
 export function raceMapRoute(world: MovementWorld): MapPoint[] {
   const start = raceSpawnPoint(world);
+  if (world.name === "zurich") {
+    const central = polybahnPlatforms[0], terrace = polybahnPlatforms[1];
+    return [
+      start,
+      { x: -145, z: 65 }, // West end of Bahnhofbrücke, where the bridge cows begin.
+      { x: -64, z: 76 },  // East end of the bridge.
+      { x: central.x, z: central.z },
+      ...polybahnPath.points.map(({ x, z }) => ({ x, z })),
+      { x: terrace.x, z: terrace.z },
+      examPortalPosition,
+    ];
+  }
   let nearest = start, nextIndex = world.route.length, bestDistance = Infinity;
   for (let i = 1; i < world.route.length; i++) {
     const a = world.route[i - 1], b = world.route[i], dx = b.x - a.x, dz = b.z - a.z;
