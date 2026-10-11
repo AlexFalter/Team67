@@ -136,7 +136,7 @@
   #open-city-map { font-size: 13px; }
 }
 
-#publi-bike-battery { background: #432455eb; border: 1px solid #b38dc966; color: #eadbf3; border-radius: 4px; font: 11px/1.5 ui-monospace, monospace; }
+#publi-bike-battery { background: var(--ui-background); border: 2px solid #a82779; color: var(--ui-heading); border-radius: 2px; font: 11px/1.5 var(--ui-font); box-shadow:inset 3px 3px 0 #ffffff12,inset -3px -3px 0 #0004,4px 4px 0 #071a2480; }
 
 /* The game map and standings use the same shared frame as both lobbies. */
 .map-viewer :is(#race-leaderboard, #race-radar, .city-map-panel, .game-hud).pixel-panel {

@@ -73,3 +73,9 @@
 #mate-card::-moz-range-thumb { border-radius: 2px; }
 #mate-inventory { --panel-border: var(--ui-border); --panel-background: var(--ui-background); padding: 8px 10px; color: #edf4ef; font: 12px/1.5 var(--ui-font); }
 #mate-inventory small { font-size: 11px; color: var(--ui-heading); }
+#mate-rush { padding:8px 12px; border:2px solid var(--ui-border); border-radius:2px; background:var(--ui-background); color:var(--ui-accent); font:12px/1.5 var(--ui-font); text-shadow:none; box-shadow:inset 3px 3px 0 #ffffff12,inset -3px -3px 0 #0004,4px 4px 0 #071a2480; }
+@media(max-width:600px) {
+  #combat-actions:has(.lime-boost:not([hidden])) #mate-rush { bottom:calc(100% + 104px); }
+  #combat-actions:has(#mate-rush:not([hidden])) #mate-inventory { bottom:calc(100% + 104px); }
+  #combat-actions:has(.lime-boost:not([hidden])) #mate-inventory { display:none; }
+}

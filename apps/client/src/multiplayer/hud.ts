@@ -23,7 +23,7 @@ export class Hud {
     if (this.elapsed < 0.25) return;
     if (dev) {
       const fps = Math.round(this.frames / this.elapsed);
-      this.element.textContent = `${fps} FPS · ${net.offline ? "OFFLINE" : `${net.rtt} ms ping`}\n${net.room?.state?.players?.size ?? 0} players · ${net.collisions} collisions`;
+      this.element.textContent = `${fps} FPS · ${net.offline ? "OFFLINE" : `${net.rtt} ms ping`} · ${net.room?.state?.players?.size ?? 0} players`;
     }
     if (net.canPlay) {
       const ranked = raceStandings(net.room.state, net.room.sessionId, local);
