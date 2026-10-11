@@ -7,11 +7,12 @@ import {createWorldAccess} from '../../world/core/world-access.js';
 import {createEncounterSubtitle} from '../../shared/dialogue/encounter-ui.js';
 import {updateDialogueVolume} from '../../shared/dialogue/dialogue-distance.js';
 
-export function createCyclingKid(scene,world,solver,makeBicycle,{near,avoid=[],position,uiRoot=document.body}={}){
+export function createCyclingKid(scene,world,solver,makeBicycle,{near,avoid=[],position,center:loopCenter,uiRoot=document.body}={}){
  const access=createWorldAccess(world,solver),radius=2.8,speed=2.2,isVocalTime=()=>song.vocalWindows.some(([start,end])=>audio.currentTime>=start&&audio.currentTime<=end);
  const bounds=world.data.encounterBounds??world.data.playableBounds;
- let center=position?new THREE.Vector3(position[0]-radius,position[1],position[2]):null;
- const heightOffset=position?position[1]-(world.height(position[0],position[2])??position[1]):0;
+ const start=loopCenter?[loopCenter[0]+radius,loopCenter[1],loopCenter[2]]:position;
+ let center=loopCenter?new THREE.Vector3(...loopCenter):position?new THREE.Vector3(position[0]-radius,position[1],position[2]):null;
+ const heightOffset=start?start[1]-(world.height(start[0],start[2])??start[1]):0;
  // Validate the whole loop and the bicycle's width, not only its centre point.
  search:for(const distance of center?[]:[13,18,24,32,40])for(let side=0;side<16;side++){
   const angle=side*Math.PI/8,x=near[0]+Math.cos(angle)*distance,z=near[1]+Math.sin(angle)*distance;

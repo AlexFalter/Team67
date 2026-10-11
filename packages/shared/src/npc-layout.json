@@ -1,5 +1,5 @@
 {
-  "singingCyclist": {"position": [205.81, 50.70, 180.38]},
+  "singingCyclist": {"center": [207.05, 50.70, 140.13]},
   "football": {
     "position": [
       191.52,
@@ -10,11 +10,11 @@
   },
   "tikiPerformer": {
     "position": [
-      10.93,
-      28.05,
-      -222.59
+      70.59,
+      31.47,
+      -171.32
     ],
-    "heading": 0
+    "heading": 2.2754158511968368
   },
   "finance": {
     "position": [
