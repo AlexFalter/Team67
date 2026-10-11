@@ -125,3 +125,11 @@
   .exam-available-points { transition: none; }
   .exam-answer-entry:focus-within .exam-answer-slot.current::after, .exam-point-loss { animation: none; }
 }
+@media (min-width: 701px) {
+  .campus-game.exam-paper {
+    --exam-scale: min(1, calc(100vw / 1920px), calc(100dvh / 1200px));
+    zoom: var(--exam-scale);
+    height: calc(100dvh / var(--exam-scale));
+  }
+  .exam-sheet { min-height: calc(100dvh / var(--exam-scale) - 24px); }
+}
