@@ -122,11 +122,11 @@ export class ActionHud {
     const isAwp=weapon?.kind==='awp',isBag=weapon?.kind==='bag'||weapon?.kind==='tomato',isFootball=weapon?.kind==='football',verb=isAwp?'Fire AWP':isBag?(weapon?.kind==='tomato'?'Throw tomato':'Throw bag'):isFootball?'Kick football':'Slash';
     const icon = this.primary?.icon ?? (weapon ? (isAwp?'awp':isBag?'bag':isFootball?'football':'knife') : 'punch');
     if(punchSvg.dataset.icon!==icon){punchSvg.innerHTML=this.primary ? icons[this.primary.icon] : weapon?icons[isAwp?"awp":isBag?"bag":isFootball?"football":"knife"]:this.punchIcon;punchSvg.dataset.icon=icon;}
-    this.punch.parentElement!.querySelector('kbd')!.textContent=this.primary || weapon?'Q':'Click';
-    this.punch.title=this.primary ? `${this.primary.label} · Q or click` : weapon?`${verb} · Q or click`:'Right hook · Q or click';
+    this.punch.parentElement!.querySelector('kbd')!.textContent=this.primary || (weapon&&!isAwp)?'Q':'Click';
+    this.punch.title=this.primary ? `${this.primary.label} · Q or click` : weapon?`${verb} · ${isAwp?'click':'Q or click'}`:'Right hook · Q or click';
     const state = actionAvailability(this.local.body, this.local.sprinting, this.now());
     for (const [button, available, seconds, label] of [
-      [this.punch, (this.primary ? this.primary.enabled : (isAwp||isBag||isFootball)?weapon!.enabled:state.punch && (!weapon || weapon.enabled)), this.primary ? Math.ceil(Math.max(0, p.knockdownUntil-this.now(), Math.min(KARAMBIT_COOLDOWN_MS,p.attackReadyAt-this.now()))/1000) : (isAwp||isBag||isFootball)?0:state.punchSeconds, this.primary ? `${this.primary.label} (Q / click)` : weapon ? `${verb} (Q / click)` : "Punch (click)"],
+      [this.punch, (this.primary ? this.primary.enabled : (isAwp||isBag||isFootball)?weapon!.enabled:state.punch && (!weapon || weapon.enabled)), this.primary ? Math.ceil(Math.max(0, p.knockdownUntil-this.now(), Math.min(KARAMBIT_COOLDOWN_MS,p.attackReadyAt-this.now()))/1000) : (isAwp||isBag||isFootball)?0:state.punchSeconds, this.primary ? `${this.primary.label} (Q / click)` : weapon ? `${verb} (${isAwp?'click':'Q / click'})` : "Punch (click)"],
       [this.slide, state.slide, state.slideSeconds, "Slide (C)"],
     ] as const) {
       button.disabled = !available;

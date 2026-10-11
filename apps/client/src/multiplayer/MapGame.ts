@@ -226,7 +226,7 @@ export class MapGame {
     else if (icon) actions.push({ icon, key: "E", label, enabled: p.knockdownUntil <= this.net.now(), run: () => this.local.requestInteraction() });
     if(this.drone.ready)actions.push({icon:"drone",key:"7",label:"Call drone",enabled:this.drone.canActivate,run:()=>this.drone.activate()});
     if(this.awp.owned)actions.push({icon:"awp",key:"6",label:this.awp.occupiesHands?"Holster Nerf AWP":"Equip Nerf AWP",enabled:this.awp.available,run:()=>this.awp.toggle()});
-    if(this.awp.occupiesHands){actions.push({icon:"awp",key:"F",label:"Zoom / unzoom",enabled:this.awp.canZoom,run:()=>this.awp.toggleScope()});actions.push({icon:"equip",key:"R",label:"Reload darts",enabled:this.awp.canReload,run:()=>this.awp.reload()});}
+    if(this.awp.occupiesHands){actions.push({icon:"awp",key:"Q",label:"Zoom / unzoom",enabled:this.awp.canZoom,run:()=>this.awp.toggleScope()});actions.push({icon:"equip",key:"R",label:"Reload darts",enabled:this.awp.canReload,run:()=>this.awp.reload()});}
     if(this.fruit.count>0)actions.push({icon:"bag",key:"5",label:this.fruit.occupiesHands?"Holster tomato":"Equip tomato",enabled:!p.bagId&&!p.vehicleId,run:()=>this.fruit.toggle()});
     const scooter = this.vehicles.items.get(p.vehicleId)?.latest;
     if (C.LIME_TAILWHIP_ENABLED && scooter?.kind === C.LIME_KIND && scooter.driver === this.net.room?.sessionId)

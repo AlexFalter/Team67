@@ -2,7 +2,7 @@
 
 Collect the wall-mounted blaster with **E** near (-152.50, 8.54, 91.82). Its west-facing rack is at (-149.83, 10.09, 91.82), configured in `packages/shared/src/npc-layout.json`. Each player can collect it once per round. Proximity and line of sight are server-validated. Initial pickup lifts the weapon off the hooks and inspects it for 2.6 seconds; the server blocks firing and refilling until it settles.
 
-Controls: **6** equip/holster, **Q or click** fire, **F or right mouse button** scope, **R** refill. Equipping selects first person. The bottom-right counter shows loaded darts / pocket reserve. Each round supplies exactly 20 darts: 10 loaded and 10 in the pocket. Early refills transfer only missing darts; re-equipping and repeated pickup cannot replenish ammunition.
+Controls: **6** equip/holster, **left click** fire, **Q or right mouse button** scope, **R** refill. Equipping selects first person. The bottom-right counter shows loaded darts / pocket reserve. Each round supplies exactly 20 darts: 10 loaded and 10 in the pocket. Early refills transfer only missing darts; re-equipping and repeated pickup cannot replenish ammunition.
 
 After every shot, the right hand lifts and retracts the lever. The support hand takes a blue foam dart from the left-side carrier and seats it in the open chamber, then the bolt moves forward and locks. The 1.4-second cycle blocks firing and refilling. Scoped shots briefly unzoom to show this action before returning to the scope. Refilling brings darts from the pocket into the carrier over 1.8 seconds. Other clients see the held blaster, bolt cycle and pocket refill. Carrier darts use instanced meshes.
 
