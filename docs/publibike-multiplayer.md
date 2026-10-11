@@ -1,7 +1,7 @@
 # Multiplayer PubliBikes
 
 This adds the prototype's eight-bike station, bike model, rear QR scanner,
-working-bike gold highlighting, and a fully available fleet. All eight bikes
+regular bike colors, and a fully available fleet. All eight bikes
 start working and have 25 seconds of riding time each. Riding and falling use the existing multiplayer bike controller,
 physics, interpolation, and collision handling. Other game content, the
 map, battle bus, normal camera controls, and ordinary vehicles remain intact.

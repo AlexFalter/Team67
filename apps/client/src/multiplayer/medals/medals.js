@@ -3,7 +3,7 @@ import {createMedalState} from './medal-state.js';
 import {createMedalSound} from './medal-sound.js';
 import {medalArt,preloadMedalArt} from './medal-art.js';
 
-export function createMedals({root=document.body,definitions,duration,audioUrl,sound=createMedalSound({audioUrl})}={}){
+export function createMedals({root=document.body,definitions,duration,audioUrl,sound=createMedalSound({audioUrl}),secretSound=createMedalSound({audioUrl:`${import.meta.env?.BASE_URL??"/"}audio/achievement-unlocked.mp3`})}={}){
  preloadMedalArt();
  const model=createMedalState({definitions,duration});
  const ui=document.createElement('aside');
@@ -27,7 +27,7 @@ export function createMedals({root=document.body,definitions,duration,audioUrl,s
     if(displayed!==current.instance){
      displayed=current.instance;displayedCount=0;ui.classList.toggle("secret-achievement",current.secret===true);
      badge.innerHTML=medalArt(current.icon,current.id);title.textContent=current.title;detail.hidden=current.secret!==true;detail.textContent=detail.hidden?"":current.detail;
-     ui.classList.remove('medal-exit');animate(ui,'medal-enter');if(!muted)sound.play();
+     ui.classList.remove('medal-exit');animate(ui,'medal-enter');if(!muted)(current.secret===true?secretSound:sound).play();
     }
     if(displayedCount!==current.count){
      displayedCount=current.count;multiplier.hidden=current.count<2;multiplier.textContent=`${current.count}x`;
@@ -47,9 +47,9 @@ export function createMedals({root=document.body,definitions,duration,audioUrl,s
    }else {displayed=null;displayedCount=0;historyNodes.clear();history.replaceChildren();}
    ui.hidden=!visible||!current;
   },
-  setSoundEnabled(enabled){muted=!enabled;if(muted){sound.stop();}},
-  reset(){model.reset();displayed=null;displayedCount=0;historyNodes.clear();history.replaceChildren();ui.hidden=true;sound.stop();},
-  state:()=>({...model.state(),sound:sound.state?.()}),
-  destroy(){destroyed=true;model.reset();sound.destroy();ui.remove();},
+  setSoundEnabled(enabled){muted=!enabled;if(muted){sound.stop();secretSound.stop();}},
+  reset(){model.reset();displayed=null;displayedCount=0;historyNodes.clear();history.replaceChildren();ui.hidden=true;sound.stop();secretSound.stop();},
+  state:()=>({...model.state(),sound:sound.state?.(),secretSound:secretSound.state?.()}),
+  destroy(){destroyed=true;model.reset();sound.destroy();secretSound.destroy();ui.remove();},
  };
 }

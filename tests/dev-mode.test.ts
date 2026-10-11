@@ -45,19 +45,19 @@ test('normal rooms cannot skip and dev mode can retain the opening animation', {
  }, 'flat', { BATTLE_BUS_INTRO_MS: '10000', BATTLE_BUS_LEAD_MS: '1000' });
 });
 
-test('gold PubliBikes default on, follow the host setting and survive a reset', { timeout: 20000 }, async () => {
+test('PubliBikes keep regular colors even with old gold settings and after reset', { timeout: 20000 }, async () => {
  await withServer(async (client, rooms) => {
-  for (const goldPubliBikes of [undefined, false]) {
+  for (const goldPubliBikes of [undefined, false, true]) {
    const host = await client.create<WireState>('race', { name: 'Host', devMode: true, skipIntro: true, goldPubliBikes }); rooms.push(host);
    const guest = await client.joinById<WireState>(host.roomId, { name: 'Guest', goldPubliBikes: goldPubliBikes === false }); rooms.push(guest);
    await until(() => host.state?.members.size === 2 && guest.state?.members.size === 2, 'both members');
-   assert.equal(host.state.goldPubliBikes, goldPubliBikes !== false);
-   assert.equal(guest.state.goldPubliBikes, goldPubliBikes !== false);
+   assert.equal(host.state.goldPubliBikes, false);
+   assert.equal(guest.state.goldPubliBikes, false);
    host.send('ready', true); guest.send('ready', true);
    await until(() => host.state.phase === 'Running', 'start');
    host.send('finishRound'); await until(() => host.state.phase === 'Finished', 'finish');
    host.send('restartRound'); await until(() => host.state.phase === 'Lobby', 'reset');
-   assert.equal(host.state.goldPubliBikes, goldPubliBikes !== false);
+   assert.equal(host.state.goldPubliBikes, false);
   }
  }, 'flat');
 });

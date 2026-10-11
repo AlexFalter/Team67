@@ -67,7 +67,6 @@ export function GameOverlay({ resolution, onResolutionChange, offline = false }:
           <label><input id="disable-moodle" type="checkbox" /> Disable Moodle notifications</label>
           <label id="collisions-option" hidden><input id="show-collisions" type="checkbox" /> Show hitboxes + practice dummies</label>
           <label id="skip-intro-option" hidden><input id="skip-intro" type="checkbox" defaultChecked /> Skip starting bus animation</label>
-          <label id="gold-bikes-option" hidden><input id="gold-bikes" type="checkbox" defaultChecked /> Gold working PubliBikes</label>
           <label id="map-teleport-option" hidden><input id="map-teleport" type="checkbox" /> Enable map teleportation</label>
           <label id="coordinates-option" hidden><input id="activate-coordinates" type="checkbox" /> Activate Coordinates</label>
           <label id="rail-protection-option" hidden><input id="rail-protection" type="checkbox" /> Prevent tram derailment</label>

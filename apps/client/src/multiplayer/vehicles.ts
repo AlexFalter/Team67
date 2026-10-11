@@ -73,14 +73,6 @@ export class Vehicles {
         this.scene.add(visual.mesh);
       }
       C.snapshot(v, visual.latest);
-      const bike = state.publiBikes.get(id);
-      if (bike) visual.mesh.traverse(object => {
-        if (!(object instanceof THREE.Mesh)) return;
-        for (const mat of Array.isArray(object.material) ? object.material : [object.material]) {
-          if (mat instanceof THREE.MeshStandardMaterial && mat.name.includes("berry enamel"))
-            mat.color.copy(state.goldPubliBikes !== false && !bike.broken && bike.batteryMs > 0 ? new THREE.Color("#ffd174") : mat.userData.originalColor ?? mat.color);
-        }
-      });
       const snapshot: Snapshot = {
         ...C.snapshot(v, C.createVehicle()),
         t: state.serverTime,

@@ -58,7 +58,7 @@ export class Race extends Room<{ state: RaceState }> {
     this.state.noCarCollisions = options.noCarCollisions === true;
     this.state.mapTeleport=this.state.devMode&&options.mapTeleport===true;
     this.state.railCrashProtection=this.state.devMode&&options.railCrashProtection===true;
-    this.state.goldPubliBikes = options.goldPubliBikes !== false;
+    this.state.goldPubliBikes = false;
     this.state.skipIntro = this.state.devMode && options.skipIntro === true;
     this.physics = await ContactWorld.create(this.world);
     this.state.serverTime = Date.now();
@@ -360,6 +360,8 @@ export class Race extends Room<{ state: RaceState }> {
     if (!p || p.vehicleId || p.bagId || now < p.knockdownUntil || now < p.moodleSitUntil || now < p.attackReadyAt) return;
     const karambit = (data as {karambit?:unknown}|null)?.karambit === true && p.karambitOwned;
     p.simTime = now; p.attackReadyAt = now + C.attackCooldown(karambit);
+    const cow=C.hitBridgeCow(p,now,this.world);
+    if(cow!==undefined)this.broadcast('cowHit',{id:cow,t:now,roundStartedAt:this.state.startedAt} satisfies C.CowHitEvent);
     for (const [target, other] of this.state.players) if (target !== client.sessionId && !other.vehicleId && C.inHitCone(p, other, this.world)) {
       if (this.hit(target, { from: client.sessionId, ix: Math.sin(p.rotY) * 8, iy: 1.5, iz: Math.cos(p.rotY) * 8,
         knockdown: true, durationMs: C.ATTACK_KNOCKDOWN_MS }, "punch"))

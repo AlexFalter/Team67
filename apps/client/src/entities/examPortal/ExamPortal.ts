@@ -41,7 +41,20 @@ export class ExamPortal {
     signTexture.magFilter = THREE.NearestFilter;
     const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: signTexture, depthWrite: false, toneMapped: false, fog: false }));
     sign.position.y = 4.1; sign.scale.set(6.4, 1.6, 1);
-    this.root.add(disk, this.ring, this.orb, this.halo, sign); scene.add(this.root);
+    const beamHeight=180;
+    const beam=new THREE.Mesh(new THREE.CylinderGeometry(4.5,2.4,beamHeight,32,1,true),new THREE.ShaderMaterial({
+      transparent:true,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,toneMapped:false,
+      vertexShader:`varying float height;varying vec3 normalView;varying vec3 viewDirection;
+        void main(){height=position.y/180.0+.5;vec4 viewPosition=modelViewMatrix*vec4(position,1.0);
+          normalView=normalize(normalMatrix*normal);viewDirection=normalize(-viewPosition.xyz);
+          gl_Position=projectionMatrix*viewPosition;}`,
+      fragmentShader:`varying float height;varying vec3 normalView;varying vec3 viewDirection;
+        void main(){float edge=pow(abs(dot(normalize(normalView),normalize(viewDirection))),1.6);
+          float fade=1.0-smoothstep(.55,1.0,height);
+          gl_FragColor=vec4(1.0,.82,.12,edge*fade*.3);}`,
+    }));
+    beam.name='Destination yellow waypoint beam';beam.position.y=beamHeight/2;
+    this.root.add(disk, this.ring, this.orb, this.halo, sign,beam); scene.add(this.root);
   }
   update(now: number) {
     const t = now / 1000;

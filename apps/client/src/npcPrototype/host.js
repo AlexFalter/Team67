@@ -58,7 +58,6 @@ export class NpcFeature {
   this.phoneSounds=createPhoneSounds();
   this.phone=this.own(createPhone({uiRoot:this.ui,canOpen:()=>this.canOpenPhone,onOpen:()=>{this.limo?.pauseLook();this.syncLock();},onClose:()=>this.resumeAfterPhone(),onSound:kind=>this.phoneSounds.play(kind),onSubmit:(id,answer)=>this.net.room.send('moodleAnswer',{id,answer,roundStartedAt:this.net.room.state.startedAt}),onQuizReward:id=>{if(this.net.canPlay)this.net.room.send('moodleBoost',{id,roundStartedAt:this.net.room.state.startedAt});}}));
   this.net.onMoodleResult=data=>this.phone.resolveQuiz(data);
-  this.moodleSettings=document.createElement('label');this.moodleSettings.className='phone-moodle-setting';this.moodleSettings.innerHTML='<input type="checkbox" checked> Random Moodle quizzes';this.ui.querySelector('#phone-device .phone-screen').append(this.moodleSettings);this.moodleSettings.querySelector('input').onchange=e=>this.net.room.send('moodleSettings',e.target.checked);
   window.addEventListener('keydown',e=>this.keydown(e),{capture:true,signal:this.abort.signal});
   canvas.addEventListener('click',e=>{if(!this.active&&this.local.enabled&&this.playerView?.perspective===0&&this.karambit?.occupiesHands()){this.attackKarambit();e.preventDefault();e.stopImmediatePropagation();}},{capture:true,signal:this.abort.signal});
   net.onLimePhotoRequired=id=>{this.limePhotoPending=id;this.syncLock();};
@@ -313,7 +312,7 @@ export class NpcFeature {
   this.local.movementMultiplier=this.cat?.speedMultiplier()??1;
   if((this.lastPlayable&&!playable)||state&&state.startedAt!==this.round){this.reset();this.round=state?.startedAt??0;}this.lastPlayable=playable;
   const phoneVisible=playable&&!this.externalPhoneBusy?.();this.ui.querySelector('#game-phone').hidden=!phoneVisible;if(!phoneVisible&&this.phone.active())this.phone.close();
-  this.phone.update(dt,phoneVisible,{enabled:state?.moodleEnabled!==false});this.phone.syncQuiz({enabled:playable&&state?.moodleEnabled!==false,id:state?.moodleEventId,question:state?.moodleQuestionIndex,deadline:state?.moodleDeadline??0,now:this.net.now()});this.ui.querySelector('#phone-toggle').hidden=!playable;this.moodleSettings.hidden=state?.hostId!==this.net.room?.sessionId;this.moodleSettings.querySelector('input').checked=state?.moodleEnabled!==false;
+  this.phone.update(dt,phoneVisible,{enabled:state?.moodleEnabled!==false});this.phone.syncQuiz({enabled:playable&&state?.moodleEnabled!==false,id:state?.moodleEventId,question:state?.moodleQuestionIndex,deadline:state?.moodleDeadline??0,now:this.net.now()});this.ui.querySelector('#phone-toggle').hidden=!playable;
   this.root.visible=playable;this.attachPoly();this.position.set(this.local.body.x,this.local.body.y,this.local.body.z);
   const pair=this.currentPoly();for(const [id,p] of this.poly){p.kid.update(dt,playable&&this.local.body.vehicleId===id,!!this.inspector?.active(),this.position);p.eater.update(dt,playable&&this.local.body.vehicleId===id,this.inspector?.active()||p.kid.active(),this.position);}
   if(!playable){this.hint.hidden=true;this.boundaryWarning.hidden=true;return;}

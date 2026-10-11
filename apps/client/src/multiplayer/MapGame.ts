@@ -111,6 +111,7 @@ export class MapGame {
     this.net.onMedal = award => this.medals.awardMany(award.ids, award.eventKey);
     this.cows = new BridgeCows(scene, this.audio);
     this.gtr=new GtrDonuts(scene,TrafficRoadSurface.forMap(map));
+    this.net.onCowHit=event=>this.cows.hit(event.id,event.t,this.camera.position,this.net.canPlay&&!this.exam.active);
     this.traffic = new TrafficRenderer(scene, TrafficRoadSurface.forMap(map));
     this.exam = new ExamSequence(scene, camera, onExamChange, this.net.offline);
     this.transitScenery = new TransitScenery(scene, map);
@@ -135,7 +136,7 @@ export class MapGame {
     this.npcs.onMedal = (id: import("@race/shared").PlayerMedalId, eventKey: string) => {if(this.net.canPlay)this.medals.awardMany([id],`${this.net.room.state.startedAt}:secret:${eventKey}`);};
     this.football=new FootballFeature(scene,camera,this.net,this.local,()=>!this.drone?.calling&&!this.npcs.active&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.emotes?.opened&&!this.maps?.active&&document.querySelector<HTMLElement>('#pause')?.hidden!==false,()=>{this.awp?.holster();if(this.npcs.karambit?.occupiesHands())this.npcs.karambit.toggle();});
     this.awp=new AwpFeature(scene,camera,this.net,this.local,()=>!this.drone?.calling&&!this.npcs.active&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.emotes?.opened&&!this.maps?.active&&!this.trafficEditor?.active&&this.net.now()>=this.derailUntil&&document.querySelector<HTMLElement>('#pause')?.hidden!==false,()=>{this.view.perspective=0;this.fruit.holster();this.football.holster();if(this.npcs.karambit?.occupiesHands())this.npcs.karambit.toggle();},id=>id===this.net.room?.sessionId?this.mesh:this.remotes.players.get(id)?.mesh??this.bags.avatarFor(id));
-    this.drone=new DroneFeature(camera,this.net,this.local,()=>!this.awp.cycling&&!this.awp.reloading&&!this.awp.inspecting&&!this.npcs.active&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.emotes?.opened&&!this.maps?.active&&!this.trafficEditor?.active&&this.net.now()>=this.derailUntil&&document.querySelector<HTMLElement>('#pause')?.hidden!==false,()=>{this.view.perspective=0;this.awp.holster();this.fruit.holster();this.football.holster();if(this.npcs.karambit?.occupiesHands())this.npcs.karambit.toggle();},sound=>this.audio.drone(sound));
+    this.drone=new DroneFeature(camera,this.net,this.local,()=>!this.awp.cycling&&!this.awp.reloading&&!this.awp.inspecting&&!this.npcs.active&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.emotes?.opened&&!this.maps?.active&&!this.trafficEditor?.active&&this.net.now()>=this.derailUntil&&document.querySelector<HTMLElement>('#pause')?.hidden!==false,()=>{this.view.perspective=0;this.awp.holster();this.fruit.holster();this.football.holster();if(this.npcs.karambit?.occupiesHands())this.npcs.karambit.toggle();},sound=>this.audio.drone(sound),scene);
     this.npcs.onFootballReward=()=>this.football.grant();
     this.medals.setSoundEnabled(this.audio.settings.medalSounds);
     for (const [selector, key] of [["#vehicle-sounds", "vehicleSounds"], ["#medal-sounds", "medalSounds"]] as const) {
@@ -421,6 +422,8 @@ export class MapGame {
     const listener = this.bus.active ? this.bus.focus : this.listener;
     this.audio.update(sources, listener, { paused: !playing || this.controlsPaused, duck: this.npcs.active || this.mate.active || this.publiBikes.active });
     this.audio.examClock(this.net.now(), this.exam.takingExam && (this.net.offline || examSecondsRemaining(state?.endsAt ?? 0,this.net.now()) > 0) && !this.controlsPaused);
+    const drinkPlayer=this.local.body;
+    this.audio.updateMateDrink(drinkPlayer.mateDrinkStartedAt??0,this.net.now(),playing&&!drinkPlayer.vehicleId&&drinkPlayer.knockdownUntil<=this.net.now()&&!this.npcs.active);
     if (this.net.canPlay && !this.exam.active && !this.npcs.active) this.audio.movement(dt, body, this.local.pushing, this.net.now());
   }
   private get controlsPaused() { return !document.querySelector<HTMLElement>("#pause")?.hidden; }
@@ -457,7 +460,7 @@ export class MapGame {
     delete this.canvas.parentElement!.dataset.uiBusy;
     this.maps.dispose(); this.hud.dispose(); this.trickScore.dispose(); this.stuckHint.dispose();
     this.coordinates.dispose(); this.collisions.dispose();
-    this.gtr.dispose();this.cows.dispose(); this.trafficEditor?.dispose(); this.traffic.dispose();
+    this.net.onCowHit=undefined;this.gtr.dispose();this.cows.dispose(); this.trafficEditor?.dispose(); this.traffic.dispose();
     this.menuScene.dispose();
     this.medals.destroy(); this.net.onMedal = undefined;
     this.exam.dispose();

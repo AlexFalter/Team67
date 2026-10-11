@@ -72,3 +72,6 @@ Fortnite emote clip sources and filenames are listed in [emotes/CREDITS.md](emot
 - `cycling-kid-gut-genug-chorus.mp3`: restored existing original chorus edit from `origin/mini-games-2`; KITSCHKRIEG feat. Blumengarten & Shirin David, “Gut genug”, official video https://www.youtube.com/watch?v=0GnA8VYOfko (00:13.30–00:21.80). Edit metadata: `src/npcPrototype/src/npcs/cycling-kid/song.json`.
 
 Transit additions: the Polybahn cable-drive loop and tram/Polybahn departure chimes are original procedural audio in `src/multiplayer/transitAudio.ts`. The tram uses a Swiss-style three-note cue, not an official SBB recording. Road sedans and sports cars reuse `car-engine.mp3` with different pitch profiles; tractors reuse the lower-pitched `bus-engine.mp3`.
+## Secret achievement notification
+
+`achievement-unlocked.mp3`: “Notification Signal” by qubodup, https://freesound.org/people/qubodup/sounds/221506/ . Licensed under CC BY 4.0, https://creativecommons.org/licenses/by/4.0/ . Source: the creator's high-quality MP3 preview, cached at `assets/audio/achievement/notification-signal.mp3`. Changes: loudness normalization to −18 LUFS with −2 dB true-peak limit and MP3 transcoding at 44.1 kHz / 128 kbps. Used for secret achievement cards; ordinary combat medals retain their existing sound.

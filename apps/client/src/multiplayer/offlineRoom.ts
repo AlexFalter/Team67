@@ -219,6 +219,8 @@ export class OfflineRoom {
     register('collectKarambit', () => { if (C.canCollectKarambit(s.players.get(id)!, C.zurichWorld)) s.players.get(id)!.karambitOwned = true; });
     register('hit', () => {
       const p = s.players.get(id)!;
+      const now = Date.now(), cow = C.hitBridgeCow(p, now, C.zurichWorld);
+      if (cow !== undefined) this.emit('cowHit', { id: cow, t: now, roundStartedAt: s.startedAt } satisfies C.CowHitEvent);
       for (const [target, dummy] of s.dummies) if (C.inHitCone(p, dummy, C.zurichWorld)) this.hit(target,
         { from: id, ix: Math.sin(p.rotY) * 8, iy: 1.5, iz: Math.cos(p.rotY) * 8, knockdown: true, durationMs: C.ATTACK_KNOCKDOWN_MS });
     });

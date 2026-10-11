@@ -163,11 +163,11 @@ test("drinking lifts the right hand with the matching can in both rigs, then low
     assert.equal(held.visible, false);
     const hand = mesh.getObjectByName("right-arm")!.getObjectByName("hand")!;
     const before = hand.getWorldPosition(new Vector3());
-    p.mateDrinkStartedAt = 1000; p.simTime = 1600;
+    p.mateDrinkStartedAt = 1000; p.simTime = 2200;
     for (let i = 0; i < 20; i++) pose(mesh, p);
     assert.equal(held.visible, true);
     assert.ok(hand.getWorldPosition(new Vector3()).y > before.y + .15, "right hand rises toward the mouth");
-    p.simTime = 2500; pose(mesh, p); assert.equal(held.visible, false);
+    p.simTime = 3800; pose(mesh, p); assert.equal(held.visible, false);
     equipMateCan(mesh, can, 3); assert.ok(mesh.getObjectByName("held-mate-3")); assert.equal(held.parent, null);
     disposeAvatar(mesh);
   }
@@ -195,4 +195,20 @@ test("Lime riders brace on the deck and the driver leans further during boost", 
     assert.ok(Math.abs(torso.rotation.x) < .01, "rear passenger keeps a balanced stance");
     disposeAvatar(mesh);
   }
+});
+
+test('Mate opening stays above its base throughout drinking in both perspectives',()=>{
+ const source=new Group(),geometry=new BoxGeometry(.06,.16,.06),material=new MeshStandardMaterial();source.add(new Mesh(geometry,material));
+ for(const first of [false,true])for(const heading of [0,Math.PI/2,Math.PI]){
+  const mesh=avatar('#fff',4,first),p=createBody();p.rotY=heading;p.mateDrinkStartedAt=1000;equipMateCan(mesh,source,2);
+  const held=mesh.getObjectByName('held-mate-2')!;
+  for(let i=0;i<156;i++){
+   p.simTime=1000+i*1000/60;pose(mesh,p,1/60,first?-1:0);mesh.updateMatrixWorld(true);
+   const top=held.localToWorld(new Vector3(0,.08,0)),bottom=held.localToWorld(new Vector3(0,-.08,0));
+   assert(top.y>bottom.y+.1,'opening remains on top, including the full sip');
+   if(i===72){const forward=new Vector3(Math.sin(heading),0,Math.cos(heading));assert(top.clone().sub(bottom).dot(forward)<0,'opening tilts back toward the mouth');}
+  }
+  disposeAvatar(mesh);
+ }
+ geometry.dispose();material.dispose();
 });

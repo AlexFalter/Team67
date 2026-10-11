@@ -175,7 +175,7 @@ export const RaceState = schema(
     devMode: t.boolean().default(false),
     adminMode: t.boolean().default(false),
     skipIntro: t.boolean().default(false),
-    goldPubliBikes: t.boolean().default(true),
+    goldPubliBikes: t.boolean().default(false),
     railCrashProtection: t.boolean().default(false),
     footballs: t.map(Football),
     bags: t.map(Bag),

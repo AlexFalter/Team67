@@ -29,6 +29,7 @@ export class Network {
   onMoodleResult?: (data:{id:number;passed:boolean;course:string;roundStartedAt:number})=>void;
   onLimePhotoRequired?: (vehicleId:string)=>void;
   onLimePhotoResult?: (ok:boolean)=>void;
+  onCowHit?: (event:import("@race/shared").CowHitEvent)=>void;
   onMedal?: (award: import("@race/shared").MedalAward) => void;
   onVehicleResult?: (result: VehicleResult) => void;
   onBikeUnlockResult?: (result: import("@race/shared").BikeUnlockResult) => void;
@@ -70,7 +71,7 @@ export class Network {
       ? new (await import("./offlineRoom")).OfflineRoom(selection.character) : undefined;
     const client = offlineRoom ? undefined : new Client(url);
     const room = offlineRoom ? offlineRoom.asRoom() : selection.mode === "create"
-      ? await client!.create<WorldState>("race", { code: selection.code, character: selection.character, name: selection.name, devMode: selection.devMode, adminMode: selection.adminMode, moodleEnabled: selection.moodleEnabled, noCarCollisions: selection.noCarCollisions, mapTeleport:selection.mapTeleport, skipIntro: selection.skipIntro, goldPubliBikes: selection.goldPubliBikes, railCrashProtection: selection.railCrashProtection })
+      ? await client!.create<WorldState>("race", { code: selection.code, character: selection.character, name: selection.name, devMode: selection.devMode, adminMode: selection.adminMode, moodleEnabled: selection.moodleEnabled, noCarCollisions: selection.noCarCollisions, mapTeleport:selection.mapTeleport, skipIntro: selection.skipIntro, railCrashProtection: selection.railCrashProtection })
       : await client!.joinById<WorldState>(selection.code, { character: selection.character, name: selection.name });
     // This prototype releases seats on disconnect and has no server reconnection grace.
     room.reconnection.enabled = false;
@@ -143,6 +144,7 @@ export class Network {
     this.room.onMessage<import("@race/shared").MateResult>("mateResult", result => this.onMateResult?.(result));
     this.room.onMessage<import("@race/shared").NpcResult>("npcResult", result => this.onNpcResult?.(result));
     this.room.onMessage<import('@race/shared').TicketResult>('ticketResult', result => this.onTicketResult?.(result));
+    this.room.onMessage<import('@race/shared').CowHitEvent>('cowHit',event=>{if(event.roundStartedAt===this.room.state.startedAt)this.onCowHit?.(event);});
     this.room.onMessage<Bump>("bump", (hit) => {
       this.collisions++;
       onBump(hit);

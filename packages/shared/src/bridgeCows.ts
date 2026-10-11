@@ -1,3 +1,4 @@
+import {inHitCone} from './mechanics.ts';
 import type { MovementWorld } from './world.ts';
 import type { Body } from './types.ts';
 
@@ -105,3 +106,18 @@ export function bridgeCowSweepBlocked(from: { x: number; y: number; z: number },
   }
   return false;
 }
+
+// Test the cow's body as well as its center, so nose/flank hits are reachable.
+export function hitBridgeCow(attacker:{x:number;y:number;z:number;rotY:number},now:number,world:MovementWorld){
+ if(world.name!=='zurich')return;
+ let hit:number|undefined,nearest=Infinity;
+ for(const {id} of BRIDGE_COWS){const cow=bridgeCowPose(id,now,world);
+  for(const offset of [-COW_HALF_LENGTH,0,COW_HALF_LENGTH]){
+   const point={x:cow.x+Math.sin(cow.rotY)*offset,y:cow.y,z:cow.z+Math.cos(cow.rotY)*offset};
+   const distance=Math.hypot(point.x-attacker.x,point.z-attacker.z);
+   if(distance<nearest&&inHitCone(attacker,point,world)){nearest=distance;hit=id;}
+  }
+ }
+ return hit;
+}
+export interface CowHitEvent {id:number;t:number;roundStartedAt:number}
