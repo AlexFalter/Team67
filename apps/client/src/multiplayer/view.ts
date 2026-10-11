@@ -33,6 +33,7 @@ export class PlayerView {
   private footPerspective = 0;
   private railRide = "";
   private railYaw = 0;
+  private railNear?: number;
   constructor(readonly camera: THREE.PerspectiveCamera, private walls: THREE.Object3D[], private world?: MovementWorld) {
     this.ray.firstHitOnly = true;
   }
@@ -46,16 +47,26 @@ export class PlayerView {
     if (previous === 0 && this.perspective !== 0) this.springLength = 0;
   }
   get scriptedRide() { return this.vehicleRide === "npc-limousine"; }
-  setVehicle(id: string, heading: number) {
+  setVehicle(id: string, heading: number, kind = -1) {
     if (id === this.vehicleRide) return;
     if (id) {
       if (!this.vehicleRide) this.footPerspective = this.perspective;
-      this.perspective = 1; this.yaw = heading + Math.PI; this.pitch = -0.12;
+      this.perspective = kind === POLYBAHN_KIND ? 0 : 1;
+      this.yaw = heading + Math.PI; this.pitch = kind === POLYBAHN_KIND ? 0 : -0.12;
       this.springLength = 0;
     } else this.perspective = this.footPerspective;
     this.vehicleRide = id;
   }
   update(p: PlayerState, dt: number, railFrame?: { rotY: number; pitch: number }) {
+    this.camera.up.set(0, 1, 0);
+    const interior = p.vehicleKind === POLYBAHN_KIND && !!p.vehicleId && this.perspective === 0;
+    if (interior) {
+      this.railNear ??= this.camera.near;
+      this.camera.near = Math.min(this.railNear, 0.025);
+    } else if (this.railNear !== undefined) {
+      this.camera.near = this.railNear;
+      this.railNear = undefined;
+    }
     const cabinYaw = railFrame?.rotY ?? p.rotY;
     const rail = p.vehicleKind === TRAM_KIND || p.vehicleKind === POLYBAHN_KIND;
     if (rail && p.vehicleId) {
@@ -79,7 +90,7 @@ export class PlayerView {
     const strafe = p.vx * Math.cos(this.yaw) - p.vz * Math.sin(this.yaw);
     this.roll += ((down ? sideHit * fall * 0.5 : this.bob && walking ? THREE.MathUtils.clamp(-strafe * 0.001, -0.008, 0.008) : 0) - this.roll) * blend;
     this.landing *= Math.exp(-14 * dt);
-    if(rail && p.vehicleId && !down){this.amplitude=0;this.roll=0;this.landing=0;}
+    if(rail && p.vehicleId && !down){this.amplitude=0;this.roll=0;this.landing=0;this.slideTilt=0;this.eye=p.vehicleKind===TRAM_KIND?1.65:p.cabinStanding?1.42:1.4;}
     if (this.bob && !down && !p.vehicleId) {
       if (p.grounded && !this.grounded) this.landing = Math.min(0.075, Math.max(0, -this.verticalSpeed) * 0.004);
       else if (!p.grounded && this.grounded && p.vy > 0) this.landing = 0.025;
@@ -97,7 +108,7 @@ export class PlayerView {
       // Rail look pivots at the seated head; on-foot gaze clears the chest.
       const seated = rail && !!p.vehicleId;
       const headYaw = seated ? p.rotY + Math.PI : this.yaw;
-      const headOffset = seated ? 0.07 : 0.15 - this.slideTilt * 0.6 + Math.max(0, -Math.sin(this.pitch)) * 0.24;
+      const headOffset = seated ? (p.cabinStanding ? 0 : 0.07) : 0.15 - this.slideTilt * 0.6 + Math.max(0, -Math.sin(this.pitch)) * 0.24;
       this.camera.position.x -= Math.sin(headYaw) * headOffset;
       this.camera.position.z -= Math.cos(headYaw) * headOffset;
       const sway = Math.sin(this.phase) * this.amplitude * 0.35;

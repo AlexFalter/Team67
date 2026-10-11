@@ -163,6 +163,7 @@ test("tram cameras use seated first-person height and a wider carriage view", ()
    p.vehicleId='rail';p.vehicleKind=kind;
    assert.equal(firstPersonBodyVisible(p,0),false);
    assert.equal(firstPersonBodyVisible(p,1),false);
+   p.cabinStanding=true;assert.equal(firstPersonBodyVisible(p,0),false,'standing body cannot obstruct the low cabin camera');p.cabinStanding=false;
   }
   p.vehicleKind=2;assert.equal(firstPersonBodyVisible(p,0),true);
   p.vehicleId='';p.vehicleKind=-1;assert.equal(firstPersonBodyVisible(p,0),true);
@@ -201,4 +202,34 @@ test("embedded-browser fallback turns at edges, not at the centre, and stays bou
   assert.deepEqual(edgeTurn(250, 200, 500, 400), { x: 0, y: 0 });
   assert.deepEqual(edgeTurn(500, 400, 500, 400), { x: 1, y: 1 });
   assert.deepEqual(edgeTurn(0, 0, 500, 400), { x: -1, y: -1 });
+});
+
+test("Polybahn boarding defaults to first person once and restores the prior walking perspective", () => {
+  const camera = new PerspectiveCamera(), view = new PlayerView(camera, []);
+  view.perspective = 2;
+  view.setVehicle("polybahn-1", 0.5, C.POLYBAHN_KIND);
+  assert.equal(view.perspective, 0); assert.equal(view.pitch, 0);
+  view.cycle();
+  view.setVehicle("polybahn-1", 0.8, C.POLYBAHN_KIND);
+  assert.equal(view.perspective, 1, "manual exterior view is preserved during the ride");
+  view.setVehicle("", 0.8, -1);
+  assert.equal(view.perspective, 2);
+});
+
+test("Polybahn eyes stay clear of the body and stable when standing direction changes", () => {
+  const camera = new PerspectiveCamera(82, 1, 0.05), view = new PlayerView(camera, []), p = C.createBody();
+  p.vz = 11; p.anim = C.SLIDE_ANIM;
+  for (let i = 0; i < 60; i++) view.update(p, 1 / 60);
+  p.vehicleId = "polybahn-1"; p.vehicleKind = C.POLYBAHN_KIND; p.cabinStanding = true; p.anim = 0;
+  const frame = { rotY: 0.4, pitch: -0.3 };
+  view.setVehicle(p.vehicleId, p.rotY, p.vehicleKind);
+  view.update(p, 1 / 60, frame);
+  const eye = camera.position.clone();
+  assert.ok(Math.abs(eye.y - p.y - 1.42 * Math.cos(frame.pitch)) < 1e-8, "boarding clears old slide height immediately");
+  assert.equal(camera.near, 0.025);
+  p.rotY += Math.PI / 2; view.look(300, 100); view.update(p, 1 / 60, frame);
+  assert.ok(camera.position.distanceTo(eye) < 1e-8, "turning and looking cannot push eyes into benches");
+  p.vehicleId = ""; p.vehicleKind = -1; p.cabinStanding = false;
+  view.setVehicle("", p.rotY); view.update(p, 1 / 60);
+  assert.equal(camera.near, 0.05, "ordinary world clipping plane is restored");
 });
