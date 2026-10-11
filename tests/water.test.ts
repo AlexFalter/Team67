@@ -23,3 +23,12 @@ test("spawn, carts, stops and the shuttle route are dry", () => {
 test("the flat test world has no water", () => {
   assert.equal(C.inWater(C.flatWorld, 0, 0, 0), false);
 });
+
+test("bridge decks and banks inside the water outlines are dry", () => {
+  // Wide decks used to count as water because everything a few metres around them is deck too.
+  for (const [x, z] of [[-140, -120], [-120, 640], [-140, 660], [-100, 1100], [-80, 1200], [-480, -120], [-500, -80]]) {
+    const y = world.height(x, z)!;
+    assert.ok(C.overWater(x, z), `${x},${z} is inside a water outline`);
+    assert.equal(C.inWater(world, x, y, z), false, `${x},${z} at ${y.toFixed(1)} m`);
+  }
+});
