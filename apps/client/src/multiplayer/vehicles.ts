@@ -345,7 +345,11 @@ export class Vehicles {
       distance = Infinity;
     for (const [id, v] of this.items) {
       if (C.isRail(v.latest) && (v.latest.traveling || (v.latest.departureAt && this.net.now()>=v.latest.departureAt))) continue;
-      if (v.latest.fallenUntil > this.net.now() || (!C.isPassengerVehicle(v.latest) && v.latest.driver)) continue;
+      if (v.latest.fallenUntil > this.net.now()) continue;
+      if (v.latest.kind === C.LIME_KIND) {
+        const riders = [...(this.net.room?.state.players.values() ?? [])].filter(p => p.vehicleId === id).length;
+        if (riders >= v.latest.capacity) continue;
+      } else if (!C.isPassengerVehicle(v.latest) && v.latest.driver) continue;
       if (this.net.room?.state.publiBikes.get(id)?.reservedBy) continue;
       const boarding = C.isRail(v.latest) ? C.railBoardingPoint(v.rendered) : v.rendered;
       const d = Math.hypot(body.x - boarding.x, body.z - boarding.z);
@@ -366,7 +370,7 @@ export class Vehicles {
   }
   interactionKind(body: C.Body) {
     const v = this.items.get(body.vehicleId || this.nearest(body))?.latest;
-    return v ? v.kind === 2 ? "bike" : v.kind === C.POLYBAHN_KIND ? "polybahn" : C.isPassengerVehicle(v) ? "tram" : "cart" : undefined;
+    return v ? v.kind === C.LIME_KIND ? "scooter" : v.kind === 2 ? "bike" : v.kind === C.POLYBAHN_KIND ? "polybahn" : C.isPassengerVehicle(v) ? "tram" : "cart" : undefined;
   }
   nearestId(body: C.Body) { return this.nearest(body); }
   updateLabels(body: C.Body, now: number) {
@@ -393,9 +397,9 @@ export class Vehicles {
         C.isRail(v) ? `${C.transitName(v).toUpperCase()} ${count}/${v.capacity} · ${transitStatus(v,clock)}` :
         state?.publiBikes?.has(id)
           ? `PUBLIBIKE · ${state.publiBikes.get(id)!.broken ? "out of service" : id === body.vehicleId ? "riding" : v.driver ? "occupied" : state.publiBikes.get(id)!.reservedBy ? "being unlocked" : "available"}` :
-        v.kind===C.LIME_KIND ? `LIME ${count}/${v.capacity} · ${id===body.vehicleId?"E to get off":count>=v.capacity?"full":"E to ride"}` :
+        v.kind===C.LIME_KIND ? `LIME ${count}/${v.capacity} · ${id===body.vehicleId?"in use":count>=v.capacity?"full":"available"}` :
         v.kind !== 1
-          ? `${v.kind === 2 ? "BIKE" : v.kind === 3 ? "NPC CAR" : v.kind === 4 ? "LOOSE BALL" : "CART"} · ${v.kind >= 3 ? "watch out" : v.fallenUntil > this.net.now() ? "recovering" : v.driver ? "occupied" : v.kind === 2 ? "available" : "E to ride"}`
+          ? `${v.kind === 2 ? "BIKE" : v.kind === 3 ? "NPC CAR" : v.kind === 4 ? "LOOSE BALL" : "CART"} · ${v.kind >= 3 ? "watch out" : v.fallenUntil > this.net.now() ? "recovering" : v.driver ? "occupied" : v.kind === 2 ? "available" : "available"}`
           : `TRAM ${count}/${v.capacity} · ${transitStatus(v,clock)}`;
       if (text !== visual.labelText) {
         const context = visual.canvas.getContext("2d")!;
@@ -423,29 +427,10 @@ export class Vehicles {
       }
     }
     const riding = this.items.get(body.vehicleId)?.latest;
-    let prompt = "";
-    if (riding && riding.kind !== 2)
-      prompt =
-        !C.isPassengerVehicle(riding)
-          ? riding.kind===C.LIME_KIND?(body.seat===0?"WASD ride · Shift boost · E get off · mouse look · F5/V view":"Rear passenger · E get off · mouse look · F5/V view"):"WASD drive · E exit · mouse / trackpad look · F5/V view · Esc menu"
-          : riding.traveling
-            ? `${C.transitName(riding)} · ${transitStatus(riding,clock)} · Exit at next stop`
-            : `${C.transitName(riding)} · ${transitStatus(riding,clock)} · E — Leave`;
-    else if (!riding) {
-      const near = this.items.get(this.nearest(body))?.latest;
-      if (near && near.kind !== 2)
-        prompt +=
-          near.kind===C.LIME_KIND ? " · E ride Lime scooter" :
-          near.kind === 0
-            ? near.driver
-              ? "Cart occupied"
-              : "E — Ride cart"
-            : near.traveling
-              ? `${C.transitName(near)} moving`
-              : `E — Enter ${C.transitName(near)}`;
-    }
-    this.controls.textContent =
-      this.messageUntil > Date.now() ? [prompt, this.message].filter(Boolean).join(" · ") : prompt;
+    // Interactions and key hints live in ActionHud; this area is for ride status/errors.
+    const status = riding && C.isRail(riding) ? `${C.transitName(riding)} · ${transitStatus(riding,clock)}` : "";
+    const message = this.messageUntil > Date.now() && !/\b(?:WASD|E (?:to|—|exit|get off))\b/i.test(this.message) ? this.message : "";
+    this.controls.textContent = [status, message].filter(Boolean).join(" · ");
   }
   dispose() {
     this.abort.abort(); this.publiModel?.dispose();

@@ -215,12 +215,24 @@ main:has(.game-loading) > :is(header, footer) { display: none; }
 #developer-coordinates button{padding:6px 10px;border:1px solid #7893a7;border-radius:4px;background:#203746;color:white;cursor:pointer;font:12px ui-monospace,monospace}
 
 .action-instructions { position: absolute; left: 50%; bottom: calc(100% + 10px); transform: translateX(-50%); width: max-content; max-width: min(460px, calc(100vw - 24px)); color: #adb6b4; text-align: center; font: 10px/1.6 ui-monospace, monospace; text-shadow: 0 1px 3px #000; pointer-events: none; }
-.interaction-instruction { display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 11px; margin-bottom: 3px; }
+.interaction-instruction { display:flex; justify-content:center; align-items:center; gap:6px; font-size:11px; width:max-content; max-width:100%; margin:0 auto; padding:7px 12px; border:1px solid #b4ed6766; border-radius:3px; background:#102c3ded; color:#c2ed90; box-shadow:0 3px 12px #0004; }
 .interaction-instruction[hidden] { display: none; }
 .interaction-instruction svg { width: 15px; height: 15px; }
 @media (max-width: 600px) { .action-instructions { font-size: 9px; } }
 
-.interaction-instruction { width: max-content; max-width: 100%; margin: 0 auto; padding: 7px 12px; border: 1px solid #b4ed6766; border-radius: 3px; background: #102c3ded; color: #c2ed90; box-shadow: 0 3px 12px #0004; }
+
+#combat-actions .lime-boost { position:absolute; right:calc(100% + 14px); bottom:0; width:168px; height:44px; overflow:hidden; border:1px solid #95e89988; border-radius:4px; background:#123027; color:#f0fff0; font:600 12px ui-monospace,monospace; text-shadow:0 1px 3px #123027; }
+.lime-boost[hidden] { display:none; }
+.lime-boost i { position:absolute; right:0; top:0; bottom:0; width:var(--boost-fill,100%); background:linear-gradient(90deg,#37d977,#79ffb0); box-shadow:0 0 12px #52ff9a88; pointer-events:none; }
+.lime-boost span { position:relative; z-index:1; pointer-events:none; }
+#combat-actions .lime-boost { border-color:#72ffb3b0; box-shadow:0 0 8px #38e88744,inset 0 0 8px #38e88722; }
+#combat-actions .lime-boost.boosting { border-color:#bdffda; text-shadow:0 0 6px #8effbf; box-shadow:0 0 16px #52ff9a99,inset 0 0 12px #52ff9a55; }
+#combat-actions .lime-boost.boosting i { background:linear-gradient(90deg,#56ff97,#c8ffde); }
+#combat-actions .lime-boost.boosting::after { content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(110deg,transparent 35%,#ffffff44 50%,transparent 65%); animation:boost-shimmer .7s linear infinite; }
+#combat-actions .lime-boost.exhausted { border-color:#72877b; color:#9cafa4; box-shadow:none; }
+@keyframes boost-shimmer { from { transform:translateX(-100%); } to { transform:translateX(100%); } }
+@media (prefers-reduced-motion:reduce) { #combat-actions .lime-boost.boosting::after { animation:none; } }
+@media (max-width:600px) { #combat-actions .lime-boost { right:auto; left:50%; transform:translateX(-50%); bottom:calc(100% + 56px); width:168px; height:36px; } }
 
 /* Drowning timeout (drowning.ts): 10 s with the meme music, then the same respawn as the Respawn button. */
 .drowned-overlay {

@@ -4,6 +4,7 @@ import type {Client} from 'colyseus';
 import * as C from '../packages/shared/src/index.ts';
 import {Player,RaceState} from '../apps/server/src/state.ts';
 import {VehicleManager} from '../apps/server/src/vehicles.ts';
+import {Vehicles} from '../apps/client/src/multiplayer/vehicles.ts';
 
 test('Lime holds two riders, only the front steers, and the last exit needs a parking photo',()=>{
  const state=new RaceState(),manager=new VehicleManager(state),messages:C.VehicleResult[]=[];
@@ -37,4 +38,39 @@ test('Lime uses terrain collision and accelerates to a higher speed with Shift',
  assert.ok(Math.abs(ride(false).vz-C.LIME_SPEED)<.1);assert.ok(Math.abs(ride(true).vz-C.LIME_BOOST_SPEED)<.1);
  const v=C.createVehicle(C.LIME_KIND,0,C.flatWorld.bounds.maxZ-1);for(let i=0;i<60;i++)C.stepCart(v,{...C.IDLE_INPUT,z:1},1/60);assert.ok(v.z<=C.flatWorld.bounds.maxZ-C.vehicleRadius(v));
  const state=new RaceState(),manager=new VehicleManager(state,C.zurichWorld);const lime=state.vehicles.get('lime-1');assert.ok(lime,'configured Lime must spawn on the current map');assert.equal(lime.kind,C.LIME_KIND);assert.ok(Math.hypot(lime.x-C.NPC_LAYOUT.lime.position[0],lime.z-C.NPC_LAYOUT.lime.position[1])<5);void manager;
+});
+
+test('Lime boost lasts ten seconds, never recharges, even on foot or after remounting',()=>{
+ const world={...C.flatWorld,name:'zurich' as const,height:()=>0,blocked:()=>false,bounds:{minX:-10000,maxX:10000,minZ:-10000,maxZ:10000}};
+ const p=C.createBody();Object.assign(p,{vehicleId:'lime',vehicleKind:C.LIME_KIND,seat:0,y:C.LIME_DECK_HEIGHT});
+ const boost={...C.IDLE_INPUT,z:1,sprint:true};
+ for(let i=0;i<99;i++)C.stepPlayer(p,boost,.1,world);
+ assert.equal(p.limeBoostMs,100);assert.ok(p.vz>C.LIME_SPEED+5);
+ C.stepPlayer(p,boost,.1,world);assert.equal(p.limeBoostMs,0);
+ for(let i=0;i<20;i++)C.stepPlayer(p,boost,.1,world);
+ assert.equal(p.limeBoostMs,0);assert.ok(Math.abs(p.vz-C.LIME_SPEED)<.01,'empty boost returns to cruising');
+ for(let i=0;i<20;i++)C.stepPlayer(p,{...boost,sprint:false},.1,world);
+ assert.equal(p.limeBoostMs,0);assert.equal(p.limeBoostExhausted,true);
+ p.vehicleId='';for(let i=0;i<20;i++)C.stepPlayer(p,C.IDLE_INPUT,.1,world);
+ assert.equal(p.limeBoostMs,0,'walking cannot recharge');
+ Object.assign(p,{vehicleId:'lime',vehicleKind:C.LIME_KIND,seat:0});C.stepPlayer(p,boost,.1,world);
+ assert.equal(p.limeBoostMs,0,'remounting cannot recharge');
+ const fresh=C.createBody();Object.assign(fresh,{vehicleId:'lime',vehicleKind:C.LIME_KIND,seat:0});
+ C.stepPlayer(fresh,{...C.IDLE_INPUT,sprint:true},.1,world);assert.equal(fresh.limeBoostMs,C.LIME_BOOST_DURATION_MS,'stationary does not spend boost');
+ C.stepPlayer(fresh,boost,.1,world);assert.equal(fresh.limeBoostMs,9900);
+ C.stepPlayer(fresh,{...boost,sprint:false},.1,world);assert.equal(fresh.limeBoostMs,9900,'releasing preserves unused boost');
+ fresh.seat=1;C.stepPlayer(fresh,boost,.1,world);assert.equal(fresh.limeBoostMs,9900,'rear passenger cannot spend boost');
+});
+
+
+test('nearby Lime interaction allows a second rider and hides a full scooter',()=>{
+ const lime=C.createVehicle(C.LIME_KIND);lime.driver='a';
+ const players=new Map([['a',{vehicleId:'lime'}]]),sent:unknown[]=[];
+ const vehicles=Object.create(Vehicles.prototype) as Vehicles;
+ Object.assign(vehicles,{items:new Map([['lime',{latest:lime,rendered:lime}]]),net:{now:()=>1000,room:{state:{players,publiBikes:new Map()},send:(...args:unknown[])=>sent.push(args)}}});
+ const p=C.createBody();
+ assert.equal(vehicles.interactionKind(p),'scooter');vehicles.interact(p);assert.deepEqual(sent,[['vehicleEnter','lime']]);
+ players.set('b',{vehicleId:'lime'});assert.equal(vehicles.interactionKind(p),undefined);vehicles.interact(p);assert.equal(sent.length,1);
+ players.delete('a');lime.driver='b';assert.equal(vehicles.interactionKind(p),'scooter','remaining rear rider leaves one seat available');
+ lime.fallenUntil=2000;assert.equal(vehicles.interactionKind(p),undefined,'fallen scooter cannot be boarded');
 });

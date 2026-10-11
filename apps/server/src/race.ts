@@ -87,6 +87,7 @@ export class Race extends Room<{ state: RaceState }> {
       } catch (error) { client.send("trafficResult", { ok: false, message: error instanceof Error ? error.message : "Invalid traffic edit." }); }
     });
     this.onMessage("ready", (client, ready: unknown) => this.rounds.ready(client.sessionId, ready));
+    this.onMessage("thankBusDriver", (client, run: unknown) => this.rounds.thankBusDriver(client.sessionId, run));
     this.onMessage("restartRound", client => this.rounds.restart(client.sessionId));
     this.onMessage("finishRound", client => {
       if (client.sessionId === this.state.hostId) this.rounds.finish();

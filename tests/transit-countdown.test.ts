@@ -21,6 +21,8 @@ test('tram and Polybahn countdown signs and seated prompts tick without network 
   now+=1000;vehicles.updateLabels(p,now);assert.match(controls.textContent,/Departs in 2s/);
   v.traveling=true;v.tripStartedAt=105900;v.arrivalAt=125900;now=105100;vehicles.updateLabels(p,now);assert.match(controls.textContent,/Doors closing/);
   now=106900;vehicles.updateLabels(p,now);assert.match(controls.textContent,/Arriving in 19s/);
+  assert.doesNotMatch(controls.textContent,/E [—·]|WASD/, 'ride status does not repeat the toolbar interaction');
+  assert.doesNotMatch(visual.labelText,/E (?:to|—)/, 'floating signs contain status only');
   label.material.map?.dispose();label.material.dispose();
  }
 });
