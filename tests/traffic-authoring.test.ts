@@ -1,0 +1,56 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { TrafficRoadSurface } from '../apps/client/src/multiplayer/trafficRoadSurface.ts';
+import { addTrafficStroke, removeTrafficRoads } from '../apps/client/src/multiplayer/trafficEditing.ts';
+import type { TrafficNetwork } from '../packages/shared/src/traffic.ts';
+const empty:TrafficNetwork={version:1,laneWidth:3.2,nodes:[],roads:[]};
+let sequence=0;const id=()=>String(++sequence);
+const line=(x:number,z:number,dx:number,dz:number)=>Array.from({length:41},(_,i)=>({x:x+dx*i,y:8,z:z+dz*i}));
+test('hand strokes center on transformed asphalt and stay at road height, excluding other surfaces',()=>{
+  const map=new THREE.Group(),geometry=new THREE.PlaneGeometry(100,12).rotateX(-Math.PI/2);
+  const material=new THREE.MeshBasicMaterial();material.name='G_Road';
+  const road=new THREE.Mesh(geometry,material);road.position.set(50,8,50);map.add(road);
+  const parkMaterial=new THREE.MeshBasicMaterial();parkMaterial.name='G_Green';
+  const park=new THREE.Mesh(geometry,parkMaterial);park.position.set(50,8,90);map.add(park);
+  const surface=new TrafficRoadSurface(map), p=surface.snap({x:50,y:8,z:54},{x:1,z:0});
+  assert(p);assert(Math.abs(p.z-50)<0.3);assert.equal(p.y,8);
+  assert(surface.snap({x:50,y:8,z:58},{x:1,z:0}),'nearby sidewalk snaps back to street');
+  assert.equal(surface.snap({x:50,y:8,z:90}),undefined);
+  assert.equal(surface.snap({x:50,y:25,z:50}),undefined,'do not snap a rooftop onto a road below');
+  geometry.dispose();material.dispose();parkMaterial.dispose();
+});
+test('drawn roads automatically connect T junctions and crossings, with terminal spawns',()=>{
+  const first=addTrafficStroke(empty,line(-50,0,2.5,0),id);
+  assert(first.roads.length>=3);assert.equal(first.nodes.filter(n=>n.spawn).length,2);
+  const t=addTrafficStroke(first,line(0,0,0,2.5),id);
+  assert(t.nodes.some(n=>t.roads.filter(r=>r.from===n.id||r.to===n.id).length===3));
+  const junction=t.nodes.find(n=>t.roads.filter(r=>r.from===n.id||r.to===n.id).length===3)!;
+  assert.equal(junction.despawn,false);
+  const crossing=addTrafficStroke(addTrafficStroke(empty,[{x:-50,y:8,z:0},{x:50,y:8,z:0}],id),[{x:0,y:8,z:-50},{x:0,y:8,z:50}],id);
+  assert(crossing.nodes.some(n=>crossing.roads.filter(r=>r.from===n.id||r.to===n.id).length===4));
+  assert.equal(empty.nodes.length,0,'undo source is immutable');
+  assert.throws(()=>addTrafficStroke(empty,[{x:0,y:8,z:0},{x:5,y:8,z:0}],id),/15 metres/);
+});
+test('batch deletion prunes newly orphaned endpoints and retains the source for undo',()=>{
+  const network=addTrafficStroke(empty,line(0,0,2.5,0),id);
+  const first=network.roads[0],result=removeTrafficRoads(network,new Set([first.id]));
+  assert.equal(result.roads.length,network.roads.length-1);
+  assert(!result.nodes.some(n=>n.id===first.from));
+  assert(network.nodes.some(n=>n.id===first.from));
+});
+test('curb placement follows the narrowest asphalt width, preserving car clearance and room for center rail traffic',()=>{
+  const map=new THREE.Group(),geometry=new THREE.PlaneGeometry(120,16).rotateX(-Math.PI/2);
+  const material=new THREE.MeshBasicMaterial();material.name='G_Road';map.add(new THREE.Mesh(geometry,material));
+  const network=addTrafficStroke(empty,[{x:-50,y:0,z:0},{x:50,y:0,z:0}],id);
+  const placed=new TrafficRoadSurface(map).placeLanes(network);
+  assert(placed.roads.every(r=>Math.abs(r.laneOffset!-6.9)<0.001));
+  const uphill=new TrafficRoadSurface(map).placeLanes({...network,roads:network.roads.map(r=>({...r,oneWay:true,lanes:2}))});
+  assert(uphill.roads.every(r=>Math.abs(r.laneOffset!-6.9)<0.001),'both uphill lanes reach the curbs without subtracting an extra lane width');
+  const single=new TrafficRoadSurface(map).placeLanes({...network,roads:network.roads.map(r=>({...r,oneWay:true,lanes:1}))});
+  assert(single.roads.every(r=>Math.abs(r.laneOffset!-6.9)<0.001),'single uphill lane reaches its right curb');
+  const left=new TrafficRoadSurface(map).placeLanes({...network,roads:network.roads.map(r=>({...r,oneWay:true,lanes:1,laneOffset:-4}))});
+  assert(left.roads.every(r=>Math.abs(r.laneOffset!+6.9)<0.001),'dedicated left-hand track retains its curb');
+  assert(network.roads.every(r=>r.laneOffset===1.6),'source available for undo');
+  geometry.dispose();material.dispose();
+});

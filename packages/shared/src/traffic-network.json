@@ -1,0 +1,1596 @@
+{
+  "version": 1,
+  "laneWidth": 3.2,
+  "nodes": [
+    {
+      "id": "hb-draw-5b525fd8",
+      "x": -104.35845364073498,
+      "y": 8.665278524429151,
+      "z": -112.31879752300233,
+      "spawn": true,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-411aa5d5",
+      "x": -95.85500128448108,
+      "y": 9.051488245037556,
+      "z": -87.36210537766941,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-e360f2e5",
+      "x": -86.6032720607236,
+      "y": 8.985262347038379,
+      "z": -62.20894135862413,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-9f46e063",
+      "x": -77.89725168140674,
+      "y": 8.961205776670553,
+      "z": -38.471568640331434,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-f366d21d",
+      "x": -68.01874469613247,
+      "y": 8.967569405524038,
+      "z": -14.418893321192405,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-813adf6e",
+      "x": -60.64353841361392,
+      "y": 8.938586134531235,
+      "z": 9.896257559387685,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-d16103ae",
+      "x": -51.051360850196126,
+      "y": 8.967398332943914,
+      "z": 34.900288841879885,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-8cff96f0",
+      "x": -47.27102422189182,
+      "y": 9.016377972303559,
+      "z": 56.33762994301708,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-057508f2",
+      "x": -51.27628882945973,
+      "y": 8.999999999999972,
+      "z": 74.05244536717194,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-77d9ad51",
+      "x": -36.847645084993104,
+      "y": 9.218495929183256,
+      "z": 68.52504046479724,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-39272cc7",
+      "x": 20.22644212270001,
+      "y": 11.031732245815459,
+      "z": 45.7383021753789,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-c8a508bc",
+      "x": 22.751092472890377,
+      "y": 12.746203914678357,
+      "z": 19.663990795768324,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-841853e6",
+      "x": 22.572284288736604,
+      "y": 14.398714159696619,
+      "z": -5.42365424576205,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-8911e570",
+      "x": 22.669511083627615,
+      "y": 16.096766664845312,
+      "z": -31.040556303330415,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-bc516ffa",
+      "x": 22.883447056933534,
+      "y": 17.878997561398727,
+      "z": -57.912734974113974,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-7b7be064",
+      "x": 22.94651097478788,
+      "y": 19.541005056026368,
+      "z": -83.64925960578198,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-43b9a14d",
+      "x": 22.90367694882778,
+      "y": 21.168177050013117,
+      "z": -108.92088790333037,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-06f08caa",
+      "x": 21.05151936377988,
+      "y": 22.254579348960974,
+      "z": -128.56304483188714,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-cdd62fa3",
+      "x": 16.68681467464393,
+      "y": 23.950506410335272,
+      "z": -155.7008872360994,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-ac612068",
+      "x": 16.21804901289738,
+      "y": 27.02498087767364,
+      "z": -199.33011426703848,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-24dff230",
+      "x": 29.3929612023775,
+      "y": 27.855869956028677,
+      "z": -209.85832948692502,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-c37df366",
+      "x": 48.308344479077704,
+      "y": 29.052630487486212,
+      "z": -209.72906705401795,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-e83fb259",
+      "x": 75.60752070701271,
+      "y": 31.54998324807329,
+      "z": -174.37241428319206,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-93441528",
+      "x": 92.91345404388353,
+      "y": 33.158109861057596,
+      "z": -156.04752403278508,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-f860b189",
+      "x": 104.45910298035464,
+      "y": 34.818821635789455,
+      "z": -135.90802323462052,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-e5d31ca5",
+      "x": 116.01405184763524,
+      "y": 36.81573489410232,
+      "z": -110.43215791692076,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-1db74841",
+      "x": 126.75043631776238,
+      "y": 38.65559588139855,
+      "z": -86.0767881885515,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-2355d7f1",
+      "x": 137.1409377693884,
+      "y": 40.409990743226075,
+      "z": -63.233703748615916,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-cbd875dd",
+      "x": 147.8445518506846,
+      "y": 42.1634187392465,
+      "z": -39.275949085259604,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-af7e5b34",
+      "x": 158.48708284472102,
+      "y": 43.85502598380961,
+      "z": -16.09755001224971,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-2b773230",
+      "x": 169.31072249206005,
+      "y": 45.44149287087186,
+      "z": 7.021427394086783,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-5a67d6a7",
+      "x": 180.17779873687925,
+      "y": 46.97963269088268,
+      "z": 29.490112810169094,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-b20cb11d",
+      "x": 193.40314699673132,
+      "y": 48.378128192018515,
+      "z": 52.40611593142515,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-ff5086d6",
+      "x": 218.81867077101074,
+      "y": 49.75697879667838,
+      "z": 54.23404994018226,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-5e137663",
+      "x": 243.4989798662664,
+      "y": 51.24181615978525,
+      "z": 45.934588425067204,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-364364cb",
+      "x": 264.3639438504115,
+      "y": 52.53755036852857,
+      "z": 31.663824690367186,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-68c030ec",
+      "x": 289.22213330435284,
+      "y": 53.66905974610846,
+      "z": 23.613726380669902,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-d6e67495",
+      "x": 313.22795618866684,
+      "y": 54.83978377648741,
+      "z": 15.516561587574238,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-f9b05b2a",
+      "x": 336.34782720367207,
+      "y": 55.18704804924151,
+      "z": 27.076656594066037,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "hb-draw-6c69414c",
+      "x": 339.8997191341939,
+      "y": 54.60139201166665,
+      "z": 62.433589158762054,
+      "spawn": false,
+      "despawn": true
+    },
+    {
+      "id": "poly-draw-9c643da7",
+      "x": 95.61205637657906,
+      "y": 15.377324055345621,
+      "z": 204.56211293696498,
+      "spawn": true,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-985bdbba",
+      "x": 84.81621114719503,
+      "y": 14.464623570424202,
+      "z": 180.4188376364546,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-94fd9bf9",
+      "x": 74.24541036329784,
+      "y": 13.50895883109504,
+      "z": 156.91078398550346,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-3bccb5ba",
+      "x": 63.5364316837402,
+      "y": 12.365708980296416,
+      "z": 133.48884161620094,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-7625b972",
+      "x": 48.28953759836333,
+      "y": 10.902195853681263,
+      "z": 101.86817150560935,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-4daba5ff",
+      "x": 33.08461706704497,
+      "y": 10.228087364404972,
+      "z": 83.75145325327087,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-39272cc7",
+      "x": 22.72901233592522,
+      "y": 10.569730404906892,
+      "z": 57.23334182288809,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-c8a508bc",
+      "x": 22.751092472890377,
+      "y": 12.746203914678357,
+      "z": 19.663990795768324,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-841853e6",
+      "x": 22.572284288736604,
+      "y": 14.398714159696619,
+      "z": -5.42365424576205,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-8911e570",
+      "x": 22.669511083627615,
+      "y": 16.096766664845312,
+      "z": -31.040556303330415,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-bc516ffa",
+      "x": 22.883447056933534,
+      "y": 17.878997561398727,
+      "z": -57.912734974113974,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-7b7be064",
+      "x": 22.94651097478788,
+      "y": 19.541005056026368,
+      "z": -83.64925960578198,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-43b9a14d",
+      "x": 22.90367694882778,
+      "y": 21.168177050013117,
+      "z": -108.92088790333037,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-06f08caa",
+      "x": 21.05151936377988,
+      "y": 22.254579348960974,
+      "z": -128.56304483188714,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-cdd62fa3",
+      "x": 18.89450829192115,
+      "y": 23.977318129944738,
+      "z": -155.81005150980047,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-ac612068",
+      "x": 22.98027543827456,
+      "y": 26.735855114306396,
+      "z": -192.35039483175976,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-24dff230",
+      "x": 30.965074856826845,
+      "y": 28.01971267126115,
+      "z": -205.1939818956273,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-c37df366",
+      "x": 55.81895371181951,
+      "y": 29.705738597769425,
+      "z": -197.64716330222493,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-e83fb259",
+      "x": 75.60752070701271,
+      "y": 31.54998324807329,
+      "z": -174.37241428319206,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-93441528",
+      "x": 92.91345404388353,
+      "y": 33.158109861057596,
+      "z": -156.04752403278508,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-f860b189",
+      "x": 104.45910298035464,
+      "y": 34.818821635789455,
+      "z": -135.90802323462052,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-e5d31ca5",
+      "x": 116.01405184763524,
+      "y": 36.81573489410232,
+      "z": -110.43215791692076,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-1db74841",
+      "x": 126.75043631776238,
+      "y": 38.65559588139855,
+      "z": -86.0767881885515,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-2355d7f1",
+      "x": 137.1409377693884,
+      "y": 40.409990743226075,
+      "z": -63.233703748615916,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-cbd875dd",
+      "x": 147.8445518506846,
+      "y": 42.1634187392465,
+      "z": -39.275949085259604,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-af7e5b34",
+      "x": 158.48708284472102,
+      "y": 43.85502598380961,
+      "z": -16.09755001224971,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-2b773230",
+      "x": 169.31072249206005,
+      "y": 45.44149287087186,
+      "z": 7.021427394086783,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-5a67d6a7",
+      "x": 180.17779873687925,
+      "y": 46.97963269088268,
+      "z": 29.490112810169094,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-b20cb11d",
+      "x": 193.40314699673132,
+      "y": 48.378128192018515,
+      "z": 52.40611593142515,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-ff5086d6",
+      "x": 218.81867077101074,
+      "y": 49.75697879667838,
+      "z": 54.23404994018226,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-5e137663",
+      "x": 243.4989798662664,
+      "y": 51.24181615978525,
+      "z": 45.934588425067204,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-364364cb",
+      "x": 264.3639438504115,
+      "y": 52.53755036852857,
+      "z": 31.663824690367186,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-68c030ec",
+      "x": 289.22213330435284,
+      "y": 53.66905974610846,
+      "z": 23.613726380669902,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-d6e67495",
+      "x": 313.22795618866684,
+      "y": 54.83978377648741,
+      "z": 15.516561587574238,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-f9b05b2a",
+      "x": 336.34782720367207,
+      "y": 55.18704804924151,
+      "z": 27.076656594066037,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "poly-draw-6c69414c",
+      "x": 339.8997191341939,
+      "y": 54.60139201166665,
+      "z": 62.433589158762054,
+      "spawn": false,
+      "despawn": true
+    },
+    {
+      "id": "south-draw-d0057773",
+      "x": -42.64164331769873,
+      "y": 7.433222152400605,
+      "z": 358.92615989425593,
+      "spawn": true,
+      "despawn": false
+    },
+    {
+      "id": "south-draw-1c636d5f",
+      "x": -67.57677955161454,
+      "y": 7.3523525865925565,
+      "z": 353.97869795526805,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "south-draw-c5bcb990",
+      "x": -64.46168107010828,
+      "y": 7.25,
+      "z": 332.6196284518863,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "south-draw-1abeb919",
+      "x": -58.63035876067561,
+      "y": 7.1910829329875305,
+      "z": 305.33615937793405,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "south-draw-624663d5",
+      "x": -54.61963107775217,
+      "y": 7.1452621806581025,
+      "z": 283.3916898327944,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "south-draw-0225c632",
+      "x": -49.142233740062345,
+      "y": 7.1624751314283674,
+      "z": 255.37584257826322,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "south-draw-630a317a",
+      "x": -44.25808277794931,
+      "y": 7.196775141198957,
+      "z": 229.609292912404,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "south-draw-44975604",
+      "x": -37.039373072753484,
+      "y": 7.153705744726971,
+      "z": 205.0317017611999,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "south-draw-9c3d9382",
+      "x": -31.557732850437866,
+      "y": 7.252924068196031,
+      "z": 179.25091474445472,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "south-draw-8169eb84",
+      "x": -26.747073081499398,
+      "y": 7.5,
+      "z": 153.75167512996273,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "south-draw-2e851577",
+      "x": -16.557930069434462,
+      "y": 8.184532287403144,
+      "z": 130.19127890622767,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "south-draw-3642d543",
+      "x": -9.655516837716206,
+      "y": 9.08510530349389,
+      "z": 99.48019095646725,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "south-draw-2d1206c4",
+      "x": 13.354304989092068,
+      "y": 9.680272290128833,
+      "z": 85.88574652352646,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "south-draw-4daba5ff",
+      "x": 33.08461706704497,
+      "y": 10.228087364404972,
+      "z": 83.75145325327087,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "south-draw-7625b972",
+      "x": 48.28953759836333,
+      "y": 10.902195853681263,
+      "z": 101.86817150560935,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "south-draw-3bccb5ba",
+      "x": 63.5364316837402,
+      "y": 12.365708980296416,
+      "z": 133.48884161620094,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "south-draw-94fd9bf9",
+      "x": 74.24541036329784,
+      "y": 13.50895883109504,
+      "z": 156.91078398550346,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "south-draw-985bdbba",
+      "x": 84.81621114719503,
+      "y": 14.464623570424202,
+      "z": 180.4188376364546,
+      "spawn": false,
+      "despawn": false
+    },
+    {
+      "id": "south-draw-9c643da7",
+      "x": 95.61205637657906,
+      "y": 15.377324055345621,
+      "z": 204.56211293696498,
+      "spawn": false,
+      "despawn": true
+    }
+  ],
+  "roads": [
+    {
+      "id": "hb-road-ee64237d",
+      "from": "hb-draw-5b525fd8",
+      "to": "hb-draw-411aa5d5",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.4
+    },
+    {
+      "id": "hb-road-10454195",
+      "from": "hb-draw-411aa5d5",
+      "to": "hb-draw-e360f2e5",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.4
+    },
+    {
+      "id": "hb-road-332a9d1e",
+      "from": "hb-draw-e360f2e5",
+      "to": "hb-draw-9f46e063",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.4
+    },
+    {
+      "id": "hb-road-d2c50197",
+      "from": "hb-draw-9f46e063",
+      "to": "hb-draw-f366d21d",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 3.4
+    },
+    {
+      "id": "hb-road-02cb8e17",
+      "from": "hb-draw-f366d21d",
+      "to": "hb-draw-813adf6e",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 2.4
+    },
+    {
+      "id": "hb-road-792893e0",
+      "from": "hb-draw-813adf6e",
+      "to": "hb-draw-d16103ae",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.4
+    },
+    {
+      "id": "hb-road-cf4ee4c9",
+      "from": "hb-draw-d16103ae",
+      "to": "hb-draw-8cff96f0",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 2.4
+    },
+    {
+      "id": "hb-road-6a0b2739",
+      "from": "hb-draw-8cff96f0",
+      "to": "hb-draw-057508f2",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.4
+    },
+    {
+      "id": "hb-road-2db7ade1",
+      "from": "hb-draw-057508f2",
+      "to": "hb-draw-77d9ad51",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 10.9
+    },
+    {
+      "id": "hb-road-2004dd91",
+      "from": "hb-draw-77d9ad51",
+      "to": "hb-draw-39272cc7",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 6.4
+    },
+    {
+      "id": "hb-road-15200682",
+      "from": "hb-draw-39272cc7",
+      "to": "hb-draw-c8a508bc",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -4.9
+    },
+    {
+      "id": "hb-road-568f480e",
+      "from": "hb-draw-c8a508bc",
+      "to": "hb-draw-841853e6",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -4.4
+    },
+    {
+      "id": "hb-road-f7ed5b54",
+      "from": "hb-draw-841853e6",
+      "to": "hb-draw-8911e570",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -4.4
+    },
+    {
+      "id": "hb-road-74bf4940",
+      "from": "hb-draw-8911e570",
+      "to": "hb-draw-bc516ffa",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -4.9
+    },
+    {
+      "id": "hb-road-79321db7",
+      "from": "hb-draw-bc516ffa",
+      "to": "hb-draw-7b7be064",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -4.9
+    },
+    {
+      "id": "hb-road-4afd46f2",
+      "from": "hb-draw-7b7be064",
+      "to": "hb-draw-43b9a14d",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -4.9
+    },
+    {
+      "id": "hb-road-ea2d0996",
+      "from": "hb-draw-43b9a14d",
+      "to": "hb-draw-06f08caa",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -4.4
+    },
+    {
+      "id": "hb-road-0fa20ec2",
+      "from": "hb-draw-06f08caa",
+      "to": "hb-draw-cdd62fa3",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -2.9
+    },
+    {
+      "id": "hb-road-300e82f7",
+      "from": "hb-draw-cdd62fa3",
+      "to": "hb-draw-ac612068",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -1.6
+    },
+    {
+      "id": "hb-road-77a4ae9b",
+      "from": "hb-draw-ac612068",
+      "to": "hb-draw-24dff230",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -1.6
+    },
+    {
+      "id": "hb-road-4c2353ae",
+      "from": "hb-draw-24dff230",
+      "to": "hb-draw-c37df366",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -1.6
+    },
+    {
+      "id": "hb-road-2ce763ce",
+      "from": "hb-draw-c37df366",
+      "to": "hb-draw-e83fb259",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -1.6
+    },
+    {
+      "id": "hb-road-a18adab5",
+      "from": "hb-draw-e83fb259",
+      "to": "hb-draw-93441528",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -1.9
+    },
+    {
+      "id": "hb-road-8dcc2f0f",
+      "from": "hb-draw-93441528",
+      "to": "hb-draw-f860b189",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -1.6
+    },
+    {
+      "id": "hb-road-95b4c522",
+      "from": "hb-draw-f860b189",
+      "to": "hb-draw-e5d31ca5",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -3.4
+    },
+    {
+      "id": "hb-road-e492748b",
+      "from": "hb-draw-e5d31ca5",
+      "to": "hb-draw-1db74841",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -1.6
+    },
+    {
+      "id": "hb-road-5baa8355",
+      "from": "hb-draw-1db74841",
+      "to": "hb-draw-2355d7f1",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -3.4
+    },
+    {
+      "id": "hb-road-57647951",
+      "from": "hb-draw-2355d7f1",
+      "to": "hb-draw-cbd875dd",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -3.4
+    },
+    {
+      "id": "hb-road-9d0bc74e",
+      "from": "hb-draw-cbd875dd",
+      "to": "hb-draw-af7e5b34",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -3.4
+    },
+    {
+      "id": "hb-road-9ed41b71",
+      "from": "hb-draw-af7e5b34",
+      "to": "hb-draw-2b773230",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -3.4
+    },
+    {
+      "id": "hb-road-7322ec73",
+      "from": "hb-draw-2b773230",
+      "to": "hb-draw-5a67d6a7",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -2.4
+    },
+    {
+      "id": "hb-road-d9d6a660",
+      "from": "hb-draw-5a67d6a7",
+      "to": "hb-draw-b20cb11d",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -2.4
+    },
+    {
+      "id": "hb-road-4e4b15c5",
+      "from": "hb-draw-b20cb11d",
+      "to": "hb-draw-ff5086d6",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -1.6
+    },
+    {
+      "id": "hb-road-27ab48fb",
+      "from": "hb-draw-ff5086d6",
+      "to": "hb-draw-5e137663",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -3.4
+    },
+    {
+      "id": "hb-road-02bc92f9",
+      "from": "hb-draw-5e137663",
+      "to": "hb-draw-364364cb",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -1.6
+    },
+    {
+      "id": "hb-road-19116535",
+      "from": "hb-draw-364364cb",
+      "to": "hb-draw-68c030ec",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -1.6
+    },
+    {
+      "id": "hb-road-8b62ff1c",
+      "from": "hb-draw-68c030ec",
+      "to": "hb-draw-d6e67495",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -1.6
+    },
+    {
+      "id": "hb-road-c58a2907",
+      "from": "hb-draw-d6e67495",
+      "to": "hb-draw-f9b05b2a",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -5.9
+    },
+    {
+      "id": "hb-road-9393c434",
+      "from": "hb-draw-f9b05b2a",
+      "to": "hb-draw-6c69414c",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": -1.6
+    },
+    {
+      "id": "poly-road-d6e30dbd",
+      "from": "poly-draw-9c643da7",
+      "to": "poly-draw-985bdbba",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.9
+    },
+    {
+      "id": "poly-road-34a752dc",
+      "from": "poly-draw-985bdbba",
+      "to": "poly-draw-94fd9bf9",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.9
+    },
+    {
+      "id": "poly-road-a96f6359",
+      "from": "poly-draw-94fd9bf9",
+      "to": "poly-draw-3bccb5ba",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.9
+    },
+    {
+      "id": "poly-road-fcb9d7ef",
+      "from": "poly-draw-3bccb5ba",
+      "to": "poly-draw-7625b972",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.9
+    },
+    {
+      "id": "poly-road-f118acc5",
+      "from": "poly-draw-7625b972",
+      "to": "poly-draw-4daba5ff",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.4
+    },
+    {
+      "id": "poly-road-7837510b",
+      "from": "poly-draw-4daba5ff",
+      "to": "poly-draw-39272cc7",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 6.4
+    },
+    {
+      "id": "poly-road-15200682",
+      "from": "poly-draw-39272cc7",
+      "to": "poly-draw-c8a508bc",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.9
+    },
+    {
+      "id": "poly-road-568f480e",
+      "from": "poly-draw-c8a508bc",
+      "to": "poly-draw-841853e6",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.4
+    },
+    {
+      "id": "poly-road-f7ed5b54",
+      "from": "poly-draw-841853e6",
+      "to": "poly-draw-8911e570",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.4
+    },
+    {
+      "id": "poly-road-74bf4940",
+      "from": "poly-draw-8911e570",
+      "to": "poly-draw-bc516ffa",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.9
+    },
+    {
+      "id": "poly-road-79321db7",
+      "from": "poly-draw-bc516ffa",
+      "to": "poly-draw-7b7be064",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.9
+    },
+    {
+      "id": "poly-road-4afd46f2",
+      "from": "poly-draw-7b7be064",
+      "to": "poly-draw-43b9a14d",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.9
+    },
+    {
+      "id": "poly-road-ea2d0996",
+      "from": "poly-draw-43b9a14d",
+      "to": "poly-draw-06f08caa",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.4
+    },
+    {
+      "id": "poly-road-0fa20ec2",
+      "from": "poly-draw-06f08caa",
+      "to": "poly-draw-cdd62fa3",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 2.9
+    },
+    {
+      "id": "poly-road-300e82f7",
+      "from": "poly-draw-cdd62fa3",
+      "to": "poly-draw-ac612068",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 1.6
+    },
+    {
+      "id": "poly-road-77a4ae9b",
+      "from": "poly-draw-ac612068",
+      "to": "poly-draw-24dff230",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 1.6
+    },
+    {
+      "id": "poly-road-4c2353ae",
+      "from": "poly-draw-24dff230",
+      "to": "poly-draw-c37df366",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 1.6
+    },
+    {
+      "id": "poly-road-2ce763ce",
+      "from": "poly-draw-c37df366",
+      "to": "poly-draw-e83fb259",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 1.6
+    },
+    {
+      "id": "poly-road-a18adab5",
+      "from": "poly-draw-e83fb259",
+      "to": "poly-draw-93441528",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 1.9
+    },
+    {
+      "id": "poly-road-8dcc2f0f",
+      "from": "poly-draw-93441528",
+      "to": "poly-draw-f860b189",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 1.6
+    },
+    {
+      "id": "poly-road-95b4c522",
+      "from": "poly-draw-f860b189",
+      "to": "poly-draw-e5d31ca5",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 3.4
+    },
+    {
+      "id": "poly-road-e492748b",
+      "from": "poly-draw-e5d31ca5",
+      "to": "poly-draw-1db74841",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 1.6
+    },
+    {
+      "id": "poly-road-5baa8355",
+      "from": "poly-draw-1db74841",
+      "to": "poly-draw-2355d7f1",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 3.4
+    },
+    {
+      "id": "poly-road-57647951",
+      "from": "poly-draw-2355d7f1",
+      "to": "poly-draw-cbd875dd",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 3.4
+    },
+    {
+      "id": "poly-road-9d0bc74e",
+      "from": "poly-draw-cbd875dd",
+      "to": "poly-draw-af7e5b34",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 3.4
+    },
+    {
+      "id": "poly-road-9ed41b71",
+      "from": "poly-draw-af7e5b34",
+      "to": "poly-draw-2b773230",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 3.4
+    },
+    {
+      "id": "poly-road-7322ec73",
+      "from": "poly-draw-2b773230",
+      "to": "poly-draw-5a67d6a7",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 2.4
+    },
+    {
+      "id": "poly-road-d9d6a660",
+      "from": "poly-draw-5a67d6a7",
+      "to": "poly-draw-b20cb11d",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 2.4
+    },
+    {
+      "id": "poly-road-4e4b15c5",
+      "from": "poly-draw-b20cb11d",
+      "to": "poly-draw-ff5086d6",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 1.6
+    },
+    {
+      "id": "poly-road-27ab48fb",
+      "from": "poly-draw-ff5086d6",
+      "to": "poly-draw-5e137663",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 3.4
+    },
+    {
+      "id": "poly-road-02bc92f9",
+      "from": "poly-draw-5e137663",
+      "to": "poly-draw-364364cb",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 1.6
+    },
+    {
+      "id": "poly-road-19116535",
+      "from": "poly-draw-364364cb",
+      "to": "poly-draw-68c030ec",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 1.6
+    },
+    {
+      "id": "poly-road-8b62ff1c",
+      "from": "poly-draw-68c030ec",
+      "to": "poly-draw-d6e67495",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 1.6
+    },
+    {
+      "id": "poly-road-c58a2907",
+      "from": "poly-draw-d6e67495",
+      "to": "poly-draw-f9b05b2a",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 5.9
+    },
+    {
+      "id": "poly-road-9393c434",
+      "from": "poly-draw-f9b05b2a",
+      "to": "poly-draw-6c69414c",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 1.6
+    },
+    {
+      "id": "south-road-ecdc7f9a",
+      "from": "south-draw-d0057773",
+      "to": "south-draw-1c636d5f",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.4
+    },
+    {
+      "id": "south-road-38890886",
+      "from": "south-draw-1c636d5f",
+      "to": "south-draw-c5bcb990",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.4
+    },
+    {
+      "id": "south-road-f8389d08",
+      "from": "south-draw-c5bcb990",
+      "to": "south-draw-1abeb919",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 3.9
+    },
+    {
+      "id": "south-road-e4495d90",
+      "from": "south-draw-1abeb919",
+      "to": "south-draw-624663d5",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.4
+    },
+    {
+      "id": "south-road-f74e47a7",
+      "from": "south-draw-624663d5",
+      "to": "south-draw-0225c632",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.4
+    },
+    {
+      "id": "south-road-8719ca4e",
+      "from": "south-draw-0225c632",
+      "to": "south-draw-630a317a",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.9
+    },
+    {
+      "id": "south-road-ab1a793b",
+      "from": "south-draw-630a317a",
+      "to": "south-draw-44975604",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.4
+    },
+    {
+      "id": "south-road-30600e75",
+      "from": "south-draw-44975604",
+      "to": "south-draw-9c3d9382",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 7.4
+    },
+    {
+      "id": "south-road-93a57d7e",
+      "from": "south-draw-9c3d9382",
+      "to": "south-draw-8169eb84",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 8.9
+    },
+    {
+      "id": "south-road-c6a41a12",
+      "from": "south-draw-8169eb84",
+      "to": "south-draw-2e851577",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 7.9
+    },
+    {
+      "id": "south-road-8e26b248",
+      "from": "south-draw-2e851577",
+      "to": "south-draw-3642d543",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.4
+    },
+    {
+      "id": "south-road-58af1bc4",
+      "from": "south-draw-3642d543",
+      "to": "south-draw-2d1206c4",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 7.4
+    },
+    {
+      "id": "south-road-5a47a9c1",
+      "from": "south-draw-2d1206c4",
+      "to": "south-draw-4daba5ff",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 7.4
+    },
+    {
+      "id": "south-road-f118acc5",
+      "from": "south-draw-4daba5ff",
+      "to": "south-draw-7625b972",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.4
+    },
+    {
+      "id": "south-road-fcb9d7ef",
+      "from": "south-draw-7625b972",
+      "to": "south-draw-3bccb5ba",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.9
+    },
+    {
+      "id": "south-road-a96f6359",
+      "from": "south-draw-3bccb5ba",
+      "to": "south-draw-94fd9bf9",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.9
+    },
+    {
+      "id": "south-road-34a752dc",
+      "from": "south-draw-94fd9bf9",
+      "to": "south-draw-985bdbba",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.9
+    },
+    {
+      "id": "south-road-d6e30dbd",
+      "from": "south-draw-985bdbba",
+      "to": "south-draw-9c643da7",
+      "oneWay": true,
+      "lanes": 1,
+      "speed": 25,
+      "laneOffset": 4.9
+    }
+  ]
+}

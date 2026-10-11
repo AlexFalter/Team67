@@ -115,8 +115,17 @@ export const Npc = schema({
   limoSolved: t.boolean().default(false),
   limoUsed: t.boolean().default(false),
 }, "Npc");
+export const TrafficCar = schema({
+  x: t.number().default(0), y: t.number().default(0), z: t.number().default(0),
+  rotY: t.number().default(0), speed: t.number().default(0),
+}, "TrafficCar");
 export const RaceState = schema(
   {
+    trafficCars: t.map(TrafficCar),
+    trafficNetwork: t.string().default(""),
+    trafficDensity: t.number().default(60),
+    trafficSpawnInterval: t.number().default(2),
+    trafficSpeedMultiplier: t.number().default(1),
     serverTime: t.number().default(0),
     phase: t.string().default(RoomPhase.Lobby),
     hostId: t.string().default(""),
