@@ -128,10 +128,13 @@ export class VehicleManager {
     if(!pending||vehicle!==pending||!p||!v||p.vehicleId||Math.hypot(p.x-v.x,p.z-v.z)>12)return false;
     this.parkingPhotos.delete(id);return true;
   }
-  disconnect(id: string) {
+  releaseForRespawn(id: string) {
     this.parkingPhotos.delete(id);
     const p = this.state.players.get(id);
     if (p?.vehicleId) this.release(p);
+  }
+  disconnect(id: string) {
+    this.releaseForRespawn(id);
     for (const hits of this.hitTimes.values()) hits.delete(id);
   }
   private release(p: Player) {
@@ -158,7 +161,7 @@ export class VehicleManager {
         ),
       );
       const landing = C.isRail(v) ? this.railLanding(v, p) : C.findGround(this.world, x, z);
-      Object.assign(p, landing ?? this.world.spawn);
+      Object.assign(p, landing ?? C.raceSpawnPoint(this.world));
       p.grounded = true; p.groundTime = p.simTime;
       if (!C.isPassengerVehicle(v)) {
         const remaining=v.kind===C.LIME_KIND?[...this.state.players].find(([,other])=>other!==p&&other.vehicleId===id):undefined;

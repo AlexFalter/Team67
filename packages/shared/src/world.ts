@@ -1,5 +1,6 @@
 import data from "./zurich-world.json";
 import * as C from "./constants.ts";
+import { raceSpawnPoint } from "./battleBus.ts";
 import { passageFloor, polybahnPassages, polybahnPlatforms } from "./transit.ts";
 import { MATE_POSITION, mateBlocked } from "./mate.ts";
 import { TICKET_POSITION, ticketBlocked } from './ticket.ts';
@@ -211,15 +212,16 @@ export function findGround(
   return undefined;
 }
 export function spawnPoint(world: MovementWorld) {
+  const spawn = raceSpawnPoint(world);
   for (let i = 0; i < 12; i++) {
     const p = findGround(
       world,
-      world.spawn.x + (Math.random() - 0.5) * C.SPAWN_SPREAD,
-      world.spawn.z + (Math.random() - 0.5) * C.SPAWN_SPREAD,
+      spawn.x + (Math.random() - 0.5) * C.SPAWN_SPREAD,
+      spawn.z + (Math.random() - 0.5) * C.SPAWN_SPREAD,
     );
     if (p) return p;
   }
-  return { ...world.spawn };
+  return { ...spawn };
 }
 export function routePoint(
   world: MovementWorld,

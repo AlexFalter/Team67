@@ -38,6 +38,11 @@ export function battleBusDropoffs(world: MovementWorld, count: number): GroundPo
   return points;
 }
 
+/** The race's common respawn is the first safe bus drop-off. */
+export function raceSpawnPoint(world: MovementWorld): GroundPoint {
+  return world.name === 'flat' ? { ...world.spawn } : battleBusDropoffs(world, 1)[0];
+}
+
 // The prototype's twelve seats, followed by standing places for larger existing rooms.
 export function battleBusSeat(slot: number) {
   const seated = slot < 12;
