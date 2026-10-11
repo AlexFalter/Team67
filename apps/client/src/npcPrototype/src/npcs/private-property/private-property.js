@@ -1,3 +1,4 @@
+import {createDialogueAudio} from '../../shared/dialogue/dialogue-audio.js';
 import {disposeOwnedObject} from '../../shared/runtime/feature-lifecycle.js';
 import {gameConfig} from '../../config/game-config.js';
 import {styleEncounterLine} from '../../shared/dialogue/encounter-ui.js';
@@ -34,20 +35,21 @@ export function createPrivatePropertyEncounter(scene,world,start,heading,solver,
  const moustache=new THREE.Mesh(new THREE.SphereGeometry(.085,10,6),mat('#dcd8cb'));moustache.scale.set(1,.28,.33);moustache.position.set(0,1.535,-.161);driver.player.add(moustache);
  driver.limbs[1].rotation.x=-1.25;driver.limbs[3].rotation.x=-1.25;driver.limbs[0].rotation.z=-1.1;driver.limbs[2].rotation.x=-.85;
  const forward=new THREE.Vector3(-Math.sin(heading),0,-Math.cos(heading)),right=new THREE.Vector3(Math.cos(heading),0,-Math.sin(heading));
- const audio=new Audio('/audio/private-property.mp3');audio.preload='auto';audio.volume=gameConfig.npcs.privateProperty.volume;
+ const audio=createDialogueAudio('/audio/private-property.mp3');audio.preload='auto';audio.volume=gameConfig.npcs.privateProperty.volume;
  const overlay=document.createElement('div');overlay.className='private-property-cinema';overlay.hidden=true;overlay.innerHTML='<div class="private-property-label">PRIVATE PROPERTY</div><div class="private-property-caption"></div><div class="private-property-lock">UNSKIPPABLE ENCOUNTER</div>';uiRoot.append(overlay);const caption=styleEncounterLine(overlay.querySelector('.private-property-caption'));
  const style=document.createElement('style');style.textContent='body.private-property-cutscene header,body.private-property-cutscene .mission,body.private-property-cutscene .radar,body.private-property-cutscene .location,body.private-property-cutscene footer,body.private-property-cutscene .credits,body.private-property-cutscene #bike-status,body.private-property-cutscene #polybahn-ticket,body.private-property-cutscene .toast,body.private-property-cutscene #game-phone,body.private-property-cutscene #open-settings{visibility:hidden}.private-property-cinema{position:fixed;inset:0;z-index:110;pointer-events:auto;border-top:6vh solid #080b10;border-bottom:6vh solid #080b10;box-sizing:border-box}.private-property-cinema[hidden]{display:none}.private-property-label{position:absolute;top:16px;left:32px;color:#ffce6e;font:700 16px sans-serif;letter-spacing:3px}.private-property-caption{position:absolute;bottom:40px;left:10%;right:10%;text-align:center;color:white;font:700 clamp(18px,3vw,34px) sans-serif;text-shadow:0 3px 8px #000}.private-property-lock{position:absolute;bottom:12px;width:100%;text-align:center;color:#b8c6cc;font:11px sans-serif;letter-spacing:2px}';document.head.append(style);
  const clearanceRay=new THREE.Raycaster();
  function clearScene(p){for(let x=-4;x<=4;x+=2)for(let z=-4;z<=4;z+=2){const px=p.x+x,pz=p.z+z;clearanceRay.set(new THREE.Vector3(px,world.height(px,pz)+1000,pz),new THREE.Vector3(0,-1,0));if(clearanceRay.intersectObjects(world.buildings,false).length)return false;if(world.blocked(px,pz)||world.isWater(px,pz)||(solver&&solver.penetration(new THREE.Vector3(px,world.height(px,pz),pz))>.01))return false;}return true;}
  function clearArrival(p){if(!clearScene(p))return false;for(let d=3;d<=18;d+=3){const q=p.clone().addScaledVector(forward,-d);if(q.x<bounds.minX+5||q.x>bounds.maxX-5||q.z<bounds.minZ+5||q.z>bounds.maxZ-5||!clearScene(q))return false;}return true;}
 
- let encounterHeading=heading,edge=null,count=0,active=false,used=false,age=0,audioStarted=false,audioPlayed=false;const frozen=new THREE.Vector3(),stop=new THREE.Vector3(),approach=new THREE.Vector3();
+ let encounterHeading=heading,edge=null,count=0,active=false,used=false,age=0,audioStarted=false,audioPlayed=false;let returnPoint=null;const returnDirection=new THREE.Vector3(),throwEye=new THREE.Vector3(),throwDirection=new THREE.Vector3();const frozen=new THREE.Vector3(),stop=new THREE.Vector3(),approach=new THREE.Vector3();
  return {dispose(){this.reset();overlay.remove();style.remove();disposeOwnedObject(car);},
   active:()=>active,
   state:()=>({active,used,count,edge,age,audioStarted,audioPlayed,unskippable:true,bounds,carVisible:car.visible,carPosition:car.position.toArray(),approach:approach.toArray(),stop:stop.toArray()}),
-  reset(){active=false;used=false;count=0;edge=null;age=0;audio.pause();audio.currentTime=0;audioStarted=false;audioPlayed=false;car.visible=false;overlay.hidden=true;document.body.classList.remove('private-property-cutscene');},
-  maybeStart(position){if(active)return false;const boundary=privatePropertyBoundary(position,bounds);if(!boundary)return false;
+  reset(){returnPoint=null;active=false;used=false;count=0;edge=null;age=0;audio.pause();audio.currentTime=0;audioStarted=false;audioPlayed=false;car.visible=false;overlay.hidden=true;document.body.classList.remove('private-property-cutscene');},
+  maybeStart(position,approved=false,target=null,camera=null){if(active)return false;const boundary=privatePropertyBoundary(position,bounds,approved?Infinity:12);if(!boundary)return false;
    edge=boundary.edge;right.set(boundary.inward[0],0,boundary.inward[1]);forward.set(right.z,0,-right.x);encounterHeading=Math.atan2(-forward.x,-forward.z);
+   returnPoint=target?.clone()??null;if(camera)camera.getWorldDirection(returnDirection);
    active=true;used=true;count++;age=0;audio.pause();audio.currentTime=0;audioStarted=false;audioPlayed=false;frozen.copy(position);stop.copy(position).addScaledVector(right,4.2).addScaledVector(forward,.5);
    for(const p of [stop]){p.x=THREE.MathUtils.clamp(p.x,bounds.minX+3,bounds.maxX-3);p.z=THREE.MathUtils.clamp(p.z,bounds.minZ+3,bounds.maxZ-3);}
    if(!clearArrival(stop)){const origin=stop.clone();let found=false;for(let radius=4;radius<=80&&!found;radius+=4)for(let i=0;i<24&&!found;i++){const a=i*Math.PI/12,candidate=origin.clone().add(new THREE.Vector3(Math.cos(a)*radius,0,Math.sin(a)*radius));if(candidate.x<bounds.minX+5||candidate.x>bounds.maxX-5||candidate.z<bounds.minZ+5||candidate.z>bounds.maxZ-5)continue;if(clearArrival(candidate)){stop.copy(candidate);found=true;}}}
@@ -57,6 +59,12 @@ export function createPrivatePropertyEncounter(scene,world,start,heading,solver,
    const target=car.localToWorld(new THREE.Vector3(-.65,1.85,-.55));
    if(age<2.2){camera.position.copy(stop).addScaledVector(right,-3.5).addScaledVector(forward,3);camera.position.y=stop.y+2.8;camera.lookAt(car.position.x,car.position.y+1.3,car.position.z);}
    else{camera.position.copy(stop).addScaledVector(right,-3.5).addScaledVector(forward,1.2);camera.position.y=stop.y+1.85;camera.lookAt(target);driver.limbs[0].rotation.z=-1.1+Math.sin(age*5)*.12;driver.player.rotation.y=.7;}
+   if(returnPoint&&age>=gameConfig.npcs.privateProperty.durationSeconds-.6){
+    const t=THREE.MathUtils.clamp((age-gameConfig.npcs.privateProperty.durationSeconds+.6)/.6,0,1),ease=t*t*(3-2*t);
+    throwEye.copy(returnPoint).add(new THREE.Vector3(0,1.6,0));camera.getWorldDirection(throwDirection);
+    camera.position.lerp(throwEye,ease);camera.position.y+=Math.sin(t*Math.PI)*.45;
+    throwDirection.lerp(returnDirection,ease).normalize();camera.lookAt(camera.position.clone().add(throwDirection));
+   }
    if(age>=gameConfig.npcs.privateProperty.audioStartSeconds&&!audioStarted){audioStarted=true;audio.currentTime=0;audio.play().then(()=>audioPlayed=true).catch(()=>{});}
    caption.textContent=age<2.3?'':age<4?'Hit the road, dude.':age<5.2?'This ain’t no state property.':'This is private property.';
    if(age>=gameConfig.npcs.privateProperty.durationSeconds){active=false;audio.pause();car.visible=false;overlay.hidden=true;document.body.classList.remove('private-property-cutscene');return true;}return false;

@@ -1,3 +1,4 @@
+import layout from "./npc-layout.json" with { type: "json" };
 import { CAPSULE_HEIGHT } from "./constants.ts";
 import type { MovementWorld } from "./world.ts";
 
@@ -21,10 +22,20 @@ export interface BikeUnlockResult {
   token?: string;
 }
 
-// Same route anchors, slot spacing and site search as the singleplayer station.
+// Zürich uses an explicit editable station placement; the flat test world keeps its site search.
 export function publiBikeStation(world: MovementWorld) {
-  const anchor = world.name === "flat" ? [0, -20] : [-205.551, 49.449];
-  const next = world.name === "flat" ? [18, -20] : [-187.722, 49.187];
+  if (world.name === "zurich") {
+    const [x, y, z] = layout.publiBike.position, heading = layout.publiBike.heading;
+    const center = { x, y, z };
+    const slots = Array.from({ length: PUBLI_BIKE_COUNT }, (_, i) => {
+      const offset = (i - (PUBLI_BIKE_COUNT - 1) / 2) * 1.3;
+      const sx = x - Math.cos(heading) * offset, sz = z + Math.sin(heading) * offset;
+      return { x: sx, y: world.height(sx, sz) ?? y, z: sz };
+    });
+    return { center, heading, slots };
+  }
+  const anchor = [0, -20];
+  const next = [18, -20];
   const length = Math.hypot(next[0] - anchor[0], next[1] - anchor[1]);
   const u = [(next[0] - anchor[0]) / length, (next[1] - anchor[1]) / length], n = [-u[1], u[0]];
   for (const along of [0, 8, -8, 16, -16, 24, -24]) for (const offset of [5, -5, 8, -8, 11, -11, 14, -14]) {

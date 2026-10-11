@@ -1,3 +1,5 @@
+import {MoodleEvents} from './moodle.ts';
+import {PlayerMedals} from "./medals.ts";
 import { Room, type Client } from "colyseus";
 import * as C from "@race/shared";
 import { Player, RaceState } from "./state.ts";
@@ -16,6 +18,8 @@ const codes = new Set<string>();
 export class Race extends Room<{ state: RaceState }> {
   maxClients = 40;
   state = new RaceState();
+  private moodle!:MoodleEvents;
+  private medals = new PlayerMedals();
   private lastMoves = new Map<string, number>();
   private world = process.env.GAME_WORLD === "flat" ? C.flatWorld : C.zurichWorld;
   private contact = C.createContact();
@@ -42,6 +46,9 @@ export class Race extends Room<{ state: RaceState }> {
     this.publiBikes = this.createPubliBikes();
     this.mate = new MateMachine(this.state, this.world);
     this.npcs = this.createNpcs();
+    this.moodle=new MoodleEvents(this.state,(id,result)=>this.clients.find(c=>c.sessionId===id)?.send('moodleResult',result),id=>!this.npcs.busy(id));
+    this.onMessage('moodleAnswer',(client,data:unknown)=>this.moodle.answer(client.sessionId,data,Date.now()));
+    this.onMessage('moodleSettings',(client,data:unknown)=>{if(client.sessionId===this.state.hostId&&typeof data==='boolean')this.moodle.enabled(data);});
     const tickets = new TicketMachine(this.state,this.world);
     this.onMessage('ticket', (client, data: unknown) => tickets.command(client,data));
     const configuredDuration = Number(process.env.ROUND_DURATION_MS ?? C.ROUND_DURATION_MS);
@@ -62,6 +69,9 @@ export class Race extends Room<{ state: RaceState }> {
       if (client.sessionId === this.state.hostId) this.rounds.finish();
     });
     this.onMessage("move", (client, data: unknown) => this.move(client, data));
+    this.onMessage("cabinMove", (client, data: unknown) => {
+      if (this.rounds.canPlay(client.sessionId)) this.vehicles.walkCabin(client.sessionId, data);
+    });
     this.onMessage("vehicleMove", (client, data: unknown) => {
       if (this.rounds.canPlay(client.sessionId)) this.vehicles.move(client, data);
     });
@@ -79,13 +89,20 @@ export class Race extends Room<{ state: RaceState }> {
     });
     this.setPatchRate(1000 / C.SERVER_PATCH_RATE);
     this.onMessage("vehicleEnter", (client, data: unknown) => {
-      if (this.rounds.canPlay(client.sessionId) && !this.npcs.busy(client.sessionId)) this.vehicles.enter(client, data, Date.now());
+      if (this.rounds.canPlay(client.sessionId) && !this.npcs.busy(client.sessionId) && (this.state.players.get(client.sessionId)?.moodleSitUntil??0)<=Date.now()) this.vehicles.enter(client, data, Date.now());
     });
     this.onMessage("vehicleExit", client => {
       if (this.rounds.canPlay(client.sessionId)) {
         const id = this.state.players.get(client.sessionId)?.vehicleId;
-        this.vehicles.exit(client); if (id) this.publiBikes.park(id);
+        this.vehicles.exit(client);
+        const photo=this.vehicles.photoRequired(client.sessionId);if(photo)client.send("limePhotoRequired",{vehicleId:photo,roundStartedAt:this.state.startedAt});
+        if (id) this.publiBikes.park(id);
       }
+    });
+    this.onMessage("limePhotoSubmit",(client,data:unknown)=>{
+      const photo=data as {vehicleId?:unknown;roundStartedAt?:unknown}|null;
+      const ok=!!photo&&photo.roundStartedAt===this.state.startedAt&&this.rounds.canPlay(client.sessionId)&&this.vehicles.finishParkingPhoto(client.sessionId,photo.vehicleId);
+      client.send("limePhotoResult",{ok,roundStartedAt:this.state.startedAt});
     });
     this.onMessage("bikeScanBegin", (client, data: unknown) => {
       if (this.rounds.canPlay(client.sessionId) && !this.npcs.busy(client.sessionId)) this.publiBikes.begin(client, data);
@@ -95,7 +112,7 @@ export class Race extends Room<{ state: RaceState }> {
     });
     this.onMessage("bikeScanCancel", (client, data: unknown) => this.publiBikes.cancel(client, data));
     this.onMessage("mate", (client, data: unknown) => { if (!this.npcs.busy(client.sessionId)) this.mate.command(client, data); });
-    this.onMessage("npc", (client, data: unknown) => this.npcs.command(client, data));
+    this.onMessage("npc", (client, data: unknown) => {if((this.state.players.get(client.sessionId)?.moodleSitUntil??0)<=Date.now())this.npcs.command(client, data);});
     this.onMessage("npcPose", (client, data: unknown) => this.npcs.pose(client, data));
     this.setSimulationInterval(() => this.tick(), 1000 / C.COLLISION_TICK_RATE);
   }
@@ -115,6 +132,7 @@ export class Race extends Room<{ state: RaceState }> {
     this.npcs.join(id);
   }
   private resetRound() {
+    this.medals.reset();this.moodle.reset();
     const colors = new Map([...this.state.players].map(([id, p]) => [id, p.color]));
     this.state.players.clear(); this.state.vehicles.clear(); this.state.publiBikes.clear(); this.lastMoves.clear();
     this.physics.sync(new Map(), new Map());
@@ -143,12 +161,14 @@ export class Race extends Room<{ state: RaceState }> {
     if (id) this.publiBikes.park(id);
     this.state.players.delete(client.sessionId);
     this.lastMoves.delete(client.sessionId);
+    this.medals.leave(client.sessionId);
     this.rounds.leave(client.sessionId);
   }
   onDispose() { this.physics?.dispose(); if (this.code) codes.delete(this.code); }
-  private hit(target: string, hit: C.Impulse) {
+  private hit(target: string, hit: C.Impulse, kind?: "punch" | "bicycle") {
     const p = this.state.players.get(target);
     if (p && this.rounds.canPlay(target) && !this.npcs.busy(target)) {
+      const standing = Date.now() >= p.knockdownUntil;
       if (hit.knockdown && p.knockdownUntil > Date.now()) return;
       this.rounds.hit(hit.from, target);
       p.simTime = Date.now();
@@ -158,6 +178,11 @@ export class Race extends Room<{ state: RaceState }> {
       const client = this.clients.find(c => c.sessionId === target);
       client?.send("playerCorrection", correction);
       client?.send("impulse", hit);
+      const attacker = this.clients.find(c => c.sessionId === hit.from);
+      if (kind && standing && client && attacker && this.state.players.has(hit.from) && this.rounds.canPlay(hit.from)) {
+        const award = this.medals.record(hit.from, target, kind, this.state.startedAt);
+        if (award) attacker.send("medal", award);
+      }
       return true;
     }
     return false;
@@ -166,7 +191,7 @@ export class Race extends Room<{ state: RaceState }> {
     this.broadcast("bump", { a, b, x, y, z, t: this.state.serverTime } satisfies C.Bump);
   }
   private vehicleHit: Parameters<VehicleManager["tick"]>[1] = (from, target, x, y, z, ix, iy, iz, knockdown, kind) => {
-    if (this.hit(target, C.collisionImpact(from, ix, iy, iz, kind === 2 ? "bike" : "vehicle", knockdown)))
+    if (this.hit(target, C.collisionImpact(from, ix, iy, iz, kind === 2 ? "bike" : "vehicle", knockdown), knockdown && kind===2 ? "bicycle" : undefined))
       this.bump(from, target, x, y, z);
   };
   private correction(p: C.PlayerState): C.PlayerCorrection {
@@ -182,7 +207,7 @@ export class Race extends Room<{ state: RaceState }> {
     )
       return;
     const p = this.state.players.get(client.sessionId);
-    if (!p || p.vehicleId) return;
+    if (!p || p.vehicleId || p.moodleSitUntil>Date.now()) return;
     const
       now = Date.now(),
       dt = Math.max(0.001, (now - (this.lastMoves.get(client.sessionId) ?? now)) / 1000);
@@ -223,11 +248,11 @@ export class Race extends Room<{ state: RaceState }> {
   private attack(client: Client) {
     if (!this.rounds.canPlay(client.sessionId) || this.npcs.busy(client.sessionId)) return;
     const p = this.state.players.get(client.sessionId), now = Date.now();
-    if (!p || p.vehicleId || now < p.knockdownUntil || now < p.attackReadyAt) return;
+    if (!p || p.vehicleId || now < p.knockdownUntil || now < p.moodleSitUntil || now < p.attackReadyAt) return;
     p.simTime = now; p.attackReadyAt = now + C.ATTACK_COOLDOWN_MS;
     for (const [target, other] of this.state.players) if (target !== client.sessionId && !other.vehicleId && C.inHitCone(p, other, this.world)) {
       if (this.hit(target, { from: client.sessionId, ix: Math.sin(p.rotY) * 8, iy: 1.5, iz: Math.cos(p.rotY) * 8,
-        knockdown: true, durationMs: C.ATTACK_KNOCKDOWN_MS }))
+        knockdown: true, durationMs: C.ATTACK_KNOCKDOWN_MS }, "punch"))
         this.bump(client.sessionId, target, other.x, other.y + 0.9, other.z);
     }
   }
@@ -238,6 +263,7 @@ export class Race extends Room<{ state: RaceState }> {
     this.mate.tick(now);
     this.npcs.tick(now);
     if (this.state.phase !== C.RoomPhase.Running || !this.state.introComplete) return;
+    this.moodle.tick(now);
     const positions = new Map([...this.state.players].map(([id, p]) => [id, this.correction(p)]));
     for (const p of this.state.players.values()) {
       p.simTime = now;

@@ -1,3 +1,10 @@
+/* Handset chrome moved out of the standalone global stylesheet. */
+.phone-handset{box-sizing:border-box;background:linear-gradient(110deg,#34373d,#090b10 35%,#22252c);border:3px solid #454851;border-radius:28px;padding:34px 10px 38px;box-shadow:0 20px 45px #0009}
+.phone-handset .phone-speaker{position:absolute;top:15px;left:calc(50% - 37px);width:75px;height:5px;background:#090a0c;border-radius:6px}
+.phone-handset .phone-screen{height:100%;display:flex;flex-direction:column;min-height:0;overflow:hidden;border-radius:4px;background:#edf0f4;color:#252c38}
+.photo-phone.phone-handset .phone-screen{background:#10151c;color:white}
+.phone-handset .phone-status{display:flex;justify-content:space-between;align-items:center;flex-shrink:0;padding:8px;background:#111c35;color:white;font:9px Arial,sans-serif;box-sizing:border-box}
+
 /* All phone encounters share placement, dimensions, chrome and input styling. */
 .phone-encounter:not([hidden]){position:fixed;inset:0;z-index:155;display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important;background:#07111899!important;backdrop-filter:blur(3px)!important;color:white;pointer-events:auto!important;box-sizing:border-box}
 .phone-encounter>.tourist-request{position:absolute!important;top:0!important;left:0!important;right:0!important;max-width:none!important;padding:10px!important;background:none!important;border:0!important;text-align:center}

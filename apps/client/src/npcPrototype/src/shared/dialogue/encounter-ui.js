@@ -1,3 +1,4 @@
+import {createDialogueAudio} from './dialogue-audio.js';
 // Shared dialogue typography; existing encounter panels keep their own controls.
 export function styleEncounterLine(element){
  element.classList.add('encounter-line');element.setAttribute('aria-live','polite');return element;
@@ -15,7 +16,7 @@ export function createVoiceDialogue(subtitle,{volume=.85,random=Math.random,spea
  function speak(pool){
   stop();const choices=pool.filter(item=>item.id!==lastId),available=choices.length?choices:pool;
   line=available[Math.floor(random()*available.length)];lastId=line.id;played=failed=false;
-  const token=generation,current=new Audio(line.src);audio=current;current.volume=volume;
+  const token=generation,current=createDialogueAudio(line.src);audio=current;current.volume=volume;
   subtitle.textContent=`${speaker?`${speaker}: `:''}${formatLine(line)}`;subtitle.hidden=false;
   current.onended=()=>{if(token===generation)subtitle.hidden=true;};
   current.play().then(()=>{if(token!==generation){current.pause();return;}played=true;}).catch(()=>{if(token!==generation)return;failed=true;/* Keep the readable subtitle if audio cannot play. */});
