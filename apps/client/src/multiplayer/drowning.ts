@@ -1,7 +1,7 @@
-import { DROWN_RESPAWN_MS, inWater, spawnPoint, zurichWorld, type Body } from "@race/shared";
+import { BATTLE_BUS_HEADING, DROWN_RESPAWN_MS, inWater, roundStartPoint, spawnPoint, zurichWorld, type Body } from "@race/shared";
 
 // Walking into the lake or the river drowns you: a 10 s timeout with Future's "Let Me Know" meme
-// music, then a respawn at the start (HB). The server accepts that jump because the last reported
+// music, then a respawn on the spot the player started the round on (their battle bus drop-off). The server accepts that jump because the last reported
 // position was in the water (race.ts move()).
 const MUSIC = `${import.meta.env.BASE_URL}audio/let-me-know.mp3`;
 
@@ -32,14 +32,14 @@ export class Drowning {
    * Call once per frame while the player is on foot in a running round. Starts the timeout when the
    * player enters the water and respawns them once it ends. Returns true while the player is dead.
    */
-  update(body: Body, now: number, canDrown: boolean) {
+  update(body: Body, now: number, canDrown: boolean, seat: number) {
     if (this.until) {
       if (now < this.until) {
         body.vx = body.vz = 0;
         this.countdown.textContent = `Respawning in ${Math.ceil((this.until - now) / 1000)}…`;
         return true;
       }
-      this.respawn(body);
+      this.respawn(body, seat);
       return false;
     }
     if (!canDrown || body.vehicleId || !inWater(zurichWorld, body.x, body.y, body.z)) return false;
@@ -58,9 +58,12 @@ export class Drowning {
     this.music.pause();
   }
 
-  private respawn(body: Body) {
+  private respawn(body: Body, seat: number) {
     this.cancel();
-    Object.assign(body, spawnPoint(zurichWorld));
+    const start = roundStartPoint(zurichWorld, seat);
+    // Players who joined mid-round have no seat and started at the spawn, like the server's spawnPlayer().
+    Object.assign(body, start ?? spawnPoint(zurichWorld));
+    if (start) body.rotY = BATTLE_BUS_HEADING + Math.PI;
     body.vx = body.vy = body.vz = 0;
   }
 

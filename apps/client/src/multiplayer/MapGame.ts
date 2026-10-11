@@ -127,9 +127,10 @@ export class MapGame {
       this.derailRun=riding.derailStartedAt;this.derailVehicle=this.local.body.vehicleId;this.derailUntil=riding.derailStartedAt+3200;
     }
     if (this.net.canPlay && !this.exam.active) {
-      // Water kills players on foot: 10 s timeout with the meme music, then respawn at the start.
+      // Water kills players on foot: 10 s timeout with the meme music, then respawn where the round started.
       const drowned = this.drowning.update(this.local.body, this.net.now(),
-        !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now() >= this.derailUntil);
+        !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now() >= this.derailUntil,
+        this.net.room?.state.members.get(this.net.room.sessionId)?.introSeat ?? -1);
       this.net.frame(dt, this.local.body, () => drowned || this.net.now()<this.derailUntil?IDLE_INPUT:this.local.controls(this.view.yaw));
       if (drowned) this.local.takeInteraction();
       else if (this.net.now()>=this.derailUntil && this.local.takeInteraction() && !this.npcs.active && !this.npcs.interact() && !this.mate.interact() && !this.publiBikes.interact()) this.vehicles.interact(this.local.body);

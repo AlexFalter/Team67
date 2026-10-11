@@ -197,7 +197,7 @@ main:has(.game-loading) > :is(header, footer) { display: none; }
 @keyframes loading-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .loading-spinner { animation: none; } }
 
-/* Drowning timeout (drowning.ts): 10 s with the meme music, then respawn at the start. */
+/* Drowning timeout (drowning.ts): 10 s with the meme music, then respawn where the round started. */
 .drowned-overlay {
   position: fixed;
   inset: 0;

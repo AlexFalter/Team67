@@ -32,3 +32,13 @@ test("bridge decks and banks inside the water outlines are dry", () => {
     assert.equal(C.inWater(world, x, y, z), false, `${x},${z} at ${y.toFixed(1)} m`);
   }
 });
+
+test("drowned players respawn on their own round start point, which is dry", () => {
+  const dropoffs = C.battleBusDropoffs(world, 40);
+  for (let seat = 0; seat < 40; seat++) {
+    const p = C.roundStartPoint(world, seat)!;
+    assert.deepEqual(p, dropoffs[seat]);
+    assert.equal(C.inWater(world, p.x, p.y, p.z), false);
+  }
+  assert.equal(C.roundStartPoint(world, -1), undefined);
+});
