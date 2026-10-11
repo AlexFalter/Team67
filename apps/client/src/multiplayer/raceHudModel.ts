@@ -1,4 +1,5 @@
-import { examPortalPosition, polybahnPath, polybahnPlatforms, raceSpawnPoint, type MovementWorld, type WorldState } from "@race/shared";
+import { distanceToEth, examPortalPosition, polybahnPath, polybahnPlatforms, raceSpawnPoint, type MovementWorld, type WorldState } from "@race/shared";
+export { distanceToEth };
 
 export type MapPoint = { x: number; z: number };
 export type MapProjection = MapPoint & { scale: number; width: number; height: number };
@@ -38,7 +39,6 @@ export function zoomMap(view: MapProjection, factor: number, x = view.width / 2,
   const before = unprojectPoint(x, y, view), scale = view.scale * factor;
   return { ...view, scale, x: before.x - (x - view.width / 2) / scale, z: before.z - (y - view.height / 2) / scale };
 }
-export function distanceToEth(point: MapPoint) { return Math.hypot(point.x - examPortalPosition.x, point.z - examPortalPosition.z); }
 export function raceStandings(state: Pick<WorldState, "members" | "players">, localId: string, localPosition: MapPoint) {
   return [...state.players].flatMap(([id, player]) => {
     const member = state.members.get(id);

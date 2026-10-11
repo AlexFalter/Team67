@@ -1,9 +1,19 @@
 import { CHARACTERS } from "./avatar.ts";
-import { RoomPhase, type WorldState, type RoundResult } from "@race/shared";
+import { RoomPhase, finalScore, type WorldState, type RoundResult } from "@race/shared";
 import type { Network } from "./net.ts";
 
+// Final leaderboard: ETH arrivals first (bonus + exam points), then everyone else by distance left.
+// Someone standing right at the entrance without entering can tie an arrival with no exam points.
 export function rankedResults(results: ReadonlyMap<string, RoundResult>) {
-  return [...results].sort((a, b) => b[1].hitsLanded - a[1].hitsLanded || a[1].name.localeCompare(b[1].name));
+  return [...results].sort((a, b) => finalScore(b[1]) - finalScore(a[1]) || Number(b[1].examStartedAt > 0) - Number(a[1].examStartedAt > 0) || b[1].hitsLanded - a[1].hitsLanded || a[1].name.localeCompare(b[1].name));
+}
+
+/** Leaderboard place: medals for the podium, then 4th, 5th, … 11th, 12th, 13th, 21st, … */
+export function placeLabel(place: number) {
+  const medal = ["🥇 1st", "🥈 2nd", "🥉 3rd"][place - 1];
+  if (medal) return medal;
+  const tens = place % 100, ones = place % 10;
+  return `${place}${tens >= 11 && tens <= 13 ? "th" : ["th", "st", "nd", "rd"][ones] ?? "th"}`;
 }
 
 export class RoomFlow {
@@ -52,7 +62,7 @@ export class RoomFlow {
   patch(state: WorldState, id: string) {
     const signature = JSON.stringify([state.phase, state.introComplete, state.devMode, state.adminMode, state.skipIntro, state.hostId, id,
       [...state.members].map(([key, m]) => [key, m.name, m.ready, m.spectator]),
-      [...state.results].map(([key, r]) => [key, r.name, r.hitsLanded, r.hitsReceived])]);
+      [...state.results].map(([key, r]) => [key, r.name, r.hitsLanded, r.hitsReceived, r.examScore, r.examStartedAt, r.distanceToEth])]);
     if (signature === this.signature) return;
     this.signature = signature;
     const member = state.members.get(id), host = state.hostId === id;
@@ -91,9 +101,13 @@ export class RoomFlow {
     this.roster.replaceChildren(items);
     if (state.phase === RoomPhase.Finished) {
       const rows = document.createDocumentFragment();
-      for (const [, result] of rankedResults(state.results)) {
-        const row = document.createElement("tr");
-        for (const value of [result.name, result.hitsLanded, result.hitsReceived]) {
+      for (const [index, [, result]] of rankedResults(state.results).entries()) {
+        const row = document.createElement("tr"), reached = result.examStartedAt > 0;
+        row.dataset.eth = reached ? "reached" : "missed";
+        if (index < 3) row.dataset.podium = String(index + 1);
+        const score = finalScore(result);
+        for (const value of [placeLabel(index + 1), result.name, score > 0 ? `+${score}` : score < 0 ? `−${-score}` : "0",
+          reached ? `At ETH · ${result.examScore} exam` : `${Math.round(result.distanceToEth)} m to go`, result.hitsLanded, result.hitsReceived]) {
           const cell = document.createElement("td"); cell.textContent = String(value); row.append(cell);
         }
         rows.append(row);
