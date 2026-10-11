@@ -1,0 +1,22 @@
+{
+  "name": "karambit",
+  "entry": "src/interactions/knife/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "src/README.md",
+    "src/interactions/inventory/item-inventory.js",
+    "src/interactions/knife/README.md",
+    "src/interactions/knife/index.js",
+    "src/interactions/knife/karambit.js",
+    "src/interactions/knife/knife-motion.js",
+    "src/interactions/knife/npc-knockdown.js",
+    "src/player/first-person-hand.js",
+    "style.css"
+  ],
+  "assets": [
+    "public/models/first-person-hand.glb"
+  ],
+  "dependencies": {
+    "three": "^0.186.1"
+  }
+}

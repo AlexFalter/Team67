@@ -18,10 +18,11 @@ test('nearby and middle-distance moos are audible, overlap, and respect pause/mu
     audio.moo(0, 3); audio.moo(1, 30);
     assert.equal(starts.length, 2, 'two cows can call together');
     assert.ok(levels[0] > .8 && levels[1] > .45, 'moos carry across the bridge instead of fading to near silence');
-    audio.moo(2, 66); assert.equal(starts.length, 2, 'faraway cows stay out of hearing range');
-    Object.assign(audio, { paused: true }); audio.moo(3, 0); assert.equal(starts.length, 2);
+    audio.moo(0,3,true);assert.equal(starts.length,3);assert.ok(levels[2]>levels[0]*2,'hit moo is much louder than ambient moo');
+    audio.moo(2, 66); assert.equal(starts.length, 3, 'faraway cows stay out of hearing range');
+    Object.assign(audio, { paused: true }); audio.moo(3, 0,true); assert.equal(starts.length, 3);
     Object.assign(audio, { paused: false }); audio.settings.vehicleSounds = false;
-    audio.moo(4, 0); assert.equal(starts.length, 2, 'the game sound setting still works');
+    audio.moo(4, 0,true); assert.equal(starts.length, 3, 'the game sound setting still works');
   } finally {
     if (previous) Object.defineProperty(globalThis, 'document', previous);
     else Reflect.deleteProperty(globalThis, 'document');

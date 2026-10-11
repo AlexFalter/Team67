@@ -1,0 +1,22 @@
+{
+  "name": "vehicle-audio",
+  "entry": "src/vehicles/audio/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "src/README.md",
+    "src/vehicles/audio/README.md",
+    "src/vehicles/audio/index.js",
+    "src/vehicles/audio/vehicle-audio.js"
+  ],
+  "assets": [
+    "public/audio/CREDITS.md",
+    "public/audio/bus-engine.mp3",
+    "public/audio/car-engine.mp3",
+    "public/audio/collision-thud.mp3",
+    "public/audio/footstep-left.mp3",
+    "public/audio/footstep-right.mp3",
+    "public/audio/rail-running.mp3",
+    "public/audio/vehicle-door.mp3"
+  ],
+  "dependencies": {}
+}

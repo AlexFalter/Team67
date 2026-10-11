@@ -1,0 +1,30 @@
+{
+  "name": "scooter-encounter",
+  "entry": "src/npcs/scooter/index.js",
+  "files": [
+    "assets/audio/frankfurt-dialogue-cues.json",
+    "docs/feature-modules.md",
+    "game.config.json",
+    "src/README.md",
+    "src/config/game-config.js",
+    "src/config/validate-game-config.js",
+    "src/npcs/scooter/README.md",
+    "src/npcs/scooter/bridge-scooter.js",
+    "src/npcs/scooter/index.js",
+    "src/player/student-model.js",
+    "src/shared/dialogue/dialogue-distance.js",
+    "src/shared/dialogue/encounter-ui.js",
+    "src/vehicles/passengers/vehicle-passengers.js",
+    "src/vehicles/passengers/vehicle-seats.js",
+    "src/world/core/map-navigation.js",
+    "src/world/placements/feature-placement.js",
+    "style.css"
+  ],
+  "assets": [
+    "public/audio/CREDITS.md",
+    "public/audio/frankfurt-dialogue.mp3"
+  ],
+  "dependencies": {
+    "three": "^0.186.1"
+  }
+}

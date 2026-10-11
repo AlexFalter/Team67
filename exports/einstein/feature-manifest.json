@@ -1,0 +1,29 @@
+{
+  "name": "einstein",
+  "entry": "src/npcs/einstein/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "game.config.json",
+    "src/README.md",
+    "src/config/game-config.js",
+    "src/config/validate-game-config.js",
+    "src/npcs/einstein/README.md",
+    "src/npcs/einstein/einstein-teleporter.js",
+    "src/npcs/einstein/index.js",
+    "src/npcs/einstein/teleport-transition.js",
+    "src/npcs/shared/conversation-camera.js",
+    "src/npcs/shared/rpg-dialogue.css",
+    "src/npcs/shared/rpg-dialogue.js",
+    "src/shared/dialogue/encounter-ui.js",
+    "src/world/core/world-access.js",
+    "src/world/placements/feature-placement.js",
+    "style.css"
+  ],
+  "assets": [
+    "public/models/einstein-teleporter.glb",
+    "public/models/einstein.glb"
+  ],
+  "dependencies": {
+    "three": "^0.186.1"
+  }
+}

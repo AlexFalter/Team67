@@ -1,5 +1,6 @@
 import {transitAudioBuffers} from './transitAudio.ts';
 import type {DroneSound} from './streaks/droneSoundCues.ts';
+import {MATE_BURP_SECONDS} from './characters/mateDrink.ts';
 import * as C from "@race/shared";
 
 // Recorded sound effects ported from the mini-games-2 branch (vehicle-audio.js and
@@ -9,9 +10,9 @@ import * as C from "@race/shared";
 const BASE = `${(import.meta.env?.BASE_URL ?? "/")}audio/`;
 type DroneSample = `drone/bo3-${DroneSound}`;
 type Sample = "exam-tick" | "polybahn-running" | "tram-chime" | "polybahn-chime" | DroneSample | "helicopter-rotor" | "bus-engine" | "car-engine" | "rail-running" | "vehicle-door" | "footstep-left"
-  | "footstep-right" | "collision-thud" | "bo3-medal-earned" | "cow-moo";
+  | "footstep-right" | "collision-thud" | "bo3-medal-earned" | "cow-moo" | "mate-can-open" | "mate-burp";
 const SAMPLES: Sample[] = ["drone/bo3-ready","drone/bo3-request","drone/bo3-tablet","drone/bo3-online","drone/bo3-scan","drone/bo3-end","helicopter-rotor", "bus-engine", "car-engine", "rail-running", "vehicle-door", "footstep-left",
-  "footstep-right", "collision-thud", "bo3-medal-earned", "cow-moo"];
+  "footstep-right", "collision-thud", "bo3-medal-earned", "cow-moo", "mate-can-open", "mate-burp"];
 const STORAGE_KEY = "race-to-eth-sound-settings";
 export type EffectKind = "step" | "jump" | "land" | "collision" | "door" | "crash" | "canDrop" | "shutter" | "slide" | "timer";
 
@@ -53,6 +54,7 @@ export class GameAudio {
   private paused = false;
   private droneVoice?:AudioBufferSourceNode;
   private lastExamSecond?: number;
+  private drinkStart=0;private drinkOpened=false;private drinkBurped=false;
   private stepAge = 0;
   private stepSide = 0;
   private contact = false;
@@ -127,14 +129,23 @@ export class GameAudio {
     source.start();return source;
   }
 
-  moo(id: number, distance: number) {
+  updateMateDrink(start:number,now:number,enabled=true){
+    if(start!==this.drinkStart){this.drinkStart=start;this.drinkOpened=this.drinkBurped=false;}
+    if(!start)return;
+    const age=(now-start)/1000;if(age<0)return;
+    const audible=enabled&&this.settings.vehicleSounds&&this.running;
+    if(!this.drinkOpened){this.drinkOpened=true;if(audible&&age<.5)this.play('mate-can-open',.65,{cooldown:0});}
+    if(age>=MATE_BURP_SECONDS&&!this.drinkBurped){this.drinkBurped=true;if(audible&&age<MATE_BURP_SECONDS+.5)this.play('mate-burp',.6,{cooldown:0});}
+  }
+
+  moo(id: number, distance: number, hit=false) {
     if (!this.settings.vehicleSounds || !this.running || distance >= 65 || !this.buffers.has("cow-moo")) return;
-    const level = .9 * Math.max(0, 1 - distance / 65);
+    const level = (hit?2.2:.9) * Math.max(0, 1 - distance / 65);
     if (level <= .001) return;
     const filter = this.context!.createBiquadFilter();
     filter.type = "lowpass"; filter.frequency.value = 4000; filter.Q.value = .5;
     filter.connect(this.master!);
-    this.play("cow-moo", level, { key: `cow-${id}`, cooldown: 0, rate: .96 + (id % 7) * .012, out: filter, disposeOut: true });
+    this.play("cow-moo", level, { key: `cow-${id}${hit?"-hit":""}`, cooldown: hit?.4:0, rate: .96 + (id % 7) * .012, out: filter, disposeOut: true });
   }
 
   /** One-shot movement/vehicle effects; mirrors vehicle-audio.js effect(). */

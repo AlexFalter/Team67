@@ -1,0 +1,28 @@
+{
+  "name": "medals",
+  "entry": "src/ui/medals/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "docs/multiplayer-integration.md",
+    "src/README.md",
+    "src/ui/medals/README.md",
+    "src/ui/medals/index.js",
+    "src/ui/medals/medal-art.js",
+    "src/ui/medals/medal-sound.js",
+    "src/ui/medals/medal-state.js",
+    "src/ui/medals/medals.css",
+    "src/ui/medals/medals.js"
+  ],
+  "assets": [
+    "public/assets/medals/CREDITS.md",
+    "public/assets/medals/backstabber-bo3.png",
+    "public/assets/medals/bankshot-bo3.png",
+    "public/assets/medals/bloodthirsty-bo3.png",
+    "public/assets/medals/retrieval-bo3.png",
+    "public/assets/medals/revenge-bo3.png",
+    "public/assets/medals/roadrage-bo3.png",
+    "public/audio/CREDITS.md",
+    "public/audio/bo3-medal-earned.mp3"
+  ],
+  "dependencies": {}
+}

@@ -1,0 +1,37 @@
+{
+  "name": "finance",
+  "entry": "src/npcs/finance/index.js",
+  "files": [
+    "assets/audio/finance-guy-edit.json",
+    "docs/feature-modules.md",
+    "game.config.json",
+    "src/README.md",
+    "src/config/game-config.js",
+    "src/config/validate-game-config.js",
+    "src/npcs/finance/README.md",
+    "src/npcs/finance/finance-guy.js",
+    "src/npcs/finance/index.js",
+    "src/player/student-model.js",
+    "src/shared/dialogue/encounter-ui.js",
+    "src/world/core/geo-world.js",
+    "src/world/core/station-passages.js",
+    "src/world/core/world-access.js",
+    "src/world/placements/feature-placement.js",
+    "style.css"
+  ],
+  "assets": [
+    "public/audio/CREDITS.md",
+    "public/audio/finance-guy.mp3",
+    "public/gameplay/feature-placements.json",
+    "public/gameplay/locations.json",
+    "public/maps/zurich",
+    "public/maps/zurich/area.json",
+    "public/maps/zurich/collision.json",
+    "public/maps/zurich/hb-eth.glb",
+    "public/maps/zurich/integration.json"
+  ],
+  "dependencies": {
+    "three": "^0.186.1",
+    "three-mesh-bvh": "^0.9.16"
+  }
+}

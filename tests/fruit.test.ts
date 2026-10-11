@@ -17,9 +17,9 @@ test('tomatoes validate supplies, round, proximity, finite aim and cooldown; rea
  const {state,manager,events,broadcast,cmd}=fixture();
  cmd('throw');assert.equal(broadcast.length,0);
  manager.command({sessionId:'a',send(){}},{action:'take',roundStartedAt:122},1000);assert.equal(events.length,0);
- cmd('take');assert.equal(events.at(-1)!.data.count,5);
+ cmd('take');assert.equal(events.at(-1)!.data.count,1);
  cmd('throw',1000,[NaN,0,0]);assert.equal(broadcast.length,0);
- cmd('throw');assert.equal(events.at(-1)!.data.count,4);cmd('throw',1010);assert.equal(broadcast.length,1);
+ cmd('throw');assert.equal(events.at(-1)!.data.count,0);cmd('throw',1010);assert.equal(broadcast.length,1);
  for(let now=1000;now<1350;now+=10)manager.tick(now);
  assert.equal(events.filter(e=>e.data.kind==='splat').length,1);assert.equal(events.find(e=>e.data.kind==='splat')!.id,'b');
  manager.command({sessionId:'b',send(){}},{action:'wipe',roundStartedAt:123},1400);assert.equal(events.at(-1)!.data.kind,'wipe');assert.equal(events.at(-1)!.id,'b');
@@ -44,7 +44,8 @@ test('two real multiplayer clients collect, throw, receive the tomato screen eff
   await startRound(host,[host,guest]);const round=host.state.startedAt;
   host.send('debugMapTeleport',{x:C.FRUIT_STAND.position[0],z:C.FRUIT_STAND.position[2]-1.5,roundStartedAt:round});
   await until(()=>Math.abs(host.state.players.get(host.sessionId)!.x-C.FRUIT_STAND.position[0])<1,'host at fruit stand');
-  host.send('fruit',{action:'take',roundStartedAt:round});await until(()=>events.some(e=>e.kind==='stock'&&e.count===5),'server grants tomatoes');
+  host.send('fruit',{action:'take',roundStartedAt:round});await until(()=>events.some(e=>e.kind==='stock'&&e.count===1),'server grants one tomato');
+  await until(()=>host.state.fruitStock===11&&guest.state.fruitStock===11,'both clients see one fewer tomato');
   const target=host.state.players.get(guest.sessionId)!;
   host.send('debugMapTeleport',{x:target.x+3,z:target.z,roundStartedAt:round});
   await until(()=>Math.abs(host.state.players.get(host.sessionId)!.x-target.x-3)<1,'thrower beside real target');
@@ -58,18 +59,21 @@ test('two real multiplayer clients collect, throw, receive the tomato screen eff
 
 test('fruit stand counter blocks players and leaves its front interaction pavement clear',()=>{const [x,y,z]=C.FRUIT_STAND.position;assert(C.zurichWorld.blocked(x,y,z,.3,1.8));assert(!C.zurichWorld.blocked(x,y,z-1.5,.3,1.8));});
 
-test('stand has finite shared stock; full inventories and duplicate pickups cannot refill it',()=>{
- const {state,manager,cmd,events}=fixture();cmd('take');assert.equal(state.fruitStock,7);
+test('each pickup transfers one tomato; shared stock never exceeds inventory space',()=>{
+ const {state,manager,cmd,events}=fixture();
+ for(let i=1;i<=5;i++){cmd('take');assert.equal(state.fruitStock,12-i);assert.equal(events.at(-1)!.data.count,i);}
  cmd('take');assert.equal(state.fruitStock,7);assert.equal(events.at(-1)!.data.count,5);
  state.players.get('b')!.x=state.players.get('a')!.x;
  const take=(id:string)=>manager.command({sessionId:id,send(){}},{action:'take',roundStartedAt:123},1000);
- take('b');assert.equal(state.fruitStock,2);
- state.players.set('c',new Player({x:state.players.get('a')!.x,y:state.players.get('a')!.y,z:state.players.get('a')!.z}));take('c');assert.equal(state.fruitStock,0);assert.equal(events.at(-1)!.data.count,2);
- take('c');assert.equal(events.at(-1)!.data.count,2);
+ for(let i=1;i<=5;i++){take('b');assert.equal(state.fruitStock,7-i);assert.equal(events.at(-1)!.data.count,i);}
+ state.players.set('c',new Player({x:state.players.get('a')!.x,y:state.players.get('a')!.y,z:state.players.get('a')!.z}));
+ take('c');assert.equal(state.fruitStock,1);assert.equal(events.at(-1)!.data.count,1);
+ take('c');assert.equal(state.fruitStock,0);assert.equal(events.at(-1)!.data.count,2);
+ take('c');assert.equal(state.fruitStock,0);assert.equal(events.at(-1)!.data.count,2);
  manager.reset();assert.equal(state.fruitStock,C.TOMATO_STAND_SUPPLY);
 });
 test('five carried tomatoes yield exactly five launches, consuming one per action',()=>{
- const {cmd,events,broadcast}=fixture();cmd('take');
+ const {cmd,events,broadcast}=fixture();for(let i=0;i<5;i++)cmd('take');
  for(let i=0;i<5;i++){const now=2000+i*C.TOMATO_COOLDOWN_MS;cmd('throw',now);cmd('throw',now);assert.equal(events.at(-1)!.data.count,4-i);assert.equal(broadcast.filter(e=>e.kind==='launch').length,i+1);}
  cmd('throw',10000);assert.equal(broadcast.filter(e=>e.kind==='launch').length,5);
 });
@@ -78,5 +82,5 @@ test('the stand counter does not block pickup from its front pavement',()=>{
  state.players.set('a',new Player({x,y,z:z-1.5}));const events:C.TomatoEvent[]=[];
  const manager=new FruitManager(state,C.zurichWorld,(_,event)=>events.push(event),()=>{},()=>true);
  manager.command({sessionId:'a',send(){}},{action:'take',roundStartedAt:123},1000);
- assert.equal(events.at(-1)?.count,5);
+ assert.equal(events.at(-1)?.count,1);
 });

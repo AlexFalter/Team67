@@ -68,7 +68,7 @@ export class Race extends Room<{ state: RaceState }> {
     this.npcs = this.createNpcs();
     this.bags=new BagManager(this.state,this.world,(from,target,bag,practice)=>!!this.bagHit(from,target,bag,practice),id=>!!this.npcs.busy(id));
     this.fruit=new FruitManager(this.state,this.world,(id,event)=>this.clients.find(c=>c.sessionId===id)?.send('tomatoEvent',event),event=>this.broadcast('tomatoEvent',event),(id,now)=>this.rounds.canPlay(id,now),id=>this.npcs.busy(id));
-    this.awp=new AwpManager(this.state,this.world,(id,now)=>this.rounds.canPlay(id,now),id=>this.npcs.busy(id),(target,hit)=>this.hit(target,hit),shot=>this.broadcast('awpShot',shot),(shot,practice)=>{const attacker=this.clients.find(c=>c.sessionId===shot.from);if(!attacker||!practice&&!this.clients.some(c=>c.sessionId===shot.target))return;const award=this.medals.awp(shot.from,shot.target,shot.roundStartedAt,shot.attachment?.part==='head',Math.hypot(...shot.end.map((v,i)=>v-shot.start[i])),practice,shot.droneEarned);if(award)attacker.send('medal',award);},(id,scan)=>this.sendDroneScan(id,scan));
+    this.awp=new AwpManager(this.state,this.world,(id,now)=>this.rounds.canPlay(id,now),id=>this.npcs.busy(id),(target,hit)=>this.hit(target,hit),shot=>this.broadcast('awpShot',shot),(shot,practice)=>{const attacker=this.clients.find(c=>c.sessionId===shot.from);if(!attacker||!practice&&!this.clients.some(c=>c.sessionId===shot.target))return;const award=this.medals.awp(shot.from,shot.target,shot.roundStartedAt,shot.attachment?.part==='head',Math.hypot(...shot.end.map((v,i)=>v-shot.start[i])),practice,shot.droneEarned);if(award)attacker.send('medal',award);},(id,scan)=>this.sendDroneScan(id,scan),id=>{this.clients.find(c=>c.sessionId===id)?.send("medal",{ids:["secretDiscovered"],eventKey:`${this.state.startedAt}:awp-secret:${id}`,roundStartedAt:this.state.startedAt});});
     this.onMessage('awp',(client,data:unknown)=>this.awp.command(client.sessionId,data,Date.now()));
     this.onMessage('fruit',(client,data:unknown)=>this.fruit.command(client,data,Date.now()));
     this.football=new FootballManager(this.state,this.world,(from,target,b)=>!!this.hit(target,{from,ix:b.vx*.5,iy:1.5,iz:b.vz*.5,knockdown:true,durationMs:1500}),id=>!!this.npcs.busy(id));
@@ -360,6 +360,8 @@ export class Race extends Room<{ state: RaceState }> {
     if (!p || p.vehicleId || p.bagId || now < p.knockdownUntil || now < p.moodleSitUntil || now < p.attackReadyAt) return;
     const karambit = (data as {karambit?:unknown}|null)?.karambit === true && p.karambitOwned;
     p.simTime = now; p.attackReadyAt = now + C.attackCooldown(karambit);
+    const cow=C.hitBridgeCow(p,now,this.world);
+    if(cow!==undefined)this.broadcast('cowHit',{id:cow,t:now,roundStartedAt:this.state.startedAt} satisfies C.CowHitEvent);
     for (const [target, other] of this.state.players) if (target !== client.sessionId && !other.vehicleId && C.inHitCone(p, other, this.world)) {
       if (this.hit(target, { from: client.sessionId, ix: Math.sin(p.rotY) * 8, iy: 1.5, iz: Math.cos(p.rotY) * 8,
         knockdown: true, durationMs: C.ATTACK_KNOCKDOWN_MS }, "punch"))

@@ -1,0 +1,17 @@
+{
+  "name": "machine-ui",
+  "entry": "src/interactions/machine-ui/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "src/README.md",
+    "src/interactions/machine-ui/README.md",
+    "src/interactions/machine-ui/index.js",
+    "src/interactions/machine-ui/machine-panel.js",
+    "src/interactions/machine-ui/ticket-card-reader.js",
+    "style.css"
+  ],
+  "assets": [],
+  "dependencies": {
+    "three": "^0.186.1"
+  }
+}

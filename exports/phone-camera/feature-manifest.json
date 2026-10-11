@@ -1,0 +1,25 @@
+{
+  "name": "phone-camera",
+  "entry": "src/shared/phone-camera/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "game.config.json",
+    "src/README.md",
+    "src/config/game-config.js",
+    "src/config/validate-game-config.js",
+    "src/shared/phone-camera/README.md",
+    "src/shared/phone-camera/camera-aim.js",
+    "src/shared/phone-camera/index.js",
+    "src/shared/phone-camera/phone-camera.js",
+    "src/shared/phone-camera/photo-camera.js",
+    "src/shared/phone-camera/photo-dialog.js",
+    "src/shared/phone-camera/scan-progress.js",
+    "src/ui/phone/phone-shell.css",
+    "src/ui/phone/phone-shell.js",
+    "style.css"
+  ],
+  "assets": [],
+  "dependencies": {
+    "three": "^0.186.1"
+  }
+}

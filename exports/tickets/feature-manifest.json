@@ -1,0 +1,30 @@
+{
+  "name": "tickets",
+  "entry": "src/interactions/tickets/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "game.config.json",
+    "src/README.md",
+    "src/config/game-config.js",
+    "src/config/validate-game-config.js",
+    "src/interactions/inventory/item-inventory.js",
+    "src/interactions/machine-ui/machine-panel.js",
+    "src/interactions/machine-ui/ticket-card-reader.js",
+    "src/interactions/tickets/README.md",
+    "src/interactions/tickets/index.js",
+    "src/interactions/tickets/polybahn-ticket-machine.js",
+    "src/interactions/tickets/ticket-machine.css",
+    "src/interactions/tickets/ticket-qr-camera.js",
+    "src/shared/phone-camera/camera-aim.js",
+    "src/shared/phone-camera/phone-camera.js",
+    "src/shared/phone-camera/photo-camera.js",
+    "src/shared/phone-camera/scan-progress.js",
+    "src/ui/phone/phone-shell.css",
+    "src/ui/phone/phone-shell.js",
+    "style.css"
+  ],
+  "assets": [],
+  "dependencies": {
+    "three": "^0.186.1"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "name": "ui",
+  "entry": "src/ui/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "docs/multiplayer-integration.md",
+    "game.config.json",
+    "src/README.md",
+    "src/config/game-config.js",
+    "src/config/validate-game-config.js",
+    "src/games/quizzes/moodle-event.js",
+    "src/games/quizzes/phone-quizzes.js",
+    "src/ui/README.md",
+    "src/ui/hud/game-hud.css",
+    "src/ui/hud/game-hud.js",
+    "src/ui/hud/game-settings.js",
+    "src/ui/hud/index.js",
+    "src/ui/index.js",
+    "src/ui/medals/index.js",
+    "src/ui/medals/medal-art.js",
+    "src/ui/medals/medal-sound.js",
+    "src/ui/medals/medal-state.js",
+    "src/ui/medals/medals.css",
+    "src/ui/medals/medals.js",
+    "src/ui/phone/index.js",
+    "src/ui/phone/phone-shell.css",
+    "src/ui/phone/phone-shell.js",
+    "src/ui/phone/phone.js",
+    "style.css"
+  ],
+  "assets": [
+    "public/assets/medals/CREDITS.md",
+    "public/assets/medals/backstabber-bo3.png",
+    "public/assets/medals/bankshot-bo3.png",
+    "public/assets/medals/bloodthirsty-bo3.png",
+    "public/assets/medals/retrieval-bo3.png",
+    "public/assets/medals/revenge-bo3.png",
+    "public/assets/medals/roadrage-bo3.png",
+    "public/audio/CREDITS.md",
+    "public/audio/bo3-medal-earned.mp3"
+  ],
+  "dependencies": {}
+}

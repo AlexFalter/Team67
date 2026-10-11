@@ -1,0 +1,15 @@
+{
+  "name": "map",
+  "entry": "src/world/map/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "src/README.md",
+    "src/world/map/README.md",
+    "src/world/map/encounter-map.js",
+    "src/world/map/index.js",
+    "src/world/map/map-controls.js",
+    "style.css"
+  ],
+  "assets": [],
+  "dependencies": {}
+}

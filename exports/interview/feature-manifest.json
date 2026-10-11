@@ -1,0 +1,27 @@
+{
+  "name": "interview",
+  "entry": "src/npcs/interview/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "game.config.json",
+    "src/README.md",
+    "src/config/game-config.js",
+    "src/config/validate-game-config.js",
+    "src/npcs/interview/README.md",
+    "src/npcs/interview/index.js",
+    "src/npcs/interview/interview-limo.js",
+    "src/player/student-model.js",
+    "src/vehicles/passengers/vehicle-passengers.js",
+    "src/vehicles/passengers/vehicle-seats.js",
+    "src/world/core/map-navigation.js",
+    "src/world/core/vehicle-path.js",
+    "src/world/core/world-access.js",
+    "src/world/placements/feature-placement.js",
+    "style.css"
+  ],
+  "assets": [],
+  "dependencies": {
+    "three": "^0.186.1",
+    "three-mesh-bvh": "^0.9.16"
+  }
+}

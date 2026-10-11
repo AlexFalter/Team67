@@ -1,9 +1,10 @@
 import * as C from '@race/shared';
 import type {RaceState} from './state.ts';
 export class AwpManager {
+ private tripleTargets=new Map<string,Set<string>>();
  private scans=new Map<string,number>();
  private cooldown=new Map<string,number>();
- constructor(private state:RaceState,private world:C.MovementWorld,private canPlay:(id:string,now:number)=>boolean,private busy:(id:string)=>boolean,private hit:(target:string,impulse:C.Impulse)=>boolean|void,private broadcast:(shot:C.AwpShot)=>void,private confirmed:(shot:C.AwpShot,practice:boolean)=>void=()=>{},private scan:(id:string,scan:C.DroneScan)=>void=()=>{}){}
+ constructor(private state:RaceState,private world:C.MovementWorld,private canPlay:(id:string,now:number)=>boolean,private busy:(id:string)=>boolean,private hit:(target:string,impulse:C.Impulse)=>boolean|void,private broadcast:(shot:C.AwpShot)=>void,private confirmed:(shot:C.AwpShot,practice:boolean)=>void=()=>{},private scan:(id:string,scan:C.DroneScan)=>void=()=>{},private discovered:(id:string)=>void=()=>{}){}
  command(id:string,data:unknown,now:number){
   const d=data as {action?:string;aim?:unknown;roundStartedAt?:number}|null,p=this.state.players.get(id);
   if(!p||!d||d.roundStartedAt!==this.state.startedAt||!this.canPlay(id,now))return;
@@ -14,7 +15,7 @@ export class AwpManager {
   if(d.action==='pickup'){
    if(p.awpOwned)return;const rack=C.awpRackPlacements(this.world).find(({approach:[x,y,z]})=>Math.hypot(p.x-x,p.y-y,p.z-z)<=1.7);if(!rack)return;const approach=rack.approach;const position=[approach[0],approach[1]+1.6,approach[2]],origin=[p.x,p.y+1.6,p.z],delta=position.map((v,i)=>v-origin[i]),distance=Math.hypot(...delta);
    if(C.awpWallDistance(this.world,origin,delta.map(v=>v/(distance||1)))<distance-.12)return;
-   p.awpOwned=true;p.awpAmmo=C.AWP_MAGAZINE;p.awpReserve=C.AWP_RESERVE;p.awpEquipped=true;p.awpInspectUntil=now+C.AWP_INSPECT_MS;return;
+   p.awpOwned=true;p.awpAmmo=C.AWP_MAGAZINE;p.awpReserve=C.AWP_RESERVE;p.awpEquipped=true;p.awpInspectUntil=now+C.AWP_INSPECT_MS;this.discovered(id);return;
   }
   if(!p.awpOwned)return;
   if(d.action==='equip'){p.awpEquipped=true;return;}
@@ -36,13 +37,15 @@ export class AwpManager {
   const rot=body?.rotY??0,c=Math.cos(rot),s=Math.sin(rot),x=end[0]-(body?.x??0),z=end[2]-(body?.z??0);
   const attachment=hit&&body?{part,offset:[x*c-z*s,end[1]-body.y-(part==='head'?1.57:1.03),x*s+z*c],direction:[aim[0]*c-aim[2]*s,aim[1],aim[0]*s+aim[2]*c]}:undefined;
   let droneEarned=false;if(hit&&!p.droneReady){p.droneStreak++;if(p.droneStreak>=C.DRONE_STREAK_HITS){p.droneReady=true;p.droneStreak=0;droneEarned=true;}}
-  const shot:C.AwpShot={roundStartedAt:this.state.startedAt,from:id,start,end,target,hit,droneEarned,attachment};this.broadcast(shot);if(hit)this.confirmed(shot,!!dummy);
+  let triple=false;
+  if(hit){const targets=this.tripleTargets.get(id)??new Set<string>();targets.add(target);triple=targets.size===3;if(triple)this.tripleTargets.delete(id);else this.tripleTargets.set(id,targets);}
+  const shot:C.AwpShot={roundStartedAt:this.state.startedAt,from:id,start,end,target,hit,droneEarned,triple,attachment};this.broadcast(shot);if(hit)this.confirmed(shot,!!dummy);
  }
  tick(now:number){for(const [id,p] of this.state.players){
   if(p.knockdownUntil>now){p.droneStreak=0;}
   if(p.awpReloadUntil&&p.awpReloadUntil<=now){const transfer=Math.min(C.AWP_MAGAZINE-p.awpAmmo,p.awpReserve);p.awpAmmo+=transfer;p.awpReserve-=transfer;p.awpReloadUntil=0;}
   if(p.droneScanUntil>now&&now>=p.droneCallUntil&&this.canPlay(id,now)){const sweep=Math.floor((now-p.droneCallUntil)/C.DRONE_SWEEP_MS);if(this.scans.get(id)!==sweep){this.scans.set(id,sweep);this.scan(id,{roundStartedAt:this.state.startedAt,startedAt:p.droneCallUntil,endsAt:p.droneScanUntil,at:now,players:[...this.state.players].filter(([other])=>other!==id&&this.canPlay(other,now)).map(([id,q])=>({id,x:q.x,y:q.y,z:q.z}))});}}
  }}
- leave(id:string){this.cooldown.delete(id);this.scans.delete(id);}
- reset(){this.cooldown.clear();this.scans.clear();for(const p of this.state.players.values())Object.assign(p,{droneReady:false,droneStreak:0,droneCallUntil:0,droneScanUntil:0,awpOwned:false,awpEquipped:false,awpAmmo:C.AWP_MAGAZINE,awpReserve:C.AWP_RESERVE,awpInspectUntil:0,awpReloadUntil:0});}
+ leave(id:string){this.tripleTargets.delete(id);this.cooldown.delete(id);this.scans.delete(id);}
+ reset(){this.tripleTargets.clear();this.cooldown.clear();this.scans.clear();for(const p of this.state.players.values())Object.assign(p,{droneReady:false,droneStreak:0,droneCallUntil:0,droneScanUntil:0,awpOwned:false,awpEquipped:false,awpAmmo:C.AWP_MAGAZINE,awpReserve:C.AWP_RESERVE,awpInspectUntil:0,awpReloadUntil:0});}
 }

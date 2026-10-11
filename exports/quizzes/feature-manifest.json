@@ -1,0 +1,21 @@
+{
+  "name": "quizzes",
+  "entry": "src/games/quizzes/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "game.config.json",
+    "src/README.md",
+    "src/config/game-config.js",
+    "src/config/validate-game-config.js",
+    "src/games/quizzes/README.md",
+    "src/games/quizzes/index.js",
+    "src/games/quizzes/moodle-event.js",
+    "src/games/quizzes/moodle-penalty.js",
+    "src/games/quizzes/phone-quizzes.js",
+    "style.css"
+  ],
+  "assets": [],
+  "dependencies": {
+    "three": "^0.186.1"
+  }
+}

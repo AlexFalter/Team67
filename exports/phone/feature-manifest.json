@@ -1,0 +1,21 @@
+{
+  "name": "phone",
+  "entry": "src/ui/phone/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "game.config.json",
+    "src/README.md",
+    "src/config/game-config.js",
+    "src/config/validate-game-config.js",
+    "src/games/quizzes/moodle-event.js",
+    "src/games/quizzes/phone-quizzes.js",
+    "src/ui/phone/README.md",
+    "src/ui/phone/index.js",
+    "src/ui/phone/phone-shell.css",
+    "src/ui/phone/phone-shell.js",
+    "src/ui/phone/phone.js",
+    "style.css"
+  ],
+  "assets": [],
+  "dependencies": {}
+}

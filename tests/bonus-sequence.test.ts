@@ -32,7 +32,7 @@ function createHarness() {
   return { scene, camera, sequence, body, session: () => session };
 }
 
-test('spectating cancels the room handoff and preserves the exam score and deadline', async () => {
+test('spectating cancels the room handoff and preserves a completed exam score and deadline', async () => {
   await withSequence(async ({ sequence, body, session }) => {
     sequence.update(body, true, true, 1, 30, 1000);
     sequence.update(body, true, true, 1, 26, 1000 + EXAM_FLYOVER_MS);
@@ -43,7 +43,7 @@ test('spectating cancels the room handoff and preserves the exam score and deadl
     assert.equal(session().stage, 'spectate');
     sequence.update(body, true, false, 1, 23, 8000);
     sequence.returnToExam();
-    assert.equal(session().stage, 'exam');
+    assert.equal(session().stage, 'spectate', 'a completed exam cannot be entered again');
     assert.equal(session().score, 600);
     assert.equal(session().remainingSeconds, 23);
   });
@@ -134,5 +134,17 @@ test('round expiry opens the score screen without waiting for the intro', async 
     sequence.update(body, false, false, 1, 0, 3100);
     assert.equal(session().stage, 'complete');
     assert.equal(session().score, 100);
+  });
+});
+
+
+test('spectators can return to an unfinished exam with the current deadline', async () => {
+  await withSequence(async ({sequence,body,session}) => {
+    sequence.update(body,true,true,1,30,1000);
+    sequence.spectate();
+    sequence.update(body,true,false,1,23,8000);
+    sequence.returnToExam();
+    assert.equal(session().stage,'exam');
+    assert.equal(session().remainingSeconds,23);
   });
 });

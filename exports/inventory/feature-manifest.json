@@ -1,0 +1,14 @@
+{
+  "name": "inventory",
+  "entry": "src/interactions/inventory/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "src/README.md",
+    "src/interactions/inventory/README.md",
+    "src/interactions/inventory/index.js",
+    "src/interactions/inventory/item-inventory.js",
+    "style.css"
+  ],
+  "assets": [],
+  "dependencies": {}
+}

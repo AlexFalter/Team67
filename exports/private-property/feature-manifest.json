@@ -1,0 +1,24 @@
+{
+  "name": "private-property",
+  "entry": "src/npcs/private-property/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "game.config.json",
+    "src/README.md",
+    "src/config/game-config.js",
+    "src/config/validate-game-config.js",
+    "src/npcs/private-property/README.md",
+    "src/npcs/private-property/index.js",
+    "src/npcs/private-property/private-property.js",
+    "src/player/student-model.js",
+    "src/shared/dialogue/encounter-ui.js",
+    "style.css"
+  ],
+  "assets": [
+    "public/audio/CREDITS.md",
+    "public/audio/private-property.mp3"
+  ],
+  "dependencies": {
+    "three": "^0.186.1"
+  }
+}

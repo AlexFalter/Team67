@@ -1,0 +1,21 @@
+{
+  "name": "ersti-bags",
+  "entry": "src/interactions/bags/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "docs/multiplayer-integration.md",
+    "src/README.md",
+    "src/interactions/bags/README.md",
+    "src/interactions/bags/ersti-bags.js",
+    "src/interactions/bags/index.js",
+    "style.css"
+  ],
+  "assets": [
+    "public/models/ERSTI-BAG-CREDITS.md",
+    "public/models/ersti-bag-fps.glb",
+    "public/models/ersti-bag.glb"
+  ],
+  "dependencies": {
+    "three": "^0.186.1"
+  }
+}
