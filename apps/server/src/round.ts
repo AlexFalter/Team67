@@ -50,7 +50,8 @@ export class RoundManager {
     this.state.phase = C.RoomPhase.Running;
     this.state.introStartedAt = now + (this.intro.leadMs ?? C.BATTLE_BUS_LEAD_MS);
     this.state.startedAt = this.state.introStartedAt + (this.intro.durationMs ?? C.BATTLE_BUS_DURATION_MS);
-    this.state.endsAt = this.state.startedAt + this.duration; this.state.finishedAt = 0;
+    // A finite sentinel keeps existing feature deadline guards and schema serialization valid.
+    this.state.endsAt = this.state.adminMode ? Number.MAX_SAFE_INTEGER : this.state.startedAt + this.duration; this.state.finishedAt = 0;
     this.state.introComplete = false; this.state.scooterArrivalAt = 0;
     this.onStart();
     if (now >= this.state.startedAt) this.completeIntro();
@@ -77,7 +78,8 @@ export class RoundManager {
     result.examStartedAt = now;
   }
   examProgress(id: string, data: unknown, now = Date.now()) {
-    if (!data || typeof data !== 'object' || !this.canPlay(id, now)) return;
+    if (!data || typeof data !== 'object' || this.state.phase !== C.RoomPhase.Running || !this.state.introComplete ||
+      now < this.state.startedAt || now >= this.state.endsAt || !this.state.members.has(id)) return;
     const progress = data as C.ExamProgress, result = this.scores.get(id);
     if (!result?.examStartedAt || result.examCompleted || progress.roundStartedAt !== this.state.startedAt ||
       typeof progress.completed !== 'boolean' || !Number.isSafeInteger(progress.score) || !Number.isSafeInteger(progress.correct) ||
@@ -89,7 +91,7 @@ export class RoundManager {
   }
   tick(now = Date.now()) {
     if (this.state.phase === C.RoomPhase.Running && !this.state.introComplete && now >= this.state.startedAt) this.completeIntro();
-    if (this.state.phase === C.RoomPhase.Running && now >= this.state.endsAt) this.finish(now);
+    if (this.state.phase === C.RoomPhase.Running && !this.state.adminMode && now >= this.state.endsAt) this.finish(now);
   }
   finish(now = Date.now(), empty = false) {
     if (this.state.phase !== C.RoomPhase.Running || (!empty && (!this.state.introComplete || now < this.state.startedAt))) return;

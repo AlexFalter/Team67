@@ -32,6 +32,23 @@ function createHarness() {
   return { scene, camera, sequence, body, session: () => session };
 }
 
+test('spectating cancels the room handoff and preserves the exam score and deadline', async () => {
+  await withSequence(async ({ sequence, body, session }) => {
+    sequence.update(body, true, true, 1, 30, 1000);
+    sequence.update(body, true, true, 1, 26, 1000 + EXAM_FLYOVER_MS);
+    sequence.spectate();
+    await new Promise(resolve => setTimeout(resolve, 700));
+    assert.equal(session().stage, 'spectate');
+    sequence.complete(600);
+    assert.equal(session().stage, 'spectate');
+    sequence.update(body, true, false, 1, 23, 8000);
+    sequence.returnToExam();
+    assert.equal(session().stage, 'exam');
+    assert.equal(session().score, 600);
+    assert.equal(session().remainingSeconds, 23);
+  });
+});
+
 test('terrace entrance orbits ETH, takes a seat, then opens the exam with the existing clock', async () => {
   await withSequence(async ({ camera, sequence, body, session }) => {
     const position = camera.position.clone();

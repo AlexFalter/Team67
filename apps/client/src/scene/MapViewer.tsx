@@ -1,4 +1,5 @@
-﻿import { useEffect, useRef, useState } from "react";
+import {guardAnimationFrame} from "./guardAnimationFrame";
+import { useEffect, useRef, useState } from "react";
 import {
   Color,
   DirectionalLight,
@@ -28,7 +29,7 @@ export function MapViewer({ examPreview = false }: { examPreview?: boolean }) {
   const [playing, setPlaying] = useState(examPreview || !(import.meta.env.DEV && new URLSearchParams(location.search).has("trafficEditor")));
   const [resolution, setResolution] = useState<"performance" | "high">("high");
   return (
-    <div className="map-viewer" data-playing={playing} data-exam-active={examSession.stage !== "world"}>
+    <div className="map-viewer" data-playing={playing} data-exam-active={examSession.stage !== "world" && examSession.stage !== "spectate"}>
       <MapCanvas key={playing ? "play" : "inspect"} playing={playing}
         resolution={resolution} onResolutionChange={setResolution} examSession={examSession} onExamChange={setExamSession} examPreview={examPreview} />
       {!examPreview && <button
@@ -112,7 +113,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
             object.receiveShadow = true;
           }
         });
-        renderer = new WebGLRenderer({ canvas: canvas!, antialias: true,
+        renderer = new WebGLRenderer({ canvas: canvas!, antialias: false,
           powerPreference: "high-performance" });
         disposeLook = applyRendererLook(renderer, scene, theme);
         sharpenMapTextures(map, renderer);
@@ -196,7 +197,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
         let previewStarted: number | undefined;
         const previewBody = { ...createBody(), ...examPortalPosition };
         const previewDuration = new URLSearchParams(location.search).has("time") ? readDuration(location.search) : ROUND_DURATION_MS / 1000;
-        renderer.setAnimationLoop(() => {
+        renderer.setAnimationLoop(guardAnimationFrame(() => {
           const now = performance.now();
           if (controls) { controls.enabled = !trafficEditor?.active; if (controls.enabled) controls.update(); }
           trafficEditor?.update();
@@ -215,7 +216,14 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
             grade!.render();
             game?.afterRender();
           }
-        });
+        }, error => {
+          renderer?.setAnimationLoop(null);
+          game?.stopAfterFailure();
+          if (document.pointerLockElement === canvas) document.exitPointerLock();
+          console.error("Game frame failed", error);
+          setFailed(true);
+          setStatus(`The game stopped: ${error instanceof Error ? error.message : String(error)}. Reload to reconnect.`);
+        }));
         setStatus("Preparing characters and vehicles…");
         await game?.ready;
         if (abort.signal.aborted) return;
@@ -266,7 +274,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
         <div>
           <p className="loading-route">Zürich HB <span>→</span> ETH HG</p>
           {!failed && <div className="loading-spinner" aria-hidden="true" />}
-          <p className="loading-title">{failed ? "Unable to load the game" : "Loading Zürich"}</p>
+          <p className="loading-title">{failed ? "Unable to run the game" : "Loading Zürich"}</p>
           <p className="loading-detail">{status}</p>
           {failed && <button onClick={() => location.reload()}>Try again</button>}
         </div>
@@ -278,6 +286,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
         {status}
       </div>}
       {playing && <ExamOverlay session={examSession}
+        onSpectate={examPreview ? undefined : () => gameRef.current?.spectate()}
         onProgress={progress => { if (!examPreview) gameRef.current?.reportExamProgress(progress); }}
         onComplete={score => examPreview ? previewRef.current?.complete(score) : gameRef.current?.completeExam(score)}
         onExit={() => examPreview ? location.assign("/") : gameRef.current?.returnFromExam()} />}

@@ -1,4 +1,5 @@
 export const PLAYER_MEDALS = {
+ bagged: {title: 'Bagged', detail: 'Hit a player with an Ersti bag', icon: 'bag'},
  firstBlood: { title: 'First Blood', detail: 'First confirmed hit of the round', icon: 'skull' },
  bicycleHit: { title: 'Road Rage', detail: 'Run over a real player with a bicycle', icon: 'wheel' },
  threePlayers: { title: 'Bloodthirsty', detail: 'Punch three different players', icon: 'skull' },

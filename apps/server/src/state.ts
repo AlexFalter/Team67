@@ -48,6 +48,10 @@ export const Player = schema(
     simTime: t.number().default(0),
     vehicleKind: t.int8().default(-1),
     attackReadyAt: t.number().default(0),
+    bagId: t.string().default(""),
+    emotesUnlocked: t.boolean().default(false),
+    emoteId: t.string().default(""),
+    emoteStartedAt: t.number().default(0),
     mateCount: t.uint8().default(0),
     mateBoostMs: t.number().default(0),
     mateFlavor: t.uint8().default(2),
@@ -107,6 +111,7 @@ export const Npc = schema({
   ticketReadyAt: t.number().default(0),
   polybahnTicketed: t.boolean().default(false),
   limoVisible: t.boolean().default(false),
+  parachuting:t.boolean().default(false),
   limoX: t.number().default(0),
   limoY: t.number().default(0),
   limoZ: t.number().default(0),
@@ -125,6 +130,8 @@ export const TrafficCar = schema({
   x: t.number().default(0), y: t.number().default(0), z: t.number().default(0),
   rotY: t.number().default(0), speed: t.number().default(0),
 }, "TrafficCar");
+export const Bag = schema({x:t.number().default(0),y:t.number().default(0),z:t.number().default(0),vx:t.number().default(0),vy:t.number().default(0),vz:t.number().default(0),owner:t.string().default(''),thrower:t.string().default(''),flying:t.boolean().default(false),throwAt:t.number().default(0),releasedAt:t.number().default(0),spin:t.number().default(0)},'Bag');
+export type Bag = SchemaType<typeof Bag>;
 export const RaceState = schema(
   {
     trafficCars: t.map(TrafficCar),
@@ -136,6 +143,7 @@ export const RaceState = schema(
     phase: t.string().default(RoomPhase.Lobby),
     hostId: t.string().default(""),
     moodleEnabled:t.boolean().default(true),
+    noCarCollisions:t.boolean().default(false),
     moodleEventId:t.number().default(0),
     moodleQuestionIndex:t.uint8().default(0),
     moodleDeadline:t.number().default(0),
@@ -145,10 +153,15 @@ export const RaceState = schema(
     introStartedAt: t.number().default(0),
     introComplete: t.boolean().default(false),
     scooterArrivalAt: t.number().default(0),
+    mapTeleport: t.boolean().default(false),
     devMode: t.boolean().default(false),
+    adminMode: t.boolean().default(false),
     skipIntro: t.boolean().default(false),
     goldPubliBikes: t.boolean().default(true),
     railCrashProtection: t.boolean().default(false),
+    bags: t.map(Bag),
+    dummies: t.map(Player),
+    debugDummies:t.boolean().default(false),
     members: t.map(RoomMember),
     results: t.map(RoundResult),
     players: t.map(Player),

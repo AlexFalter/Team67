@@ -78,3 +78,17 @@ when finished testing.
 Existing wiring is limited to MapGame, MapViewer, Race, the shared export and
 optional `startImmediately` / `onExit` props on EthBlur. All scene assets and
 transition logic stay in separate files for straightforward merging.
+
+Choose **Spectate instead** during the building quiz to watch the
+current round. The server removes the player body but keeps room membership.
+Left/right arrows switch players; drag the canvas to orbit and scroll to zoom.
+Choose **Free flight** for a camera that passes through geometry: WASD flies in
+the look direction, Space rises, Shift descends and Ctrl increases speed. Escape
+opens the game menu, which also offers **Follow players** and **Back to exam**.
+Returning to the exam uses the existing round deadline and keeps the player as
+a server spectator; **Spectate instead** returns to the spectator camera.
+The mounted quiz retains its deck, typed answer and score across these switches.
+Players who already entered the exam can continue reporting validated exam scores
+after returning from spectating; late spectators cannot submit exam points.
+At round end the results appear, and the next round restores normal participation.
+The phone and its notifications are hidden during the exam and while spectating.

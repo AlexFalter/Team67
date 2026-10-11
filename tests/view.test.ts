@@ -1,10 +1,10 @@
+import { edgeTurn } from "../apps/client/src/multiplayer/gameControls.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { PerspectiveCamera, Vector3, Mesh, BoxGeometry, MeshBasicMaterial } from "three";
 import * as C from "../packages/shared/src/index.ts";
 import { PlayerView } from "../apps/client/src/multiplayer/view.ts";
 import { keyboardMovement } from "../apps/client/src/multiplayer/localPlayer.ts";
-import { edgeTurn } from "../apps/client/src/multiplayer/gameControls.ts";
 
 test("first-person camera stays at eye height, looks freely and clamps vertical rotation", () => {
   const camera = new PerspectiveCamera(75), view = new PlayerView(camera, []), p = C.createBody();
@@ -83,11 +83,6 @@ test("airborne camera has no continuing gait; landing compression follows impact
   assert.ok(camera.position.y >= 1.525 && camera.position.y < 1.6);
   for (let i = 0; i < 120; i++) view.update(p, 1 / 60);
   assert.ok(Math.abs(camera.position.y - 1.6) < 0.0001);
-});
-test("embedded-browser fallback turns at edges, not at the centre, and stays bounded", () => {
-  assert.deepEqual(edgeTurn(250, 200, 500, 400), { x: 0, y: 0 });
-  assert.deepEqual(edgeTurn(500, 400, 500, 400), { x: 1, y: 1 });
-  assert.deepEqual(edgeTurn(0, 0, 500, 400), { x: -1, y: -1 });
 });
 test("looking changes hit facing while stationary or strafing, without rotating movement", () => {
   const p = C.createBody(), target = C.createBody(); target.x = 2;
@@ -200,4 +195,10 @@ test("Lime driver and rear passenger get a third-person follow camera with optio
     view.setVehicle(p.vehicleId, p.rotY); assert.equal(view.perspective, 0);
     view.setVehicle("", p.rotY); assert.equal(view.perspective, 0);
   }
+});
+
+test("embedded-browser fallback turns at edges, not at the centre, and stays bounded", () => {
+  assert.deepEqual(edgeTurn(250, 200, 500, 400), { x: 0, y: 0 });
+  assert.deepEqual(edgeTurn(500, 400, 500, 400), { x: 1, y: 1 });
+  assert.deepEqual(edgeTurn(0, 0, 500, 400), { x: -1, y: -1 });
 });

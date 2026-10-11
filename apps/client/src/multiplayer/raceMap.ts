@@ -61,9 +61,14 @@ export class RaceMap {
       } else {
         const marker = this.markers().map(m => ({ m, p: projectPoint(m, view) }))
           .find(m => Math.hypot(m.p.x - p.x, m.p.y - p.y) < 18);
-        this.readout.textContent = marker?.m.label ?? help;
+        this.readout.textContent = marker?.m.label ?? (this.admin?"Click the map to teleport · Drag to pan":help);
       }
     }, options);
+    this.canvas.addEventListener("pointerup",event=>{
+      const drag=this.drag,p=this.cursor(event),view=this.projection;
+      if(!this.active||!this.admin||!view||drag?.id!==event.pointerId||Math.hypot(p.x-drag.x,p.y-drag.y)>6)return;
+      this.net.room.send("debugMapTeleport",{x:view.x+(p.x-view.width/2)/view.scale,z:view.z+(p.y-view.height/2)/view.scale,roundStartedAt:this.net.room.state.startedAt});
+    },options);
     for (const name of ["pointerup", "pointercancel", "lostpointercapture"] as const)
       this.canvas.addEventListener(name, () => { this.drag = undefined; }, options);
     // Capture before the movement handlers so map shortcuts never punch or slide.
@@ -90,13 +95,15 @@ export class RaceMap {
     }, { ...options, capture: true });
     this.observer = new ResizeObserver(() => { if (this.active) this.drawFull(); }); this.observer.observe(this.canvas);
   }
+  private get admin(){return this.net.room?.state.devMode===true&&this.net.room.state.mapTeleport===true&&this.net.room.state.hostId===this.net.room.sessionId;}
+  closeForTeleport(){this.hide(false);}
   private cursor(event: MouseEvent) { const r = this.canvas.getBoundingClientRect(); return { x: event.clientX - r.left, y: event.clientY - r.top }; }
   private show() {
     if (!this.available() || this.active) return;
     this.previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
     this.resumeAfterClose = this.player().enabled;
     this.active = true; this.suspend(); this.root.hidden = false;
-    this.fit(); this.close.focus();
+    this.fit();this.readout.textContent=this.admin?"Click the map to teleport · Drag to pan":help; this.close.focus();
   }
   private hide(restore = true) {
     if (!this.active) return;

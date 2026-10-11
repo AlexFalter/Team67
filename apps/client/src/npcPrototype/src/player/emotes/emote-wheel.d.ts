@@ -1,0 +1,2 @@
+export interface Wheel {keydown(e:KeyboardEvent):boolean;choose(i:number):boolean;stop():void;opened():boolean;update(dt:number):void;reset():void;dispose():void;state():{id:string|null;active:boolean;open:boolean}}
+export function createEmoteWheel(student:unknown,options: {root:HTMLElement;canUse:()=>boolean;canChoose?:(id:string)=>boolean;onStart:(emote:{id:string;name:string})=>void;onStop:()=>void;onOpen:()=>void;onClose:()=>void;animator:{start(id:string):boolean;stop():void;update(dt:number):void;state():{active:boolean;id:string|null}}}):Wheel;

@@ -1,0 +1,2 @@
+.bag-debug-setting{display:flex;align-items:center;gap:8px;color:#edf1ef;font:13px Arial;padding:10px}#pause .bag-debug-setting[hidden]{display:none}
+.bag-notice{position:fixed;bottom:170px;left:50%;transform:translateX(-50%);z-index:70;max-width:80vw;background:#18212de8;color:white;padding:10px 14px;border-radius:6px;font:13px Arial;text-align:center;pointer-events:none}.bag-notice[hidden]{display:none}

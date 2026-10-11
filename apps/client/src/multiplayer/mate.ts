@@ -66,6 +66,7 @@ export class MateFeature {
     this.card.addEventListener("pointerdown", e => { if (Number(this.card.value) === 0 && e.clientX > this.card.getBoundingClientRect().left + 70) e.preventDefault(); }, options);
     window.addEventListener("keydown", e => {
       if (this.active) {
+        e.stopImmediatePropagation();
         if (e.code === "Escape") { e.preventDefault(); this.close(); }
         else if (e.code === "Enter" && this.state?.phase === "collect") { e.preventDefault(); this.send("collect"); }
         else if (e.code === "Tab") {

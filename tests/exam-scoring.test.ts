@@ -78,6 +78,18 @@ test('completion locks scores, departed players retain them and a new round rese
   assert.equal(state.results.get('player')!.examScore, 600);
 });
 
+test('entered exam participants keep their scores when spectating and returning to the exam', () => {
+  const { state, rounds, report } = fixture();
+  rounds.beginExam('player', state.startedAt, 1100);
+  rounds.examProgress('player', report(1000, 1), 1200);
+  state.players.delete('player');
+  state.members.get('player')!.spectator = true;
+  rounds.examProgress('player', report(1600, 2), 1300);
+  rounds.tick(state.endsAt);
+  assert.equal(state.results.get('player')!.examScore, 1600);
+  assert.equal(state.results.get('player')!.examCorrect, 2);
+});
+
 test('remote entry or entry on a vehicle cannot submit exam points', () => {
   const { state, rounds, report } = fixture();
   const player = state.players.get('player')!;

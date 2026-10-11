@@ -2,7 +2,7 @@ import { Vector3, type PerspectiveCamera, type Scene } from 'three';
 import { FINAL_EXAM_LOCATION, examMapPoint, examFlyoverPosition, insideExamPortal, type Body } from '@race/shared';
 import { ExamPortal } from '../entities/examPortal/ExamPortal';
 import { playExamRoomAnimation } from './examRoomAnimation';
-export type ExamStage = 'world' | 'flyover' | 'room' | 'exam' | 'complete';
+export type ExamStage = 'world' | 'flyover' | 'room' | 'exam' | 'complete' | 'spectate';
 export interface ExamSession { stage: ExamStage; remainingSeconds: number; canEnter: boolean; score: number }
 export const emptyExamSession: ExamSession = { stage: 'world', remainingSeconds: 0, canEnter: false, score: 0 };
 export const EXAM_FLYOVER_MS = 4000;
@@ -24,6 +24,7 @@ export class ExamSequence {
     this.focus.set(target.x, target.y, target.z);
   }
   get active() { return this.stage !== 'world'; }
+  get spectating(){return this.stage==='spectate';}
   get screenVisible() { return this.stage === 'exam' || this.stage === 'complete'; }
   update(body: Body, canPlay: boolean, controlsEnabled: boolean, round: number, remaining: number, now: number) {
     this.remaining = remaining; this.canEnter = canPlay;
@@ -33,6 +34,7 @@ export class ExamSequence {
       this.abort.abort(); this.abort = new AbortController(); this.stage = 'world';
       this.notify();
     }
+    if(this.spectating){this.portal.root.visible=false;this.notify();return;}
     if (!this.active && this.enteredRound !== round && canPlay && controlsEnabled && !body.vehicleId && body.anim !== 3 && insideExamPortal(body)) {
       this.enteredRound = round; this.started = now; this.stage = 'flyover';
       body.vx = body.vy = body.vz = 0;
@@ -62,7 +64,9 @@ export class ExamSequence {
     if (this.stage !== 'flyover' && this.stage !== 'room') return;
     this.abort.abort(); this.stage = 'exam'; this.notify();
   }
-  complete(score: number) { this.score = score; this.stage = 'complete'; this.notify(); }
+  spectate(){this.abort.abort();this.stage='spectate';this.notify();}
+  returnToExam(){if(this.stage==='spectate'){this.stage='exam';this.notify();}}
+  complete(score: number) { this.score = score; if (!this.spectating) this.stage = 'complete'; this.notify(); }
   returnToWorld() { this.abort.abort(); this.stage = 'world'; this.notify(); }
   private notify() { this.publish({ stage: this.stage, remainingSeconds: this.remaining, canEnter: this.canEnter, score: this.score }); }
   dispose() { this.abort.abort(); this.portal.dispose(); }

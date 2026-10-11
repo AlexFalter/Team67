@@ -12,9 +12,9 @@ import { ExamPaperHeader } from './ExamPaperHeader';
 import './exam-paper.css';
 
 /** The final clock can override the standalone 30-second timer. */
-export type EthBlurProps = { remainingSeconds?: number; onComplete?: (score: number) => void; onProgress?: (progress: ExamScore) => void; startImmediately?: boolean; onExit?: () => void };
+export type EthBlurProps = { remainingSeconds?: number; onComplete?: (score: number) => void; onProgress?: (progress: ExamScore) => void; startImmediately?: boolean; onExit?: () => void; visible?: boolean };
 type Feedback = { kind: 'correct' | 'wrong' | 'skip'; text: string } | null;
-export function EthBlur({ remainingSeconds, onComplete, onProgress, startImmediately = true, onExit }: EthBlurProps) {
+export function EthBlur({ remainingSeconds, onComplete, onProgress, startImmediately = true, onExit, visible = true }: EthBlurProps) {
   const [started, setStarted] = useState(startImmediately);
   const [duration] = useState(() => readDuration(window.location.search));
   const [deck] = useState(createDeck);
@@ -50,8 +50,8 @@ export function EthBlur({ remainingSeconds, onComplete, onProgress, startImmedia
   const onPhotoError = useCallback(() => { setPhotoError(true); setReady(true); }, []);
   useEffect(() => { completion.current = onComplete; progressCallback.current = onProgress; }, [onComplete, onProgress]);
   useEffect(() => {
-    if (started && !ended && !resolving) input.current?.focus({ preventScroll: true });
-  }, [started, ended, resolving, index]);
+    if (visible && started && !ended && !resolving) input.current?.focus({ preventScroll: true });
+  }, [visible, started, ended, resolving, index]);
   useEffect(() => { const previous = document.title; document.title = 'Campusless · ETH Zürich'; return () => { document.title = previous; }; }, []);
   useEffect(() => {
     if (!started || !ready || remainingSeconds !== undefined || ended) return;
@@ -72,7 +72,7 @@ export function EthBlur({ remainingSeconds, onComplete, onProgress, startImmedia
     if (upcoming) void loadPhoto(upcoming.image).catch(() => {});
   }, [deck, index, started]);
   useEffect(() => () => { if (transition.current) clearTimeout(transition.current); }, []);
-  function active() { return started && ready && !ended && !locked.current && (remainingSeconds !== undefined ? remainingSeconds > 0 : Date.now() < deadline.current); }
+  function active() { return visible && started && ready && !ended && !locked.current && (remainingSeconds !== undefined ? remainingSeconds > 0 : Date.now() < deadline.current); }
   function showPointLoss(amount: number) {
     if (amount > 0) setPointLoss(previous => ({ amount, id: (previous?.id ?? 0) + 1 }));
   }
@@ -89,7 +89,6 @@ export function EthBlur({ remainingSeconds, onComplete, onProgress, startImmedia
       setIndex(i => i + 1); setReveal(0); setMistakes([]);
       setQuery(''); setPhotoError(false); setReady(false);
       setFeedback(null); setPointLoss(null); setResolving(false); locked.current = false;
-      input.current?.focus({ preventScroll: true });
     }, 550);
   }
   function guess() {
@@ -108,7 +107,7 @@ export function EthBlur({ remainingSeconds, onComplete, onProgress, startImmedia
     advance('correct', potential);
   }
   return <div className={`campus-game exam-paper${ended ? ' exam-ended' : ''}`} onKeyDownCapture={event => {
-    if (!started || ended || event.nativeEvent.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (!visible || !started || ended || event.nativeEvent.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
     if (event.key === 'Enter') {
       event.preventDefault(); event.stopPropagation();
       if (!event.repeat) guess();

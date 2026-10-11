@@ -1,3 +1,4 @@
+import { declaredHostMembers } from "./lint/declared-host-members.mjs";
 import js from "@eslint/js";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
@@ -7,6 +8,11 @@ import { defineConfig, globalIgnores } from "eslint/config";
 
 export default defineConfig([
   globalIgnores(["dist"]),
+  {
+    files: ["src/npcPrototype/host.js"],
+    plugins: { encounters: { rules: { "declared-members": declaredHostMembers } } },
+    rules: { "encounters/declared-members": "error" },
+  },
   {
     files: ["**/*.{ts,tsx}"],
     extends: [

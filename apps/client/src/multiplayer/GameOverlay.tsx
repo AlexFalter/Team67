@@ -57,8 +57,13 @@ export function GameOverlay({ resolution, onResolutionChange }: {
         <fieldset id="dev-settings">
           <legend>Testing</legend>
           <label><input id="dev-mode" type="checkbox" /> Dev mode</label>
+          <label id="admin-mode-option" hidden><input id="admin-mode" type="checkbox" /> Admin free roam — no timer or final exam</label>
+          <label title="Traffic cars pass through players and vehicles"><input id="no-car-collisions" type="checkbox" /> No car collisions</label>
+          <label><input id="disable-moodle" type="checkbox" /> Disable Moodle notifications</label>
+          <label id="collisions-option" hidden><input id="show-collisions" type="checkbox" /> Show hitboxes + practice dummies</label>
           <label id="skip-intro-option" hidden><input id="skip-intro" type="checkbox" defaultChecked /> Skip starting bus animation</label>
           <label id="gold-bikes-option" hidden><input id="gold-bikes" type="checkbox" defaultChecked /> Gold working PubliBikes</label>
+          <label id="map-teleport-option" hidden><input id="map-teleport" type="checkbox" /> Enable map teleportation</label>
           <label id="coordinates-option" hidden><input id="activate-coordinates" type="checkbox" /> Activate Coordinates</label>
           <label id="rail-protection-option" hidden><input id="rail-protection" type="checkbox" /> Prevent tram derailment</label>
           <p className="hint">Saved on this browser. Applies to rooms you create; everyone in the room starts together.</p>
@@ -146,10 +151,14 @@ export function GameOverlay({ resolution, onResolutionChange }: {
     <section id="pause" hidden aria-label="Game menu">
       <div>
         <h2>Game menu</h2>
-        <p>Your controls are paused. The multiplayer world keeps running.</p>
+        <p>Press Escape, WASD, or Enter to resume. The multiplayer world keeps running.</p>
         <button id="resume">Resume game</button>
+        <div id="spectator-settings" hidden><button id="spectator-flight">Free flight</button><button id="spectator-exam">Back to exam</button></div>
         <button id="respawn">Respawn at bus drop-off</button>
         <button id="perspective">View: First person</button>
+        <label id="car-collision-setting" hidden title="Traffic cars pass through players and vehicles"><input id="no-car-collisions-toggle" type="checkbox" /> No car collisions</label>
+        <label id="moodle-setting" hidden><input id="disable-moodle-toggle" type="checkbox" /> Disable Moodle notifications</label>
+        <label id="collision-setting" hidden><input id="collision-toggle" type="checkbox" /> Show hitboxes + practice dummies</label>
         <label><input id="bob" type="checkbox" defaultChecked /> Walking / running bob</label>
         <label><input id="vehicle-sounds" type="checkbox" defaultChecked /> Movement and vehicle sounds</label>
         <label><input id="medal-sounds" type="checkbox" defaultChecked /> Medal sounds</label>

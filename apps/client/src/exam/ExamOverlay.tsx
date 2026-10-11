@@ -2,12 +2,12 @@ import { EthBlur } from '../minigames/eth-blur/EthBlur';
 import type { ExamSession } from './ExamSequence';
 import type { ExamScore } from '@race/shared';
 import './exam.css';
-export function ExamOverlay({ session, onComplete, onProgress, onExit }: {
-  session: ExamSession; onComplete: (score: number) => void; onProgress?: (progress: ExamScore) => void; onExit: () => void;
+export function ExamOverlay({ session, onComplete, onProgress, onExit, onSpectate }: {
+  session: ExamSession; onComplete: (score: number) => void; onProgress?: (progress: ExamScore) => void; onExit: () => void; onSpectate?: () => void;
 }) {
   if (session.stage === 'world') return null;
-  if (session.stage === 'exam' || session.stage === 'complete') return <div className="exam-game-screen"><EthBlur
-    startImmediately remainingSeconds={session.remainingSeconds} onComplete={onComplete} onProgress={onProgress} onExit={onExit} /></div>;
+  if (session.stage === 'exam' || session.stage === 'complete' || session.stage === 'spectate') return <div className="exam-game-screen" hidden={session.stage === 'spectate'}><EthBlur
+    startImmediately visible={session.stage !== 'spectate'} remainingSeconds={session.remainingSeconds} onComplete={onComplete} onProgress={onProgress} onExit={onExit} />{session.canEnter && onSpectate && <button className="exam-spectate" onClick={onSpectate}>Spectate instead</button>}</div>;
   const seconds = Math.ceil(session.remainingSeconds);
   return <section className={`exam-transition ${session.stage}`} aria-label="Final exam entrance">
     <div className="exam-transition-clock">◷ {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')} remaining</div>
