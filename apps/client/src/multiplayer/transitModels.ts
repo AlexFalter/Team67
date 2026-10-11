@@ -96,6 +96,9 @@ async function template(name: "tram" | "polybahn", signal: AbortSignal, baseUrl:
     if (!(o instanceof THREE.Mesh)) return;
     for (const mat of Array.isArray(o.material) ? o.material : [o.material]) {
       mat.side = THREE.DoubleSide;
+      // Deep red stays saturated under the bright AgX lighting; bake it into the body, doors and roof.
+      if (name === "polybahn" && mat instanceof THREE.MeshStandardMaterial && /Transit red|Polybahn ivory roof/i.test(mat.name))
+        mat.color.set("#8c0502");
       if (/glazing|windows/i.test(mat.name) && mat instanceof THREE.MeshStandardMaterial) { mat.transparent = true; mat.opacity = .22; mat.depthWrite = false; mat.metalness = 0; }
     }
   });
