@@ -1,4 +1,4 @@
-import { buildLaneGraph, sampleLane, trafficOverlap, validateTrafficNetwork, DEFAULT_TRAFFIC_SETTINGS, MAX_TRAFFIC_CARS,
+import { buildLaneGraph, sampleLane, trafficOverlap, validateTrafficNetwork, DEFAULT_TRAFFIC_SETTINGS, MAX_TRAFFIC_CARS, randomTrafficAppearance,
   type LaneGraph, type LanePath, type TrafficNetwork, type TrafficSettings, type TrafficCarState } from '@race/shared';
 import initialNetwork from '../../../packages/shared/src/traffic-network.json' with { type: 'json' };
 import { CAPSULE_RADIUS, CAPSULE_HEIGHT, CART_MIN_HIT_SPEED, CART_HIT_STRENGTH, CART_HIT_LIFT, PAIR_COOLDOWN_MS, LIME_KIND, isPassengerVehicle, vehicleRadius } from '@race/shared';
@@ -40,7 +40,7 @@ export class TrafficManager {
         const pose = sampleLane(lane, distance);
         if (!this.clear(pose)) continue;
         const id = `traffic-${++this.serial}`;
-        this.drivers.set(id, { lane: lane.id, distance }); this.state.trafficCars.set(id, new TrafficCar(pose));
+        this.drivers.set(id, { lane: lane.id, distance }); this.state.trafficCars.set(id, new TrafficCar({ ...pose, ...randomTrafficAppearance(this.random) }));
         if (this.drivers.size >= this.state.trafficDensity) break;
       }
       if (!available) break;
@@ -129,7 +129,7 @@ export class TrafficManager {
           const lane = spawns[(i + offset) % spawns.length], pose = sampleLane(this.graph.paths.get(lane)!, 0);
           if (!this.clear(pose, undefined, 1.5, obstacles)) continue;
           const id = `traffic-${++this.serial}`;
-          this.drivers.set(id, { lane, distance: 0 }); this.state.trafficCars.set(id, new TrafficCar(pose)); break;
+          this.drivers.set(id, { lane, distance: 0 }); this.state.trafficCars.set(id, new TrafficCar({ ...pose, ...randomTrafficAppearance(this.random) })); break;
         }
       }
     }

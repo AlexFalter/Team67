@@ -1,73 +1,134 @@
 import * as THREE from 'three';
-import { MAX_TRAFFIC_CARS, type TrafficCarState, type WorldState } from '@race/shared';
+import { MAX_TRAFFIC_CARS, TRAFFIC_PALETTES, type TrafficCarState, type TrafficCarKind, type WorldState } from '@race/shared';
 import type { TrafficRoadSurface } from './trafficRoadSurface.ts';
-interface Frame extends TrafficCarState { t: number }
-/** Instanced bodies, cabins and wheels; shares the existing server clock and render loop. */
+import { createTrafficModel, type TrafficWheel } from './trafficModels.ts';
+
+interface Frame extends TrafficCarState { t: number; kind: TrafficCarKind; color: number }
+interface Batch {
+  body: THREE.InstancedMesh;
+  details: THREE.InstancedMesh;
+  wheels: THREE.InstancedMesh;
+  wheelLayout: TrafficWheel[];
+}
+
 export class TrafficRenderer {
   private frames = new Map<string, Frame[]>();
-  private body = new THREE.InstancedMesh(new THREE.BoxGeometry(1.9, 0.85, 4.4), new THREE.MeshStandardMaterial({ roughness: 0.85 }), MAX_TRAFFIC_CARS);
-  private cabin = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, 0.7, 2.2), new THREE.MeshStandardMaterial({ color: '#b6d9e9', roughness: 0.5 }), MAX_TRAFFIC_CARS);
-  private wheels = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.35, 0.35, 0.22, 8).rotateZ(Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#20252b' }), MAX_TRAFFIC_CARS * 4);
+  private travel = new Map<string, { x: number; z: number; distance: number }>();
+  private batches: Batch[];
+  private paintMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: .65, metalness: .12 });
+  private detailMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: .8 });
   private transform = new THREE.Object3D();
   private ground = new THREE.Vector3();
   private offset = new THREE.Vector3();
+  private orientation = new THREE.Quaternion();
+  private wheelRotation = new THREE.Quaternion();
+  private axle = new THREE.Vector3(1, 0, 0);
+  private color = new THREE.Color();
+
   constructor(private scene: THREE.Scene, private surface?: Pick<TrafficRoadSurface, 'height'>) {
-    this.body.count = this.cabin.count = this.wheels.count = 0;
-    this.body.castShadow = this.cabin.castShadow = true;
-    this.body.frustumCulled = this.cabin.frustumCulled = this.wheels.frustumCulled = false;
-    scene.add(this.body, this.cabin, this.wheels);
+    this.batches = ([0, 1, 2] as const).map(kind => {
+      const model = createTrafficModel(kind);
+      const body = new THREE.InstancedMesh(model.paint, this.paintMaterial, MAX_TRAFFIC_CARS);
+      const details = new THREE.InstancedMesh(model.details, this.detailMaterial, MAX_TRAFFIC_CARS);
+      const wheels = new THREE.InstancedMesh(model.tire, this.detailMaterial, MAX_TRAFFIC_CARS * 4);
+      for (const mesh of [body, details, wheels]) {
+        mesh.count = 0;
+        mesh.castShadow = true;
+        mesh.frustumCulled = false;
+        mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      }
+      scene.add(body, details, wheels);
+      return { body, details, wheels, wheelLayout: model.wheels };
+    });
   }
+
   patch(state: WorldState) {
-    for (const [id, p] of state.trafficCars ?? []) {
+    for (const [id, pose] of state.trafficCars ?? []) {
       let frames = this.frames.get(id);
       if (!frames) { frames = []; this.frames.set(id, frames); }
-      const frame = { x: p.x, y: p.y, z: p.z, rotY: p.rotY, speed: p.speed, t: state.serverTime };
+      const kind = pose.kind === 1 || pose.kind === 2 ? pose.kind : 0;
+      const color = Number.isInteger(pose.color) && pose.color! >= 0 && pose.color! < TRAFFIC_PALETTES[kind].length ? pose.color! : 0;
+      const frame: Frame = { x: pose.x, y: pose.y, z: pose.z, rotY: pose.rotY, speed: pose.speed, kind, color, t: state.serverTime };
       if (frames.at(-1)?.t === frame.t) frames[frames.length - 1] = frame;
       else frames.push(frame);
       while (frames.length > 2 && frames[1].t < frame.t - 1000) frames.shift();
     }
-    for (const id of this.frames.keys()) if (!state.trafficCars?.has(id)) this.frames.delete(id);
-  }
-  render(t: number) {
-    let index = 0;
-    for (const [id, frames] of this.frames) {
-      if (index >= MAX_TRAFFIC_CARS) break;
-      let a = frames[0], b = a;
-      for (let i = 1; i < frames.length; i++) { b = frames[i]; if (b.t >= t) break; a = b; }
-      const f = a === b ? 0 : THREE.MathUtils.clamp((t - a.t) / (b.t - a.t), 0, 1);
-      const x = THREE.MathUtils.lerp(a.x, b.x, f), y = THREE.MathUtils.lerp(a.y, b.y, f), z = THREE.MathUtils.lerp(a.z, b.z, f);
-      const yaw = a.rotY + Math.atan2(Math.sin(b.rotY - a.rotY), Math.cos(b.rotY - a.rotY)) * f;
-      const height = (localX: number, localZ: number) => {
-        const h = this.surface?.height(x + Math.cos(yaw) * localX + Math.sin(yaw) * localZ,
-          z - Math.sin(yaw) * localX + Math.cos(yaw) * localZ, y);
-        // Preserve the authored bridge level when asphalt is missing or on another deck.
-        return h !== undefined && Math.abs(h - y) < 3 ? h : undefined;
-      };
-      const groundY = height(0, 0) ?? y;
-      const front = height(0, 1.4) ?? groundY, rear = height(0, -1.4) ?? groundY;
-      const left = height(-0.98, 0) ?? groundY, right = height(0.98, 0) ?? groundY;
-      this.ground.set(x, groundY, z);
-      this.transform.rotation.set(-Math.atan2(front - rear, 2.8), yaw, Math.atan2(right - left, 1.96), 'YXZ');
-      this.place(0, 0.65, 0); this.body.setMatrixAt(index, this.transform.matrix);
-      this.place(0, 1.4, 0); this.cabin.setMatrixAt(index, this.transform.matrix);
-      for (let wheel = 0; wheel < 4; wheel++) {
-        this.place(wheel % 2 ? 0.98 : -0.98, 0.35, wheel < 2 ? -1.4 : 1.4);
-        this.wheels.setMatrixAt(index * 4 + wheel, this.transform.matrix);
-      }
-      const hue = Number(id.replace('traffic-', '')) * 0.618 % 1;
-      this.body.setColorAt(index, new THREE.Color().setHSL(hue, 0.5, 0.5)); index++;
+    for (const id of this.frames.keys()) {
+      if (!state.trafficCars?.has(id)) { this.frames.delete(id); this.travel.delete(id); }
     }
-    this.body.count = this.cabin.count = index; this.wheels.count = index * 4;
-    this.body.instanceMatrix.needsUpdate = this.cabin.instanceMatrix.needsUpdate = this.wheels.instanceMatrix.needsUpdate = true;
-    if (this.body.instanceColor) this.body.instanceColor.needsUpdate = true;
   }
-  private place(x: number, y: number, z: number) {
-    this.offset.set(x, y, z).applyEuler(this.transform.rotation);
-    this.transform.position.copy(this.ground).add(this.offset); this.transform.updateMatrix();
+
+  render(time: number) {
+    const counts = [0, 0, 0];
+    let total = 0;
+    for (const [id, frames] of this.frames) {
+      if (total >= MAX_TRAFFIC_CARS) break;
+      let previous = frames[0], next = previous;
+      for (let frame = 1; frame < frames.length; frame++) {
+        next = frames[frame];
+        if (next.t >= time) break;
+        previous = next;
+      }
+      const fraction = previous === next ? 0 : THREE.MathUtils.clamp((time - previous.t) / (next.t - previous.t), 0, 1);
+      const positionX = THREE.MathUtils.lerp(previous.x, next.x, fraction);
+      const positionY = THREE.MathUtils.lerp(previous.y, next.y, fraction);
+      const positionZ = THREE.MathUtils.lerp(previous.z, next.z, fraction);
+      const yaw = previous.rotY + Math.atan2(Math.sin(next.rotY - previous.rotY), Math.cos(next.rotY - previous.rotY)) * fraction;
+      const kind = previous.kind, batch = this.batches[kind], index = counts[kind]++;
+      const height = (localX: number, localZ: number) => {
+        const roadY = this.surface?.height(positionX + Math.cos(yaw) * localX + Math.sin(yaw) * localZ,
+          positionZ - Math.sin(yaw) * localX + Math.cos(yaw) * localZ, positionY);
+        return roadY !== undefined && Math.abs(roadY - positionY) < 3 ? roadY : undefined;
+      };
+      const groundY = height(0, 0) ?? positionY;
+      const rearZ = batch.wheelLayout[0].z, frontZ = batch.wheelLayout[1].z;
+      const track = Math.abs(batch.wheelLayout[0].x);
+      const front = height(0, frontZ) ?? groundY, rear = height(0, rearZ) ?? groundY;
+      const left = height(-track, 0) ?? groundY, right = height(track, 0) ?? groundY;
+      this.ground.set(positionX, groundY, positionZ);
+      this.transform.rotation.set(-Math.atan2(front - rear, frontZ - rearZ), yaw, Math.atan2(right - left, track * 2), 'YXZ');
+      this.orientation.copy(this.transform.quaternion);
+      this.transform.scale.set(1, 1, 1);
+      this.place(0, 0, 0);
+      batch.body.setMatrixAt(index, this.transform.matrix);
+      batch.details.setMatrixAt(index, this.transform.matrix);
+      batch.body.setColorAt(index, this.color.set(TRAFFIC_PALETTES[kind][previous.color]));
+      const travel = this.travel.get(id) ?? { x: positionX, z: positionZ, distance: 0 };
+      travel.distance += Math.hypot(positionX - travel.x, positionZ - travel.z);
+      travel.x = positionX; travel.z = positionZ;
+      this.travel.set(id, travel);
+      for (const [wheelIndex, wheel] of batch.wheelLayout.entries()) {
+        this.transform.scale.set(wheel.width, wheel.radius, wheel.radius);
+        this.wheelRotation.setFromAxisAngle(this.axle, travel.distance / wheel.radius);
+        this.transform.quaternion.copy(this.orientation).multiply(this.wheelRotation);
+        this.place(wheel.x, wheel.radius, wheel.z);
+        batch.wheels.setMatrixAt(index * 4 + wheelIndex, this.transform.matrix);
+      }
+      total++;
+    }
+    for (const [kind, batch] of this.batches.entries()) {
+      batch.body.count = batch.details.count = counts[kind];
+      batch.wheels.count = counts[kind] * 4;
+      for (const mesh of [batch.body, batch.details, batch.wheels]) mesh.instanceMatrix.needsUpdate = true;
+      if (batch.body.instanceColor) batch.body.instanceColor.needsUpdate = true;
+    }
   }
-  clear() { this.frames.clear(); this.render(0); }
+
+  private place(positionX: number, positionY: number, positionZ: number) {
+    this.offset.set(positionX, positionY, positionZ).applyQuaternion(this.orientation);
+    this.transform.position.copy(this.ground).add(this.offset);
+    this.transform.updateMatrix();
+  }
+
+  clear() { this.frames.clear(); this.travel.clear(); this.render(0); }
+
   dispose() {
-    for (const mesh of [this.body, this.cabin, this.wheels]) { this.scene.remove(mesh); mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); mesh.dispose(); }
-    this.frames.clear();
+    for (const batch of this.batches) {
+      for (const mesh of [batch.body, batch.details, batch.wheels]) {
+        this.scene.remove(mesh); mesh.geometry.dispose(); mesh.dispose();
+      }
+    }
+    this.paintMaterial.dispose(); this.detailMaterial.dispose();
+    this.frames.clear(); this.travel.clear();
   }
 }
