@@ -3,6 +3,7 @@
 .exam-transition-logo{display:block;width:clamp(120px,16vw,180px);height:auto;margin:0 auto 24px}
 body:has(.map-viewer[data-exam-active=true]) .traffic-editor{visibility:hidden;pointer-events:none}
 .map-viewer[data-exam-active=true] :is(.npc-ui-root,.limo-look-hint,#developer-coordinates){visibility:hidden!important;pointer-events:none!important}
+.map-viewer:has(#pause:not([hidden])) .exam-debug-button{z-index:301}
 
 .exam-spectate{position:absolute;right:24px;bottom:24px;z-index:45;border:1px solid #ffffff60;border-radius:7px;padding:12px 18px;background:#13232fee;color:#fff;font:14px system-ui;cursor:pointer}.exam-transition>.exam-spectate{left:auto;right:24px}.spectator-controls{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);z-index:35;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:12px 16px;border:1px solid #ffffff50;border-radius:10px;background:#13232fee;color:white;font:14px system-ui;white-space:nowrap}.spectator-controls[hidden]{display:none}.spectator-controls button{background:transparent;color:inherit;border:1px solid #ffffff40;border-radius:6px;padding:8px 12px;cursor:pointer}.spectator-controls small{grid-column:1/-1;text-align:center;font-size:11px;color:#b6c5ce}@media(max-width:500px){.spectator-controls{width:90%;box-sizing:border-box;white-space:normal}.exam-spectate{right:12px;bottom:12px}}
 
