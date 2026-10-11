@@ -89,10 +89,10 @@ export function createColorGrade(renderer: WebGLRenderer, scene: Scene, camera: 
 export type ColorGradeHandle = ReturnType<typeof createColorGrade>;
 
 /**
- * Dev overlay (toggle with G or ?grade): sliders for the grade, autosaved in this browser, "Download JSON"
+ * Dev overlay (open with ?grade): sliders for the grade, autosaved in this browser, "Download JSON"
  * for the theme ("grade" section). Plain DOM, no React state; returns a dispose function.
  */
-export function mountGradePanel(handle: ColorGradeHandle, signal: AbortSignal) {
+export function mountGradePanel(handle: ColorGradeHandle) {
   const KEY = "zurich-color-grade", initial = { ...handle.grade };  // theme values: what Reset returns to
   try { const saved = localStorage.getItem(KEY); if (saved) handle.set(JSON.parse(saved)); } catch { /* private mode */ }
   const panel = document.createElement("div");
@@ -104,7 +104,7 @@ export function mountGradePanel(handle: ColorGradeHandle, signal: AbortSignal) {
     ["brightness", "Brightness", -0.2, 0.2, 0.005], ["gamma", "Gamma", 0.6, 1.6, 0.01], ["lift", "Lift (blacks)", 0, 0.2, 0.005],
   ];
   const rows: HTMLElement[] = [];
-  const title = document.createElement("div"); title.textContent = "Colour grade (G to hide)"; title.style.cssText = "font-weight:600;margin-bottom:6px";
+  const title = document.createElement("div"); title.textContent = "Colour grade"; title.style.cssText = "font-weight:600;margin-bottom:6px";
   panel.append(title);
   const refresh: (() => void)[] = [];
   for (const [key, label, min, max, step] of sliders) {
@@ -139,8 +139,5 @@ export function mountGradePanel(handle: ColorGradeHandle, signal: AbortSignal) {
   document.body.append(panel);
   const toggle = () => { panel.style.display = panel.style.display === "none" ? "block" : "none"; };
   if (new URLSearchParams(location.search).has("grade")) toggle();
-  window.addEventListener("keydown", (e) => {
-    if (e.code === "KeyG" && !(e.target instanceof HTMLInputElement)) toggle();
-  }, { signal });
   return () => panel.remove();
 }

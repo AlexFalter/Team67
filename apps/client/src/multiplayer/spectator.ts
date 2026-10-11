@@ -9,6 +9,7 @@ export class Spectator {
  private hint=document.createElement('small');
  private previous=document.createElement('button');
  private next=document.createElement('button');
+ private exam=document.createElement('button');
  private flight=document.createElement('button');
  private abort=new AbortController();
  private target='';
@@ -27,7 +28,7 @@ export class Spectator {
  constructor(private net:Network,private camera:PerspectiveCamera,private canvas:HTMLCanvasElement,backToExam:()=>void=()=>{},resume:()=>void=()=>{}){
   this.root.className='spectator-controls';this.root.hidden=true;this.root.setAttribute('aria-label','Spectator controls');
   this.previous.textContent='←';this.previous.setAttribute('aria-label','Previous player');this.next.textContent='→';this.next.setAttribute('aria-label','Next player');
-  this.flight.textContent='Free flight';const exam=document.createElement('button');exam.textContent='Back to exam';
+  this.flight.textContent='Free flight';const exam=this.exam;exam.textContent='Back to exam';
   this.root.append(this.previous,this.label,this.next,this.flight,exam,this.hint);canvas.parentElement!.append(this.root);
   const options={signal:this.abort.signal};this.previous.addEventListener('click',()=>this.cycle(-1),options);this.next.addEventListener('click',()=>this.cycle(1),options);
   this.flight.addEventListener('click',()=>this.toggleFlight(),options);exam.addEventListener('click',()=>{this.release();backToExam();},options);
@@ -64,8 +65,10 @@ export class Spectator {
   else {this.release();this.pitch=.35;}
  }
  private cycle(direction:number){if(!this.ids.length)return;if(!this.target){this.target=direction>0?this.ids[0]:this.ids[this.ids.length-1];return;}const i=this.ids.indexOf(this.target);this.target=this.ids[(Math.max(0,i)+direction+this.ids.length)%this.ids.length];}
- update(dt:number,remotes:Map<string,{mesh:Group}>,visible=true){
+ update(dt:number,remotes:Map<string,{mesh:Group}>,visible=true,canReturnToExam=true){
   const shown=this.net.spectating&&visible;
+  this.exam.hidden=!canReturnToExam;
+  const examButton=document.querySelector<HTMLElement>('#spectator-exam');if(examButton)examButton.hidden=!canReturnToExam;
   if(this.shown&&!shown)this.release();
   if(!this.shown&&shown){this.target='';this.yaw=0;this.pitch=.35;this.distance=7;}
   this.shown=shown;this.root.hidden=!shown;

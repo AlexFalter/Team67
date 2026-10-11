@@ -123,5 +123,12 @@ test('live server retains progress at the global deadline and replicates it to a
       assert(result.examStartedAt >= room.state.startedAt);
       assert.equal(room.state.results.get(observer.sessionId)!.examScore, 0);
     }
+    let spectating = false;
+    student.onMessage('spectateResult', (result: {ok:boolean}) => { spectating = result.ok; });
+    student.send('spectate', {roundStartedAt:student.state.startedAt});
+    await until(() => spectating && observer.state.members.get(student.sessionId)?.spectator === true && !observer.state.players.has(student.sessionId), 'completed exam can spectate after the global deadline');
+    assert.equal(observer.state.results.get(student.sessionId)!.examScore,1800,'conversion preserves frozen exam results');
+    student.send('move',[0,0,0,0,0,0,0,0]);
+    assert.equal(observer.state.players.has(student.sessionId),false,'spectating never restores gameplay');
   }, 'zurich', { ROUND_DURATION_MS: '2000' });
 });

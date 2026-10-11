@@ -56,7 +56,7 @@ export interface MapTheme {
     zenith: string; upper: string; horizon: string; glow: string; sun: string;
     cloudLit: string; cloudShade: string; pixel?: number; sunSize?: number;
   };
-  /** Colour grade after tone mapping (scene/colorGrade.ts; tune with the G dev panel, paste its JSON here). */
+  /** Colour grade after tone mapping (scene/colorGrade.ts; tune with ?grade, paste its JSON here). */
   grade?: Partial<import("../../scene/colorGrade").ColorGrade>;
   surfaces: Record<string, SurfaceStyle>;
   trees: { leaves: string[]; conifer: string[]; trunk: string[] };

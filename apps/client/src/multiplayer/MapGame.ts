@@ -1,3 +1,4 @@
+import {railSoundProfile} from './vehicleSoundProfiles.ts';
 import {DroneFeature} from './streaks/DroneFeature.ts';
 import {GtrDonuts} from './vehicles/gtr/GtrDonuts.ts';
 import {AwpFeature} from './weapons/AwpFeature.ts';
@@ -158,7 +159,7 @@ export class MapGame {
     this.spectator=new Spectator(this.net,camera,canvas,()=>{this.controls.suspendForMap();this.exam.returnToExam();},()=>{void this.controls.resume();});
     this.net.onSpectate=()=>{this.maps.closeForTeleport();this.local.enabled=false;this.local.clear();this.exam.spectate();this.controls.suspendForMap();};
     this.maps = new RaceMap(this.net, () => ({ ...this.local.body, enabled: this.local.enabled }),
-      () => [...this.npcs.mapMarkers(), { ...this.mate.machine.position, label: "El Tony Mate" },{x:C.AWP_RACK.approach[0],y:C.AWP_RACK.approach[1],z:C.AWP_RACK.approach[2],label:"Nerf AWP"},{x:C.GTR_DONUTS.center[0],y:C.GTR_DONUTS.center[1],z:C.GTR_DONUTS.center[2],label:"GT-R donuts"}],
+      () => [...this.npcs.mapMarkers(), { ...this.mate.machine.position, label: "El Tony Mate" },...C.AWP_RACKS.map(({approach:[x,y,z]})=>({x,y,z,label:"Nerf AWP"})),{x:C.GTR_DONUTS.center[0],y:C.GTR_DONUTS.center[1],z:C.GTR_DONUTS.center[2],label:"GT-R donuts"}],
       () => !!this.net.canPlay && !this.trafficEditor?.active && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now() >= this.derailUntil && !!document.querySelector<HTMLElement>("#pause")!.hidden,
       () => this.controls.suspendForMap(), () => void this.controls.resume(),()=>this.drone.blips,()=>this.drone.active?this.drone.scanStart:undefined);
     this.net.onMapTeleport=({from,target})=>{this.maps.closeForTeleport();this.local.clear();this.npcs.playMapTeleport(from,target);};
@@ -185,7 +186,7 @@ export class MapGame {
         }
         if (state.introComplete) camera.up.set(0, 1, 0);
         this.traffic.patch(state);
-        if (import.meta.env.DEV && state.devMode && state.hostId === id && !this.trafficEditor && (!this.net.offline || new URLSearchParams(location.search).has("trafficEditor"))) {
+        if (import.meta.env.DEV && state.devMode && state.hostId === id && !this.trafficEditor && new URLSearchParams(location.search).has("trafficEditor")) {
           this.trafficEditor = new TrafficEditor(scene, camera, canvas, map);
           this.trafficEditor.bind(this.net.room);
         }
@@ -272,6 +273,7 @@ export class MapGame {
     const examWasActive = this.exam.active;
     // Encounters keep camera ownership until they finish; vehicles also block exam entry.
     this.exam.update(this.local.body, (this.net.canPlay||this.net.spectating) && (!state?.adminMode || this.net.offline), this.local.enabled && !this.publiBikes.active && !this.mate.active && !this.npcs.active && !this.emotes.opened && this.net.now()>=this.derailUntil, state?.startedAt ?? 0, remaining, now);
+    if (this.net.spectating && !this.exam.active) this.exam.spectate();
     if (!examWasActive && this.exam.active) { this.net.beginExam(this.local.body); this.controls.suspendForMap(); }
     this.vehicles.render(renderTime, dt, "rail");
     this.transitScenery.update(state?.vehicles?.values() ?? [], this.net.now(), this.net.canPlay, state?.vehicles?.get(this.local.body.vehicleId));
@@ -373,7 +375,7 @@ export class MapGame {
         this.firstBody.visible=false;this.mesh.visible=this.avatarReady;
       }
     }
-    this.spectator.update(dt,this.remotes.players,this.exam.spectating);
+    this.spectator.update(dt,this.remotes.players,this.exam.spectating,this.exam.entered&&!this.exam.completed);
     this.updateAudio(dt, renderTime);
   }
   private get listener() { return this.net.spectating?this.camera.position:this.local.body; }
@@ -397,7 +399,7 @@ export class MapGame {
             : (clock - (latest.arrivalAt - C.TRANSIT_DOOR_MS)) / C.TRANSIT_DOOR_MS;
           const frame = C.railFrame(v);
           // A derailed tram goes quiet; main's explosion effect provides the crash sound.
-          sources.set(key, { sample: "rail-running", motor: false, active: !v.derailStartedAt, speed: latest.traveling ? speed : 0, x: frame.x, z: frame.z, aboard, door: open > 0.5 });
+          sources.set(key, { ...railSoundProfile(v.kind,speed), motor: false, active: !v.derailStartedAt, speed: latest.traveling ? speed : 0, x: frame.x, y: frame.y, z: frame.z, aboard, door: open > 0.5 });
         } else if (v.kind === 2) sources.set(key, { motor: false, active: true, speed: 0, x, z, aboard, crashed: latest.fallenUntil > this.net.now() });
       }
       // Interview helicopter rotor loop follows replicated aircraft positions.
@@ -414,9 +416,11 @@ export class MapGame {
         this.lastCanDrop = mate.dropStartedAt; this.audio.effect("canDrop");
       }
     }
+    if(playing)for(const [key,source] of this.traffic.audioSources)sources.set(key,source);
     const gtrSound=this.gtr.audioSource;if(gtrSound&&playing)sources.set("gtr-donuts",gtrSound);
     const listener = this.bus.active ? this.bus.focus : this.listener;
     this.audio.update(sources, listener, { paused: !playing || this.controlsPaused, duck: this.npcs.active || this.mate.active || this.publiBikes.active });
+    this.audio.examClock(this.net.now(), this.exam.takingExam && (this.net.offline || examSecondsRemaining(state?.endsAt ?? 0,this.net.now()) > 0) && !this.controlsPaused);
     if (this.net.canPlay && !this.exam.active && !this.npcs.active) this.audio.movement(dt, body, this.local.pushing, this.net.now());
   }
   private get controlsPaused() { return !document.querySelector<HTMLElement>("#pause")?.hidden; }
@@ -424,7 +428,7 @@ export class MapGame {
   skipExamTransition() { this.exam.skipTransition(); }
   completeExam(score: number) { this.exam.complete(score); }
   reportExamProgress(progress: import("@race/shared").ExamScore) { this.net.reportExamProgress(progress); }
-  returnFromExam() { if(this.net.spectating){this.exam.spectate();return;}this.exam.returnToWorld(); this.controls.restoreGameplay(); }
+  returnFromExam() { this.spectate(); }
   debugTeleportToTerrace(enterPortal = false) {
     if (!import.meta.env.DEV || !this.net.room?.state.devMode || !this.net.canPlay || this.maps.active || this.exam.active || this.mate.active || this.publiBikes.active || this.npcs.active || this.net.now()<this.derailUntil) return;
     this.local.clear(); this.local.body.vx = this.local.body.vy = this.local.body.vz = 0;

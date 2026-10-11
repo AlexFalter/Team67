@@ -12,9 +12,9 @@ import { ExamPaperHeader } from './ExamPaperHeader';
 import './exam-paper.css';
 
 /** The final clock can override the standalone 30-second timer. */
-export type EthBlurProps = { unlimited?: boolean; remainingSeconds?: number; onComplete?: (score: number) => void; onProgress?: (progress: ExamScore) => void; startImmediately?: boolean; onExit?: () => void; visible?: boolean };
+export type EthBlurProps = { unlimited?: boolean; remainingSeconds?: number; onComplete?: (score: number) => void; onProgress?: (progress: ExamScore) => void; startImmediately?: boolean; onExit?: () => void; exitLabel?: string; visible?: boolean };
 type Feedback = { kind: 'correct' | 'wrong' | 'skip'; text: string } | null;
-export function EthBlur({ unlimited = false, remainingSeconds, onComplete, onProgress, startImmediately = true, onExit, visible = true }: EthBlurProps) {
+export function EthBlur({ unlimited = false, remainingSeconds, onComplete, onProgress, startImmediately = true, onExit, exitLabel = 'Back to the world', visible = true }: EthBlurProps) {
   const [started, setStarted] = useState(startImmediately);
   const [duration] = useState(() => readDuration(window.location.search));
   const [deck] = useState(createDeck);
@@ -123,7 +123,7 @@ export function EthBlur({ unlimited = false, remainingSeconds, onComplete, onPro
         <h1>{exhausted ? 'Exam complete.' : 'Time’s up.'}</h1>
         <p>{correct} buildings recognised · {score.toLocaleString()} points</p>
         <div className="exam-finish-actions">
-          {onExit ? <button className="paper-button" onClick={onExit}>Back to the world</button> : <a className="paper-button" href="/">Back to the world</a>}
+          {onExit ? <button className="paper-button" onClick={onExit}>{exitLabel}</button> : <a className="paper-button" href="/">Back to the world</a>}
         </div>
       </section> : <>
         <div className="exam-cover-title">
@@ -142,7 +142,7 @@ export function EthBlur({ unlimited = false, remainingSeconds, onComplete, onPro
             <BuildingAnswer value={query} length={current.code.length} readOnly={resolving} inputRef={input} onChange={setQuery} />
             <p id="building-answer-hint"><kbd>Enter</kbd> submits · <kbd>→</kbd> reveals more detail.</p>
             <div className="exam-answer-actions">
-              <button className="paper-button primary" disabled={!ready || resolving || !query.trim()} type="submit">Submit answer <span aria-hidden="true">↵</span></button>
+              <button className="paper-button primary" disabled={!ready || resolving || !query.trim()} type="submit">Submit answer <kbd>Enter</kbd></button>
               <button className="paper-button" type="button" onClick={() => changeReveal(Math.min(5, reveal + 1))} disabled={!ready || resolving || reveal === 5}>
                 {reveal === 5 ? 'Fully revealed' : 'Reveal detail'} <kbd>→</kbd>
               </button>

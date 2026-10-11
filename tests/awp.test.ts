@@ -40,6 +40,22 @@ test('AWP ownership requires a clear, nearby pickup and resets each round',()=>{
  const [x,y,z]=C.awpRackPlacement(C.flatWorld).approach;Object.assign(p,{x,y,z});f.command('pickup');assert.equal(p.awpOwned,true);assert.equal(p.awpEquipped,true);assert.equal(p.awpAmmo,10);p.awpAmmo=4;f.command('pickup');assert.equal(p.awpAmmo,4);f.manager.reset();assert.equal(p.awpOwned,false);
  const state=new RaceState({startedAt:123});state.players.set('a',new Player({x:x-1,y,z}));const world={...C.flatWorld,blocked:(px:number)=>px>x-.6&&px<x-.4};const manager=new AwpManager(state,world,()=>true,()=>false,()=>false,()=>{});manager.command('a',{action:'pickup',roundStartedAt:123},1000);assert.equal(state.players.get('a')!.awpOwned,false);
 });
+test('all three wall AWPs independently grant a weapon to nearby players',()=>{
+ const racks=C.awpRackPlacements(C.flatWorld);
+ assert.equal(racks.length,3);
+ assert.equal(new Set(racks.map(r=>r.approach.join(','))).size,3);
+ const state=new RaceState({startedAt:123});
+ const manager=new AwpManager(state,C.flatWorld,()=>true,()=>false,()=>false,()=>{});
+ for(const [index,{approach:[x,y,z]}] of racks.entries()){
+  const id=`player-${index}`,player=new Player({x,y,z});state.players.set(id,player);
+  manager.command(id,{action:'pickup',roundStartedAt:123},1000);
+  assert.equal(player.awpOwned,true,`pickup ${index+1}`);
+  assert.equal(player.awpEquipped,true);assert.equal(player.awpAmmo,C.AWP_MAGAZINE);
+ }
+ const far=new Player({x:0,y:0,z:0});state.players.set('far',far);
+ manager.command('far',{action:'pickup',roundStartedAt:123},1000);
+ assert.equal(far.awpOwned,false);
+});
 test('post-shot bolt cycling prevents another shot or reload until the chamber is ready',()=>{
  const f=fixture();f.command('equip');f.command('fire',1000);f.command('reload',1100);assert.equal(f.state.players.get('a')!.awpReloadUntil,0);f.command('fire',2399);assert.equal(f.shots.length,1);f.command('reload',2400);assert.equal(f.state.players.get('a')!.awpReloadUntil,4200);
 });

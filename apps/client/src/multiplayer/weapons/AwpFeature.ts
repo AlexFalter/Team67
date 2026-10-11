@@ -6,7 +6,7 @@ import {createAwpRack} from './awpRack.ts';
 import {NerfDarts} from './nerfDarts.ts';
 import './awp.css';
 import * as THREE from 'three';
-import {AWP_RACK,AWP_COOLDOWN_MS,AWP_MAGAZINE,AWP_RELOAD_MS,AWP_INSPECT_MS,packMove,type AwpShot} from '@race/shared';
+import {AWP_RACKS,AWP_COOLDOWN_MS,AWP_MAGAZINE,AWP_RELOAD_MS,AWP_INSPECT_MS,packMove,type AwpShot} from '@race/shared';
 import type {Network} from '../net.ts';
 import type {LocalPlayer} from '../localPlayer.ts';
 import {createNerfAwp,disposeAwp} from './awpModel.ts';
@@ -33,7 +33,7 @@ export class AwpFeature {
  get eligible(){return (this.player?.droneCallUntil??0)<=this.net.now()&&this.net.canPlay&&this.local.enabled&&this.canUse()&&!this.local.body.vehicleId&&!this.local.body.bagId&&this.local.body.knockdownUntil<=this.net.now()&&(this.local.body.moodleSitUntil??0)<=this.net.now()&&!this.net.room?.state.players.get(this.net.room.sessionId)?.emoteId;}
  get owned(){return this.player?.awpOwned===true;}
  get available(){return this.owned&&this.eligible;}
- get nearby(){const p=this.local.body,[x,y,z]=AWP_RACK.approach;return !this.owned&&this.eligible&&Math.hypot(p.x-x,p.y-y,p.z-z)<1.7;}
+ get nearby(){const p=this.local.body;return !this.owned&&this.eligible&&AWP_RACKS.some(({approach:[x,y,z]})=>Math.hypot(p.x-x,p.y-y,p.z-z)<=1.7);}
  interact(){if(!this.nearby)return false;this.net.room.send("move",packMove(this.local.body));this.send("pickup");return true;}
  get occupiesHands(){return this.owned&&this.equipped&&!this.local.body.bagId&&!this.local.body.vehicleId;}
  private get player(){return this.net.room?.state?.players?.get(this.net.room.sessionId);}

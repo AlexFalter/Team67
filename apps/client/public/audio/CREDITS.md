@@ -70,3 +70,5 @@ Fortnite emote clip sources and filenames are listed in [emotes/CREDITS.md](emot
 - `cat-angry-yowl.mp3`: “Cat, Screaming, A.wav” by InspectorJ (www.jshaw.co.uk) of Freesound.org. Source: https://freesound.org/people/InspectorJ/sounds/415209/ . CC BY 4.0: https://creativecommons.org/licenses/by/4.0/ . Derived from the publicly served HQ preview; full cat scream, -15 LUFS / -2 dBTP normalization, 10 ms attack / 70 ms tail fades, 128 kbps MP3.
 
 - `cycling-kid-gut-genug-chorus.mp3`: restored existing original chorus edit from `origin/mini-games-2`; KITSCHKRIEG feat. Blumengarten & Shirin David, “Gut genug”, official video https://www.youtube.com/watch?v=0GnA8VYOfko (00:13.30–00:21.80). Edit metadata: `src/npcPrototype/src/npcs/cycling-kid/song.json`.
+
+Transit additions: the Polybahn cable-drive loop and tram/Polybahn departure chimes are original procedural audio in `src/multiplayer/transitAudio.ts`. The tram uses a Swiss-style three-note cue, not an official SBB recording. Road sedans and sports cars reuse `car-engine.mp3` with different pitch profiles; tractors reuse the lower-pitched `bus-engine.mp3`.

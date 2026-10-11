@@ -34,7 +34,7 @@ export function MapViewer({ examPreview = false, offline = false }: { examPrevie
     <div className="map-viewer" data-playing={playing} data-exam-active={examSession.stage !== "world" && examSession.stage !== "spectate"}>
       <MapCanvas key={playing ? "play" : "inspect"} playing={playing}
         resolution={resolution} onResolutionChange={setResolution} examSession={examSession} onExamChange={setExamSession} examPreview={examPreview} offline={offline} />
-      {!examPreview && !offline && <button
+      {import.meta.env.DEV && new URLSearchParams(location.search).has("trafficEditor") && !examPreview && !offline && <button
         className="mode-toggle"
         onClick={() => { setExamSession(emptyExamSession); setPlaying((value) => !value); }}
       >
@@ -147,7 +147,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
         );
         // colour grade after tone mapping (theme "grade", dev panel: G or ?grade)
         grade = createColorGrade(renderer, scene, camera, { exposure: theme.lighting.exposure ?? 1, ...theme.grade });
-        if (!examPreview) disposeGradePanel = mountGradePanel(grade, abort.signal);
+        if (!examPreview) disposeGradePanel = mountGradePanel(grade);
         if (examPreview) {
           const start = examFlyoverPosition(0);
           camera.position.set(start.x, start.y, start.z);
@@ -166,7 +166,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
           controls.maxDistance = 2500;
           controls.maxPolarAngle = Math.PI / 2 - 0.02;
           controls.update();
-          if (import.meta.env.DEV) {
+          if (import.meta.env.DEV && new URLSearchParams(location.search).has("trafficEditor")) {
             trafficEditor = new TrafficEditor(scene, camera, canvas!, map, true);
             controls.enabled = !trafficEditor.active;
           }
@@ -287,7 +287,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
         onProgress={progress => { if (!examPreview) gameRef.current?.reportExamProgress(progress); }}
         onComplete={score => examPreview ? previewRef.current?.complete(score) : gameRef.current?.completeExam(score)}
         onExit={() => examPreview ? location.assign("/") : gameRef.current?.returnFromExam()} />}
-      {playing && !examPreview && <ExamDebugButton enabled={examSession.canEnter && examSession.stage === "world"}
+      {import.meta.env.DEV && offline && playing && !examPreview && <ExamDebugButton enabled={examSession.canEnter && examSession.stage === "world"}
         onTeleport={enterPortal => gameRef.current?.debugTeleportToTerrace(enterPortal)} />}
       {playing && !examPreview && <GameOverlay offline={offline} resolution={resolution} onResolutionChange={onResolutionChange} />}
       {import.meta.env.DEV && offline && <UiPlayground ready={initialized && !failed}

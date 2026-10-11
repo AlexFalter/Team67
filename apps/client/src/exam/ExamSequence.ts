@@ -13,6 +13,7 @@ export class ExamSequence {
   private enteredRound = -1;
   private started = 0;
   private score = 0;
+  private finished = false;
   private lastPublish = 0;
   private remaining = 0;
   private canEnter = false;
@@ -24,13 +25,16 @@ export class ExamSequence {
     this.focus.set(target.x, target.y, target.z);
   }
   get active() { return this.stage !== 'world'; }
+  get entered(){return this.round!==0&&this.enteredRound===this.round;}
+  get completed(){return this.finished;}
+  get takingExam(){return this.stage==='exam';}
   get spectating(){return this.stage==='spectate';}
   get screenVisible() { return this.stage === 'exam' || this.stage === 'complete'; }
   update(body: Body, canPlay: boolean, controlsEnabled: boolean, round: number, remaining: number, now: number) {
     this.remaining = remaining; this.canEnter = canPlay;
     this.portal.update(now);
-    if (round && round !== this.round) {
-      this.round = round; this.enteredRound = -1; this.score = 0;
+    if (round !== this.round) {
+      this.round = round; this.enteredRound = -1; this.score = 0; this.finished = false;
       this.abort.abort(); this.abort = new AbortController(); this.stage = 'world';
       this.notify();
     }
@@ -65,8 +69,8 @@ export class ExamSequence {
     this.abort.abort(); this.stage = 'exam'; this.notify();
   }
   spectate(){this.abort.abort();this.stage='spectate';this.notify();}
-  returnToExam(){if(this.stage==='spectate'){this.stage='exam';this.notify();}}
-  complete(score: number) { this.score = score; if (!this.spectating) this.stage = 'complete'; this.notify(); }
+  returnToExam(){if(this.stage==='spectate'&&this.entered&&!this.finished){this.stage='exam';this.notify();}}
+  complete(score: number) { this.finished = true; this.score = score; if (!this.spectating) this.stage = 'complete'; this.notify(); }
   returnToWorld() { this.abort.abort(); this.stage = 'world'; this.notify(); }
   private notify() { this.publish({ stage: this.stage, remainingSeconds: this.remaining, canEnter: this.canEnter, score: this.score, ...(this.unlimited ? { unlimited: true } : {}) }); }
   dispose() { this.abort.abort(); this.portal.dispose(); }

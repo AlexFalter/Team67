@@ -12,7 +12,7 @@ export class AwpManager {
   if(d.action==='drone'){if(p.droneReady&&p.droneScanUntil<=now&&p.awpInspectUntil<=now&&!p.awpReloadUntil&&now>=(this.cooldown.get(id)??0)){p.droneReady=false;p.awpEquipped=false;p.droneCallUntil=now+C.DRONE_CALL_MS;p.droneScanUntil=p.droneCallUntil+C.DRONE_SCAN_MS;this.scans.delete(id);}return;}
   if(p.droneCallUntil>now)return;
   if(d.action==='pickup'){
-   if(p.awpOwned)return;const approach=C.awpRackPlacement(this.world).approach;if(Math.hypot(p.x-approach[0],p.y-approach[1],p.z-approach[2])>1.7)return;const position=[approach[0],approach[1]+1.6,approach[2]],origin=[p.x,p.y+1.6,p.z],delta=position.map((v,i)=>v-origin[i]),distance=Math.hypot(...delta);
+   if(p.awpOwned)return;const rack=C.awpRackPlacements(this.world).find(({approach:[x,y,z]})=>Math.hypot(p.x-x,p.y-y,p.z-z)<=1.7);if(!rack)return;const approach=rack.approach;const position=[approach[0],approach[1]+1.6,approach[2]],origin=[p.x,p.y+1.6,p.z],delta=position.map((v,i)=>v-origin[i]),distance=Math.hypot(...delta);
    if(C.awpWallDistance(this.world,origin,delta.map(v=>v/(distance||1)))<distance-.12)return;
    p.awpOwned=true;p.awpAmmo=C.AWP_MAGAZINE;p.awpReserve=C.AWP_RESERVE;p.awpEquipped=true;p.awpInspectUntil=now+C.AWP_INSPECT_MS;return;
   }

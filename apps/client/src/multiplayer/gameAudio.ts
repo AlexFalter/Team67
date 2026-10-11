@@ -1,3 +1,4 @@
+import {transitAudioBuffers} from './transitAudio.ts';
 import type {DroneSound} from './streaks/droneSoundCues.ts';
 import * as C from "@race/shared";
 
@@ -7,7 +8,7 @@ import * as C from "@race/shared";
 
 const BASE = `${(import.meta.env?.BASE_URL ?? "/")}audio/`;
 type DroneSample = `drone/bo3-${DroneSound}`;
-type Sample = DroneSample | "helicopter-rotor" | "bus-engine" | "car-engine" | "rail-running" | "vehicle-door" | "footstep-left"
+type Sample = "exam-tick" | "polybahn-running" | "tram-chime" | "polybahn-chime" | DroneSample | "helicopter-rotor" | "bus-engine" | "car-engine" | "rail-running" | "vehicle-door" | "footstep-left"
   | "footstep-right" | "collision-thud" | "bo3-medal-earned" | "cow-moo";
 const SAMPLES: Sample[] = ["drone/bo3-ready","drone/bo3-request","drone/bo3-tablet","drone/bo3-online","drone/bo3-scan","drone/bo3-end","helicopter-rotor", "bus-engine", "car-engine", "rail-running", "vehicle-door", "footstep-left",
   "footstep-right", "collision-thud", "bo3-medal-earned", "cow-moo"];
@@ -17,7 +18,7 @@ export type EffectKind = "step" | "jump" | "land" | "collision" | "door" | "cras
 /** One looping engine/rail bed, keyed by vehicle id. */
 export interface LoopSource {
   /** Omitted for vehicles that only produce one-shots (PubliBike crashes). */
-  sample?: "helicopter-rotor" | "bus-engine" | "car-engine" | "rail-running";
+  sample?: "polybahn-running" | "helicopter-rotor" | "bus-engine" | "car-engine" | "rail-running";
   active: boolean;
   /** Motors idle quietly when stopped; rail beds are silent when stopped. */
   motor: boolean;
@@ -32,6 +33,8 @@ export interface LoopSource {
   range?: number;
   volume?: number;
   door?: boolean;
+  /** Play once when open doors close for departure, never on initial state. */
+  departureChime?: "tram-chime" | "polybahn-chime";
   crashed?: boolean;
 }
 interface Voice { gain: GainNode; source: AudioBufferSourceNode | null; target: number }
@@ -49,6 +52,7 @@ export class GameAudio {
   private abort = new AbortController();
   private paused = false;
   private droneVoice?:AudioBufferSourceNode;
+  private lastExamSecond?: number;
   private stepAge = 0;
   private stepSide = 0;
   private contact = false;
@@ -85,6 +89,14 @@ export class GameAudio {
       this.noise = context.createBuffer(1, context.sampleRate * 2, context.sampleRate);
       const data = this.noise.getChannelData(0);
       for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      const tick = context.createBuffer(1, Math.round(context.sampleRate * .055), context.sampleRate);
+      const tickData = tick.getChannelData(0);
+      for (let i = 0; i < tickData.length; i++) {
+        const t = i / context.sampleRate, envelope = Math.min(1, t / .001) * Math.exp(-t * 130) * (1 - i / tickData.length);
+        tickData[i] = envelope * (.55 * Math.sin(Math.PI * 2 * 1400 * t) + .3 * Math.sin(Math.PI * 2 * 420 * t));
+      }
+      this.buffers.set("exam-tick", tick);
+      for (const [name, buffer] of transitAudioBuffers(context)) this.buffers.set(name, buffer);
       for (const name of SAMPLES) this.load(name);
     }
     void this.context.resume().catch(() => {});
@@ -213,6 +225,15 @@ export class GameAudio {
     }).catch(() => {});
   }
 
+  /** Exam audio stays audible while the world vehicle mix is paused. No catch-up ticks. */
+  examClock(now: number, active: boolean) {
+    if (!active || !Number.isFinite(now) || !this.settings.vehicleSounds ||
+      this.context?.state !== "running" || document.hidden) { this.lastExamSecond = undefined; return; }
+    const second = Math.floor(now / 1000), previous = this.lastExamSecond;
+    this.lastExamSecond = second;
+    if (previous !== undefined && second > previous) this.play("exam-tick", .22, { cooldown: .8 });
+  }
+
   /** Local player footsteps, jump take-off, landing and wall bumps. */
   movement(dt: number, body: C.Body, pushing: boolean, now: number) {
     const speed = Math.hypot(body.vx, body.vz), down = now < body.knockdownUntil;
@@ -269,6 +290,8 @@ export class GameAudio {
       // Do not replay transitions accumulated while paused or muted.
       if (audible && proximity > 0.1 && old?.audible && s.door !== undefined && s.door !== old.door)
         this.play("vehicle-door", 0.18 * proximity * (duck ? 0.3 : 1), { key: `door:${key}` });
+      if (audible && old?.audible && proximity > .01 && old.door === true && s.door === false && s.departureChime)
+        this.play(s.departureChime, .5 * proximity * (duck ? .3 : 1), { key: `departure:${key}`, cooldown: 2 });
       if (s.crashed && old && !old.crashed && this.settings.vehicleSounds && !this.paused && proximity > 0.1) this.effect("crash", Math.max(0.4, proximity));
       this.previous.set(key, { ...s, audible });
     }

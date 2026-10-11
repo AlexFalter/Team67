@@ -80,13 +80,13 @@ export class RoomFlow {
     this.message.textContent = state.phase === RoomPhase.Lobby
       ? this.lobbyMessage()
       : state.phase === RoomPhase.Running
-        ? "You joined during a round. Wait here; you can play in the next round."
+        ? "You joined during a round. Spectate now; you can play in the next round."
         : host ? "Everyone can see these results. Return to the lobby to play again."
           : "Everyone can see these results. Waiting for the host to return to the lobby.";
     const items = document.createDocumentFragment();
     for (const [memberId, m] of state.members) {
       const item = document.createElement("li");
-      const status = state.phase === RoomPhase.Lobby ? "IN LOBBY" : m.spectator ? "WAITING" : "PLAYING";
+      const status = state.phase === RoomPhase.Lobby ? "IN LOBBY" : m.spectator ? "SPECTATING" : "PLAYING";
       const icon = document.createElement("span"); icon.className = "roster-avatar";
       icon.textContent = ["CS", "SA", "AE", "RD"][m.character] ?? "CS";
       const name = document.createElement("span"); name.className = "roster-player"; name.textContent = m.name;

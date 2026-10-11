@@ -4,7 +4,14 @@ import type {MovementWorld} from './world.ts';
 export const AWP_RANGE=150, AWP_COOLDOWN_MS=1400, AWP_MAGAZINE=10, AWP_RESERVE=10, AWP_RELOAD_MS=1800, AWP_INSPECT_MS=2600;
 export const AWP_KNOCKBACK=28, AWP_LIFT=5;
 export const AWP_RACK=layout.awpRack;
+// Separate pickup spots along the wall, all using the same weapon rules.
+function rackPlacements(rack:typeof AWP_RACK){return [0,-2,2].map(offset=>({...rack,
+ position:[rack.position[0]+Math.cos(rack.heading)*offset,rack.position[1],rack.position[2]-Math.sin(rack.heading)*offset],
+ approach:[rack.approach[0]+Math.cos(rack.heading)*offset,rack.approach[1],rack.approach[2]-Math.sin(rack.heading)*offset],
+}));}
+export const AWP_RACKS=rackPlacements(AWP_RACK);
 export function awpRackPlacement(world:MovementWorld){return world.name==='zurich'?AWP_RACK:{position:[world.spawn.x+10,world.spawn.y+1.55,world.spawn.z],approach:[world.spawn.x+10,world.spawn.y,world.spawn.z],heading:0};}
+export function awpRackPlacements(world:MovementWorld){return world.name==='zurich'?AWP_RACKS:rackPlacements(awpRackPlacement(world));}
 export interface AwpShot {roundStartedAt:number;from:string;start:number[];end:number[];target:string;hit:boolean;droneEarned?:boolean;attachment?:{part:'head'|'body';offset:number[];direction:number[]}}
 // Exact intersection with the standing capsule: cylinder plus rounded caps.
 export function awpCapsuleDistance(origin:number[],direction:number[],p:Pick<PlayerState,'x'|'y'|'z'>){

@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import type {LoopSource} from './gameAudio.ts';
+import {trafficEngineSource} from './vehicleSoundProfiles.ts';
 import { MAX_TRAFFIC_CARS, TRAFFIC_PALETTES, type TrafficCarState, type TrafficCarKind, type WorldState } from '@race/shared';
 import type { TrafficRoadSurface } from './trafficRoadSurface.ts';
 import { createTrafficModel, type TrafficWheel } from './trafficModels.ts';
@@ -12,6 +14,7 @@ interface Batch {
 }
 
 export class TrafficRenderer {
+  readonly audioSources = new Map<string, LoopSource>();
   private frames = new Map<string, Frame[]>();
   private travel = new Map<string, { x: number; z: number; distance: number }>();
   private batches: Batch[];
@@ -59,6 +62,7 @@ export class TrafficRenderer {
   }
 
   render(time: number) {
+    this.audioSources.clear();
     const counts = [0, 0, 0];
     let total = 0;
     for (const [id, frames] of this.frames) {
@@ -81,6 +85,7 @@ export class TrafficRenderer {
         return roadY !== undefined && Math.abs(roadY - positionY) < 3 ? roadY : undefined;
       };
       const groundY = height(0, 0) ?? positionY;
+      this.audioSources.set(`traffic:${id}`,trafficEngineSource({x:positionX,y:groundY,z:positionZ,rotY:yaw,kind,speed:THREE.MathUtils.lerp(previous.speed,next.speed,fraction)}));
       const rearZ = batch.wheelLayout[0].z, frontZ = batch.wheelLayout[1].z;
       const track = Math.abs(batch.wheelLayout[0].x);
       const front = height(0, frontZ) ?? groundY, rear = height(0, rearZ) ?? groundY;
@@ -129,6 +134,6 @@ export class TrafficRenderer {
       }
     }
     this.paintMaterial.dispose(); this.detailMaterial.dispose();
-    this.frames.clear(); this.travel.clear();
+    this.frames.clear(); this.travel.clear(); this.audioSources.clear();
   }
 }

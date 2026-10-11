@@ -16,8 +16,10 @@ releases pointer lock; the original
 network connection and server clock keep running. Each player can enter once
 per round. The next round resets the entrance. The exam uses the exact server
 `endsAt - Network.now()` time; its standalone 30s / `?time=` setting is ignored.
-Finishing the deck early leaves the score screen open. Returning to the world
-preserves membership and lets the existing room results/restart UI work.
+Finishing the deck early leaves the score screen open. After completion, **Spectate** removes the gameplay body while preserving membership
+and exam results. The player cannot return to gameplay or reopen a completed quiz;
+the next round restores normal participation. Spectating is also accepted after the
+round deadline for players with a validated exam entry.
 Every correct answer immediately reports its accumulated score and correct count
 to the existing room connection. `examStart` is accepted only for an active
 participant at the server-confirmed portal; `examProgress` is tied to that

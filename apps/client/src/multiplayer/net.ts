@@ -42,8 +42,8 @@ export class Network {
   onMapTeleport?: (data:{from:{x:number;y:number;z:number};target:{x:number;y:number;z:number};roundStartedAt:number})=>void;
   private spectatorRound?:number;
   onSpectate?:()=>void;
-  get spectating(){return !!this.room&&this.room.state.phase===RoomPhase.Running&&this.spectatorRound===this.room.state.startedAt;}
-  requestSpectate(){if(this.canPlay)this.room.send("spectate",{roundStartedAt:this.room.state.startedAt});}
+  get spectating(){return !!this.room&&(this.room.state.phase===RoomPhase.Running||this.room.state.phase===RoomPhase.Finished)&&this.spectatorRound===this.room.state.startedAt;}
+  requestSpectate(){if(this.canPlay || this.initialized && this.room?.state.phase===RoomPhase.Finished && (this.room.state.results?.get(this.room.sessionId)?.examStartedAt ?? 0)>0)this.room.send("spectate",{roundStartedAt:this.room.state.startedAt});}
   npcPaused = false;
   now() {
     return Date.now() + this.offset;
@@ -110,9 +110,16 @@ export class Network {
       }
       this.phase = state.phase;
       this.introComplete = state.introComplete;
+      // Late arrivals already have server-owned spectator membership, with no player body.
+      if (state.phase === RoomPhase.Running && state.members.get(this.room.sessionId)?.spectator && this.spectatorRound !== state.startedAt) {
+        this.spectatorRound = state.startedAt;
+        if (!this.initialized) this.offset = state.serverTime - Date.now();
+        this.initialized = true;
+        this.onSpectate?.();
+      }
       onPatch(state, this.room.sessionId);
     });
-    this.room.onMessage<{ok:boolean;roundStartedAt:number}>('spectateResult',data=>{if(data.ok&&data.roundStartedAt===this.room.state.startedAt){this.spectatorRound=data.roundStartedAt;this.onSpectate?.();}});
+    this.room.onMessage<{ok:boolean;roundStartedAt:number}>('spectateResult',data=>{if(data.ok&&data.roundStartedAt===this.room.state.startedAt){if(this.spectatorRound!==data.roundStartedAt){this.spectatorRound=data.roundStartedAt;this.onSpectate?.();}}});
     this.room.onMessage<{from:{x:number;y:number;z:number};target:{x:number;y:number;z:number};roundStartedAt:number}>('mapTeleportResult',data=>{if(data.roundStartedAt===this.room.state.startedAt)this.onMapTeleport?.(data);});
     this.room.onMessage<{ok:boolean;action:string;message:string;roundStartedAt:number}>('bagResult',data=>{if(data.roundStartedAt===this.room.state.startedAt)this.onBagResult?.(data);});
     this.room.onMessage<{ok:boolean;step:number;unlocked:boolean;reason?:string;roundStartedAt:number}>('emoteChallengeResult',data=>{if(data.roundStartedAt!==this.room.state.startedAt)return;if(data.ok&&data.unlocked)this.emoteUnlockRound=data.roundStartedAt;this.onEmoteChallengeResult?.(data);});

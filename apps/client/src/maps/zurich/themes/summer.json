@@ -79,7 +79,7 @@
       "spire": ["#5f9c8c", "#6aa595", "#57917f"]
     }
   },
-  "grade": {"$comment": "Colour grade after tone mapping (scene/colorGrade.ts), tuned in the G dev panel.", "exposure": 1.24, "temperature": -0.11, "tint": 0.06, "saturation": 1.42, "vibrance": 0.33, "contrast": 0.96, "brightness": -0.005, "gamma": 0.91, "lift": 0, "shadowTint": "#534e46", "highlightTint": "#9fa098"},
+  "grade": {"$comment": "Colour grade after tone mapping (scene/colorGrade.ts), tuned in the ?grade dev panel.", "exposure": 1.24, "temperature": -0.11, "tint": 0.06, "saturation": 1.42, "vibrance": 0.33, "contrast": 0.96, "brightness": -0.005, "gamma": 0.91, "lift": 0, "shadowTint": "#534e46", "highlightTint": "#9fa098"},
   "lighting": {
     "$comment": "Sun + world light, identical in Blender (scene_light.py) and the game (theme.ts themeLights): sun strength = sunIntensity*1.6 (same number in Blender W/m2 and three.js: both use albedo/pi), uniform sky colour = hemiIntensity*0.55 (groundLight unused). AgX tone mapping at exposure; environment = optional neutral studio fill (0 = off, like Blender).",
     "sun": "#fff2dc",
