@@ -16,6 +16,7 @@ export class ActivityFeed {
   }
   add(message: string) {
     const line = document.createElement('div');
+    line.className = 'pixel-panel';
     line.textContent = message; this.root.append(line); this.root.hidden = false;
     while (this.root.childElementCount > 6) this.root.firstElementChild?.remove();
   }

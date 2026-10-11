@@ -26,7 +26,6 @@ export class Spectator {
  constructor(private net:Network,private camera:PerspectiveCamera,private canvas:HTMLCanvasElement,backToExam:()=>void=()=>{},resume:()=>void=()=>{}){
   this.root.className='spectator-controls';this.root.hidden=true;this.root.setAttribute('aria-label','Spectator controls');
   this.previous.textContent='←';this.previous.setAttribute('aria-label','Previous player');this.next.textContent='→';this.next.setAttribute('aria-label','Next player');
-  if(document.querySelector<HTMLElement>('#pause')?.hidden===false){this.root.hidden=true;this.keys.clear();return;}
   this.flight.textContent='Free flight';const exam=document.createElement('button');exam.textContent='Back to exam';
   this.root.append(this.previous,this.label,this.next,this.flight,exam,this.hint);canvas.parentElement!.append(this.root);
   const options={signal:this.abort.signal};this.previous.addEventListener('click',()=>this.cycle(-1),options);this.next.addEventListener('click',()=>this.cycle(1),options);

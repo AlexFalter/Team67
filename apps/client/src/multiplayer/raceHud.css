@@ -37,40 +37,40 @@
 #round-timer[data-urgent=true] { color: #ffd271; border-color: #ffd271; }
 #round-timer[data-final=true] { top: 18px; transform: translateX(-50%); z-index: 4; width: 196px; padding: 12px 22px 14px; --panel-background: #472426f5; color: #ffb3a4; font: inherit; letter-spacing: normal; text-shadow: none; border-color: #ff907e; }
 #round-timer[data-final=true] #timer-label { color: #ffd3c8; }
-#race-leaderboard { position: absolute; top: 18px; left: 18px; width: 340px; padding: 12px; border: 0; background: rgb(225 229 232 / 55%); color: #fff; pointer-events: none; font-family: "Consolas", ui-monospace, monospace; text-shadow: 2px 2px 0 #10242e, 0 0 3px #10242e; }
-#race-leaderboard h2 { display: flex; justify-content: space-between; gap: 8px; margin: 0 0 12px; padding-bottom: 10px; border-bottom: 3px solid #d7f87a; font-size: 15px; letter-spacing: 1px; color: #d7f87a; }
-#race-leaderboard h2 small { color: #edf4ef; font-size: 12px; letter-spacing: .5px; }
+#race-leaderboard { position: absolute; top: 18px; left: 18px; width: 288px; padding: 14px 16px; pointer-events: none; font-family: var(--ui-font); color: #edf4ef; }
+#race-leaderboard h2 { display: flex; justify-content: space-between; gap: 8px; margin: 0 0 8px; padding-bottom: 10px; border-bottom: 1px solid var(--ui-border); color: var(--ui-heading); font: 700 13px/1.4 var(--ui-font); letter-spacing: .8px; }
+#race-leaderboard h2 small { color: var(--ui-accent); font-size: 10px; letter-spacing: .3px; align-self: center; }
 #race-leaders { list-style: none; padding: 0; margin: 0; }
-#race-leaders li { display: flex; align-items: center; gap: 12px; padding: 10px 4px; font-size: 18px; font-weight: 700; }
-#race-leaders li[data-you=true] { color: #d7f87a; border-left: 3px solid currentColor; padding-left: 8px; }
-.race-place { color: #c7ddd1; font: 700 14px ui-monospace, monospace; }
+#race-leaders li { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 7px 2px; font-size: 13px; font-weight: 500; line-height: 1.4; }
+#race-leaders li[data-you=true] { color: var(--ui-accent); background: #d7f87a09; border-left: 2px solid currentColor; padding-left: 8px; }
+.race-place { min-width: 18px; color: var(--ui-heading); font: 600 11px var(--ui-font); font-variant-numeric: tabular-nums; }
 .race-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#race-leaders b { font-size: 18px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-#race-own-rank { color: #d7f87a; margin: 10px 0 0; font-size: 15px; font-weight: 700; }
-.distance-note { display: block; color: #e0ebe4; font-size: 12px; margin: 10px 4px 0; }
-#race-radar { position: absolute; bottom: 18px; left: 18px; width: 280px; padding: 10px; border: 3px solid #aec8bf; border-radius: 2px; background: #10272fdf; color: #ecf5e8; box-shadow: inset 3px 3px 0 #ffffff18, inset -3px -3px 0 #0005, 4px 4px 0 #071a24a0; }
-.radar-heading { display: flex; align-items: center; justify-content: space-between; margin: 2px 2px 10px; font: 700 13px ui-monospace, monospace; color: #e2eee7; }
+#race-leaders b { color: var(--ui-heading); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#race-own-rank { color: var(--ui-accent); border-top: 1px solid var(--ui-border); padding-top: 10px; margin: 8px 0 0; font-size: 12px; line-height: 1.5; }
+.distance-note { display: block; color: #adc1b9; font-size: 10px; line-height: 1.4; margin: 10px 2px 0; }
+#race-radar { position: absolute; bottom: 18px; left: 18px; width: 240px; padding: 10px; color: #edf4ef; font-family: var(--ui-font); }
+.radar-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 2px 2px 10px; font: 600 11px/1.4 var(--ui-font); color: var(--ui-heading); }
 .radar-heading b { margin-left: 4px; color: #ffd271; font-variant-numeric: tabular-nums; }
-#race-minimap { width: 100%; height: 244px; border: 2px solid #081e28; image-rendering: pixelated; }
-#open-city-map { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; background: transparent; border: 0; color: #d7f87a; padding: 10px 2px 2px; cursor: pointer; font: 700 15px ui-monospace, monospace; text-shadow: 2px 2px 0 #071a24; }
+#race-minimap { display: block; width: 100%; height: 202px; border: 1px solid var(--ui-border); image-rendering: pixelated; }
+#open-city-map { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 36px; width: 100%; background: transparent; border: 0; color: var(--ui-heading); padding: 8px 2px 0; cursor: pointer; font: 600 12px/1.4 var(--ui-font); }
 #open-city-map span { margin-left: auto; }
 #city-map { position: absolute; inset: 0; z-index: 35; padding: 22px; background: #081a24c9; backdrop-filter: blur(6px); color: #e9f2e9; }
-.city-map-panel { display: flex; flex-direction: column; width: min(1100px, 100%); height: 100%; margin: auto; padding: 20px; background: #10272f; border: 1px solid #aecab545; border-radius: 18px; box-shadow: 0 20px 100px #0006; }
+.city-map-panel { display: flex; flex-direction: column; width: min(1040px, 100%); height: 100%; margin: auto; padding: 22px; color: #edf4ef; font: 13px/1.5 var(--ui-font); }
 .city-map-panel header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 0 0 14px; border-bottom: 1px solid #ffffff20; background: transparent; }
-.city-map-panel header span { color: #d7f87a; font: 9px ui-monospace, monospace; letter-spacing: 1.5px; }
-.city-map-panel h2 { margin: 6px 0 0; font-size: 24px; letter-spacing: -.6px; }
-.city-map-panel button { cursor: pointer; padding: 9px 12px; border: 1px solid #ffffff30; border-radius: 6px; background: #ffffff08; color: #e9f2e9; font: 600 12px system-ui; }
+.city-map-panel header span { color: var(--ui-heading); font: 600 11px/1.4 var(--ui-font); letter-spacing: 1px; }
+.city-map-panel h2 { margin: 6px 0 0; color: var(--ui-heading); font: 700 24px/1.25 var(--ui-font); letter-spacing: .4px; }
+.city-map-panel button { cursor: pointer; min-height: 38px; padding: 8px 12px; border: 2px solid var(--ui-border); border-radius: 2px; background: #ffffff08; color: var(--ui-heading); font: 600 12px/1.4 var(--ui-font); }
 .city-map-panel button:hover { border-color: #d7f87a; background: #d7f87a15; }
 .game-shell button:focus-visible { outline: 2px solid #d7f87a; outline-offset: 3px; }
-.map-tools { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
-.map-tools output { min-width: 48px; text-align: center; color: #b0cbbf; font: 11px ui-monospace, monospace; }
+.map-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0; }
+.map-tools output { min-width: 48px; text-align: center; color: var(--ui-heading); font: 12px var(--ui-font); }
 .map-tools button:first-child, .map-tools button:nth-child(3) { min-width: 36px; }
-#city-map-canvas { flex: 1; min-height: 100px; height: 0; width: 100%; border: 1px solid #ffffff25; border-radius: 8px; cursor: grab; touch-action: none; }
+#city-map-canvas { flex: 1; min-height: 100px; height: 0; width: 100%; border: 1px solid var(--ui-border); border-radius: 0; cursor: grab; touch-action: none; }
 #city-map-canvas:active { cursor: grabbing; }
-#map-readout { margin: 10px 0; min-height: 16px; color: #bed0c9; font-size: 11px; }
-.map-legend { display: flex; flex-wrap: wrap; gap: 7px 18px; font-size: 11px; margin-bottom: 10px; }
+#map-readout { margin: 12px 0; min-height: 18px; color: var(--ui-heading); font-size: 12px; }
+.map-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 12px; line-height: 1.5; margin-bottom: 12px; }
 .legend-you { color: #74d8ff; }.legend-player { color: #ec9dce; }.legend-route { color: #ffd271; }.legend-tram { color: #75b9ff; }.legend-poly { color: #ff8eaa; }.legend-npc { color: #d7f87a; }
-.city-map-panel > small { color: #8ea89f; font-size: 9px; }
+.city-map-panel > small { color: #adc1b9; font-size: 10px; line-height: 1.5; }
 #activity-feed { top: 275px; right: 18px; max-width: 242px; font: 11px/1.5 system-ui; }
 #publi-bike-battery { left: 314px; bottom: 18px; font-size: 12px; }
 .map-viewer[data-exam-active=true] :is(#race-radar, #race-leaderboard, #city-map),
@@ -79,20 +79,20 @@
   .map-viewer :is(.map-controls, #npc-hint, #mate-hint) { bottom: 285px; }
   #round-timer, #round-timer[data-final=true] { width: 155px; padding: 10px 16px; }
   #timer-value { font-size: 36px; }
-  #race-leaderboard { width: 280px; }
-  #race-leaders li, #race-leaders b { font-size: 16px; }
-  #race-radar { width: 230px; }
-  #race-minimap { height: 194px; }
+  #race-leaderboard { width: 264px; }
+  #race-leaders li { font-size: 13px; }
+  #race-radar { width: 220px; }
+  #race-minimap { height: 182px; }
   #activity-feed { max-width: 190px; }
   #publi-bike-battery { left: 264px; }
 }
 @media (max-width: 540px) {
   #round-timer, #round-timer[data-final=true] { left: auto; right: 12px; top: 12px; transform: none; width: 133px; padding: 9px 12px; }
   #timer-label { font-size: 8px; letter-spacing: 1px; }
-  #race-leaderboard { left: 12px; top: 12px; width: calc(100% - 163px); padding: 8px 0; }
-  #race-leaders li { gap: 7px; font-size: 14px; padding: 9px 2px; }
-  #race-leaders b { font-size: 14px; }
-  .race-place { font-size: 12px; }
+  #race-leaderboard { left: 12px; top: 12px; width: calc(100% - 163px); padding: 10px; }
+  #race-leaders li { gap: 5px; font-size: 11px; padding: 6px 0; }
+  #race-leaders b { font-size: 10px; }
+  .race-place { min-width: 12px; font-size: 10px; }
   #race-own-rank { font-size: 12px; }
   #race-leaderboard h2 { font-size: 12px; letter-spacing: .3px; }
   #race-leaderboard h2 small { display: none; }
@@ -103,10 +103,10 @@
   .map-viewer :is(.map-controls, #npc-hint, #mate-hint) { bottom: 260px; font-size: 12px; padding: 10px 14px; }
   #activity-feed { top: 330px; right: 12px; max-width: 160px; }
   #publi-bike-battery { left: 216px; bottom: 12px; max-width: calc(100% - 228px); padding: 9px; }
-  #city-map { padding: 8px; }.city-map-panel { padding: 12px; border-radius: 10px; }
-  .city-map-panel h2 { font-size: 19px; }.city-map-panel header span { font-size: 8px; }
+  #city-map { padding: 8px; }.city-map-panel { padding: 14px; }
+  .city-map-panel h2 { font-size: 19px; }.city-map-panel header span { font-size: 10px; }
   #close-city-map { font-size: 0; padding: 6px; }#close-city-map kbd { font-size: 9px; }
-  .map-legend { font-size: 10px; gap: 6px 12px; }
+  .map-legend { font-size: 11px; gap: 6px 12px; }
   #lobby { padding-top: 42px; background: linear-gradient(#0c2028b8, #0c202888); }.lobby-controls { padding: 16px 12px; }.lobby-controls dl { gap: 16px 12px; }.lobby-controls dl > div { gap: 7px; }
   .lobby-controls dt { min-width: 56px; }.lobby-controls dd { font-size: 11px; }
 }
@@ -120,7 +120,7 @@
 .game-shell :is(#round-timer, .city-map-panel, .city-map-panel button, .map-controls, #npc-hint, #mate-hint, kbd) { border-radius: 2px; }
 #timer-value { font-family: "Consolas", ui-monospace, monospace; text-shadow: 3px 3px 0 #071a24; }
 .city-map-panel button { border-width: 2px; box-shadow: inset 2px 2px 0 #ffffff12, inset -2px -2px 0 #0004; }
-.map-viewer .game-hud { left: auto; right: 18px; top: 148px; }
+.map-viewer .game-hud { left: auto; right: 18px; top: 148px; padding: 7px 10px; border-radius: 2px; color: var(--ui-heading); font: 10px/1.6 var(--ui-font); white-space: pre; }
 @media (max-width: 980px) and (min-width: 541px) {
   #round-timer, #round-timer[data-final=true] { left: auto; right: 18px; transform: none; }
   .map-viewer :is(.map-controls, #npc-hint, #mate-hint) { bottom: 355px; }
@@ -136,4 +136,21 @@
   #open-city-map { font-size: 13px; }
 }
 
-#publi-bike-battery { background: #432455eb; border: 1px solid #b38dc966; color: #eadbf3; border-radius: 4px; font: 11px/1.5 ui-monospace, monospace; }
+#publi-bike-battery { background: var(--ui-background); border: 2px solid #a82779; color: var(--ui-heading); border-radius: 2px; font: 11px/1.5 var(--ui-font); box-shadow:inset 3px 3px 0 #ffffff12,inset -3px -3px 0 #0004,4px 4px 0 #071a2480; }
+
+/* The game map and standings use the same shared frame as both lobbies. */
+.map-viewer :is(#race-leaderboard, #race-radar, .city-map-panel, .game-hud).pixel-panel {
+  --panel-background: var(--ui-background);
+  --panel-border: var(--ui-border);
+}
+.map-viewer .game-hud.pixel-panel { border: 2px solid var(--ui-border); background: var(--ui-background); }
+.map-viewer[data-dev-mode=false] .game-hud { top: 18px; }
+@media(max-width:980px) and (min-width:541px){.map-viewer[data-dev-mode=false] .game-hud{top:148px}}
+#open-city-map:hover { color: var(--ui-accent); }
+#race-leaders li[data-you=true] b { color: var(--ui-accent); }
+@media (max-width: 540px) {
+  .map-viewer .game-hud, .map-viewer[data-dev-mode=false] .game-hud { top: 126px; right: 12px; font-size: 10px; padding: 6px 8px; }
+  .city-map-panel header { align-items: flex-start; gap: 10px; }
+  .city-map-panel h2 { font-size: 18px; }
+  .distance-note { font-size: 9px; }
+}

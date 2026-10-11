@@ -1,3 +1,4 @@
+import '../../shared/phone-camera/photo-ui.css';
 import {createScanProgress} from '../../shared/phone-camera/scan-progress.js';
 import * as THREE from 'three';
 import {mountPhoneCamera,phoneCameraFov,cameraFrameLimits} from '../../shared/phone-camera/phone-camera.js';
@@ -6,7 +7,7 @@ import {aimPhotoCamera,photoPointsInFrame} from '../../shared/phone-camera/photo
 // Uses the same live handset, pointer aiming and framing checks as Lime parking photos.
 export function createTicketQRCamera(camera,{onScan,onCancel,uiRoot=document.body}){
  const ui=document.createElement('section');ui.id='ticket-qr-camera';ui.hidden=true;
- ui.innerHTML='<div class="tourist-request"><b>POLY-PAY</b><p>Scan the ticket machine’s QR code</p><small>Move your mouse to aim. Center the QR code, then hold still to scan. Esc goes back.</small></div><div class="tourist-viewfinder"><i></i><i></i><i></i><i></i><span id="ticket-qr-framing"></span></div><div class="tourist-camera-controls"><div class="ticket-scan-meter" role="progressbar" aria-label="QR scan progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div><button id="ticket-qr-cancel">BACK</button></div>';uiRoot.append(ui);
+ ui.innerHTML='<div class="tourist-request pixel-panel"><b>POLY-PAY</b><p>Scan the ticket machine’s QR code</p><small>Move your mouse to aim. Center the QR code, then hold still to scan. Esc goes back.</small></div><div class="tourist-viewfinder"><i></i><i></i><i></i><i></i><span id="ticket-qr-framing"></span></div><div class="tourist-camera-controls"><div class="ticket-scan-meter" role="progressbar" aria-label="QR scan progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div><button id="ticket-qr-cancel">BACK</button></div>';uiRoot.append(ui);
  let active=false,saved=null,yaw=0,pitch=0,corners=[],valid=false,progress=0;
  const hold=createScanProgress();
  const eye=new THREE.Vector3(),target=new THREE.Vector3();

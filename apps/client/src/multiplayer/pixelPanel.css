@@ -1,3 +1,10 @@
+.map-viewer {
+  --ui-font: ui-monospace, monospace;
+  --ui-border: #b9d4cb70;
+  --ui-background: #102731;
+  --ui-heading: #c3d5cc;
+  --ui-accent: #d7f87a;
+}
 .pixel-panel {
   border: 2px solid var(--panel-border, #d7f87a70);
   border-radius: 2px;

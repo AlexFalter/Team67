@@ -29,10 +29,17 @@ export class ExamPortal {
     disk.rotation.x = -Math.PI / 2;
     const labelCanvas = document.createElement('canvas'); labelCanvas.width = 512; labelCanvas.height = 128;
     const label = labelCanvas.getContext('2d')!;
-    label.fillStyle = '#15202aee'; label.fillRect(0, 0, 512, 128);
-    label.textAlign = 'center'; label.fillStyle = '#ffe071'; label.font = 'bold 34px system-ui'; label.fillText('EXAM MODE', 256, 49);
-    label.fillStyle = '#fff'; label.font = '22px system-ui'; label.fillText('Enter the final challenge', 256, 93);
-    const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(labelCanvas), depthWrite: false, toneMapped: false }));
+    label.fillStyle = '#071a2480'; label.fillRect(8, 8, 504, 120);
+    label.fillStyle = '#102731'; label.fillRect(0, 0, 504, 120);
+    label.strokeStyle = '#b9d4cb70'; label.lineWidth = 4; label.strokeRect(2, 2, 500, 116);
+    label.fillStyle = '#ffffff12'; label.fillRect(4, 4, 496, 4); label.fillRect(4, 8, 4, 104);
+    label.fillStyle = '#00000044'; label.fillRect(8, 112, 492, 4); label.fillRect(496, 8, 4, 104);
+    label.textAlign = 'center'; label.fillStyle = '#c3d5cc'; label.font = 'bold 32px monospace'; label.fillText('EXAM MODE', 252, 47);
+    label.fillStyle = '#d7f87a'; label.font = '20px monospace'; label.fillText('Enter the final challenge', 252, 87);
+    const signTexture = new THREE.CanvasTexture(labelCanvas);
+    signTexture.colorSpace = THREE.SRGBColorSpace;
+    signTexture.magFilter = THREE.NearestFilter;
+    const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: signTexture, depthWrite: false, toneMapped: false, fog: false }));
     sign.position.y = 4.1; sign.scale.set(6.4, 1.6, 1);
     this.root.add(disk, this.ring, this.orb, this.halo, sign); scene.add(this.root);
   }

@@ -325,7 +325,7 @@ export class VehicleManager {
   }
   tick(
     now: number,
-    hit: (
+    _hit: (
       driver: string,
       target: string,
       x: number,

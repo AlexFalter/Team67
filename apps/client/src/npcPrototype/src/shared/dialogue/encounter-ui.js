@@ -5,7 +5,7 @@ export function styleEncounterLine(element){
 }
 export function createEncounterSubtitle(id,{uiRoot=document.body}={}){
  const element=styleEncounterLine(document.createElement('aside'));
- element.id=id;element.classList.add('encounter-subtitle');element.hidden=true;
+ element.id=id;element.classList.add('encounter-subtitle','pixel-panel');element.hidden=true;
  uiRoot.append(element);return element;
 }
 // Recorded voice playback and subtitle lifetime have one owner: newer speech

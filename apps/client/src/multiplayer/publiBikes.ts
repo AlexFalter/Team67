@@ -54,12 +54,13 @@ export class PubliBikeFeature {
     this.station.add(dock, this.lights, new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lines), new THREE.LineBasicMaterial({ color: "#df73b8" })));
     this.signCanvas.width = 768; this.signCanvas.height = 192;
     const texture = new THREE.CanvasTexture(this.signCanvas); texture.colorSpace = THREE.SRGBColorSpace;
-    this.sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture })); this.sign.scale.set(7.5, 1.875, 1);
+    texture.magFilter = THREE.NearestFilter;
+    this.sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, toneMapped: false, fog: false, depthWrite: false })); this.sign.scale.set(7.5, 1.875, 1);
     this.sign.position.set(site.center.x, C.zurichWorld.height(site.center.x, site.center.z)! + 3.3, site.center.z);
     this.station.add(this.sign); scene.add(this.station);
     this.modal.id = "publibike-scan"; this.modal.hidden = true; this.modal.setAttribute("role", "dialog");
     this.modal.setAttribute("aria-modal", "true"); this.modal.setAttribute("aria-label", "Unlock PubliBike");
-    this.modal.innerHTML = `<div class="bike-phone"><div class="bike-phone-status" aria-hidden="true"><span>9:41</span><span>▰</span></div><h2>PubliBike <span></span></h2><div class="bike-viewfinder"><canvas width="600" height="800" aria-label="Live PubliBike QR scanner"></canvas><i></i></div><div class="bike-phone-controls"><div class="bike-scan-progress"><i></i></div><p role="status" aria-live="polite"></p></div><div class="bike-phone-home"><button type="button" aria-label="Close scanner" title="Close scanner · Esc"></button></div></div>`;
+    this.modal.innerHTML = `<div class="bike-phone pixel-panel"><div class="bike-phone-status" aria-hidden="true"><span>9:41</span><span>▰</span></div><h2>PubliBike <span></span></h2><div class="bike-viewfinder"><canvas width="600" height="800" aria-label="Live PubliBike QR scanner"></canvas><i></i></div><div class="bike-phone-controls"><div class="bike-scan-progress"><i></i></div><p role="status" aria-live="polite"></p></div><div class="bike-phone-home"><button type="button" aria-label="Close scanner" title="Close scanner · Esc">Close · Esc</button></div></div>`;
     this.preview = this.modal.querySelector("canvas")!;
     this.status = this.modal.querySelector("[role=status]")!; this.bar = this.modal.querySelector(".bike-scan-progress i")!;
     this.battery.id = "publi-bike-battery"; this.battery.hidden = true; this.battery.setAttribute("role", "status");
@@ -177,9 +178,17 @@ export class PubliBikeFeature {
       const text = `${dockedBikes.size} / ${C.PUBLI_BIKE_COUNT} BIKES AT STATION`;
       if (text !== this.signText) {
         this.signText = text; const ctx = this.signCanvas.getContext("2d")!;
-        ctx.fillStyle = "#92246c"; ctx.fillRect(0, 0, 768, 192); ctx.fillStyle = "white"; ctx.textAlign = "center";
-        ctx.font = "bold 52px Arial"; ctx.fillText("PubliBike station", 384, 65); ctx.font = "30px Arial"; ctx.fillText(text, 384, 112);
-        ctx.font = "26px Arial"; ctx.fillText("E TO SCAN · E TO RETURN", 384, 160); (this.sign.material as THREE.SpriteMaterial).map!.needsUpdate = true;
+        ctx.clearRect(0, 0, 768, 192);
+        ctx.fillStyle = "#071a2480"; ctx.fillRect(8, 8, 760, 184);
+        ctx.fillStyle = "#102731"; ctx.fillRect(0, 0, 760, 184);
+        ctx.strokeStyle = "#a82779"; ctx.lineWidth = 4; ctx.strokeRect(2, 2, 756, 180);
+        ctx.fillStyle = "#ffffff12"; ctx.fillRect(4, 4, 752, 4); ctx.fillRect(4, 8, 4, 168);
+        ctx.fillStyle = "#00000044"; ctx.fillRect(8, 176, 748, 4); ctx.fillRect(752, 8, 4, 168);
+        ctx.textAlign = "center"; ctx.fillStyle = "#c3d5cc";
+        ctx.font = "bold 42px monospace"; ctx.fillText("PUBLIBIKE STATION", 380, 61);
+        ctx.font = "28px monospace"; ctx.fillText(text, 380, 108);
+        ctx.fillStyle = "#a82779"; ctx.font = "24px monospace"; ctx.fillText("E TO SCAN · E TO RETURN", 380, 153);
+        (this.sign.material as THREE.SpriteMaterial).map!.needsUpdate = true;
       }
     }
     const bike = state?.publiBikes?.get(this.local.body.vehicleId);

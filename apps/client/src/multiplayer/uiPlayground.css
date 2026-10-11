@@ -1,0 +1,26 @@
+.ui-playground {
+  position: absolute; top: 16px; right: 16px; z-index: 400; width: min(370px, calc(100% - 32px));
+  --panel-border: var(--ui-border); --panel-background: var(--ui-background);
+  color: var(--ui-heading); font: 12px/1.5 var(--ui-font); pointer-events: auto;
+}
+.ui-playground summary { padding: 12px 14px; cursor: pointer; font-size: 15px; letter-spacing: 1px; }
+.ui-playground summary span { display: block; padding-left: 16px; color: var(--ui-accent); font-size: 10px; letter-spacing: 1px; }
+.ui-playground-body { padding: 0 14px 14px; max-height: calc(100dvh - 120px); overflow-y: auto; }
+.ui-playground-jump { display: flex; gap: 8px; margin: 6px 0 12px; }
+.ui-playground-jump select { min-width: 0; flex: 1; }
+.ui-playground :is(button, select) { border: 2px solid var(--ui-border); border-radius: 2px; padding: 9px; background: #244034; color: #edf4ef; font: inherit; box-shadow: inset 2px 2px 0 #ffffff18, inset -2px -2px 0 #0004, 2px 2px 0 #071a2480; }
+.ui-playground button { cursor: pointer; }
+.ui-playground button:hover:not(:disabled) { background: #355445; }
+.ui-playground-jump button { background: var(--ui-accent); color: #173137; }
+.ui-playground-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ui-playground p { color: #b9ccc7; }
+.ui-playground a { color: var(--ui-accent); }
+
+.map-viewer[data-ui-busy="true"] .ui-playground { display: none; }
+
+@media (max-width: 700px) {
+  .map-viewer:has(.ui-playground) #pause { padding-top: 88px; }
+  .map-viewer:has(.ui-playground) #pause > .game-menu-panel { max-height: calc(100dvh - 120px); }
+  .map-viewer:has(.ui-playground details[open]) #pause > .game-menu-panel { visibility: hidden; }
+  .map-viewer:has(.ui-playground):has(#pause:not([hidden])) .exam-debug-button { display: none; }
+}

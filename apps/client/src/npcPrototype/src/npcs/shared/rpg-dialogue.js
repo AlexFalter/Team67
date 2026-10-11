@@ -3,7 +3,7 @@ import './rpg-dialogue.css';
 import {styleEncounterLine} from '../../shared/dialogue/encounter-ui.js';
 // Existing encounters can adopt the shared skin without changing their dialogue logic.
 export function styleRPGDialogue(panel){
- panel.classList.add('rpg-dialogue');
+ panel.classList.add('rpg-dialogue','pixel-panel');
  panel.querySelector('.kid-dialogue-name')?.classList.add('rpg-dialogue-name');
  panel.querySelector('.kid-options')?.classList.add('rpg-dialogue-options');
  for(const line of panel.querySelectorAll('p,.eater-translation'))styleEncounterLine(line);

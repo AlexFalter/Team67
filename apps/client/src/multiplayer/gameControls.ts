@@ -18,6 +18,9 @@ export class GameControls {
   private resumeKeys = new Set<string>();
   private discardMouseDelta = false;
   private releasePauseAt = 0;
+  private playgroundPaused = false;
+  private interactionEscapeHeld = false;
+  private interactionInputPending = false;
   private actions: ActionHud;
   constructor(private canvas: HTMLCanvasElement, private local: LocalPlayer, private view: PlayerView, private ready: () => boolean, private suspended: () => boolean = () => false, now: () => number = () => Date.now(), context: () => ContextAction[] = () => [], weapon: () => WeaponAction | undefined = () => undefined, respawn: () => void = () => {}) {
     const options = { signal: this.abort.signal };
@@ -41,17 +44,24 @@ export class GameControls {
       if(this.externalCapture?.()){
         const released=this.captured&&document.pointerLockElement!==canvas;
         this.recovery?.cancel();this.capturePending=false;this.captured=document.pointerLockElement===canvas;
-        if(released&&this.externalMenuReady?.()&&this.menu.hidden){this.releasePauseAt=Date.now();this.pause();}return;
+        if(released&&!this.interactionInputPending&&this.externalMenuReady?.()&&this.menu.hidden){this.releasePauseAt=Date.now();this.pause();}return;
       }
       if(document.pointerLockElement===canvas)this.cursor.changed();
       else {this.recovery?.changed();this.syncPointerLock();}
     }, options);
     document.addEventListener("pointerlockerror", () => this.recovery?.failed(), options);
-    window.addEventListener("keyup", e => {this.resumeKeys.delete(e.code);if(e.code==='Escape')this.releasePauseAt=0;}, options);
+    window.addEventListener("keyup", e => {
+      this.resumeKeys.delete(e.code);
+      if(e.code==='Escape') {
+        this.releasePauseAt=0;
+        this.interactionEscapeHeld = false;
+      }
+    }, options);
     window.addEventListener("blur", () => { if (local.enabled||this.capturePending) {this.pause();this.recaptureOnInput=true;} }, options);
     document.addEventListener("visibilitychange",()=>{if(document.hidden&&(local.enabled||this.capturePending)){this.pause();this.recaptureOnInput=true;}},options);
     window.addEventListener("keydown", e => {
       if(e.defaultPrevented)return;
+      if (e.code === "Escape" && e.repeat && this.interactionEscapeHeld) { e.preventDefault(); return; }
       if(!this.menu.hidden&&this.externalMenuReady?.()&&!this.suspended()&&!e.repeat&&resumeKey(e.code)&&!(e.target instanceof HTMLInputElement)&&!(e.target instanceof HTMLTextAreaElement)&&!(e.target instanceof HTMLSelectElement)&&!(e.target instanceof HTMLElement&&e.target.isContentEditable)){e.preventDefault();void this.resume();return;}
       if(e.code==='Escape'&&this.externalMenuReady?.()&&!this.suspended()){
         e.preventDefault();e.stopImmediatePropagation();if(!e.repeat)this.escape();return;
@@ -77,10 +87,15 @@ export class GameControls {
     // A captured cursor released during gameplay is Escape, even before the
     // first mouse movement after an interaction. Intentional releases clear
     // capture ownership or make gameplay unavailable before releasing it.
-    if (released && this.menu.hidden && this.ready() && !this.suspended()){this.releasePauseAt=Date.now();this.pause();}
+    if (released && !this.interactionEscapeHeld && !this.interactionInputPending && this.menu.hidden && this.ready() && !this.suspended()){this.releasePauseAt=Date.now();this.pause();}
   }
   resumeAfterInteraction() {this.restoreGameplay();}
   restoreGameplay() {
+    if (this.interactionEscapeHeld || this.interactionInputPending) {
+      this.local.enabled = false; this.local.clear(); this.recaptureOnInput = true;
+      return;
+    }
+    if (this.playgroundPaused) return;
     if (!this.ready() || this.suspended() || !document.hasFocus()) return;
     this.available=true;this.recaptureOnInput=true;
     this.captured = document.pointerLockElement === this.canvas;
@@ -105,6 +120,8 @@ export class GameControls {
     this.local.enabled=false;this.local.clear();this.menu.hidden=true;this.recaptureOnInput=true;this.update();
   }
   async resume() {
+    this.interactionInputPending = false;
+    this.playgroundPaused = false;
     if(this.externalMenuReady?.()&&!this.suspended()&&document.hasFocus()){
       this.menu.hidden=true;this.local.enabled=false;this.local.clear();this.canvas.focus();
       if(this.externalCapture?.())try{await this.canvas.requestPointerLock();}catch{/* Ride look also supports an uncaptured cursor. */}
@@ -133,6 +150,13 @@ export class GameControls {
     if (document.pointerLockElement === this.canvas) document.exitPointerLock();
     this.update(); if (!this.menu.hidden) document.querySelector<HTMLButtonElement>("#resume")!.focus();
   }
+  holdPlaygroundMenu() { this.playgroundPaused = true; this.pause(); }
+  holdInteractionEscape() {
+    this.interactionEscapeHeld = true;
+    this.interactionInputPending = true;
+    this.recaptureOnInput = true;
+    this.recovery?.cancel(); this.capturePending = false;
+  }
   suspendForMap() {this.suspendForInteraction();this.menu.hidden=true;}
   suspendForInteraction() {
     this.recovery?.cancel();this.resumeKeys?.clear();this.capturePending=false;
@@ -146,7 +170,7 @@ export class GameControls {
     const available=this.ready()&&!this.suspended();
     const returned=available&&!this.available;this.available=available;
     if(returned&&this.menu.hidden)this.restoreGameplay();
-    if((this.ready()||(this.externalCapture?.()&&this.externalMenuReady?.()))&&!this.suspended()&&this.captured&&!this.capturePending&&this.menu.hidden&&document.pointerLockElement!==this.canvas){
+    if(!this.interactionEscapeHeld&&!this.interactionInputPending&&(this.ready()||(this.externalCapture?.()&&this.externalMenuReady?.()))&&!this.suspended()&&this.captured&&!this.capturePending&&this.menu.hidden&&document.pointerLockElement!==this.canvas){
       // The frame may observe Escape before pointerlockchange is delivered.
       this.captured=false;this.releasePauseAt=Date.now();this.pause();
     }
@@ -160,7 +184,7 @@ export class GameControls {
     }
     if (!this.ready()) {
       if(this.capturePending){this.recovery?.cancel();this.resumeKeys?.clear();this.capturePending=false;}
-      this.local.enabled = false; this.local.clear(); if(!this.externalMenuReady?.())this.menu.hidden = true;
+      this.local.enabled = false; this.local.clear(); if(!this.externalMenuReady?.()&&!this.playgroundPaused)this.menu.hidden = true;
 
       // An encounter can open before its host's syncLock runs. Hand off
       // capture here too, before releasing it or receiving a queued event.

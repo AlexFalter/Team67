@@ -47,7 +47,11 @@ test("real Zurich reports preserve terrain, jumping and original coordinates", {
       await until(() => own.grounded && Math.abs(own.y - C.zurichWorld.height(own.x, own.z)!) < 0.03, "landed");
       assert.ok(Math.hypot(own.x - start.x, own.z - start.z) > 1, "terrain movement replicated");
       assert.ok(Math.abs(own.y - C.zurichWorld.height(own.x, own.z)!) < 0.03, `map landing y=${own.y}, terrain=${C.zurichWorld.height(own.x, own.z)}`);
-      for (const v of b.state.vehicles.values()) assert.ok((C.isRail(v) || v.x < -100) && Number.isFinite(v.y), `vehicle kind=${v.kind} x=${v.x} y=${v.y}`);
+      // Main now places scooters at Haldenegg as well as west of the river.
+      const bounds = C.zurichWorld.bounds;
+      for (const v of b.state.vehicles.values()) assert.ok((C.isRail(v) ||
+        v.x >= bounds.minX && v.x <= bounds.maxX && v.z >= bounds.minZ && v.z <= bounds.maxZ) &&
+        Number.isFinite(v.y), `vehicle kind=${v.kind} x=${v.x} y=${v.y}`);
     } finally { moving.stop(); }
   }, "zurich");
 });

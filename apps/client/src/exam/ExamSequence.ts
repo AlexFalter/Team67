@@ -3,7 +3,7 @@ import { FINAL_EXAM_LOCATION, examMapPoint, examFlyoverPosition, insideExamPorta
 import { ExamPortal } from '../entities/examPortal/ExamPortal';
 import { playExamRoomAnimation } from './examRoomAnimation';
 export type ExamStage = 'world' | 'flyover' | 'room' | 'exam' | 'complete' | 'spectate';
-export interface ExamSession { stage: ExamStage; remainingSeconds: number; canEnter: boolean; score: number }
+export interface ExamSession { stage: ExamStage; remainingSeconds: number; canEnter: boolean; score: number; unlimited?: boolean }
 export const emptyExamSession: ExamSession = { stage: 'world', remainingSeconds: 0, canEnter: false, score: 0 };
 export const EXAM_FLYOVER_MS = 4000;
 export class ExamSequence {
@@ -18,7 +18,7 @@ export class ExamSequence {
   private canEnter = false;
   private abort = new AbortController();
   private focus = new Vector3();
-  constructor(private scene: Scene, private camera: PerspectiveCamera, private publish: (session: ExamSession) => void) {
+  constructor(private scene: Scene, private camera: PerspectiveCamera, private publish: (session: ExamSession) => void, private unlimited = false) {
     this.portal = new ExamPortal(scene);
     const target = examMapPoint(FINAL_EXAM_LOCATION.ethFocusLV95);
     this.focus.set(target.x, target.y, target.z);
@@ -68,6 +68,6 @@ export class ExamSequence {
   returnToExam(){if(this.stage==='spectate'){this.stage='exam';this.notify();}}
   complete(score: number) { this.score = score; if (!this.spectating) this.stage = 'complete'; this.notify(); }
   returnToWorld() { this.abort.abort(); this.stage = 'world'; this.notify(); }
-  private notify() { this.publish({ stage: this.stage, remainingSeconds: this.remaining, canEnter: this.canEnter, score: this.score }); }
+  private notify() { this.publish({ stage: this.stage, remainingSeconds: this.remaining, canEnter: this.canEnter, score: this.score, ...(this.unlimited ? { unlimited: true } : {}) }); }
   dispose() { this.abort.abort(); this.portal.dispose(); }
 }

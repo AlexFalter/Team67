@@ -32,6 +32,8 @@ export class RaceMap {
   constructor(private net: Network, private player: () => MapPoint & { rotY: number; enabled: boolean },
     private encounters: () => EncounterMarker[], private available: () => boolean,
     private suspend: () => void, private resume: () => void,private droneBlips:()=>DroneBlip[]=()=>[],private droneScanStart:()=>number|undefined=()=>undefined) {
+    this.radar.classList.add("pixel-panel");
+    this.root.querySelector(".city-map-panel")!.classList.add("pixel-panel");
     this.makeChart();
     const options = { signal: this.abort.signal };
     this.open.addEventListener("click", () => this.show(), options);
@@ -175,7 +177,7 @@ export class RaceMap {
     }
     for (const [point, label, color] of [[raceSpawnPoint(zurichWorld), "BUS DROP-OFF / START", "#c4ded2"], [examPortalPosition, "ETH HG / EXAM", "#ffd271"]] as const) {
       const v = p(point); ctx.fillStyle = color; ctx.beginPath(); ctx.arc(v.x, v.y, full ? 7 : 5, 0, Math.PI * 2); ctx.fill();
-      if (full) { ctx.font = "bold 11px system-ui"; const w = ctx.measureText(label).width; ctx.fillStyle = "#10242eef"; ctx.fillRect(v.x - w / 2 - 7, v.y - 28, w + 14, 20); ctx.fillStyle = color; ctx.fillText(label, v.x, v.y - 18); }
+      if (full) { ctx.font = "600 12px ui-monospace, monospace"; const w = ctx.measureText(label).width; ctx.fillStyle = "#10242eef"; ctx.fillRect(v.x - w / 2 - 7, v.y - 28, w + 14, 20); ctx.fillStyle = color; ctx.fillText(label, v.x, v.y - 18); }
     }
     const local = this.player(), v = p(local);
     ctx.save(); ctx.translate(v.x, v.y); ctx.rotate(Math.PI - local.rotY); ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(-6, 6); ctx.lineTo(0, 3); ctx.lineTo(6, 6); ctx.closePath(); ctx.fillStyle = "#74d8ff"; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.fill(); ctx.stroke(); ctx.restore();
@@ -184,7 +186,7 @@ export class RaceMap {
       const goal = p(examPortalPosition), center = p(local), dx = goal.x - center.x, dy = goal.y - center.y;
       if (goal.x < 10 || goal.y < 10 || goal.x > width - 10 || goal.y > height - 10) {
         const ratio = Math.min((width / 2 - 12) / Math.max(.001, Math.abs(dx)), (height / 2 - 12) / Math.max(.001, Math.abs(dy)));
-        ctx.fillStyle = "#ffd271"; ctx.font = "bold 15px system-ui"; ctx.fillText("◆", center.x + dx * ratio, center.y + dy * ratio);
+        ctx.fillStyle = "#ffd271"; ctx.font = "600 15px ui-monospace, monospace"; ctx.fillText("◆", center.x + dx * ratio, center.y + dy * ratio);
       }
     }
   }

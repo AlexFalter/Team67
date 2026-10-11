@@ -7,6 +7,6 @@ export default function App() {
   if (window.location.pathname === '/dev/exam/game') return <EthBlur startImmediately />;
   if (['/minigames/eth-blur', '/dev/eth-blur'].includes(window.location.pathname)) return <EthBlur />;
   return <main className="game-shell">
-    <Suspense fallback={<p>Loading world…</p>}><MapViewer examPreview={window.location.pathname === '/dev/exam'} /></Suspense>
+    <Suspense fallback={<p>Loading world…</p>}><MapViewer offline={import.meta.env.DEV && window.location.pathname === '/dev/ui'} examPreview={window.location.pathname === '/dev/exam'} /></Suspense>
   </main>;
 }

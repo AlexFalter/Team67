@@ -36,6 +36,10 @@ Run these from `Team67/`:
 | `npm run lint` | Frontend ESLint |
 | `npm run world:build` | Regenerate terrain/building queries and shuttle route, entirely offline |
 
+For UI development, run only `npm run dev:client -w @race/client` and open `/dev/ui` on the Vite URL. This development-only playground skips joining a room and the bus intro, spawns one player directly into Zürich and has no round or exam time limit. It makes no matchmaking or game WebSocket connection; gameplay managers run locally. Assets still load from Vite. Press Escape to release the cursor and expand **UI playground** for feature teleports, item/emote grants, a Moodle question, sample opponents/name tags, a bus-intro preview and encounter resets. Feature jumps collapse the controls; interaction screens hide them so they cannot cover the UI. Enter resumes play, E interacts, P opens the phone and M opens the teleport-enabled city map. The normal `/` route keeps multiplayer behavior.
+
+The shared `PixelPanel` component and `pixelPanel.css` tokens define the UI baseline: gray pixel boundaries and inset shadows, dark teal panels, the lobby's monospace headings and lime accents. This design carries through both lobbies, maps, the game menu, encounter dialogues, ticket and Mate interfaces, the phone and notifications, emotes, player tags and bus-intro overlays. The scoreboard shows five leaders and the performance display stays compact. Use the same component and tokens for subsequent UI work.
+
 `npm run dev` from `apps/client/` also starts both services. Use the root workspace install and lockfile. `npm run dev:client` inside `apps/client/` starts only Vite for work with an already running server. `vite preview` alone serves static files and does not provide the multiplayer service.
 
 ## Environment and production

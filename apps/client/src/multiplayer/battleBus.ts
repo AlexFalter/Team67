@@ -1,3 +1,4 @@
+import "./busIntroUi.css";
 import * as THREE from "three";
 import * as C from "@race/shared";
 import type { Network } from "./net.ts";
@@ -113,8 +114,9 @@ export class BattleBusIntro {
     this.renderIntro(dt, state!.players, state!.members,
       id => id === this.net.room.sessionId ? local : remotes.players.get(id)?.mesh,
       this.net.room.sessionId, elapsed, this.net.now());
+    this.overlay.dataset.thanked = String(this.ride.hasThanked);
     this.overlay.textContent = this.net.now() < state!.introStartedAt ? "Match started. The battle bus is departing…"
-      : elapsed < 7 ? `Mouse / trackpad: look around · ${this.ride.hasThanked ? "Driver thanked!" : "Space: thank the bus driver"}` : "Disembarking together…";
+      : elapsed < 7 ? `Look around · ${this.ride.hasThanked ? "Driver thanked!" : "[SPACE] Thank the bus driver"}` : "Disembarking together…";
   }
   private renderIntro(dt: number, players: Iterable<[string, C.PlayerState]>,
     members: ReadonlyMap<string, Pick<C.RoomMember, "introSeat" | "spectator">>,

@@ -7,7 +7,7 @@ import { ExamSequence, EXAM_FLYOVER_MS, emptyExamSession } from '../apps/client/
 async function withSequence(check: (harness: ReturnType<typeof createHarness>) => void | Promise<void>) {
   const previousDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
-  const context = { createRadialGradient: () => ({ addColorStop() {} }), fillRect() {}, fillText() {} };
+  const context = { createRadialGradient: () => ({ addColorStop() {} }), fillRect() {}, strokeRect() {}, fillText() {} };
   Object.defineProperty(globalThis, 'document', { configurable: true, value: { createElement: () => ({ getContext: () => context }) } });
   Object.defineProperty(globalThis, 'window', { configurable: true, value: { setTimeout } });
   const harness = createHarness();

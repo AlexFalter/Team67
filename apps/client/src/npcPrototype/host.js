@@ -163,7 +163,7 @@ export class NpcFeature {
    if(this.abort.signal.aborted){disposeOwnedObject(singingBike);this.cleanupFeatures();return;}
    singingBike.userData.wheels=['RearWheel','FrontWheel'].map(name=>singingBike.getObjectByName(name));
    if(singingBike.userData.wheels.some(w=>!w)){disposeOwnedObject(singingBike);throw Error('Singing cyclist bike is missing wheel pivots');}
-   this.cyclist=this.own(createCyclingKid(this.root,world,solver,()=>singingBike,{position:C.NPC_LAYOUT.singingCyclist.position,uiRoot}));
+   this.cyclist=this.own(createCyclingKid(this.root,world,solver,()=>singingBike,{...C.NPC_LAYOUT.singingCyclist,uiRoot}));
    this.tiki=this.own(await createTikiPerformer(this.root,world,solver,{placement:C.NPC_LAYOUT.tikiPerformer,signal:this.abort.signal}));
    if(this.abort.signal.aborted){this.cleanupFeatures();return;}
    this.michael=this.own(await createMichaelJackson(this.root,world,solver,{placement:C.NPC_LAYOUT.michaelJackson,signal:this.abort.signal}));

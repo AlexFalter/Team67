@@ -10,4 +10,4 @@ Run `GAME_URL=<preview> node verify-cycling-kid.mjs` to check the grounded circu
 
 The legacy `createCyclingKid` export remains compatible with existing callers. `rider-fit.js` aligns the adult pelvis with the saddle and solves both arms and legs against the Blender-authored grip and pedal anchors. Feet rest on the fixed pedals of the merged bicycle mesh.
 
-The multiplayer host mounts this restored NPC using `NPC_LAYOUT.singingCyclist.position`. This position is the rider’s initial ground contact; the 2.8 m loop extends west of it. The host owns pause, encounter muting, map marker, reset and cleanup. The dedicated bike owns its geometry and materials independently of rentable bikes.
+The multiplayer host mounts this restored NPC using `NPC_LAYOUT.singingCyclist.center`. This point is the center of the 2.8 m loop around the trash can; the rider starts on its east side. A supplied `position` remains supported as the initial ground contact, with the loop extending west of it. The host owns pause, encounter muting, map marker, reset and cleanup. The dedicated bike owns its geometry and materials independently of rentable bikes.
