@@ -8,7 +8,23 @@ export const BATTLE_BUS_LANDING = { x: -178.04, y: 8.25, z: 61.25 } as const;
 export const BATTLE_BUS_START = { x: -173.23488193895338, z: 61.52081436336322 } as const;
 export const BATTLE_BUS_HEADING = 2.514579388516376;
 export const BATTLE_BUS_ARRIVAL_MS = 7000;
-export const BATTLE_BUS_DURATION_MS = 13350;
+export const BATTLE_BUS_EXIT_WALK_MS = 1800;
+export const BATTLE_BUS_CAMERA_MS = 850;
+export const BATTLE_BUS_COUNTDOWN_MS = 3000;
+
+export function battleBusExitStartMs(slot: number) {
+  return slot === 0 ? 550 : 650 + (slot - 1) * 70;
+}
+
+// Snapshot the passenger count at departure: late spectators and disconnects
+// must not change the shared start deadline halfway through the cinematic.
+export function battleBusTiming(passengers: number) {
+  const count = Math.max(1, Math.min(40, Math.floor(passengers)));
+  const exitEndMs = BATTLE_BUS_ARRIVAL_MS + battleBusExitStartMs(count - 1) + BATTLE_BUS_EXIT_WALK_MS;
+  const countdownAtMs = exitEndMs + BATTLE_BUS_CAMERA_MS;
+  return { exitEndMs, countdownAtMs, durationMs: countdownAtMs + BATTLE_BUS_COUNTDOWN_MS };
+}
+export const BATTLE_BUS_DURATION_MS = battleBusTiming(40).durationMs;
 export const BATTLE_BUS_LEAD_MS = 1000;
 
 export function inBattleBusIntro(state: Pick<WorldState, "phase" | "introComplete">) {
@@ -21,10 +37,16 @@ export function battleBusThanksVisible(state: Pick<WorldState, "phase" | "introS
 }
 
 // Absolute server time, rather than accumulated frame time, also handles hidden tabs.
-export function battleBusElapsed(state: Pick<WorldState, "introStartedAt" | "startedAt">, now: number) {
+export function battleBusElapsed(state: Pick<WorldState, "introStartedAt" | "startedAt" | "introPassengerCount">, now: number) {
   const duration = state.startedAt - state.introStartedAt;
-  return duration > 0 ? Math.max(0, Math.min(BATTLE_BUS_DURATION_MS,
-    (now - state.introStartedAt) / duration * BATTLE_BUS_DURATION_MS)) / 1000 : BATTLE_BUS_DURATION_MS / 1000;
+  const cinematicMs = battleBusTiming(state.introPassengerCount ?? 40).durationMs;
+  return duration > 0 ? Math.max(0, Math.min(cinematicMs,
+    (now - state.introStartedAt) / duration * cinematicMs)) / 1000 : cinematicMs / 1000;
+}
+
+export function battleBusCountdown(passengers: number, elapsedMs: number) {
+  const { countdownAtMs, durationMs } = battleBusTiming(passengers);
+  return elapsedMs < countdownAtMs || elapsedMs >= durationMs ? 0 : Math.ceil((durationMs - elapsedMs) / 1000);
 }
 
 export function battleBusDropoffs(world: MovementWorld, count: number): GroundPoint[] {

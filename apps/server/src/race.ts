@@ -89,12 +89,12 @@ export class Race extends Room<{ state: RaceState }> {
     this.onMessage('ticket', (client, data: unknown) => tickets.command(client,data));
     const configuredDuration = Number(process.env.ROUND_DURATION_MS ?? C.ROUND_DURATION_MS);
     const duration = Number.isFinite(configuredDuration) && configuredDuration > 0 ? configuredDuration : C.ROUND_DURATION_MS;
-    const introDuration = Number(process.env.BATTLE_BUS_INTRO_MS ?? C.BATTLE_BUS_DURATION_MS);
+    const introDuration = Number(process.env.BATTLE_BUS_INTRO_MS);
     const introLead = Number(process.env.BATTLE_BUS_LEAD_MS ?? C.BATTLE_BUS_LEAD_MS);
     this.rounds = new RoundManager(this.state, duration, () => {
       for (const id of this.state.players.keys()) this.lastMoves.set(id, Date.now());
     }, () => this.resetRound(), {
-      durationMs: this.state.skipIntro ? 0 : Number.isFinite(introDuration) && introDuration > 0 ? introDuration : C.BATTLE_BUS_DURATION_MS,
+      durationMs: this.state.skipIntro ? 0 : Number.isFinite(introDuration) && introDuration > 0 ? introDuration : undefined,
       leadMs: this.state.skipIntro ? 0 : Number.isFinite(introLead) && introLead >= 0 ? introLead : C.BATTLE_BUS_LEAD_MS,
       onArrival: () => this.arriveFromBus(),
     });

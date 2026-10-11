@@ -14,7 +14,7 @@ test("host start schedules one unskippable intro before the round clock, with st
   rounds.ready("a", true, 1000);
   assert.equal(state.phase, C.RoomPhase.Running);
   assert.equal(state.introStartedAt, 1000 + C.BATTLE_BUS_LEAD_MS);
-  assert.equal(state.startedAt, state.introStartedAt + C.BATTLE_BUS_DURATION_MS);
+  assert.equal(state.startedAt, state.introStartedAt + C.battleBusTiming(2).durationMs);
   assert.equal(state.endsAt, state.startedAt + 1000);
   assert.equal(state.members.get("a")!.introSeat, 0); assert.equal(state.members.get("b")!.introSeat, 1);
   assert.equal(rounds.canPlay("a", state.startedAt - 1), false);
@@ -31,6 +31,46 @@ test("host start schedules one unskippable intro before the round clock, with st
   assert.equal(state.phase, C.RoomPhase.Finished); assert.equal(state.results.get("b")!.hitsReceived, 0);
   rounds.restart("b"); assert.equal(state.introStartedAt, 0); assert.equal(state.introComplete, false);
   assert.ok([...state.members.values()].every(member => member.introSeat === -1));
+});
+
+test("passenger-sized exits lead into three seconds of countdown before gameplay", () => {
+  for (const passengers of [1, 2, 12, 40]) {
+    const state = new RaceState(), rounds = new RoundManager(state);
+    for (let i = 0; i < passengers; i++) { rounds.join(String(i), { name: `Player ${i}` }); state.players.set(String(i), new Player()); }
+    rounds.ready("0", true, 1000);
+    const timing = C.battleBusTiming(passengers);
+    assert.equal(state.introPassengerCount, passengers);
+    assert.equal(state.startedAt - state.introStartedAt, timing.durationMs);
+    assert.equal(timing.exitEndMs, C.BATTLE_BUS_ARRIVAL_MS + C.battleBusExitStartMs(passengers - 1) + C.BATTLE_BUS_EXIT_WALK_MS);
+    assert.equal(C.battleBusCountdown(passengers, timing.countdownAtMs - 1), 0);
+    for (const [offset, number] of [[0, 3], [1000, 2], [2000, 1]]) {
+      assert.equal(C.battleBusCountdown(passengers, timing.countdownAtMs + offset), number);
+      rounds.tick(state.introStartedAt + timing.countdownAtMs + offset);
+      assert.equal(rounds.canPlay("0", state.introStartedAt + timing.countdownAtMs + offset), false);
+    }
+    assert.equal(C.battleBusCountdown(passengers, timing.durationMs), 0);
+    rounds.tick(state.startedAt);
+    assert.equal(rounds.canPlay("0", state.startedAt), true);
+  }
+  assert.ok(C.battleBusTiming(1).exitEndMs < C.battleBusTiming(40).exitEndMs);
+});
+
+test("compressed test intros keep the same passenger timeline and thanking window", () => {
+  const state = new RaceState(), rounds = new RoundManager(state, 1000, undefined, undefined, { durationMs: 1200, leadMs: 0 });
+  for (const id of ["a", "b"]) { rounds.join(id, { name: id }); state.players.set(id, new Player()); }
+  rounds.ready("a", true, 1000);
+  const timing = C.battleBusTiming(2);
+  const arrival = state.introStartedAt + 1200 * C.BATTLE_BUS_ARRIVAL_MS / timing.durationMs;
+  rounds.thankBusDriver("a", state.introStartedAt, arrival - 1);
+  rounds.thankBusDriver("b", state.introStartedAt, arrival);
+  assert.equal(state.members.get("a")!.thankedBusDriver, true);
+  assert.equal(state.members.get("b")!.thankedBusDriver, false);
+  const before = C.battleBusElapsed(state, 1600);
+  rounds.join("late", { name: "Late" }); rounds.leave("b", 1600);
+  assert.equal(state.introPassengerCount, 2);
+  assert.equal(state.startedAt, 2200);
+  assert.equal(C.battleBusElapsed(state, 1600), before, "membership changes do not retime the camera or countdown");
+  assert.equal(C.battleBusElapsed(state, 2200), timing.durationMs / 1000);
 });
 
 test("shared cinematic time catches up independently of frame count, with forty clear drop-offs", () => {
@@ -70,6 +110,7 @@ test("live clients share the intro deadline; host cannot skip, late joiners wait
     a.send("ready", true); b.send("ready", true);
     await until(() => a.state.introStartedAt > 0 && b.state.introStartedAt > 0, "shared intro");
     assert.equal(a.state.introStartedAt, b.state.introStartedAt); assert.equal(a.state.startedAt, b.state.startedAt);
+    assert.equal(a.state.introPassengerCount, 2); assert.equal(b.state.introPassengerCount, 2);
     assert.equal(a.state.introComplete, false); assert.equal(a.state.endsAt - a.state.startedAt, 60000);
     const p = a.state.players.get(a.sessionId)!, original = { x: p.x, y: p.y, z: p.z };
     a.send("finishRound"); a.send("ready", false); a.send("hit");

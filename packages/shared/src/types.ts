@@ -74,6 +74,7 @@ export interface WorldState {
   endsAt: number;
   finishedAt: number;
   introStartedAt: number;
+  introPassengerCount?: number;
   introComplete: boolean;
   scooterArrivalAt?: number;
   mapTeleport?: boolean;

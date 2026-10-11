@@ -32,7 +32,7 @@ export class RoundManager {
   }
   thankBusDriver(id: string, run: unknown, now = Date.now()) {
     const member = this.state.members.get(id);
-    const arrivalAt = this.state.introStartedAt + (this.state.startedAt - this.state.introStartedAt) * C.BATTLE_BUS_ARRIVAL_MS / C.BATTLE_BUS_DURATION_MS;
+    const arrivalAt = this.state.introStartedAt + (this.state.startedAt - this.state.introStartedAt) * C.BATTLE_BUS_ARRIVAL_MS / C.battleBusTiming(this.state.introPassengerCount).durationMs;
     if (!C.inBattleBusIntro(this.state) || this.state.skipIntro || run !== this.state.introStartedAt ||
       now < this.state.introStartedAt || now >= arrivalAt ||
       !member || member.spectator || member.introSeat < 0 || !this.state.players.has(id) || member.thankedBusDriver) return;
@@ -49,7 +49,8 @@ export class RoundManager {
     }
     this.state.phase = C.RoomPhase.Running;
     this.state.introStartedAt = now + (this.intro.leadMs ?? C.BATTLE_BUS_LEAD_MS);
-    this.state.startedAt = this.state.introStartedAt + (this.intro.durationMs ?? C.BATTLE_BUS_DURATION_MS);
+    this.state.introPassengerCount = members.length;
+    this.state.startedAt = this.state.introStartedAt + (this.intro.durationMs ?? C.battleBusTiming(members.length).durationMs);
     // A finite sentinel keeps existing feature deadline guards and schema serialization valid.
     this.state.endsAt = this.state.adminMode ? Number.MAX_SAFE_INTEGER : this.state.startedAt + this.duration; this.state.finishedAt = 0;
     this.state.introComplete = false; this.state.scooterArrivalAt = 0;
@@ -108,7 +109,7 @@ export class RoundManager {
     if (this.state.phase !== C.RoomPhase.Finished || id !== this.state.hostId) return;
     this.state.phase = C.RoomPhase.Lobby;
     this.state.startedAt = this.state.endsAt = this.state.finishedAt = 0;
-    this.state.introStartedAt = 0; this.state.introComplete = false; this.state.scooterArrivalAt = 0;
+    this.state.introStartedAt = 0; this.state.introPassengerCount = 0; this.state.introComplete = false; this.state.scooterArrivalAt = 0;
     this.scores.clear(); this.state.results.clear();
     for (const member of this.state.members.values()) { member.ready = false; member.spectator = false; member.introSeat = -1; member.thankedBusDriver = false; }
     this.onReset();

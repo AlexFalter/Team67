@@ -169,6 +169,7 @@ export const RaceState = schema(
     endsAt: t.number().default(0),
     finishedAt: t.number().default(0),
     introStartedAt: t.number().default(0),
+    introPassengerCount: t.uint8().default(0),
     introComplete: t.boolean().default(false),
     scooterArrivalAt: t.number().default(0),
     mapTeleport: t.boolean().default(false),

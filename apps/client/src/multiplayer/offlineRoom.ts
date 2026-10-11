@@ -143,7 +143,7 @@ export class OfflineRoom {
     this.rounds.finish(Date.now(), true); this.rounds.restart(this.sessionId);
     this.state.skipIntro = !intro;
     this.rounds = new RoundManager(this.state, C.ROUND_DURATION_MS, () => {}, () => this.reset(),
-      { leadMs: 0, durationMs: intro ? C.BATTLE_BUS_DURATION_MS : 0, onArrival: () => this.correct(C.raceSpawnPoint(C.zurichWorld)) });
+      { leadMs: 0, durationMs: intro ? undefined : 0, onArrival: () => this.correct(C.raceSpawnPoint(C.zurichWorld)) });
     this.rounds.ready(this.sessionId, true);
     if (!intro) this.correct(C.raceSpawnPoint(C.zurichWorld));
   }

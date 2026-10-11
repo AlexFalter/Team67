@@ -147,7 +147,9 @@ export class MapGame {
     }
     this.npcs.playerView = this.view;
     scene.add(camera);
-    this.bus = new BattleBusIntro(scene, camera, this.net, canvas, () => this.view.sensitivity);
+    this.bus = new BattleBusIntro(scene, camera, this.net, canvas, () => this.view.sensitivity, () => {
+      this.view.perspective = 0; this.view.yaw = BATTLE_BUS_HEADING; this.view.pitch = 0;
+    });
     this.ready = Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready, this.npcs.ready, this.cows.ready, this.bags.ready,this.fruit.ready,this.awp.ready,this.gtr.ready]).then(() => {});
     this.roomFlow = new RoomFlow(this.net, this.ready, () => this.bus.unlockAudio(), () => this.audio.effect("timer"));
     this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.trafficEditor?.active && !this.emotes?.opened && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active, () => this.net.now()<this.derailUntil || !!this.maps?.active || (this.local.body.moodleSitUntil??0)>this.net.now(), () => this.net.now(), () => this.contextActions(), () => {if(this.drone.calling)return {kind:"awp",enabled:false,run:()=>{}};if(this.awp.occupiesHands)return {kind:"awp",enabled:this.awp.canFire,run:()=>this.awp.fire()};if(this.fruit.occupiesHands)return {kind:"tomato",enabled:this.fruit.canThrow,run:()=>this.fruit.throw()};if(this.bags.occupiesHands)return {kind:"bag",enabled:this.bags.canThrow,run:()=>this.bags.throwBag()};if(this.football.occupiesHands)return {kind:"football",enabled:this.football.canKick,run:()=>this.football.kick()};const knife=this.npcs.karambit;return knife?.occupiesHands()&&!this.local.body.vehicleId&&this.view.perspective===0?{enabled:this.npcs.canUseKarambit()&&knife.state().phase!=='attack'&&this.local.body.attackReadyAt<=this.net.now(),run:()=>this.npcs.attackKarambit()}:undefined;}, () => this.net.room.send('respawn'));
@@ -347,7 +349,7 @@ export class MapGame {
     this.coordinates.update(this.local.body, state?.devMode === true, this.net.canPlay);
     this.collisions.update(this.local.body);
     this.vehicles.updateLabels(this.local.body, now);
-    this.bus.update(dt, this.mesh, this.remotes);
+    this.bus.update(dt, this.mesh, this.remotes, this.firstBody);
     const inMenu = !state || state.phase === RoomPhase.Lobby;
     if (inMenu) for (const remote of this.remotes.players.values()) remote.mesh.visible = false;
     this.menuScene.update(dt, state, this.net.room?.sessionId);
