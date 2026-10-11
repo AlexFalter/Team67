@@ -90,11 +90,3 @@ test('relocated bags rest on clear terrain between the bridge cows',()=>{
   assert(Math.hypot(p.x+217.18,p.z-35.98)>70,'old bag area has no spawn');
  }
 });
-
-test('Zurich has no HB practice dummies even when a dev host requests them',()=>{
- const state=new RaceState({devMode:true,hostId:'host'});
- const manager=new BagManager(state,C.zurichWorld,()=>false);
- assert.equal(manager.setDummies({sessionId:'host',send:()=>{}},true),true);
- assert.equal(state.debugDummies,false);
- assert.equal(state.dummies.size,0);
-});

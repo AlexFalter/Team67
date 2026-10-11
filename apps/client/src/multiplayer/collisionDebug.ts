@@ -25,6 +25,8 @@ export class CollisionDebug {
  private ground:THREE.InstancedMesh;
  private entities=new Map<string,THREE.Mesh>();
  private matrix=new THREE.Matrix4();
+ private dummiesRequestedRound=-1;
+ private wasEnabled=false;
  private lastX=Infinity;private lastY=Infinity;private lastZ=Infinity;
  constructor(private scene:THREE.Scene,private net:Network,parent:HTMLElement){
   this.root.name='Developer collision checks';
@@ -43,6 +45,11 @@ export class CollisionDebug {
   const state=this.net.room?.state,dev=state?.devMode===true;
   this.setting.hidden=!dev;this.toggle.checked=this.checkbox.checked;
   const enabled=dev&&this.net.canPlay&&this.checkbox.checked;
+  if(enabled&&state?.hostId===this.net.room.sessionId&&(!this.wasEnabled||this.dummiesRequestedRound!==state.startedAt)){
+   if(!state.debugDummies)this.net.room.send("debugDummies",true);
+   this.dummiesRequestedRound=state.startedAt;
+  }
+  this.wasEnabled=enabled;
   this.root.visible=enabled;this.legend.hidden=!this.root.visible;
   if(!this.root.visible)return;
   if(Math.hypot(player.x-this.lastX,player.z-this.lastZ)>=1||Math.abs(player.y-this.lastY)>=.25){

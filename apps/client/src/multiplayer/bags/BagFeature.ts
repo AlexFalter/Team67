@@ -77,7 +77,7 @@ export class BagFeature {
  get nearby(){if(!this.canUse()||this.local.body.bagId||this.local.body.vehicleId)return undefined;const p=this.local.body;return [...(this.net.room?.state.bags??[])].filter(([,b])=>!b.flying&&!b.throwAt&&(!b.owner||this.net.room.state.dummies?.has(b.owner))&&Math.abs(b.y-p.y)<1.5&&Math.hypot(b.x-p.x,b.z-p.z)<2.4).sort((a,b)=>Math.hypot(a[1].x-p.x,a[1].z-p.z)-Math.hypot(b[1].x-p.x,b[1].z-p.z))[0]?.[0];}
  interact(){const id=this.nearby;if(!id)return false;this.send('pickup',id);return true;}
  update(dt:number,own:THREE.Group,remotes:Iterable<[string,{mesh:THREE.Group}]>){
-  const state=this.net.room?.state,playing=this.net.canPlay;this.group.visible=playing;this.settings.hidden=!BAG_HILL.dummyPoints.length||!state?.devMode||state.hostId!==this.net.room?.sessionId;this.checkbox.checked=state?.debugDummies===true;
+  const state=this.net.room?.state,playing=this.net.canPlay;this.group.visible=playing;this.settings.hidden=!state?.devMode||state.hostId!==this.net.room?.sessionId;this.checkbox.checked=state?.debugDummies===true;
   if(state?.startedAt!==this.round){this.round=state?.startedAt??0;this.phase='idle';this.held='';this.pending=false;this.throwingId='';this.handoff=undefined;this.flights.clear();this.mixer?.stopAllAction();}
   if(this.pending&&this.net.now()-this.sentAt>3000){this.pending=false;if(this.phase==='throw'&&this.local.body.bagId)this.carry();}if(this.net.now()-this.sentAt>4000)this.hint.hidden=true;
   this.age+=dt;this.mixer?.update(dt);
