@@ -1,5 +1,5 @@
 import { schema, t, type SchemaType } from "@colyseus/schema";
-import { RoomPhase, PUBLI_BIKE_BATTERY_MS } from "@race/shared";
+import { RoomPhase, PUBLI_BIKE_BATTERY_MS, TOMATO_STAND_SUPPLY } from "@race/shared";
 export const RoomMember = schema({
   introSeat: t.int8().default(-1),
   thankedBusDriver: t.boolean().default(false),
@@ -147,6 +147,7 @@ export const RaceState = schema(
     serverTime: t.number().default(0),
     phase: t.string().default(RoomPhase.Lobby),
     hostId: t.string().default(""),
+    fruitStock:t.uint8().default(TOMATO_STAND_SUPPLY),
     moodleEnabled:t.boolean().default(true),
     noCarCollisions:t.boolean().default(false),
     moodleEventId:t.number().default(0),

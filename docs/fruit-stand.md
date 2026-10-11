@@ -1,0 +1,9 @@
+# Coop fruit stand and throwable tomatoes
+
+The apple/tomato stand sits in front of Coop beside the Mate machine, at `[-124, 8.6975, 83]`. Map placement lives in `NPC_LAYOUT.fruitStand`; feature logic stays in `FruitFeature` and `FruitManager`. The counter has shared player/projectile collision. Models are authored by `assets/blender/build-fruit-stand.py`, with editable `fruit-stand.blend` and exported stand, apple and tomato GLBs. The stand export merges static meshes by material.
+
+The stand starts each round with 12 shared tomatoes. E takes up to five, limited by remaining stock and free inventory space, and equips one. Visible tomatoes disappear as players take them. Each throw consumes exactly one tomato. Q or click throws, using the existing primary-action controls. 5 equips/holsters tomatoes; equipping one puts the football and knife away. Carrying a bag takes priority. R or the on-screen wipe button clears tomato pulp after a hit. The tomato overlay is opaque, hides the game view, and yields to the Escape menu. Apples decorate the stand; tomatoes are the throwable item.
+
+The server owns supply, cooldown, projectile flight, swept player hits, walls, and victim/wipe events. Clients provide only an aim vector. Hits target active real players, including riders, and cannot pass through buildings or hit the thrower. Busy NPC encounters are excluded. Supplies and projectiles clear with round reset and disconnect. UI/models/listeners dispose with the game instance.
+
+Validation: `tests/fruit.test.ts` verifies supply and command validation, cooldown, victim-only splatter, wiping, wall collisions, disconnect/reset, counter collision, and two live Colyseus clients. Browser checks exercise model loading, E pickup, Q/click throws and 5/R controls. Headless browser pointer lock and the delivered splat UI event are simulated; multiplayer hit authority is checked separately with real clients.

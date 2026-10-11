@@ -10,7 +10,11 @@ export class PhoneAimInput {
   const dx=x-old.x,dy=y-old.y;
   if(Math.abs(dx)>bounds.width*.45||Math.abs(dy)>bounds.height*.45){this.edge={x:0,y:0};return {x:0,y:0};}
   const edge=(n:number,size:number)=>n<20?-Math.min(1,(20-n)/20):n>size-20?Math.min(1,(n-size+20)/20):0;
-  this.edge=touch?{x:0,y:0}:{x:edge(x-bounds.left,bounds.width),y:edge(y-bounds.top,bounds.height)};
+  const xEdge=edge(x-bounds.left,bounds.width),yEdge=edge(y-bounds.top,bounds.height);
+  this.edge=touch?{x:0,y:0}:{
+   x:dx===0?(xEdge?this.edge.x:0):dx*xEdge>0?xEdge:0,
+   y:dy===0?(yEdge?this.edge.y:0):dy*yEdge>0?yEdge:0,
+  };
   return {x:dx,y:dy};
  }
  edgeMovement(dt:number){return {x:this.edge.x*.45*dt,y:this.edge.y*.35*dt};}

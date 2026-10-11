@@ -1,5 +1,6 @@
 import {FootballManager} from './football.ts';
 import {BagManager} from './bags.ts';
+import {FruitManager} from './fruit.ts';
 import {EmoteChallenge} from './emotes.ts';
 import {MoodleEvents} from './moodle.ts';
 import {PlayerMedals} from "./medals.ts";
@@ -26,6 +27,7 @@ export class Race extends Room<{ state: RaceState }> {
   state = new RaceState();
   private football!:FootballManager;
   private bags!:BagManager;
+  private fruit!:FruitManager;
   private moodle!:MoodleEvents;
   private medals = new PlayerMedals();
   private lastMoves = new Map<string, number>();
@@ -63,6 +65,8 @@ export class Race extends Room<{ state: RaceState }> {
     this.mate = new MateMachine(this.state, this.world);
     this.npcs = this.createNpcs();
     this.bags=new BagManager(this.state,this.world,(from,target,bag,practice)=>!!this.bagHit(from,target,bag,practice),id=>!!this.npcs.busy(id));
+    this.fruit=new FruitManager(this.state,this.world,(id,event)=>this.clients.find(c=>c.sessionId===id)?.send('tomatoEvent',event),event=>this.broadcast('tomatoEvent',event),(id,now)=>this.rounds.canPlay(id,now),id=>this.npcs.busy(id));
+    this.onMessage('fruit',(client,data:unknown)=>this.fruit.command(client,data,Date.now()));
     this.football=new FootballManager(this.state,this.world,(from,target,b)=>!!this.hit(target,{from,ix:b.vx*.5,iy:1.5,iz:b.vz*.5,knockdown:true,durationMs:1500}),id=>!!this.npcs.busy(id));
     this.onMessage('football',(client,data:unknown)=>this.football.command(client,data,Date.now()));
     this.moodle=new MoodleEvents(this.state,(id,result)=>this.clients.find(c=>c.sessionId===id)?.send('moodleResult',result));
@@ -197,7 +201,7 @@ export class Race extends Room<{ state: RaceState }> {
     this.npcs.join(id);
   }
   private resetRound() {
-    this.bags.reset();this.football.reset();this.emotes.reset();this.medals.reset();this.moodle.reset();
+    this.fruit.reset();this.bags.reset();this.football.reset();this.emotes.reset();this.medals.reset();this.moodle.reset();
     const colors = new Map([...this.state.players].map(([id, p]) => [id, p.color]));
     this.state.players.clear(); this.state.vehicles.clear(); this.state.publiBikes.clear(); this.lastMoves.clear();
     this.physics.sync(new Map(), new Map());
@@ -219,7 +223,7 @@ export class Race extends Room<{ state: RaceState }> {
   }
   private removeGameplayPlayer(client:Client){
     const id = this.state.players.get(client.sessionId)?.vehicleId;
-    this.football.leave(client.sessionId);this.bags.leave(client.sessionId);this.publiBikes.disconnect(client.sessionId);
+    this.fruit.leave(client.sessionId);this.football.leave(client.sessionId);this.bags.leave(client.sessionId);this.publiBikes.disconnect(client.sessionId);
     this.mate.leave(client.sessionId);
     this.npcs.leave(client.sessionId);
     this.vehicles.disconnect(client.sessionId);
@@ -367,7 +371,7 @@ export class Race extends Room<{ state: RaceState }> {
     this.mate.tick(now);
     this.npcs.tick(now);
     if (this.state.phase !== C.RoomPhase.Running || !this.state.introComplete) return;
-    this.moodle.tick(now);this.bags.tick(now);this.football.tick(now);
+    this.fruit.tick(now);this.moodle.tick(now);this.bags.tick(now);this.football.tick(now);
     const positions = new Map([...this.state.players].map(([id, p]) => [id, this.correction(p)]));
     for (const p of this.state.players.values()) {
       p.simTime = now;

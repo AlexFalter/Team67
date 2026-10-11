@@ -10,7 +10,7 @@ export function createTicketQRCamera(camera,{onScan,onCancel,uiRoot=document.bod
  let active=false,saved=null,yaw=0,pitch=0,corners=[],valid=false,progress=0;
  const hold=createScanProgress();
  const eye=new THREE.Vector3(),target=new THREE.Vector3();
- const handset=mountPhoneCamera(ui,{onAim:aim,yawRange:1.3,pitchRange:1.0,fullViewAim:true,edgePan:false,cursor:'none'});handset.orientation('portrait');
+ const handset=mountPhoneCamera(ui,{onAim:aim,yawRange:1.3,pitchRange:1.0,fullViewAim:true,cursor:'none'});handset.orientation('portrait');
  const meter=ui.querySelector('.ticket-scan-meter'),framing=ui.querySelector('#ticket-qr-framing');
  function apply(){aimPhotoCamera(camera,eye,target,yaw,pitch);valid=photoPointsInFrame(camera,corners,...cameraFrameLimits(camera,'portrait'));framing.textContent=valid?(progress>0?'SCANNING… '+Math.round(progress*100)+'%':'HOLD STILL TO SCAN'):'CENTER THE WHOLE QR CODE';}
  function aim(dx,dy){yaw=THREE.MathUtils.clamp(yaw+dx,-1.3,1.3);pitch=THREE.MathUtils.clamp(pitch+dy,-1,1);apply();}

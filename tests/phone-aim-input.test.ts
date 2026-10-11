@@ -24,3 +24,8 @@ test('touch and resize never leave continuous edge turning active',()=>{
  assert.deepEqual(input.edgeMovement(1),{x:0,y:0});input.reset();
  assert.deepEqual(input.move(0,100,bounds),{x:0,y:0});
 });
+test('moving away from an edge stops turning before leaving its margin',()=>{
+ const input=new PhoneAimInput();input.move(100,300,bounds);input.move(0,300,bounds);
+ assert.ok(input.edgeMovement(.05).x<0);
+ input.move(1,300,bounds);assert.equal(input.edgeMovement(.05).x,0);
+});
