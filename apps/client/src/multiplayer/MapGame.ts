@@ -22,6 +22,7 @@ import { MateFeature } from "./mate.ts";
 import { MenuScene } from "./MenuScene";
 import { NpcFeature } from "../npcPrototype/host.js";
 import { GameAudio, type LoopSource } from "./gameAudio.ts";
+import { Drowning } from "./drowning.ts";
 
 // MapViewer owns rendering and the loop; this instance owns gameplay cleanup.
 export class MapGame {
@@ -53,6 +54,7 @@ export class MapGame {
   private menuScene: MenuScene;
   private npcs: NpcFeature;
   private audio = new GameAudio();
+  private drowning: Drowning;
   private audioSources = new Map<string, LoopSource>();
   private limoTrack = new Map<string, { x: number; z: number; speed: number }>();
   private medalTargets = new Set<string>();
@@ -66,6 +68,7 @@ export class MapGame {
     this.vehicles = new Vehicles(scene, this.net, hints);
     this.effects = new Effects(scene, bump => this.audio.bump(this.listener, bump));
     this.hud = new Hud(hud);
+    this.drowning = new Drowning(hud.parentElement ?? document.body);
     this.publiBikes = new PubliBikeFeature(scene, camera, this.net, this.vehicles, this.local, canvas);
     this.mate = new MateFeature(scene, camera, this.net, this.local, canvas);
     // Camera shutter from mini-games-2 when a photo is taken.
@@ -124,8 +127,12 @@ export class MapGame {
       this.derailRun=riding.derailStartedAt;this.derailVehicle=this.local.body.vehicleId;this.derailUntil=riding.derailStartedAt+3200;
     }
     if (this.net.canPlay && !this.exam.active) {
-      this.net.frame(dt, this.local.body, () => this.net.now()<this.derailUntil?IDLE_INPUT:this.local.controls(this.view.yaw));
-      if (this.net.now()>=this.derailUntil && this.local.takeInteraction() && !this.npcs.active && !this.npcs.interact() && !this.mate.interact() && !this.publiBikes.interact()) this.vehicles.interact(this.local.body);
+      // Water kills players on foot: 10 s timeout with the meme music, then respawn at the start.
+      const drowned = this.drowning.update(this.local.body, this.net.now(),
+        !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now() >= this.derailUntil);
+      this.net.frame(dt, this.local.body, () => drowned || this.net.now()<this.derailUntil?IDLE_INPUT:this.local.controls(this.view.yaw));
+      if (drowned) this.local.takeInteraction();
+      else if (this.net.now()>=this.derailUntil && this.local.takeInteraction() && !this.npcs.active && !this.npcs.interact() && !this.mate.interact() && !this.publiBikes.interact()) this.vehicles.interact(this.local.body);
       if (this.local.body.vehicleId) this.vehicles.local(this.local.body, this.net.room.sessionId);
       else this.vehicles.stopDriving();
       pose(this.mesh, this.local.body, dt);
@@ -139,7 +146,7 @@ export class MapGame {
       }
       pose(this.firstBody, this.local.body, dt, this.view.pitch, this.view.camera);
     }
-    if (!this.net.canPlay || this.exam.active) { this.mesh.visible = this.firstBody.visible = false; this.vehicles.stopDriving(); }
+    if (!this.net.canPlay || this.exam.active) { this.drowning.cancel(); this.mesh.visible = this.firstBody.visible = false; this.vehicles.stopDriving(); }
     this.effects.speed(this.local.body, this.view.camera, dt, this.net.canPlay && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.view.perspective === 0);
     this.roomFlow.update();
     this.vehicles.render(renderTime, dt, "other"); this.remotes.render(renderTime, this.vehicles.items, dt);
@@ -243,6 +250,7 @@ export class MapGame {
     this.exam.dispose();
     this.npcs.dispose();
     this.audio.dispose();
+    this.drowning.dispose();
     this.mate.dispose();
     this.publiBikes.dispose();
     this.bus.dispose();

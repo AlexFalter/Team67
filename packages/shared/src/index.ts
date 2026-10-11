@@ -16,3 +16,4 @@ export * from "./publiBike.ts";
 export * from "./transit.ts";
 export * from "./mate.ts";
 export * from "./npc.ts";
+export * from "./water.ts";

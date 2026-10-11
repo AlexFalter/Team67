@@ -179,8 +179,9 @@ export class Race extends Room<{ state: RaceState }> {
     const
       now = Date.now(),
       dt = Math.max(0.001, (now - (this.lastMoves.get(client.sessionId) ?? now)) / 1000);
+    // A player who fell off the map or drowned (see water.ts) may jump back to the spawn.
     const respawn =
-      p.y < (this.world.height(p.x, p.z) ?? this.world.spawn.y) - 8 &&
+      (p.y < (this.world.height(p.x, p.z) ?? this.world.spawn.y) - 8 || C.inWater(this.world, p.x, p.y, p.z)) &&
       Math.abs(data[0] - this.world.spawn.x) <= C.SPAWN_SPREAD &&
       Math.abs(data[2] - this.world.spawn.z) <= C.SPAWN_SPREAD &&
       Math.abs(data[1] - (this.world.height(data[0], data[2]) ?? Infinity)) <
