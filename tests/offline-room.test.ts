@@ -93,8 +93,11 @@ test('offline viewer uses the new tomato manager and resets its stock with the l
     let stock = 0;
     room.onMessage<C.TomatoEvent>('tomatoEvent', event => { if (event.kind === 'stock') stock = event.count ?? 0; });
     room.send('fruit', { action: 'take', roundStartedAt: room.state.startedAt });
-    assert.equal(stock, C.TOMATO_CAPACITY);
-    assert.equal(room.state.fruitStock, C.TOMATO_STAND_SUPPLY - C.TOMATO_CAPACITY);
+    assert.equal(stock, 1, 'each pickup grants one tomato');
+    assert.equal(room.state.fruitStock, C.TOMATO_STAND_SUPPLY - 1);
+    for(let i=1;i<C.TOMATO_CAPACITY;i++)room.send('fruit',{action:'take',roundStartedAt:room.state.startedAt});
+    assert.equal(stock,C.TOMATO_CAPACITY);
+    assert.equal(room.state.fruitStock,C.TOMATO_STAND_SUPPLY-C.TOMATO_CAPACITY);
     room.send('uiReset');
     assert.equal(room.state.fruitStock, C.TOMATO_STAND_SUPPLY);
   } finally { await room.leave(); }
