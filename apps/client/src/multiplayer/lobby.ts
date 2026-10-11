@@ -13,23 +13,28 @@ export function lobby(connect: (selection: Selection) => Promise<void>) {
   const skipOption = root.querySelector<HTMLElement>("#skip-intro-option")!;
   const goldBikes = root.querySelector<HTMLInputElement>("#gold-bikes")!;
   const goldOption = root.querySelector<HTMLElement>("#gold-bikes-option")!;
+  const coordinates=root.querySelector<HTMLInputElement>("#activate-coordinates")!;
+  const coordinatesOption=root.querySelector<HTMLElement>("#coordinates-option")!;
   const railProtection=root.querySelector<HTMLInputElement>("#rail-protection")!;
   const railOption=root.querySelector<HTMLElement>("#rail-protection-option")!;
   try {
     const saved = JSON.parse(localStorage.getItem("eth-dev-settings") ?? "{}");
     devMode.checked = saved?.devMode === true;
+    coordinates.checked = saved?.showCoordinates === true;
     railProtection.checked=saved?.railCrashProtection===true;
     skipIntro.checked = saved?.skipIntro !== false;
     goldBikes.checked = saved?.goldPubliBikes !== false;
   } catch { /* Storage can be disabled; keep the form usable. */ }
   const syncDevSettings = () => {
+    coordinatesOption.hidden = !devMode.checked;
     skipOption.hidden = !devMode.checked;
     railOption.hidden=!devMode.checked;
     goldOption.hidden = !devMode.checked;
     skipIntro.disabled = !devMode.checked;
-    try { localStorage.setItem("eth-dev-settings", JSON.stringify({ devMode: devMode.checked, skipIntro: skipIntro.checked, goldPubliBikes: goldBikes.checked, railCrashProtection: railProtection.checked })); } catch { /* Optional persistence. */ }
+    try { localStorage.setItem("eth-dev-settings", JSON.stringify({ devMode: devMode.checked, showCoordinates: coordinates.checked, skipIntro: skipIntro.checked, goldPubliBikes: goldBikes.checked, railCrashProtection: railProtection.checked })); } catch { /* Optional persistence. */ }
   };
   syncDevSettings();
+  coordinates.addEventListener("change",syncDevSettings,{signal:abort.signal});
   railProtection.addEventListener("change",syncDevSettings,{signal:abort.signal});
   devMode.addEventListener("change", syncDevSettings, { signal: abort.signal });
   goldBikes.addEventListener("change", syncDevSettings, { signal: abort.signal });

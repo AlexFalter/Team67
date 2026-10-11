@@ -1,3 +1,4 @@
+import {createDialogueAudio} from '../../shared/dialogue/dialogue-audio.js';
 import {disposeOwnedObject} from '../../shared/runtime/feature-lifecycle.js';
 import {featurePlacement} from '../../world/placements/feature-placement.js';
 import {gameConfig} from '../../config/game-config.js';
@@ -25,7 +26,16 @@ export function createFinanceGuy(scene,world,solver,{onComplete,placement,uiRoot
  }
  box(actor,0,1.63,-.18,.042,.014,.02,'#b89a69');const watch=box(rig.elbows[0],0,-.14,-.065,.125,.05,.018,'#c0b9a6');watch.rotation.x=.1;
  const mouth=box(actor,0,1.535,-.177,.064,.015,.012,'#77463c');
- const anchors=placement.searchAnchors;let site=new THREE.Vector3(...placement.fixedSite),access=new THREE.Vector3(...placement.fixedAccess),baseHeading=Math.atan2(access.x-site.x,access.z-site.z)+Math.PI;
+ // Keep the placement root on the ground while the visual hips rest on the seat.
+ const seated=placement.seated===true,seatOffset=seated?(placement.seatHeight??.5)/actor.scale.y-(.9-.1125):0;
+ if(seated){const body=new THREE.Group();body.name='Seated finance guy';body.position.y=seatOffset;for(const child of [...actor.children])body.add(child);actor.add(body);}
+ function restPose(){
+  rig.limbs.forEach(l=>l.rotation.set(0,0,0));rig.elbows.forEach(l=>l.rotation.set(0,0,0));
+  for(let i=0;i<2;i++){rig.limbs[i*2+1].rotation.x=seated?Math.PI/2:0;rig.knees[i].rotation.x=seated?-Math.PI/2:0;}
+  if(seated){rig.limbs[0].rotation.x=.45;rig.limbs[2].rotation.x=.45;rig.elbows.forEach(l=>l.rotation.x=.7);}
+ }
+ restPose();
+ const anchors=placement.searchAnchors;let site=new THREE.Vector3(...placement.fixedSite),access=new THREE.Vector3(...placement.fixedAccess),baseHeading=placement.heading??Math.atan2(access.x-site.x,access.z-site.z)+Math.PI;
  candidate:for(const {point:a,next:b} of (site?[]:anchors)){if(!a||!b)continue;const forward=new THREE.Vector3(b[0]-a[0],0,b[1]-a[1]).normalize(),right=new THREE.Vector3(-forward.z,0,forward.x);
   for(const offset of [7,-7,9,-9,12,-12]){const p=new THREE.Vector3(a[0],world.height(...a),a[1]).addScaledVector(right,offset);p.y=world.height(p.x,p.z);
    if(layoutRoute.slice(1).some((b,i)=>nearSegment(p.x,p.z,layoutRoute[i],b).distance<5))continue;
@@ -35,23 +45,23 @@ export function createFinanceGuy(scene,world,solver,{onComplete,placement,uiRoot
   }
  }
  if(!site)throw Error('No clear accessible finance NPC detour');actor.position.copy(site);actor.rotation.y=baseHeading;
- const audio=new Audio('/audio/finance-guy.mp3');audio.preload='auto';audio.volume=gameConfig.npcs.finance.volume;
- const overlay=document.createElement('section');overlay.id='finance-guy-cinema';overlay.hidden=true;overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label','Finance Guy conversation');overlay.innerHTML='<div class="finance-top">UNSCHEDULED NETWORKING</div><div class="finance-bottom"><span>FINANCE GUY</span><p class="finance-topic"></p><small>Your lecture can wait. This conversation cannot.</small><div class="finance-progress"><i></i></div></div>';uiRoot.append(overlay);styleEncounterLine(overlay.querySelector('.finance-topic'));
+ const audio=createDialogueAudio('/audio/finance-guy.mp3');audio.preload='auto';audio.volume=gameConfig.npcs.finance.volume;
+ const overlay=document.createElement('section');overlay.id='finance-guy-cinema';overlay.classList.add('inspection-cinema');overlay.hidden=true;overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label','Finance Guy conversation');overlay.innerHTML='<div class="inspection-top"><span>UNSCHEDULED NETWORKING</span><b>FINANCE GUY</b></div><div class="inspection-subtitle"><span>FINANCE GUY</span><p class="finance-topic"></p><small>Unskippable conversation</small><div class="inspection-progress finance-progress"><i></i></div></div>';uiRoot.append(overlay);styleEncounterLine(overlay.querySelector('.finance-topic'));
  const topic=overlay.querySelector('.finance-topic'),progress=overlay.querySelector('.finance-progress i');let duration=0;const topics=financeAudioEdit.segments.map((clip,i)=>{const topic=[duration,clip.topic];duration+=clip.end-clip.start+(i<financeAudioEdit.segments.length-1?financeAudioEdit.gapSeconds:0);return topic;});duration=Math.round(duration*1000)/1000;
  let active=false,used=false,age=0,count=0,audioPlayed=false,audioFailed=false,generation=0;const frozen=new THREE.Vector3();
- function end(){active=false;audio.pause();overlay.hidden=true;document.body.classList.remove('finance-guy-cutscene');mouth.scale.y=1;actor.rotation.set(0,baseHeading,0);rig.limbs.forEach(l=>l.rotation.set(0,0,0));rig.elbows.forEach(l=>l.rotation.set(0,0,0));onComplete(frozen.clone());}
+ function end(){active=false;audio.pause();overlay.hidden=true;document.body.classList.remove('finance-guy-cutscene');mouth.scale.y=1;actor.rotation.set(0,baseHeading,0);restPose();onComplete(frozen.clone());}
  return {dispose(){this.reset();audio.onended=null;overlay.remove();disposeOwnedObject(actor);},actor,audio,active:()=>active,
-  state:()=>({active,used,age,duration,count,audioPlayed,audioFailed,audioTime:audio.currentTime,audioEnded:audio.ended,unskippable:true,position:site.toArray(),access:access.toArray()}),
-  maybeStart(position){if(active||used||!worldAccess.canInteract(position,site,gameConfig.npcs.finance.interactionDistance))return false;
-   active=true;used=true;count++;age=0;audioPlayed=false;audioFailed=false;frozen.copy(position);actor.rotation.y=Math.atan2(site.x-position.x,site.z-position.z);overlay.hidden=false;document.body.classList.add('finance-guy-cutscene');topic.textContent=topics[0][1];progress.style.width='0%';audio.currentTime=0;const session=++generation;audio.play().then(()=>{if(session===generation)audioPlayed=true;}).catch(()=>{if(session===generation)audioFailed=true;});return true;
+  state:()=>({active,used,age,duration,count,audioPlayed,audioFailed,audioTime:audio.currentTime,audioEnded:audio.ended,unskippable:true,seated,position:site.toArray(),access:access.toArray()}),
+  maybeStart(position){if(active||used||!worldAccess.canInteract(position,seated?access:site,gameConfig.npcs.finance.interactionDistance))return false;
+   active=true;used=true;count++;age=0;audioPlayed=false;audioFailed=false;frozen.copy(position);actor.rotation.y=seated?baseHeading:Math.atan2(site.x-position.x,site.z-position.z);overlay.hidden=false;document.body.classList.add('finance-guy-cutscene');topic.textContent=topics[0][1];progress.style.width='0%';audio.currentTime=0;const session=++generation;audio.play().then(()=>{if(session===generation)audioPlayed=true;}).catch(()=>{if(session===generation)audioFailed=true;});return true;
   },
   update(dt,position,camera){if(!active)return false;age+=Math.max(0,dt);position.copy(frozen);const t=audioPlayed?audio.currentTime:Math.min(age,duration);
-   const talk=Math.abs(Math.sin(t*17))*Math.abs(Math.sin(t*5.3));mouth.scale.y=.35+talk*1.7;rig.limbs[0].rotation.x=-.25-Math.sin(t*1.7)*.3;rig.limbs[0].rotation.z=.16+Math.sin(t*2.1)*.12;rig.elbows[0].rotation.x=-.35-Math.abs(Math.sin(t*1.3))*.5;rig.limbs[2].rotation.x=-.2-Math.abs(Math.sin(t*1.5))*.3;rig.elbows[1].rotation.x=-.5;actor.rotation.z=Math.sin(t*1.2)*.015;
-   actor.updateMatrixWorld(true);const target=actor.localToWorld(new THREE.Vector3(0,1.5,0)),close=THREE.MathUtils.smoothstep(age,0,2),eye=actor.localToWorld(new THREE.Vector3(THREE.MathUtils.lerp(-1,-.5,close),1.64,THREE.MathUtils.lerp(-3.4,-2.65,close)));camera.up.set(0,1,0);camera.position.copy(eye);camera.lookAt(target);
+   const talk=Math.abs(Math.sin(t*17))*Math.abs(Math.sin(t*5.3));mouth.scale.y=.35+talk*1.7;rig.limbs[0].rotation.x=seated?.45+Math.sin(t*1.7)*.15:-.25-Math.sin(t*1.7)*.3;rig.limbs[0].rotation.z=.16+Math.sin(t*2.1)*.12;rig.elbows[0].rotation.x=seated?.7+Math.abs(Math.sin(t*1.3))*.2:-.35-Math.abs(Math.sin(t*1.3))*.5;rig.limbs[2].rotation.x=seated?.45:-.2-Math.abs(Math.sin(t*1.5))*.3;rig.elbows[1].rotation.x=seated?.7:-.5;actor.rotation.z=Math.sin(t*1.2)*.015;
+   actor.updateMatrixWorld(true);const target=actor.localToWorld(new THREE.Vector3(0,1.5+seatOffset,0)),close=THREE.MathUtils.smoothstep(age,0,2),eye=actor.localToWorld(new THREE.Vector3(THREE.MathUtils.lerp(-1,-.5,close),1.64+seatOffset,THREE.MathUtils.lerp(-3.4,-2.65,close)));camera.up.set(0,1,0);camera.position.copy(eye);camera.lookAt(target);
    topic.textContent=topics.filter(([at])=>at<=t).at(-1)[1];progress.style.width=`${Math.min(1,t/duration)*100}%`;
    // Real audio must finish; restarting, movement and map controls cannot end it early.
    if(age>=duration&&(audioFailed||audio.ended||audio.error||age>=duration+2)){end();return true;}return false;
   },
-  reset(){generation++;active=false;used=false;age=0;count=0;audioPlayed=false;audioFailed=false;audio.pause();audio.currentTime=0;overlay.hidden=true;document.body.classList.remove('finance-guy-cutscene');actor.rotation.set(0,baseHeading,0);rig.limbs.forEach(l=>l.rotation.set(0,0,0));rig.elbows.forEach(l=>l.rotation.set(0,0,0));mouth.scale.y=1;}
+  reset(){generation++;active=false;used=false;age=0;count=0;audioPlayed=false;audioFailed=false;audio.pause();audio.currentTime=0;overlay.hidden=true;document.body.classList.remove('finance-guy-cutscene');actor.rotation.set(0,baseHeading,0);restPose();mouth.scale.y=1;}
  };
 }

@@ -42,7 +42,7 @@ export class RoundManager {
     this.state.introStartedAt = now + (this.intro.leadMs ?? C.BATTLE_BUS_LEAD_MS);
     this.state.startedAt = this.state.introStartedAt + (this.intro.durationMs ?? C.BATTLE_BUS_DURATION_MS);
     this.state.endsAt = this.state.startedAt + this.duration; this.state.finishedAt = 0;
-    this.state.introComplete = false;
+    this.state.introComplete = false; this.state.scooterArrivalAt = 0;
     this.onStart();
     if (now >= this.state.startedAt) this.completeIntro();
   }
@@ -75,7 +75,7 @@ export class RoundManager {
     if (this.state.phase !== C.RoomPhase.Finished || id !== this.state.hostId) return;
     this.state.phase = C.RoomPhase.Lobby;
     this.state.startedAt = this.state.endsAt = this.state.finishedAt = 0;
-    this.state.introStartedAt = 0; this.state.introComplete = false;
+    this.state.introStartedAt = 0; this.state.introComplete = false; this.state.scooterArrivalAt = 0;
     this.scores.clear(); this.state.results.clear();
     for (const member of this.state.members.values()) { member.ready = false; member.spectator = false; member.introSeat = -1; }
     this.onReset();

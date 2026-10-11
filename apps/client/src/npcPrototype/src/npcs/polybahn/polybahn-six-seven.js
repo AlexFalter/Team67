@@ -1,3 +1,5 @@
+import {createDialogueAudio} from '../../shared/dialogue/dialogue-audio.js';
+import {polybahnDialogueView} from '../../vehicles/rail/polybahn-dialogue-view.js';
 import {disposeOwnedObject} from '../../shared/runtime/feature-lifecycle.js';
 import {gameConfig} from '../../config/game-config.js';
 import {styleRPGDialogue} from '../../shared/dialogue/rpg-dialogue.js';
@@ -16,7 +18,7 @@ export function createSixSevenKid(car,{onClose=()=>{},onResponse=()=>{},uiRoot=d
  const skin=new THREE.MeshStandardMaterial({color:'#e2b79b',roughness:.8});for(const elbow of rig.elbows){const hand=elbow.children.find(o=>o.geometry?.type==='SphereGeometry'&&Math.abs(o.geometry.parameters.radius-.071)<.001);if(hand)hand.scale.set(1,.7,.3);for(let i=0;i<4;i++){const finger=new THREE.Mesh(new THREE.CapsuleGeometry(.012,.048,3,6),skin);finger.position.set((i-1.5)*.026,-.285,-.01);elbow.add(finger);}}
  const mouth=new THREE.Mesh(new THREE.BoxGeometry(.065,.025,.014),new THREE.MeshStandardMaterial({color:'#814e44'}));mouth.position.set(0,1.535,-.176);actor.add(mouth);
  const clock=new THREE.Group();clock.name='Suspiciously priced cabin clock';clock.position.set(.65,1.85,-2.23);car.add(clock);const face=new THREE.Mesh(new THREE.CircleGeometry(.15,24),new THREE.MeshBasicMaterial({color:'#f4ebd1'}));clock.add(face);const rim=new THREE.Mesh(new THREE.TorusGeometry(.15,.012,6,24),new THREE.MeshStandardMaterial({color:'#a8884e'}));clock.add(rim);for(const [length,angle] of [[.075,Math.PI],[.115,7*Math.PI/30]]){const hand=new THREE.Mesh(new THREE.BoxGeometry(.012,length,.012),new THREE.MeshBasicMaterial({color:'#1a2930'}));hand.position.set(Math.sin(angle)*length/2,Math.cos(angle)*length/2,.02);hand.rotation.z=-angle;clock.add(hand);}
- const audio=new Audio('/audio/six-seven-kid.mp3?v=2');audio.preload='auto';audio.loop=false;audio.volume=gameConfig.npcs.kid.volume;
+ const audio=createDialogueAudio('/audio/six-seven-kid.mp3?v=2');audio.preload='auto';audio.loop=false;audio.volume=gameConfig.npcs.kid.volume;
  let aboard=false,age=0,played=false,failed=false,session=0,performed=false,completed=false,enraged=false,dialogue=false,selection=0;
  const ui=document.createElement('section');ui.id=id;ui.classList.add('kid-dialogue');ui.hidden=true;ui.setAttribute('role','dialog');ui.setAttribute('aria-modal','true');ui.setAttribute('aria-label','Talk to the 67 kid');ui.innerHTML='<div class="kid-dialogue-name">STRANGE KID · LVL 67</div><p class="kid-question">Quick question. How much does that clock cost?</p><div class="kid-options"></div><small>↑ ↓ CHOOSE · ENTER ANSWER · ESC LEAVE</small>';uiRoot.append(ui);styleRPGDialogue(ui);styleEncounterLine(ui.querySelector('.kid-question'));
  const choices=gameConfig.npcs.kid.choices,options=ui.querySelector('.kid-options'),question=ui.querySelector('.kid-question');question.textContent=gameConfig.npcs.kid.question;
@@ -28,8 +30,8 @@ export function createSixSevenKid(car,{onClose=()=>{},onResponse=()=>{},uiRoot=d
 
  return {dispose(){this.reset();audio.onended=null;ui.remove();disposeOwnedObject(actor);disposeOwnedObject(clock);},actor,audio,
   active:()=>dialogue,
-  dialogueView(position){const local=car.worldToLocal(position.clone());local.y+=1.05;return {eye:car.localToWorld(local),target:car.localToWorld(new THREE.Vector3(actor.position.x,actor.position.y+1.59*.74,actor.position.z)),up:new THREE.Vector3(0,1,0).applyQuaternion(car.quaternion)};},
-  near(){return aboard;},
+  dialogueView(position,anchor){return polybahnDialogueView(car,actor,position,1.59,anchor);},
+  near(position){if(!aboard||!position)return false;car.updateWorldMatrix(true,false);const local=car.worldToLocal(position.clone());return Math.hypot(local.x-actor.position.x,local.z-actor.position.z)<2.8;} ,
   interact(position){if(!aboard||!this.near(position))return false;if(enraged)return true;dialogue=true;document.body.classList.add('kid-conversation');selection=0;question.textContent=gameConfig.npcs.kid.question;ui.hidden=false;render();return true;},
   keydown(e){if(!dialogue)return false;e.preventDefault();if(e.code==='Escape')hide();else if(e.code==='ArrowUp'||e.code==='ArrowDown'){selection=(selection+(e.code==='ArrowUp'?-1:1)+choices.length)%choices.length;render();}else if(e.code==='Enter'&&!e.repeat)choose();return true;},
   update(dt,enabled,inspection=false,position){

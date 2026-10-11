@@ -16,7 +16,7 @@ export const railStart = (v: Pick<VehicleState, "kind">) => v.kind === TRAM_KIND
 export const TRANSIT_BOARDING_MS = 5000, TRANSIT_DOOR_MS = 900;
 export const isRail = (v: Pick<VehicleState, "kind">) => v.kind === TRAM_KIND || v.kind === POLYBAHN_KIND;
 export const isPassengerVehicle = (v: Pick<VehicleState, "kind">) => v.kind === 1 || isRail(v);
-export const isRideable = (v: Pick<VehicleState, "kind">) => v.kind < 3 || isRail(v);
+export const isRideable = (v: Pick<VehicleState, "kind">) => v.kind < 3 || v.kind === 7 || isRail(v);
 export const transitName = (v: Pick<VehicleState, "kind">) => v.kind === POLYBAHN_KIND ? "Polybahn" : "Tram";
 function path(points: readonly GroundPoint[]) {
   const distances = [0];
