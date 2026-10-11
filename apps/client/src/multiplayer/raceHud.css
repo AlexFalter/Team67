@@ -28,7 +28,10 @@
 .map-viewer[data-playing=true] .map-controls:empty { display: none; }
 .map-viewer:has(:is(#pause, #city-map):not([hidden])) .map-controls,
 .map-viewer:has(:is(#npc-hint, #mate-hint):not([hidden])) .map-controls { visibility: hidden; }
-.map-viewer :is(#npc-hint, #mate-hint) { bottom: 72px; padding: 12px 20px; border: 1px solid #d7f87a80; border-radius: 10px; background: #10272ff2; color: #f1f8e9; font: 650 14px/1.5 system-ui, sans-serif; max-width: min(460px, calc(100% - 36px)); width: max-content; box-shadow: 0 4px 24px #0004; }
+.map-viewer:has(.interaction-instruction:not([hidden])) :is(.map-controls, #knife-inventory),
+.map-viewer:has(:is(#npc-hint, #mate-hint):not([hidden])) :is(.interaction-instruction, #knife-inventory),
+.map-viewer:has(#knife-inventory:not([hidden])) .map-controls { visibility: hidden; }
+.map-viewer :is(#npc-hint, #mate-hint) { top: auto; bottom: 72px; padding: 12px 20px; border: 1px solid #d7f87a80; border-radius: 10px; background: #10272ff2; color: #f1f8e9; font: 650 14px/1.5 system-ui, sans-serif; max-width: min(460px, calc(100% - 36px)); width: max-content; box-shadow: 0 4px 24px #0004; }
 #round-timer { top: 18px; z-index: 4; width: 196px; padding: 12px 22px 14px; border: 1px solid #d7f87a70; border-radius: 14px; background: #10272fee; color: #d7f87a; font-family: system-ui, sans-serif; text-align: center; box-shadow: 0 6px 30px #0003; }
 #timer-label { display: block; color: #c9dcd2; font: 700 9px/1.4 system-ui; letter-spacing: 1.7px; }
 #timer-value { display: block; font: 800 44px/1.15 system-ui; font-variant-numeric: tabular-nums; letter-spacing: -2px; margin: 3px 0 9px; }

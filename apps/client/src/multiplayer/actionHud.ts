@@ -110,8 +110,8 @@ export class ActionHud {
       if (svg.dataset.icon !== action.icon) { svg.innerHTML = icons[action.icon]; svg.dataset.icon = action.icon; }
       const caption=entry.item.querySelector<HTMLElement>('.action-label')!;
       caption.hidden=action.icon!=='holster'&&action.icon!=='equip';caption.textContent=action.icon==='holster'?'Holster':'Equip';
-      entry.button.disabled = !action.enabled; entry.button.title = `${action.label} · ${action.key}`;
-      entry.button.setAttribute("aria-label", entry.button.title);
+      entry.button.disabled = !action.enabled; entry.button.removeAttribute("title");
+      entry.button.setAttribute("aria-label", `${action.label} · ${action.key}`);
     });
     const weapon = this.getWeapon();
     const punchSvg = this.punch.querySelector('svg')!;

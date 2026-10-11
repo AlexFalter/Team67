@@ -55,3 +55,4 @@ Fortnite emote clip sources and filenames are listed in [emotes/CREDITS.md](emot
 ## Interview helicopter
 
 - `helicopter-rotor.mp3`: 39–49 s of “Chinook helicopter flying over Greenwich in London”, JoBrodie (2016), https://commons.wikimedia.org/wiki/File:Chinook_helicopter_flying_over_Greenwich_in_London.ogg . CC0 1.0 https://creativecommons.org/publicdomain/zero/1.0/ . Edited into a 9.6-second mono loop with 70 Hz high-pass / 6.5 kHz low-pass filters, -18 LUFS normalization and a 400 ms wraparound crossfade. General helicopter rotor recording; not an exact recording of the modeled aircraft.
+`let-me-know.mp3`: "Let Me Know - Meme Sound Effect" (Future, "Let Me Know"), 11.7 s meme clip, copied unchanged. Rights remain with the original artist and label. It plays during the 10 s drowning timeout before a player respawns at the start.

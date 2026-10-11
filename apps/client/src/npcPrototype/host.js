@@ -125,7 +125,7 @@ export class NpcFeature {
    this.property=this.own(createPrivatePropertyEncounter(this.root,world,new THREE.Vector3(),0,solver,{uiRoot}));
    this.karambit=this.own(await createKarambit(camera,{uiRoot,onStrike:()=>this.strikeKnife()}));
    if(this.abort.signal.aborted){this.cleanupFeatures();return;}
-   this.scooter=this.own(createBridgeScooter(this.root,world,{placement:{...placements.scooterEncounter,...C.NPC_LAYOUT.scooter},shortArrival:true,uiRoot,knifeModel:this.karambit.grip,onCollect:()=>{this.karambit.give();if(this.playerView){this.playerView.perspective=0;this.playerView.pitch=0;}this.syncLock();this.notice('KARAMBIT DOPPLER COLLECTED');}}));
+   this.scooter=this.own(createBridgeScooter(this.root,world,{placement:{...placements.scooterEncounter,...C.NPC_LAYOUT.scooter},parked:true,uiRoot,knifeModel:this.karambit.grip,onCollect:()=>{this.karambit.give();if(this.playerView){this.playerView.perspective=0;this.playerView.pitch=0;}this.syncLock();}}));
    this.knifeVictims=this.scooter.riders.map(rig=>({rig,knockdown:createNpcKnockdown(rig,world)}));
    this.own({reset:()=>this.knifeVictims.forEach(p=>p.knockdown.reset())});
    // A short fixed arrival is shared scenery; each client uses the round clock.
