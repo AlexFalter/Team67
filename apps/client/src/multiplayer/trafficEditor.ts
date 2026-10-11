@@ -134,6 +134,7 @@ export class TrafficEditor {
     this.controls.mouseButtons.RIGHT = THREE.MOUSE.PAN;
   }
   private toggle() {
+    if (this.canvas.closest<HTMLElement>('.map-viewer')?.dataset.examActive === 'true') return;
     this.active = !this.active;
     this.panel.querySelector<HTMLElement>('.traffic-editor-body')!.hidden = !this.active;
     this.canvas.closest<HTMLElement>('.map-viewer')?.toggleAttribute('data-traffic-editing', this.active);

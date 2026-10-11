@@ -20,7 +20,7 @@ test('spectator flies in view direction, rises and descends through geometry wit
 test('spectating and returning to the exam keep the same round deadline and allow spectating again',()=>{
  let session:ExamSession|undefined;
  const exam=Object.create(ExamSequence.prototype) as ExamSequence;
- Object.assign(exam,{portal:{root:{visible:true},update(){}},stage:'exam',round:123,enteredRound:123,remaining:90,score:5,lastPublish:0,publish:(value:ExamSession)=>{session=value;}});
+ Object.assign(exam,{portal:{root:{visible:true},update(){}},abort:new AbortController(),stage:'exam',round:123,enteredRound:123,remaining:90,score:5,lastPublish:0,publish:(value:ExamSession)=>{session=value;}});
  exam.spectate();assert.equal(exam.spectating,true);
  exam.update(createBody(),true,false,123,70,1000);
  exam.returnToExam();assert.equal(exam.screenVisible,true);assert.equal(session!.stage,'exam');assert.equal(session!.remainingSeconds,70);assert.equal(session!.score,5);

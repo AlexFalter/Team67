@@ -13,6 +13,11 @@ export function examMapPoint(point: readonly [number, number, number]) {
 }
 export const examPortalPosition = examMapPoint(FINAL_EXAM_LOCATION.portalLV95);
 export const examDebugPosition = { ...examPortalPosition, z: examPortalPosition.z + 8 };
+export function examFlyoverPosition(progress: number) {
+  const focus = examMapPoint(FINAL_EXAM_LOCATION.ethFocusLV95);
+  const angle = Math.PI * 0.9 + Math.max(0, Math.min(1, progress)) * Math.PI * 1.15;
+  return { x: focus.x + Math.sin(angle) * 105, y: focus.y + 100, z: focus.z + Math.cos(angle) * 105 };
+}
 export function insideExamPortal(position: { x: number; y: number; z: number }) {
   return Math.hypot(position.x - examPortalPosition.x, position.z - examPortalPosition.z) <= FINAL_EXAM_LOCATION.radius &&
     Math.abs(position.y - examPortalPosition.y) <= FINAL_EXAM_LOCATION.verticalTolerance;
@@ -20,3 +25,6 @@ export function insideExamPortal(position: { x: number; y: number; z: number }) 
 export function examSecondsRemaining(endsAt: number, now: number) {
   return Math.max(0, (endsAt - now) / 1000);
 }
+export const EXAM_BUILDING_COUNT = 16;
+export interface ExamScore { score: number; correct: number; completed: boolean }
+export interface ExamProgress extends ExamScore { roundStartedAt: number }

@@ -86,6 +86,8 @@ export class Race extends Room<{ state: RaceState }> {
       onArrival: () => this.arriveFromBus(),
     });
     registerExamDebug(this, this.world, this.lastMoves, id => this.rounds.canPlay(id));
+    this.onMessage("examStart", (client, roundStartedAt: unknown) => this.rounds.beginExam(client.sessionId, roundStartedAt));
+    this.onMessage("examProgress", (client, data: unknown) => this.rounds.examProgress(client.sessionId, data));
     this.onMessage("trafficEdit", (client, data: unknown) => {
       if (!this.state.devMode || client.sessionId !== this.state.hostId) {
         client.send("trafficResult", { ok: false, message: "Only the development room host can edit traffic." }); return;
