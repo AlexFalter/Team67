@@ -11,26 +11,47 @@ export interface PlayerState {
   character: number; // 0: CS student boy, 1: CS student girl, 2: Einstein, 3: Rector Dissertori
   vehicleId: string;
   seat: number;
+  cabinStanding?: boolean;
+  cabinX?: number;
+  cabinZ?: number;
+  cabinYaw?: number;
   grounded: boolean;
   groundTime: number;
   jumpUntil: number;
   knockdownUntil: number;
+  impactStartedAt?: number;
+  impactX?: number;
+  impactZ?: number;
+  impactStrength?: number;
+  moodleSitUntil?: number;
   simTime: number;
   vehicleKind: number;
   attackReadyAt: number;
   mateCount: number;
   mateBoostMs: number;
+  mateFlavor?: number;
+  mateDrinkStartedAt?: number;
 }
 export interface WorldState {
+  trafficCars?: Map<string, import("./traffic.ts").TrafficCarState>;
+  trafficNetwork?: string;
+  trafficDensity?: number;
+  trafficSpawnInterval?: number;
+  trafficSpeedMultiplier?: number;
   npcs?: Map<string, import("./npc.ts").NpcState>;
   serverTime: number;
   phase: string;
   hostId: string;
+  moodleEnabled?:boolean;
+  moodleEventId?:number;
+  moodleQuestionIndex?:number;
+  moodleDeadline?:number;
   startedAt: number;
   endsAt: number;
   finishedAt: number;
   introStartedAt: number;
   introComplete: boolean;
+  scooterArrivalAt?: number;
   devMode: boolean;
   skipIntro: boolean;
   goldPubliBikes: boolean;
@@ -55,7 +76,7 @@ export interface RoundResult {
   hitsReceived: number;
 }
 export interface VehicleState {
-  kind: number; // 0 cart, 1 shuttle, 2 bike, 3 NPC car, 4 ball, 5 tram, 6 Polybahn
+  kind: number; // 0 cart, 1 shuttle, 2 bike, 3 NPC car, 4 ball, 5 tram, 6 Polybahn, 7 Lime scooter
   derailStartedAt: number;
   derailAge: number;
   railDistance: number;
@@ -91,6 +112,7 @@ export interface Impulse {
   iz: number;
   knockdown: boolean;
   durationMs?: number;
+  at?: number;
 }
 export interface Bump {
   a: string;
@@ -117,6 +139,7 @@ export interface Body extends PlayerState {
   sprintJump?: boolean;
   slideUntil?: number;
   slideReadyAt?: number;
+  slideBufferedUntil?: number;
 }
 
 // Main's compact client-owned movement reports, with feature gameplay metadata

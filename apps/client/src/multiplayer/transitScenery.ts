@@ -116,7 +116,9 @@ export class TransitScenery {
       const v=C.createVehicle(kind),route=C.railPath(v);
       // The bridge's authored rails remain; smoothly join their lower hall extension.
       const end=kind===C.TRAM_KIND?route.length:6;
-      for(const side of [-.5,.5])rails.push(createRailGeometry(d=>{v.railDistance=d;return C.railFrame(v);},0,end,side,kind===C.TRAM_KIND?.07:-.035));
+      // Polybahn: start at the deck edge; before it the route hangs above the Central hall floor.
+      const start=kind===C.TRAM_KIND?0:C.POLYBAHN_TRACK_START;
+      for(const side of [-.5,.5])rails.push(createRailGeometry(d=>{v.railDistance=d;return C.railFrame(v);},start,end,side,kind===C.TRAM_KIND?.07:-.035));
     }
     const poly = C.createVehicle(C.POLYBAHN_KIND);
     for (const [parts, color] of [[rails, "#6d7579"]] as const) {
@@ -124,26 +126,21 @@ export class TransitScenery {
     }
     const tram = C.createVehicle(C.TRAM_KIND);
     for (const distance of [C.TRAM_START_DISTANCE, C.tramPath.length]) { tram.railDistance = distance; this.station(C.railBoardingPoint(tram), distance === C.TRAM_START_DISTANCE ? "TRAM 6 · CENTRAL" : "TRAM 6 · ETH", "#135aa0", C.railFrame(tram, 1), distance); }
-    for (const distance of [0, C.polybahnPath.length]) {
+    for (const distance of [C.POLYBAHN_START_DISTANCE, C.polybahnPath.length]) {
       poly.railDistance = distance;
-      this.station(C.railBoardingPoint(poly), distance ? "POLYBAHN · POLYTERRASSE" : "POLYBAHN · CENTRAL", "#9f1d2f", C.railFrame(poly), distance, true);
+      this.station(C.railBoardingPoint(poly), distance === C.polybahnPath.length ? "POLYBAHN · POLYTERRASSE" : "POLYBAHN · CENTRAL", "#9f1d2f", C.railFrame(poly), distance, true);
     }
   }
   private station(p: C.GroundPoint, text: string, color: string, track: C.GroundPoint, distance: number, inside = false) {
     const canvas = document.createElement("canvas"); canvas.width = 768; canvas.height = 128;
     const ctx = canvas.getContext("2d")!; ctx.fillStyle = color; ctx.fillRect(0, 0, 768, 128); ctx.fillStyle = "white"; ctx.textAlign = "center"; ctx.font = "bold 34px Arial"; ctx.fillText(text, 384, 52); ctx.font = "27px Arial"; ctx.fillText("E TO BOARD · SHARED DEPARTURE", 384, 104);
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
-    // Face the street approach. Separate faces keep text readable from behind.
+    // Sprites face the rendered camera automatically, including orbit and pitch.
     const heading = Math.atan2(p.x - track.x, p.z - track.z);
-    const panel = new THREE.Group(); panel.position.set(p.x, p.y + (inside ? 2.6 : 3.5), p.z); panel.rotation.y = heading;
+    const panel = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, toneMapped: false, depthWrite: false }));
+    panel.position.set(p.x, p.y + (inside ? 2.6 : 3.5), p.z);
+    panel.scale.set(inside ? 2.5 : 5, (inside ? 2.5 : 5) / 6, 1);
     panel.name = `${text} boarding sign`;
-    const geometry = new THREE.PlaneGeometry(inside ? 2.5 : 5, inside ? 2.5 / 6 : 5 / 6);
-    const material = new THREE.MeshBasicMaterial({ map: texture, toneMapped: false });
-    for (const back of [false, true]) {
-      const face = new THREE.Mesh(geometry, material);
-      face.position.z = back ? -.015 : .015; face.rotation.y = back ? Math.PI : 0;
-      panel.add(face);
-    }
     this.root.add(panel);
     const sign = { kind: inside ? C.POLYBAHN_KIND : C.TRAM_KIND, distance, objects: [panel] as THREE.Object3D[] };
     panel.visible = false;

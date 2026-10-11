@@ -30,8 +30,8 @@ export class ExamPortal {
     const labelCanvas = document.createElement('canvas'); labelCanvas.width = 512; labelCanvas.height = 128;
     const label = labelCanvas.getContext('2d')!;
     label.fillStyle = '#15202aee'; label.fillRect(0, 0, 512, 128);
-    label.textAlign = 'center'; label.fillStyle = '#ffe071'; label.font = 'bold 34px system-ui'; label.fillText('FINAL EXAM', 256, 49);
-    label.fillStyle = '#fff'; label.font = '22px system-ui'; label.fillText('Walk into the light', 256, 93);
+    label.textAlign = 'center'; label.fillStyle = '#ffe071'; label.font = 'bold 34px system-ui'; label.fillText('BONUS ROUND', 256, 49);
+    label.fillStyle = '#fff'; label.font = '22px system-ui'; label.fillText('Name the buildings', 256, 93);
     const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(labelCanvas), depthWrite: false, toneMapped: false }));
     sign.position.y = 4.1; sign.scale.set(6.4, 1.6, 1);
     this.root.add(disk, this.ring, this.orb, this.halo, sign); scene.add(this.root);

@@ -4,6 +4,7 @@ import type { Client } from "colyseus";
 import * as C from "../packages/shared/src/index.ts";
 import { RaceState, Player, RoomMember } from "../apps/server/src/state.ts";
 import { NpcEncounters } from "../apps/server/src/npcs.ts";
+import { VehicleManager } from '../apps/server/src/vehicles.ts';
 import { withServer, startRound, type WireState, until } from "./fixture.ts";
 
 function fixture() {
@@ -49,18 +50,47 @@ test("Jane Street validates the puzzle before granting a personal ride",()=>{
   f.command("alice","finish","limousine",{},f.now+9000);assert.equal(f.replies.at(-1)!.ok,true);assert.equal(f.encounters.busy("alice"),false);
 });
 
-test("Private property returns only players at the map boundary to the bus start",()=>{
+test("Private property returns boundary players a short distance inward",()=>{
   const f=fixture();f.command("alice","begin","property");assert.equal(f.replies.at(-1)!.ok,false);
-  const p=f.state.players.get("alice")!,b=C.zurichWorld.bounds;Object.assign(p,{x:b.minX+2,z:0});
+  const p=f.state.players.get("alice")!,b=C.npcBounds(C.zurichWorld);Object.assign(p,{x:b.minX+10,z:b.minZ+20,y:C.zurichWorld.height(b.minX+10,b.minZ+20)});
   f.command("alice","begin","property");assert.equal(f.replies.at(-1)!.ok,true);
   f.command("alice","finish","property",{},f.now+8400);assert.equal(f.replies.at(-1)!.ok,true);
-  assert.deepEqual(f.replies.at(-1)!.target,C.battleBusDropoffs(C.zurichWorld,40)[0]);
+  assert.notDeepEqual(f.replies.at(-1)!.target,C.zurichWorld.spawn);
+  assert.ok(f.replies.at(-1)!.target!.x>=b.minX+14);
+  assert.equal(f.state.npcs.get('bob')!.kind,'');
+  f.command('bob','begin','property');assert.equal(f.replies.at(-1)!.ok,false);
 });
 
 test("Travel cancels and disconnects release the player without replenishing charges",()=>{
   const f=fixture();f.command("alice","begin");f.command("alice","cancel");assert.equal(f.encounters.busy("alice"),false);assert.equal(f.state.npcs.get("alice")!.teleportUsed,true);
   f.command("bob","begin");f.state.phase=C.RoomPhase.Finished;f.encounters.tick(f.now+100);assert.equal(f.encounters.busy("bob"),false);
   f.encounters.leave("alice");assert.equal(f.state.npcs.has("alice"),false);
+});
+
+test('boundary return works repeatedly on every edge and preserves other players',()=>{
+  const f=fixture(),p=f.state.players.get('alice')!,bounds=C.npcBounds(C.zurichWorld);
+  for(const [i,point] of [{x:bounds.minX+10,z:bounds.minZ+20},{x:bounds.maxX-10,z:bounds.minZ+20},{x:bounds.minX+20,z:bounds.minZ+10},{x:bounds.minX+20,z:bounds.maxZ-10}].entries()){
+    Object.assign(p,point);const now=f.now+i*10000;
+    f.command('alice','begin','property',{},now);assert.equal(f.replies.at(-1)!.ok,true);
+    f.command('alice','finish','property',{},now+8400);const target=f.replies.at(-1)!.target!;
+    assert.ok(target);assert.notDeepEqual(target,C.zurichWorld.spawn);
+    assert.ok(Math.hypot(target.x-point.x,target.z-point.z)<=14);
+    assert.ok(Math.min(target.x-bounds.minX,bounds.maxX-target.x,target.z-bounds.minZ,bounds.maxZ-target.z)>=14);
+    assert.equal(C.zurichWorld.blocked(target.x,target.y,target.z,.5,C.CAPSULE_HEIGHT),false);
+    assert.equal(f.encounters.busy('bob'),false);
+  }
+});
+
+test('boundary NPC dismounts drivers before returning them, while rail passengers remain aboard',()=>{
+  const f=fixture(),manager=new VehicleManager(f.state,C.zurichWorld),p=f.state.players.get('alice')!,bounds=C.npcBounds(C.zurichWorld);
+  const encounters=new NpcEncounters(f.state,C.zurichWorld,(_id,point)=>Object.assign(p,point),client=>manager.exit(client));
+  const cart=f.state.vehicles.get('cart-1')!;Object.assign(cart,{x:bounds.minX+10,z:bounds.minZ+20,y:C.zurichWorld.height(bounds.minX+10,bounds.minZ+20)!});Object.assign(p,{x:cart.x,y:cart.y,z:cart.z});
+  manager.enter(f.client('alice'),'cart-1',f.now);assert.equal(p.vehicleId,'cart-1');
+  encounters.command(f.client('alice'),{action:'begin',kind:'property',roundStartedAt:f.state.startedAt},f.now);
+  assert.equal(p.vehicleId,'');assert.equal(cart.driver,'');assert.equal(f.state.npcs.get('alice')!.kind,'property');
+  encounters.command(f.client('alice'),{action:'finish',kind:'property',roundStartedAt:f.state.startedAt},f.now+8400);assert.notEqual(p.x,C.zurichWorld.spawn.x);assert.ok(p.x>=bounds.minX+14&&p.x<=bounds.minX+24);
+  Object.assign(p,{vehicleId:'polybahn-1',x:bounds.minX+10,z:0});
+  encounters.command(f.client('alice'),{action:'begin',kind:'property',roundStartedAt:f.state.startedAt},f.now+10000);assert.equal(p.vehicleId,'polybahn-1');assert.equal(f.state.npcs.get('alice')!.kind,'');
 });
 
 test("Live rooms synchronize NPC state, reject spectator travel, and reset per-round progress",async()=>{
@@ -76,4 +106,28 @@ test("Live rooms synchronize NPC state, reject spectator travel, and reset per-r
     a.send("restartRound");await until(()=>a.state.phase===C.RoomPhase.Lobby&&a.state.npcs?.size===3,"new lobby NPC state");
     assert.ok([...a.state.npcs!.values()].every(npc=>!npc.teleportUsed&&!npc.limoUsed&&!npc.kind));
   });
+});
+
+
+test("limousine arrival poses synchronize on the separate road before boarding",()=>{
+ const f=fixture(),p=f.state.players.get("alice")!,npc=f.state.npcs.get("alice")!;
+ const [x,y,z]=C.NPC_LAYOUT.interview.laptop;Object.assign(p,{x,y,z});
+ f.command("alice","solve","limousine",{answer:"3"});assert.equal(f.replies.at(-1)!.ok,true);
+ const initial={x:p.x,y:p.y,z:p.z};
+ for(const [i,point] of C.NPC_LAYOUT.interview.approachSamples.entries()){
+  f.encounters.pose(f.client("alice"),{roundStartedAt:f.state.startedAt,car:[...point,0,0]},f.now+i*100);
+  assert.equal(npc.limoVisible,true);assert.equal(npc.limoX,point[0]);assert.equal(npc.limoZ,point[2]);
+ }
+ assert.deepEqual({x:p.x,y:p.y,z:p.z},initial,'arrival does not move the passenger');
+ f.encounters.pose(f.client("alice"),{roundStartedAt:f.state.startedAt,car:[500,10,500,0,0]},f.now+10000);
+ assert.ok(Math.abs(npc.limoX-C.NPC_LAYOUT.interview.pickup[0])<.001,'reject poses off both routes');
+});
+
+test("scooter arrival starts once near an active player and shares the server clock",()=>{
+ const f=fixture(),p=f.state.players.get('alice')!,[x,z]=C.NPC_LAYOUT.scooter.ridePoints.at(-1)!;
+ f.encounters.tick(f.now);assert.equal(f.state.scooterArrivalAt,0);
+ Object.assign(p,{x,y:C.zurichWorld.height(x,z),z});f.state.members.get('alice')!.spectator=true;
+ f.encounters.tick(f.now);assert.equal(f.state.scooterArrivalAt,0);
+ f.state.members.get('alice')!.spectator=false;f.encounters.tick(f.now);assert.equal(f.state.scooterArrivalAt,f.now);
+ f.encounters.tick(f.now+1000);assert.equal(f.state.scooterArrivalAt,f.now,'nearby players do not restart the animation');
 });

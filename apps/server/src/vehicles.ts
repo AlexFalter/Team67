@@ -3,11 +3,12 @@ import * as C from "@race/shared";
 import { Vehicle, type RaceState, type Player } from "./state.ts";
 
 export class VehicleManager {
+  private parkingPhotos = new Map<string, string>();
   private reports = new Map<string, number>();
   private trafficStart: number;
   private hitTimes = new Map<string, Map<string, number>>();
   private contact: C.VehicleContact = { nx: 0, nz: 0, closing: 0 };
-  constructor(private state: RaceState, private world: C.MovementWorld = C.flatWorld) {
+  constructor(private state: RaceState, private world: C.MovementWorld = C.flatWorld, legacyTraffic = true) {
     this.trafficStart = state.serverTime;
     world.carts.forEach((p, i) =>
       this.add(`cart-${i + 1}`, { ...C.createVehicle(0, p.x, p.z), y: p.y }),
@@ -24,14 +25,16 @@ export class VehicleManager {
       if (p) this.add(id, { ...C.createVehicle(kind, p.x, p.z), y: p.y, vx, vz });
     };
     addNear("bike-1", 2, 3, 4); addNear("bike-2", 2, -3, 4);
-    addNear("npc-car", 3, -20, 6);
+    if (legacyTraffic) addNear("npc-car", 3, -20, 6);
     addNear("loose-ball", 4, 10, -5, 7, 3);
     if (world.name === "zurich") {
+      const [x,z]=C.NPC_LAYOUT.lime.position,site=C.findGround(world,x,z);
+      if(site)this.add("lime-1",{...C.createVehicle(C.LIME_KIND,site.x,site.z),y:site.y});
       const tram = C.createVehicle(C.TRAM_KIND); tram.capacity = 18; tram.railDistance = C.TRAM_START_DISTANCE;
       Object.assign(tram, C.railFrame(tram)); this.add("tram-1", tram);
       for (let i = 0; i < 2; i++) {
         const cabin = C.createVehicle(C.POLYBAHN_KIND); cabin.capacity = 12;
-        cabin.railDistance = i ? C.polybahnPath.length : 0; cabin.railReverse = !!i; cabin.railLane = i ? -1.25 : 1.25;
+        cabin.railDistance = i ? C.polybahnPath.length : C.POLYBAHN_START_DISTANCE; cabin.railReverse = !!i; cabin.railLane = i ? -1.25 : 1.25;
         Object.assign(cabin, C.railFrame(cabin)); this.add(`polybahn-${i + 1}`, cabin);
       }
     }
@@ -44,8 +47,12 @@ export class VehicleManager {
     const p = this.state.players.get(client.sessionId),
       v = typeof data === "string" ? this.state.vehicles.get(data) : undefined;
     if (!p || !v) return this.result(client, false, "Vehicle not found.");
+    const battery = this.state.publiBikes.get(data as string);
+    if (battery && (battery.broken || battery.batteryMs <= 0)) return this.result(client, false, "This bike is permanently out of battery.");
     if (this.state.publiBikes.has(data as string) && !scanned)
       return this.result(client, false, "Scan the PubliBike QR code to unlock it.");
+    if (this.parkingPhotos.has(client.sessionId) || [...this.parkingPhotos.values()].includes(data as string))
+      return this.result(client,false,"Finish your Lime parking photo first.");
     if (!C.isRideable(v)) return this.result(client, false, "This object cannot be ridden.");
     if (now < v.fallenUntil) return this.result(client, false, "Give the bike a moment to recover.");
     if (p.vehicleId)
@@ -75,18 +82,23 @@ export class VehicleManager {
       return this.result(
         client,
         false,
-        v.kind === 0 ? "This cart is occupied." : "The shuttle is full.",
+        v.kind === C.LIME_KIND ? "Both Lime riding positions are occupied." : v.kind === 0 ? "This cart is occupied." : "The shuttle is full.",
       );
+    if (v.kind === C.POLYBAHN_KIND) {
+      const npc = this.state.npcs.get(client.sessionId);
+      if (npc) { npc.polybahnTicketed = npc.ticketCount > 0; if (npc.polybahnTicketed) npc.ticketCount--; }
+    }
     p.vehicleId = data as string;
     p.vehicleKind = v.kind;
     p.seat = seat;
+    p.cabinStanding = false; p.cabinX = p.cabinZ = p.cabinYaw = 0;
     p.vx = p.vy = p.vz = 0;
     p.anim = 0;
-    if (!C.isPassengerVehicle(v)) {
+    if (!C.isPassengerVehicle(v) && (v.kind!==C.LIME_KIND || seat===0)) {
       v.driver = client.sessionId;
       this.reports.set(data as string, now);
       this.hitTimes.get(data as string)!.clear();
-    } else if (v.departureAt === 0) {
+    } else if (C.isPassengerVehicle(v) && v.departureAt === 0) {
       v.departureAt = now + (C.isRail(v) ? C.TRANSIT_BOARDING_MS : C.SHUTTLE_COUNTDOWN_MS);
       if (v.kind === C.POLYBAHN_KIND) for (const other of this.state.vehicles.values())
         if (other.kind === C.POLYBAHN_KIND) other.departureAt = v.departureAt;
@@ -95,7 +107,7 @@ export class VehicleManager {
     this.result(
       client,
       true,
-      !C.isPassengerVehicle(v)
+      v.kind===C.LIME_KIND&&seat===1?"Rear riding position claimed. E to get off.":!C.isPassengerVehicle(v)
         ? "Vehicle claimed. WASD to drive."
         : "Boarded. Waiting for departure.",
     );
@@ -106,10 +118,18 @@ export class VehicleManager {
     if (!p || !v) return;
     if (v.traveling || (C.isRail(v) && v.departureAt > 0 && this.state.serverTime >= v.departureAt))
       return this.result(client, false, "Stay aboard until the next stop.");
-    this.release(p);
-    this.result(client, true, "Exited vehicle.");
+    const id=p.vehicleId;this.release(p);
+    if(v.kind===C.LIME_KIND&&!this.occupied(id))this.parkingPhotos.set(client.sessionId,id);
+    this.result(client, true, this.parkingPhotos.has(client.sessionId)?"Parked. Take your Lime parking photo.":"");
+  }
+  photoRequired(id:string){return this.parkingPhotos.get(id);}
+  finishParkingPhoto(id:string,vehicle:unknown){
+    const pending=this.parkingPhotos.get(id),p=this.state.players.get(id),v=pending&&this.state.vehicles.get(pending);
+    if(!pending||vehicle!==pending||!p||!v||p.vehicleId||Math.hypot(p.x-v.x,p.z-v.z)>12)return false;
+    this.parkingPhotos.delete(id);return true;
   }
   disconnect(id: string) {
+    this.parkingPhotos.delete(id);
     const p = this.state.players.get(id);
     if (p?.vehicleId) this.release(p);
     for (const hits of this.hitTimes.values()) hits.delete(id);
@@ -141,11 +161,14 @@ export class VehicleManager {
       Object.assign(p, landing ?? this.world.spawn);
       p.grounded = true; p.groundTime = p.simTime;
       if (!C.isPassengerVehicle(v)) {
-        this.reports.delete(id);
-        v.driver = "";
-        v.vx = v.vz = 0;
+        const remaining=v.kind===C.LIME_KIND?[...this.state.players].find(([,other])=>other!==p&&other.vehicleId===id):undefined;
+        if(!remaining||seat===0){
+          this.reports.delete(id);v.driver="";v.vx=v.vz=0;
+          if(remaining){const [driver,rider]=remaining;rider.seat=0;v.driver=driver;this.reports.set(id,Date.now());this.attach(rider,v);}
+        }
       }
     }
+    p.cabinStanding = false; this.cabinReports.delete(p);
     p.vehicleId = "";
     p.vehicleKind = -1;
     p.seat = -1;
@@ -186,7 +209,7 @@ export class VehicleManager {
       p = this.state.players.get(client.sessionId);
     if (
       !v ||
-      (v.kind !== 0 && v.kind !== 2) ||
+      (v.kind !== 0 && v.kind !== 2 && v.kind !== C.LIME_KIND) ||
       v.driver !== client.sessionId ||
       p?.vehicleId !== data[0]
     )
@@ -196,7 +219,7 @@ export class VehicleManager {
         (now - (this.reports.get(data[0]) ?? now)) / 1000,
       ),
       bounds = this.world.bounds;
-    const y = this.world.height(data[1], data[2]);
+    const y = this.world.height(data[1], data[2], v.y);
     if (
       Math.hypot(data[1] - v.x, data[2] - v.z) > C.vehicleSpeed(v) * 2 * dt + 0.15 ||
       data[1] < bounds.minX + C.vehicleRadius(v) ||
@@ -227,9 +250,28 @@ export class VehicleManager {
   syncDriver(id: string) {
     const p = this.state.players.get(id), v = p && this.state.vehicles.get(p.vehicleId);
     if (!p || !v || v.driver !== id) return;
-    v.x = p.x; v.y = p.y - C.CART_SEAT_HEIGHT; v.z = p.z; v.rotY = p.rotY; v.vx = p.vx; v.vz = p.vz;
+    v.x = p.x; v.y = p.y - (v.kind === C.LIME_KIND ? C.LIME_DECK_HEIGHT : v.kind===2 ? C.BIKE_SEAT_HEIGHT : C.CART_SEAT_HEIGHT); v.z = p.z; v.rotY = p.rotY; v.vx = p.vx; v.vz = p.vz;
+  }
+  private cabinReports = new WeakMap<Player, number>();
+  walkCabin(id: string, data: unknown) {
+    const p = this.state.players.get(id), v = p && this.state.vehicles.get(p.vehicleId);
+    if (!p || !v || v.kind !== C.POLYBAHN_KIND || !Array.isArray(data) || data.length !== 5 || data[0] !== p.vehicleId || !data.slice(1).every(Number.isFinite)) return;
+    const now = Date.now(), elapsed = Math.min(.25, Math.max(0, (now - (this.cabinReports.get(p) ?? now - 100)) / 1000));
+    const bounds = C.cabinBounds(data[1], data[2]);
+    const startZ = p.cabinStanding ? p.cabinZ : C.railSeat(v, p.seat).z;
+    if (bounds.x !== data[1] || bounds.z !== data[2] || Math.hypot(data[1] - (p.cabinStanding ? p.cabinX : 0), data[2] - startZ) > C.CABIN_SPEED * elapsed + .12) return;
+    C.standInCabin(p, v);
+    p.cabinX = data[1]; p.cabinZ = data[2]; p.cabinYaw = data[3] % (2*Math.PI); p.anim = data[4] === 1 ? 1 : 0;
+    this.cabinReports.set(p, now); this.attach(p, v);
   }
   private attach(p: Player, v: Vehicle) {
+    if (v.kind === C.POLYBAHN_KIND && p.cabinStanding) {
+      C.cabinPosition(v, p);
+      p.vx = p.anim ? Math.sin(p.rotY) * C.CABIN_SPEED : 0;
+      p.vz = p.anim ? Math.cos(p.rotY) * C.CABIN_SPEED : 0;
+      p.vy = 0;
+      return;
+    }
     C.seatPosition(v, p.seat, p);
     p.rotY = C.passengerYaw(v, p.seat);
     p.vx = v.vx;
@@ -238,21 +280,38 @@ export class VehicleManager {
     p.anim = 0;
     p.grounded = false;
   }
-  crashBike(id: string, now: number, hit: Parameters<VehicleManager["tick"]>[1], speed?: number) {
+  crashBike(id: string, now: number, hit: Parameters<VehicleManager["tick"]>[1], speed?: number, impact?: { from: string; rotY: number; kind: number }) {
     const v = this.state.vehicles.get(id);
     if (!v || v.kind !== 2 || now < v.fallenUntil) return;
     speed ??= Math.hypot(v.vx, v.vz);
     v.fallenUntil = now + 2500;
-    this.ejectDriver(v, id, speed, hit);
+    this.ejectDriver(v, impact?.from ?? id, speed, hit, impact?.rotY ?? v.rotY, impact?.kind ?? v.kind);
   }
-  private ejectDriver(v: Vehicle, from: string, speed: number, hit: Parameters<VehicleManager["tick"]>[1], rotY = v.rotY) {
+  /** Traffic ejects exposed riders at the impact point, using the normal vehicle impact. */
+  runOver(id: string, now: number, hit: Parameters<VehicleManager['tick']>[1], speed: number, impact: { from: string; rotY: number; kind: number }) {
+    const v = this.state.vehicles.get(id);
+    if (!v || C.isPassengerVehicle(v)) return;
+    if (v.kind === 2) this.crashBike(id, now, hit, speed, impact);
+    else {
+      v.fallenUntil = now + 2500;
+      this.ejectDriver(v, impact.from, speed, hit, impact.rotY, impact.kind);
+    }
+    this.reports.delete(id);
+    // The Lime's second rider must also leave; no automatic driver promotion on impact.
+    for (const [target, rider] of this.state.players) if (rider.vehicleId === id) {
+      rider.vehicleId = ''; rider.vehicleKind = -1; rider.seat = -1; rider.cabinStanding = false;
+      hit(impact.from, target, rider.x, rider.y + 0.8, rider.z,
+        Math.sin(impact.rotY) * speed * 0.6, 2, Math.cos(impact.rotY) * speed * 0.6, true, impact.kind);
+    }
+  }
+  private ejectDriver(v: Vehicle, from: string, speed: number, hit: Parameters<VehicleManager["tick"]>[1], rotY = v.rotY, sourceKind = v.kind) {
     const rider = this.state.players.get(v.driver), driver = v.driver;
     v.driver = ""; v.vx = v.vz = 0;
     if (rider) {
       // Keep the rider at the impact point; reconciliation blends the ejection.
       rider.vehicleId = ""; rider.vehicleKind = -1; rider.seat = -1;
       hit(from, driver, rider.x, rider.y + 0.8, rider.z,
-        Math.sin(rotY) * speed * 0.6, 2, Math.cos(rotY) * speed * 0.6, true);
+        Math.sin(rotY) * speed * 0.6, 2, Math.cos(rotY) * speed * 0.6, true, sourceKind);
     }
   }
   tick(
@@ -267,12 +326,14 @@ export class VehicleManager {
       iy: number,
       iz: number,
       knockdown: boolean,
+      sourceKind?: number,
     ) => void,
   ) {
     this.tickRail(now);
     for (const [id, v] of this.state.vehicles) {
       if (v.driver && now - (this.reports.get(id) ?? now) > C.VEHICLE_STALE_MS) v.vx = v.vz = 0;
       if (v.fallenUntil && now >= v.fallenUntil) v.fallenUntil = 0;
+      if(v.kind===C.LIME_KIND)for(const p of this.state.players.values())if(p.vehicleId===id)this.attach(p,v);
       if (v.kind === 1) {
         if (!v.traveling && v.departureAt > 0 && now >= v.departureAt) {
           v.traveling = true;
@@ -349,11 +410,14 @@ export class VehicleManager {
     // Bikes fall against any solid object; heavy transport is never displaced.
     for (const [id, v] of this.state.vehicles) if (v.kind === 2 && now >= v.fallenUntil) {
       for (const [otherId, other] of this.state.vehicles) {
-        if (id === otherId || (intersects && !intersects(`v:${id}`, `v:${otherId}`))) continue;
+        if (id === otherId || other.derailStartedAt || (intersects && !intersects(`v:${id}`, `v:${otherId}`))) continue;
         const dx = other.x - v.x, dz = other.z - v.z, distance = Math.hypot(dx, dz);
         const closing = ((v.vx - other.vx) * dx + (v.vz - other.vz) * dz) / Math.max(distance, 0.001);
         if (distance <= C.vehicleRadius(v) + C.vehicleRadius(other) + 0.02 && closing >= C.CART_MIN_HIT_SPEED) {
-          this.crashBike(id, now, hit, Math.max(closing, Math.hypot(v.vx, v.vz))); break;
+          const otherSpeed = Math.hypot(other.vx, other.vz), bikeSpeed = Math.hypot(v.vx, v.vz);
+          const incomingVehicle = other.kind !== 2 && otherSpeed > bikeSpeed;
+          this.crashBike(id, now, hit, Math.max(closing, bikeSpeed), incomingVehicle
+            ? { from: other.driver || otherId, rotY: Math.atan2(other.vx, other.vz), kind: other.kind } : undefined); break;
         }
       }
     }
@@ -361,12 +425,12 @@ export class VehicleManager {
   contacts(now: number, hit: Parameters<VehicleManager["tick"]>[1], intersects?: (a: string, b: string) => boolean) {
     this.bikeContacts(now, hit, intersects);
     for (const [id, v] of this.state.vehicles) if (v.driver) {
-      for (const [otherId, other] of this.state.vehicles) if (id !== otherId && (other.driver || C.isPassengerVehicle(other) || other.kind === 3) && (!intersects || intersects(`v:${id}`, `v:${otherId}`))) {
+      for (const [otherId, other] of this.state.vehicles) if (id !== otherId && !other.derailStartedAt && (other.driver || C.isPassengerVehicle(other) || other.kind === 3) && (!intersects || intersects(`v:${id}`, `v:${otherId}`))) {
         const dx = v.x - other.x, dz = v.z - other.z, distance = Math.hypot(dx, dz);
         const radius = C.vehicleRadius(v) + C.vehicleRadius(other);
         if (distance >= radius) continue;
         if (C.isPassengerVehicle(other) && Math.hypot(other.vx, other.vz) >= C.CART_MIN_HIT_SPEED) {
-          this.ejectDriver(v, otherId, Math.hypot(other.vx, other.vz), hit, other.rotY); break;
+          this.ejectDriver(v, otherId, Math.hypot(other.vx, other.vz), hit, other.rotY, other.kind); break;
         }
         v.x += (distance > 0.001 ? dx / distance : 1) * (radius - distance);
         v.z += (distance > 0.001 ? dz / distance : 0) * (radius - distance);
@@ -375,6 +439,7 @@ export class VehicleManager {
     }
     for (const [id, v] of this.state.vehicles) {
       const cooldown = this.hitTimes.get(id)!;
+      if (v.derailStartedAt) continue;
       for (const [target, p] of this.state.players) {
         if (p.vehicleId || (intersects && !intersects(target, `v:${id}`))) continue;
         if (
@@ -394,6 +459,7 @@ export class VehicleManager {
           v.kind === 2 ? 1 : C.CART_HIT_LIFT,
           o.nz * o.closing * strength,
           true,
+          v.kind,
         );
         this.separate(v, p);
         if (v.kind === 2) this.crashBike(id, now, hit);

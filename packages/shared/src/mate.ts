@@ -3,8 +3,8 @@ import type { MovementWorld } from "./world.ts";
 // Pavement in front of Coop at Bahnhofbrücke; controls face the bridge (-Z).
 export const MATE_POSITION = { x: -130, z: 83 };
 export const MATE_LOADING_MS = 1400, MATE_DROP_MS = 950;
-export const MATE_BOOST_MS = 15000, MATE_SPEED_MULTIPLIER = 1.35;
-export const MATE_FLAVORS = ["Basic", "Light", "Mint", "Ginger"] as const;
+export const MATE_BOOST_MS = 15000, MATE_SPEED_MULTIPLIER = 1.5;
+export const MATE_FLAVORS = ["Basic", "Light", "Mint", "Ginger", "Ginger"] as const;
 export type MatePhase = "idle" | "payment" | "loading" | "failure" | "dropping" | "collect" | "success";
 export interface MateState {
   phase: string; selected: number; tried: number; attempts: number;

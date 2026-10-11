@@ -4,8 +4,8 @@ import { resolveHouses } from "./flatObstacles.ts";
 import { flatWorld, routePoint, type MovementWorld } from "./world.ts";
 import { isRail, railSeatPosition } from "./transit.ts";
 
-export function vehicleRadius(v: Pick<VehicleState, "kind">) { return v.kind === 2 ? 0.65 : v.kind === 1 ? 2.4 : isRail(v) ? 1.3 : C.CART_RADIUS; }
-export function vehicleSpeed(v: Pick<VehicleState, "kind">) { return v.kind === 2 ? C.BIKE_SPEED : C.CART_SPEED; }
+export function vehicleRadius(v: Pick<VehicleState, "kind">) { return (v.kind === 2 || v.kind === C.LIME_KIND) ? 0.65 : v.kind === 1 ? 2.4 : isRail(v) ? 1.3 : C.CART_RADIUS; }
+export function vehicleSpeed(v: Pick<VehicleState, "kind">) { return v.kind === C.LIME_KIND ? C.LIME_SPEED : v.kind === 2 ? C.BIKE_SPEED : C.CART_SPEED; }
 
 export function createVehicle(kind = 0, x = 0, z = 0): VehicleState {
   return {
@@ -18,7 +18,7 @@ export function createVehicle(kind = 0, x = 0, z = 0): VehicleState {
     rotY: 0,
     vx: 0,
     vz: 0,
-    capacity: kind === 1 ? C.SHUTTLE_CAPACITY : kind >= 3 ? 0 : 1,
+    capacity: kind === C.LIME_KIND ? 2 : kind === 1 ? C.SHUTTLE_CAPACITY : kind >= 3 && kind !== C.LIME_KIND ? 0 : 1,
     driver: "",
     departureAt: 0,
     traveling: false,
@@ -34,7 +34,7 @@ export function createVehicle(kind = 0, x = 0, z = 0): VehicleState {
 
 export function stepCart(v: VehicleState, input: Input, dt: number, world: MovementWorld = flatWorld) {
   const previous = { x: v.x, y: v.y, z: v.z };
-  const speed = vehicleSpeed(v);
+  const speed = v.kind === C.LIME_KIND && input.sprint ? C.LIME_BOOST_SPEED : vehicleSpeed(v);
   const length = Math.hypot(input.x, input.z),
     moving = length > 0;
   const blend =
@@ -50,28 +50,33 @@ export function stepCart(v: VehicleState, input: Input, dt: number, world: Movem
   v.x += v.vx * dt;
   v.z += v.vz * dt;
   const vx = v.vx, vz = v.vz;
+  let impactX = 0, impactZ = 0;
   if (v.x < bounds.minX + radius || v.x > bounds.maxX - radius) {
     v.x = Math.max(bounds.minX + radius, Math.min(bounds.maxX - radius, v.x));
-    v.vx = 0;
+    impactX = v.vx; v.vx = 0;
   }
   if (v.z < bounds.minZ + radius || v.z > bounds.maxZ - radius) {
     v.z = Math.max(bounds.minZ + radius, Math.min(bounds.maxZ - radius, v.z));
-    v.vz = 0;
+    impactZ = v.vz; v.vz = 0;
   }
   const body = { ...v, vy: 0, grounded: true };
   if (world.name === "flat") resolveHouses(body, previous, radius);
   else {
     const canMove = (x: number, z: number) => {
-      const y = world.height(x, z);
-      return y !== undefined && Math.abs(y - v.y) <= C.MAX_GROUND_STEP &&
-        !world.blocked(x, y, z, radius, C.CART_HIT_HEIGHT);
+      const y = world.height(x, z, v.y);
+      // Missing ground / an unrideable height step stops motion safely, but
+      // is not evidence of a wall impact and must not eject a bike rider.
+      if (y === undefined || Math.abs(y - v.y) > C.MAX_GROUND_STEP) return "terrain";
+      return world.blocked(x, y, z, radius, C.CART_HIT_HEIGHT) ? "solid" : "clear";
     };
-    if (!canMove(body.x, previous.z)) { body.x = previous.x; body.vx = 0; }
-    if (!canMove(body.x, body.z)) { body.z = previous.z; body.vz = 0; }
-    v.y = world.height(body.x, body.z) ?? v.y;
+    const xMove = canMove(body.x, previous.z);
+    if (xMove !== "clear") { if (xMove === "solid") impactX = body.vx; body.x = previous.x; body.vx = 0; }
+    const zMove = canMove(body.x, body.z);
+    if (zMove !== "clear") { if (zMove === "solid") impactZ = body.vz; body.z = previous.z; body.vz = 0; }
+    v.y = world.height(body.x, body.z, v.y) ?? v.y;
   }
   v.x = body.x; v.z = body.z; v.vx = body.vx; v.vz = body.vz;
-  return Math.hypot(vx - v.vx, vz - v.vz);
+  return world.name === "flat" ? Math.hypot(vx - v.vx, vz - v.vz) : Math.hypot(impactX, impactZ);
 }
 
 export function seatPosition(
@@ -81,9 +86,9 @@ export function seatPosition(
 ) {
   if (isRail(v)) { railSeatPosition(v, seat, out); return; }
   const x = v.kind !== 1 ? 0 : seat % 2 === 0 ? -0.65 : 0.65;
-  const z = v.kind !== 1 ? 0 : (Math.floor(seat / 2) - 1) * 1.25;
+  const z = v.kind === C.LIME_KIND ? (seat===0?0:-.65) : v.kind !== 1 ? 0 : (Math.floor(seat / 2) - 1) * 1.25;
   out.x = v.x + x * Math.cos(v.rotY) + z * Math.sin(v.rotY);
-  out.y = v.y + (v.kind !== 1 ? C.CART_SEAT_HEIGHT : C.SHUTTLE_SEAT_HEIGHT);
+  out.y = v.y + (v.kind === C.LIME_KIND ? C.LIME_DECK_HEIGHT : v.kind===2 ? C.BIKE_SEAT_HEIGHT : v.kind !== 1 ? C.CART_SEAT_HEIGHT : C.SHUTTLE_SEAT_HEIGHT);
   out.z = v.z - x * Math.sin(v.rotY) + z * Math.cos(v.rotY);
 }
 

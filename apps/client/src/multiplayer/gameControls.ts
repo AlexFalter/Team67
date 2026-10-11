@@ -1,24 +1,33 @@
+import { ActionHud, type ContextAction } from "./actionHud.ts";
 import { LocalPlayer } from "./localPlayer.ts";
 import { PlayerView, PERSPECTIVES } from "./view.ts";
 
 export class GameControls {
   private menu = document.querySelector<HTMLElement>("#pause")!;
-  private play = document.querySelector<HTMLButtonElement>("#play")!;
   private crosshair = document.querySelector<HTMLElement>("#crosshair")!;
   private abort = new AbortController();
   private captured = false;
+  private resumeAttempt = 0;
+  private discardMouseDelta = false;
+  private available = false;
+  private capturePending = false;
+  private actions: ActionHud;
   private edge = { x: 0, y: 0 };
-  constructor(private canvas: HTMLCanvasElement, private local: LocalPlayer, private view: PlayerView, private ready: () => boolean, private suspended: () => boolean = () => false) {
+  constructor(private canvas: HTMLCanvasElement, private local: LocalPlayer, private view: PlayerView, private ready: () => boolean, private suspended: () => boolean = () => false, now: () => number = () => Date.now(), context: () => ContextAction[] = () => []) {
     const options = { signal: this.abort.signal };
     canvas.tabIndex = 0;
-    this.play.addEventListener("click", () => void this.resume(), options);
+    this.actions = new ActionHud(local, now, () => canvas.focus(), context);
     document.querySelector("#resume")!.addEventListener("click", () => void this.resume(), options);
     document.querySelector("#perspective")!.addEventListener("click", () => { view.cycle(); this.update(); }, options);
     document.querySelector<HTMLInputElement>("#bob")!.addEventListener("change", e => { view.bob = (e.target as HTMLInputElement).checked; }, options);
     document.querySelector<HTMLInputElement>("#sensitivity")!.addEventListener("input", e => { view.sensitivity = Number((e.target as HTMLInputElement).value) / 10000; }, options);
-    canvas.addEventListener("click", () => { if (local.enabled) local.punch(); else void this.resume(); }, options);
+    canvas.addEventListener("click", () => { if (local.enabled && this.menu.hidden && !this.suspended() && !view.scriptedRide) local.punch(); }, options);
+    // A browser may require a fresh gesture for cursor capture. Retry silently;
+    // movement stays available even when capture is denied.
+    window.addEventListener("pointerdown", () => { if (local.enabled && this.menu.hidden) void this.captureCursor(); }, options);
     document.addEventListener("mousemove", e => {
-      if (this.suspended() || !local.enabled || (!this.captured && e.target !== canvas)) return;
+      if (this.suspended() || !local.enabled || !document.hasFocus() || (!this.captured && e.target !== canvas)) return;
+      if(this.discardMouseDelta){this.discardMouseDelta=false;return;}
       view.look(e.movementX, e.movementY);
       const rect = canvas.getBoundingClientRect();
       this.edge = edgeTurn(e.clientX - rect.left, e.clientY - rect.top, rect.width, rect.height);
@@ -26,38 +35,72 @@ export class GameControls {
     canvas.addEventListener("mouseleave", () => { this.edge = { x: 0, y: 0 }; }, options);
     canvas.addEventListener("wheel", e => { if (local.enabled) e.preventDefault(); }, { passive: false, signal: this.abort.signal });
     document.addEventListener("pointerlockchange", () => {
-      const captured = document.pointerLockElement === canvas;
-      if (this.captured && !captured) this.pause();
-      this.captured = captured;
+      if(document.pointerLockElement===canvas&&(!local.enabled||!ready()||this.suspended()||!document.hasFocus())){document.exitPointerLock();return;}
+      this.syncPointerLock();
     }, options);
     document.addEventListener("pointerlockerror", () => this.fallback(), options);
     window.addEventListener("blur", () => { if (local.enabled) this.pause(); }, options);
     window.addEventListener("keydown", e => {
+      if (e.code === "Escape" && document.pointerLockElement === canvas && (!ready() || this.suspended())) {
+        document.exitPointerLock(); return;
+      }
       if (!ready() || this.suspended()) return;
       if (e.code === "Escape") { e.preventDefault(); if (this.menu.hidden) this.pause(); else if (!e.repeat) void this.resume(); }
+      if (e.code !== "Escape" && local.enabled && this.menu.hidden) void this.captureCursor();
       if (local.enabled && ["F5", "KeyV"].includes(e.code)) { e.preventDefault(); if (!e.repeat) view.cycle(); this.update(); }
     }, options);
   }
-  dispose() { this.abort.abort(); this.local.enabled = false; if (document.pointerLockElement === this.canvas) document.exitPointerLock(); }
+  dispose() { this.actions.dispose(); this.abort.abort(); this.resumeAttempt++; this.local.enabled = false; if (document.pointerLockElement === this.canvas) document.exitPointerLock(); }
+  private syncPointerLock() {
+    this.captured = document.pointerLockElement === this.canvas;
+    // Releases during encounters (including delayed events) never pause play.
+    if (this.captured) this.discardMouseDelta = true;
+  }
+  resumeAfterInteraction() {this.restoreGameplay();}
+  restoreGameplay() {
+    if (!this.ready() || this.suspended() || !document.hasFocus()) return;
+    this.available = true;
+    this.captured = document.pointerLockElement === this.canvas;
+    this.menu.hidden = true; this.local.clear(); this.edge = { x: 0, y: 0 };
+    this.local.enabled = true; this.canvas.focus(); this.update();
+    void this.captureCursor();
+  }
   private fallback() {
     if (this.abort.signal.aborted) return;
-    this.menu.querySelector<HTMLElement>("[role=status]")!.textContent = "Your browser rejected cursor capture. Move over the game to look; holding at an edge keeps turning.";
+    this.captured = document.pointerLockElement === this.canvas;
   }
   async resume() {
-    if (!this.ready()) return;
+    if (!this.ready() || this.suspended() || !document.hasFocus()) return;
     this.menu.hidden = true; this.local.clear(); this.edge = { x: 0, y: 0 }; this.local.enabled = true; this.canvas.focus(); this.update();
-    this.menu.querySelector<HTMLElement>("[role=status]")!.textContent = "";
-    try { await this.canvas.requestPointerLock(); } catch { this.fallback(); }
+    await this.captureCursor();
+  }
+  private async captureCursor() {
+    if (this.capturePending || document.pointerLockElement === this.canvas || !this.local.enabled || !this.menu.hidden || !this.ready() || this.suspended() || !document.hasFocus()) return;
+    this.capturePending = true;
+    const attempt = ++this.resumeAttempt;
+    try { await this.canvas.requestPointerLock(); } catch { if (attempt === this.resumeAttempt) this.fallback(); }
+    finally { this.capturePending = false; }
   }
   pause() {
+    this.resumeAttempt++;
     this.local.enabled = false; this.local.clear(); this.menu.hidden = !this.ready();
     if (document.pointerLockElement === this.canvas) document.exitPointerLock();
     this.update(); if (this.ready()) document.querySelector<HTMLButtonElement>("#resume")!.focus();
   }
+  suspendForMap() {
+    this.captured = false; this.local.enabled = false; this.local.clear(); this.edge = { x: 0, y: 0 };
+    this.menu.hidden = this.crosshair.hidden = true;
+    if (document.pointerLockElement === this.canvas) document.exitPointerLock();
+  }
   update(dt = 0) {
+    const available = this.ready() && !this.suspended();
+    const returned = available && !this.available;
+    this.available = available;
+    if (available && this.menu.hidden && (returned || !this.local.enabled)) this.restoreGameplay();
+    this.actions?.update(this.ready() && !this.suspended() && this.local.enabled && this.menu.hidden === true && !this.view.scriptedRide);
     if (this.ready() && this.suspended()) {
       this.local.clear(); this.edge = { x: 0, y: 0 };
-      this.play.hidden = this.crosshair.hidden = true;
+      this.crosshair.hidden = true;
       return;
     }
     if (!this.ready()) {
@@ -66,7 +109,6 @@ export class GameControls {
       if (document.pointerLockElement === this.canvas) document.exitPointerLock();
     }
     if (this.local.enabled && !this.captured) this.view.look(this.edge.x * dt * 520, this.edge.y * dt * 520);
-    this.play.hidden = !this.ready() || this.local.enabled || !this.menu.hidden;
     this.crosshair.hidden = !this.ready() || !this.local.enabled || this.view.perspective !== 0;
     document.querySelector<HTMLButtonElement>("#perspective")!.textContent = `View: ${PERSPECTIVES[this.view.perspective]}`;
   }

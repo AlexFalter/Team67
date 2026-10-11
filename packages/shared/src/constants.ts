@@ -8,7 +8,7 @@ export const INTERP_DELAY_MS = 100,
   SPRINT_SPEED = 11,
   JUMP_VELOCITY = 8,
   GRAVITY = -25;
-export const KNOCKDOWN_DURATION_MS = 700,
+export const KNOCKDOWN_DURATION_MS = 1500,
   PAIR_COOLDOWN_MS = 300;
 // Horizontal acceleration/deceleration in m/s²; drag and lateral grip in s⁻¹.
 export const ACCELERATION = 40,
@@ -47,9 +47,9 @@ export const CART_SPAWNS = [
   { x: 5, z: 0 },
   { x: 0, z: -5 },
 ];
-export const BIKE_SPEED = 12, BIKE_HIT_STRENGTH = 0.65;
+export const BIKE_SPEED = 15, BIKE_HIT_STRENGTH = 0.65;
 export const ATTACK_RANGE = 2.4, ATTACK_HALF_ANGLE = Math.PI / 4,
-  ATTACK_COOLDOWN_MS = 1500, ATTACK_KNOCKDOWN_MS = 5000;
+  ATTACK_COOLDOWN_MS = 4000, ATTACK_KNOCKDOWN_MS = 1500;
 export const SHUTTLE_STOPS = [
   { x: -12, z: 9 },
   { x: 12, z: 9 },
@@ -66,3 +66,7 @@ export const VEHICLE_STALE_MS = 500;
 // standing up cannot trap a player beneath the coarse terrain mask.
 export const SLIDE_ANIM = 4, SLIDE_DURATION_MS = 750, SLIDE_COOLDOWN_MS = 400,
   SLIDE_MIN_SPEED = 9, SLIDE_FRICTION = 0.8;
+
+export const BIKE_SEAT_HEIGHT = 0.65;
+export const SLIDE_BUFFER_MS = 1000;
+export const LIME_KIND = 7, LIME_DECK_HEIGHT = .37, LIME_SPEED = 12, LIME_BOOST_SPEED = 18;

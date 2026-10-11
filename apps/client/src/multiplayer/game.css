@@ -1,5 +1,5 @@
 [hidden] { display: none !important; }
-#lobby, #pause, #play { color: #edf4fc; font-family: monospace; }
+#lobby, #pause { color: #edf4fc; font-family: monospace; }
 .map-viewer .mode-toggle { z-index: 11; }
 /* Menu styles stay scoped to the two pre-game screens. */
 .map-viewer:has(:is(#lobby, #room-screen):not([hidden])) { background: #16242b; }
@@ -55,15 +55,12 @@ button:disabled { cursor: wait; opacity: .6; }
 .menu-credit { position: absolute; bottom: 34px; right: 7%; color: #dae5df; font-size: 10px; text-decoration: none; }
 .menu-credit:hover { text-decoration: underline; }
 :is(#lobby, #room-screen) button:focus-visible { outline: 3px solid #659342; outline-offset: 4px; }
-#pause button, #play { cursor: pointer; border: 1px solid #60768a; border-radius: 8px; background: #203449; color: #edf4fc; padding: 12px 18px; font: inherit; }
-#play { cursor: pointer; border: 1px solid #60768a; border-radius: 8px; background: #203449; color: #edf4fc; padding: 12px 18px; font: inherit; }
+#pause button { cursor: pointer; border: 1px solid #60768a; border-radius: 8px; background: #203449; color: #edf4fc; padding: 12px 18px; font: inherit; }
 .buttons button { flex: 1; }
 .buttons button:first-child { background: #91e5b9; border-color: #91e5b9; color: #122633; }
 button:disabled { cursor: wait; opacity: 0.6; }
 #lobby .hint { font-size: 11px; }
 #lobby [role=status] { color: #ffd38a; }
-#play { position: absolute; z-index: 5; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 22px; background: #142333eb; line-height: 1.8; }
-#play small { color: #b9ccd9; }
 #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; text-shadow: 0 1px 3px #000; pointer-events: none; }
 #pause { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; background: #0c1728bf; overflow: auto; }
 #pause > div { width: min(440px, calc(100% - 48px)); padding: 24px; background: #142333; border: 1px solid #60768a; border-radius: 12px; }
@@ -165,7 +162,7 @@ button:disabled { cursor: wait; opacity: 0.6; }
 .bike-scan-progress { height:4px; background:#ffffff20; border-radius:2px; overflow:hidden; }
 .bike-scan-progress i { display:block; height:100%; width:0; background:#ed9ad8; }
 #publi-bike-battery { position:absolute; bottom:64px; left:16px; padding:12px; background:#142333dd; color:#edf4fc; border-radius:8px; font:14px monospace; pointer-events:none; }
-.map-viewer:has(#publibike-scan:not([hidden])) :is(.mode-toggle, #play, #crosshair, #pause) { display:none; }
+.map-viewer:has(#publibike-scan:not([hidden])) :is(.mode-toggle, #crosshair, #pause) { display:none; }
 
 #activity-feed { position: absolute; right: 20px; top: 100px; max-width: min(340px, calc(100% - 40px)); display: grid; gap: 6px; pointer-events: none; color: #edf4fc; font: 14px/1.4 monospace; text-shadow: 0 1px 3px #000; }
 #activity-feed[hidden] { display: none; }
@@ -196,6 +193,34 @@ button:disabled { cursor: wait; opacity: 0.6; }
 main:has(.game-loading) > :is(header, footer) { display: none; }
 @keyframes loading-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .loading-spinner { animation: none; } }
+
+#combat-actions { position:absolute; left:50%; bottom:24px; transform:translateX(-50%); z-index:6; display:flex; gap:12px; color:#edf1ef; }
+.combat-action { display:grid; justify-items:center; gap:5px; }
+.combat-action kbd { color:#d6ddda; font:11px/1 ui-monospace,monospace; text-shadow:0 1px 3px #000; }
+#combat-actions button { position:relative; width:46px; height:46px; padding:9px; border:1px solid #ffffff38; border-radius:10px; background:#12232b24; color:#edf1ef; cursor:pointer; }
+#combat-actions button svg { width:26px; height:26px; display:block; filter:drop-shadow(0 1px 2px #0008); }
+#combat-actions button:hover:not(:disabled) { background:#ffffff18; border-color:#ffffff80; }
+#combat-actions button:focus-visible { outline:2px solid #d7f87a; outline-offset:3px; }
+#combat-actions button:disabled { color:#89928f; opacity:1; cursor:default; border-color:#abb6b326; }
+#combat-actions .has-countdown svg { opacity:.18; }
+.action-countdown { position:absolute; inset:0; display:grid; place-items:center; color:#aeb5b2; font:600 26px/1 ui-monospace,monospace; text-shadow:0 1px 4px #0009; pointer-events:none; }
+
+.context-actions { display: flex; gap: 12px; }
+.context-actions:empty { display: none; }
+#developer-coordinates{position:absolute;top:82px;right:16px;z-index:60;padding:14px 16px;border:1px solid #d7f87a;background:#0b1925ed;border-radius:8px;color:#fff;font:14px ui-monospace,monospace;box-shadow:0 4px 18px #0008}
+#developer-coordinates b,#developer-coordinates output,#developer-coordinates small{display:block}
+#developer-coordinates b{font-size:10px;letter-spacing:1px;color:#d7f87a;margin-bottom:8px}
+#developer-coordinates output{user-select:text;font-variant-numeric:tabular-nums}
+#developer-coordinates small{font-size:10px;color:#b1c3d3;margin:7px 0}
+#developer-coordinates button{padding:6px 10px;border:1px solid #7893a7;border-radius:4px;background:#203746;color:white;cursor:pointer;font:12px ui-monospace,monospace}
+
+.action-instructions { position: absolute; left: 50%; bottom: calc(100% + 10px); transform: translateX(-50%); width: max-content; max-width: min(460px, calc(100vw - 24px)); color: #adb6b4; text-align: center; font: 10px/1.6 ui-monospace, monospace; text-shadow: 0 1px 3px #000; pointer-events: none; }
+.interaction-instruction { display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 11px; margin-bottom: 3px; }
+.interaction-instruction[hidden] { display: none; }
+.interaction-instruction svg { width: 15px; height: 15px; }
+@media (max-width: 600px) { .action-instructions { font-size: 9px; } }
+
+.interaction-instruction { width: max-content; max-width: 100%; margin: 0 auto; padding: 7px 12px; border: 1px solid #b4ed6766; border-radius: 3px; background: #102c3ded; color: #c2ed90; box-shadow: 0 3px 12px #0004; }
 
 /* Drowning timeout (drowning.ts): 10 s with the meme music, then respawn where the round started. */
 .drowned-overlay {

@@ -21,7 +21,7 @@ export class PubliBikeFeature {
   private status: HTMLElement;
   private bar: HTMLElement;
   private held = new Set<string>();
-  private request?: { bikeId: string; requestId: string; token?: string; sent: boolean; grantedAt: number };
+  private request?: { bikeId: string; requestId: string; token?: string; sent: boolean; grantedAt: number; createdAt: number; sentAt?: number };
   private progress = 0;
   private steady = 0;
   private stutter = 0;
@@ -35,7 +35,7 @@ export class PubliBikeFeature {
   private lastAim = { yaw: 0.18, pitch: -0.12 };
   private savedView?: { position: THREE.Vector3; quaternion: THREE.Quaternion; up: THREE.Vector3; fov: number };
   constructor(scene: THREE.Scene, private camera: THREE.PerspectiveCamera, private net: Network,
-    private vehicles: Vehicles, private local: LocalPlayer, private canvas: HTMLCanvasElement) {
+    private vehicles: Vehicles, private local: LocalPlayer, private canvas: HTMLCanvasElement, private resumeGameplay?: () => void) {
     const site = this.site;
     this.station.name = "PubliBike station";
     const pink = new THREE.MeshStandardMaterial({ color: "#a82779" }), metal = new THREE.MeshStandardMaterial({ color: "#50606b" });
@@ -92,15 +92,20 @@ export class PubliBikeFeature {
   }
   get active() { return !this.modal.hidden; }
   interact() {
+    if (!this.net.canPlay || this.local.body.knockdownUntil > this.net.now()) return false;
     const id = this.vehicles.nearestId(this.local.body);
     if (!this.net.room.state.publiBikes.has(id) || this.local.body.vehicleId) return false;
     if (this.request) return true;
     const bike = this.net.room.state.publiBikes.get(id)!;
+    if (bike.broken || bike.batteryMs <= 0) {
+      this.net.onVehicleResult?.({ ok: false, message: "This bike is out of battery. Find another bike." });
+      return true;
+    }
     if (this.net.room.state.vehicles.get(id)?.driver || bike.reservedBy) {
       this.net.onVehicleResult?.({ ok: false, message: "This bike is occupied or being unlocked." });
       return true;
     }
-    this.request = { bikeId: id, requestId: crypto.randomUUID(), sent: false, grantedAt: 0 };
+    this.request = { bikeId: id, requestId: crypto.randomUUID(), sent: false, grantedAt: 0, createdAt: this.net.now() };
     this.net.room.send("bikeScanBegin", { bikeId: id, requestId: this.request.requestId }); return true;
   }
   private result(result: C.BikeUnlockResult) {
@@ -109,7 +114,7 @@ export class PubliBikeFeature {
     this.status.textContent = result.message;
     if (!result.ok) {
       if (!request.token) { this.net.onVehicleResult?.({ ok: false, message: result.message }); this.close(false); }
-      else { this.net.room.send("bikeScanCancel", request); request.sent = true; }
+      else { this.net.room.send("bikeScanCancel", request); this.net.onVehicleResult?.({ ok: false, message: result.message }); this.close(false); }
       return;
     }
     if (!result.token) { this.close(false); return; }
@@ -137,10 +142,25 @@ export class PubliBikeFeature {
       this.camera.fov = this.savedView.fov; this.camera.updateProjectionMatrix(); this.savedView = undefined;
     }
     if (wasActive && this.net.canPlay) {
-      this.local.clear(); this.local.enabled = true; this.canvas.focus();
+      if (this.resumeGameplay) this.resumeGameplay();
+      else { this.local.clear(); this.local.enabled = true; this.canvas.focus(); }
+    }
+  }
+  private maintainRequest() {
+    const request = this.request; if (!request) return;
+    const now = this.net.now();
+    if (!this.net.canPlay || this.local.body.knockdownUntil > now) { this.close(); return; }
+    if (this.local.body.vehicleId) { this.close(false); return; }
+    if ((!request.token && now - request.createdAt > 5000) || (request.sent && now - (request.sentAt ?? request.grantedAt) > 5000)) {
+      this.net.onVehicleResult?.({ ok: false, message: "Bike scan timed out. Please try again." }); this.close(); return;
+    }
+    if (request.token && !request.sent && now - request.grantedAt > 500) {
+      const meta = this.net.room.state.publiBikes.get(request.bikeId);
+      if (meta?.reservedBy !== this.net.room.sessionId || meta.reservationUntil <= now) this.close();
     }
   }
   update(dt: number) {
+    this.maintainRequest();
     const state = this.net.room?.state;
     if (state?.publiBikes) {
       const dockedBikes = new Map<number, C.PubliBikeState>();
@@ -162,13 +182,9 @@ export class PubliBikeFeature {
     }
     const bike = state?.publiBikes?.get(this.local.body.vehicleId);
     this.battery.hidden = !this.net.canPlay || !bike;
-    if (bike) this.battery.textContent = `PUBLIBIKE BATTERY · ${(bike.batteryMs / 1000).toFixed(1)}s`;
+    if (bike) this.battery.textContent = `PubliBike in use · ${Math.ceil(bike.batteryMs / 1000)}s battery`;
     const request = this.request; if (!request) return;
-    if (!this.net.canPlay || this.local.body.knockdownUntil > this.net.now()) { this.close(); return; }
     if (!request.token || request.sent) return;
-    const meta = state!.publiBikes.get(request.bikeId);
-    // Wait for the first reservation patch after the grant message.
-    if (this.net.now() - request.grantedAt > 500 && (meta?.reservedBy !== this.net.room.sessionId || meta.reservationUntil <= this.net.now())) { this.close(); return; }
     const visual = this.vehicles.items.get(request.bikeId), tag = visual?.mesh.getObjectByName("PubliBike QR");
     if (!visual || !tag) { this.close(); return; }
     const dx = Number(this.held.has("KeyD") || this.held.has("ArrowRight")) - Number(this.held.has("KeyA") || this.held.has("ArrowLeft"));
@@ -201,7 +217,7 @@ export class PubliBikeFeature {
     }
     this.bar.style.width = `${this.progress * 100}%`;
     if (this.progress >= 1 && this.net.now() - request.grantedAt >= C.PUBLI_BIKE_SCAN_MS) {
-      request.sent = true; this.status.textContent = "Unlocking…"; this.net.room.send("bikeScanFinish", request);
+      request.sent = true; request.sentAt = this.net.now(); this.status.textContent = "Unlocking…"; this.net.room.send("bikeScanFinish", request);
     }
   }
   // MapViewer calls this immediately after its existing render; no extra renderer or loop.

@@ -31,8 +31,8 @@ test('passing loop keeps both cabins separated without a midpoint speed change',
   const a=sample(v,middle-1),b=sample(v,middle),c=sample(v,middle+1);
   assert(Math.abs((b-a)-(c-b))<.00001,'smooth midpoint speed');
   assert(Math.abs(b-C.polybahnMeetingDistance)<1e-8);
-  assert.equal(sample(v,0),v.railReverse?C.polybahnPath.length:0);
-  assert(Math.abs(sample(v,duration)-(v.railReverse?0:C.polybahnPath.length))<1e-8);
+  assert.equal(sample(v,0),v.railReverse?C.polybahnPath.length:C.POLYBAHN_START_DISTANCE);
+  assert(Math.abs(sample(v,duration)-(v.railReverse?C.POLYBAHN_START_DISTANCE:C.polybahnPath.length))<1e-8);
  }
  C.railMotion(up,middle);C.railMotion(down,middle);
  assert(Math.hypot(up.x-down.x,up.z-down.z)>3,'cabins still clear at loop');
@@ -46,4 +46,12 @@ test('seated first-person look stays at the head and clears the lower window sil
  view.look(1000,-200);view.update(p,1/60,frame);
  assert(camera.position.distanceTo(eye)<1e-8,'turning cannot push the head through glass');
  assert(Math.abs(camera.rotation.z)<1e-8);assert.equal(camera.fov,72);
+});
+test('the Central stop keeps the whole cabin on the modelled track deck',()=>{
+ // Cabin body is ±2.49 m along the track; the deck begins at POLYBAHN_TRACK_START.
+ assert(C.POLYBAHN_START_DISTANCE-2.5>=C.POLYBAHN_TRACK_START,'no overhang into the Central hall');
+ const up=C.createVehicle(C.POLYBAHN_KIND);up.railLane=1.25;up.tripStartedAt=1000;
+ C.railMotion(up,1000);assert.equal(up.railDistance,C.POLYBAHN_START_DISTANCE,'departs from the Central stop');
+ const down=C.createVehicle(C.POLYBAHN_KIND);down.railLane=-1.25;down.railReverse=true;down.tripStartedAt=1000;
+ C.railMotion(down,1000+C.railTripDuration(down));assert(Math.abs(down.railDistance-C.POLYBAHN_START_DISTANCE)<1e-8,'arrives at the Central stop');
 });

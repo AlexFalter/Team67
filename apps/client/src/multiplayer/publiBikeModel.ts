@@ -13,11 +13,24 @@ export async function loadPubliBikeModel(signal: AbortSignal) {
   source.updateMatrixWorld(true);
   return {
     create(number: number) {
-      const root = new THREE.Group(); root.name = "PubliBike"; root.rotation.y = Math.PI;
-      const buckets = new Map<THREE.Material, THREE.BufferGeometry[]>();
+      const root = new THREE.Group(); root.name = "PubliBike"; root.rotation.y = Math.PI; root.scale.setScalar(0.68);
+      const buckets = new Map<THREE.Object3D, Map<THREE.Material, THREE.BufferGeometry[]>>();
+      const wheels = new Map<string, THREE.Group>();
+      for (const name of ["FrontWheel", "RearWheel"]) {
+        const sourceWheel = source.getObjectByName(name);
+        if (!sourceWheel) continue;
+        const wheel = new THREE.Group(); wheel.name = `PubliBike ${name}`;
+        sourceWheel.getWorldPosition(wheel.position); root.add(wheel); wheels.set(name, wheel);
+      }
       source.traverse(object => {
         if (!(object instanceof THREE.Mesh)) return;
+        let owner: THREE.Object3D = root;
+        for (let ancestor: THREE.Object3D | null = object; ancestor; ancestor = ancestor.parent) {
+          const wheel = wheels.get(ancestor.name); if (wheel) { owner = wheel; break; }
+        }
+        const bucketMap = buckets.get(owner) ?? new Map<THREE.Material, THREE.BufferGeometry[]>(); buckets.set(owner, bucketMap);
         const geometry = (object.geometry.index ? object.geometry.toNonIndexed() : object.geometry.clone()).applyMatrix4(object.matrixWorld);
+        if (owner !== root) geometry.translate(-owner.position.x, -owner.position.y, -owner.position.z);
         const materials = Array.isArray(object.material) ? object.material : [object.material];
         for (const group of geometry.groups.length ? geometry.groups : [{ start: 0, count: geometry.attributes.position.count, materialIndex: 0 }]) {
           const part = new THREE.BufferGeometry();
@@ -25,17 +38,17 @@ export async function loadPubliBikeModel(signal: AbortSignal) {
             const values = Array.from({ length: group.count * attribute.itemSize }, (_, i) => attribute.getComponent(group.start + Math.floor(i / attribute.itemSize), i % attribute.itemSize));
             part.setAttribute(key, new THREE.Float32BufferAttribute(values, attribute.itemSize));
           }
-          const mat = materials[group.materialIndex ?? 0], bucket = buckets.get(mat) ?? [];
-          bucket.push(part); buckets.set(mat, bucket);
+          const mat = materials[group.materialIndex ?? 0], bucket = bucketMap.get(mat) ?? [];
+          bucket.push(part); bucketMap.set(mat, bucket);
         }
         geometry.dispose();
       });
-      for (const [mat, parts] of buckets) {
+      for (const [owner, bucketMap] of buckets) for (const [mat, parts] of bucketMap) {
         const material = mat.clone();
         for (const [key, value] of Object.entries(material)) if (value instanceof THREE.Texture)
           (material as unknown as Record<string, unknown>)[key] = value.clone();
         if (material instanceof THREE.MeshStandardMaterial) material.userData.originalColor = material.color.clone();
-        const mesh = new THREE.Mesh(mergeGeometries(parts)!, material); mesh.castShadow = true; root.add(mesh);
+        const mesh = new THREE.Mesh(mergeGeometries(parts)!, material); mesh.castShadow = true; owner.add(mesh);
         parts.forEach(p => p.dispose());
       }
       const canvas = document.createElement("canvas"); canvas.width = canvas.height = 128;

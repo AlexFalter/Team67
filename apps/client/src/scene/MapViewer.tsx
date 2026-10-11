@@ -7,22 +7,26 @@ import {
   Scene,
   WebGLRenderer,
   PCFShadowMap,
+  Vector3,
 } from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { disposeMap, loadZurichMap } from "../maps/zurich/loadZurichMap";
 import { GameOverlay } from "../multiplayer/GameOverlay";
+import { TrafficEditor } from "../multiplayer/trafficEditor";
 import { MapGame } from "../multiplayer/MapGame";
 import { ExamOverlay } from "../exam/ExamOverlay";
 import { ExamDebugButton } from "../exam/ExamDebugButton";
 import { emptyExamSession, type ExamSession } from "../exam/ExamSequence";
-import { activeTheme, applyRendererLook, themeLights } from "../maps/zurich/theme";
+import { activeTheme, applyRendererLook, sharpenMapTextures, themeLights } from "../maps/zurich/theme";
+import { createSky } from "../maps/zurich/sky";
+import { createColorGrade, mountGradePanel, type ColorGradeHandle } from "./colorGrade";
 
 export function MapViewer() {
   const [examSession, setExamSession] = useState<ExamSession>(emptyExamSession);
-  const [playing, setPlaying] = useState(true);
-  const [resolution, setResolution] = useState<"performance" | "high">("performance");
+  const [playing, setPlaying] = useState(!(import.meta.env.DEV && new URLSearchParams(location.search).has("trafficEditor")));
+  const [resolution, setResolution] = useState<"performance" | "high">("high");
   return (
-    <div className="map-viewer" data-exam-active={examSession.stage !== "world"}>
+    <div className="map-viewer" data-playing={playing} data-exam-active={examSession.stage !== "world"}>
       <MapCanvas key={playing ? "play" : "inspect"} playing={playing}
         resolution={resolution} onResolutionChange={setResolution} examSession={examSession} onExamChange={setExamSession} />
       <button
@@ -68,7 +72,10 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
     let resize: ResizeObserver | undefined,
       game: MapGame | undefined,
       sunlight: DirectionalLight | undefined,
-      disposeLook: (() => void) | undefined;
+      disposeLook: (() => void) | undefined,
+      grade: ColorGradeHandle | undefined,
+      disposeGradePanel: (() => void) | undefined;
+    let trafficEditor: TrafficEditor | undefined;
     const scene = new Scene();
     const theme = activeTheme();
     scene.background = new Color(theme.sky);
@@ -102,6 +109,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
         renderer = new WebGLRenderer({ canvas: canvas!, antialias: true,
           powerPreference: "high-performance" });
         disposeLook = applyRendererLook(renderer, scene, theme);
+        sharpenMapTextures(map, renderer);
         renderer.shadowMap.enabled = playing;
         renderer.shadowMap.type = PCFShadowMap;
         const light = theme.lighting;
@@ -124,13 +132,21 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
         });
         sun.shadow.bias = -0.0005;
         scene.add(sun, sun.target);
+        if (theme.skyDome) {
+          const sky = createSky(theme.skyDome, new Vector3(sunDir.x, sunDir.y, sunDir.z));
+          scene.add(sky.mesh);
+          abort.signal.addEventListener("abort", sky.dispose);
+        }
         const camera = new PerspectiveCamera(
           playing ? 60 : 45,
           1,
           playing ? 0.1 : 1,
           6000,
         );
-        if (playing) { game = new MapGame(scene, camera, canvas!, hud!, hints!, map, () => renderer!.render(scene, camera), onExamChange); gameRef.current = game; }
+        // colour grade after tone mapping (theme "grade", dev panel: G or ?grade)
+        grade = createColorGrade(renderer, scene, camera, { exposure: theme.lighting.exposure ?? 1, ...theme.grade });
+        disposeGradePanel = mountGradePanel(grade, abort.signal);
+        if (playing) { game = new MapGame(scene, camera, canvas!, hud!, hints!, map, () => grade!.render(), onExamChange); gameRef.current = game; }
         else {
           camera.position.set(650, 850, 900);
           controls = new OrbitControls(camera, canvas!);
@@ -140,6 +156,10 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
           controls.maxDistance = 2500;
           controls.maxPolarAngle = Math.PI / 2 - 0.02;
           controls.update();
+          if (import.meta.env.DEV) {
+            trafficEditor = new TrafficEditor(scene, camera, canvas!, map, true);
+            controls.enabled = !trafficEditor.active;
+          }
         }
         const fit = () => {
           const { width, height } = canvas!.getBoundingClientRect();
@@ -149,6 +169,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
             : Math.min(window.devicePixelRatio, 1,
               Math.sqrt(1920 * 1080 / (Math.max(width, 1) * Math.max(height, 1))));
           renderer!.setDrawingBufferSize(Math.max(width, 1), Math.max(height, 1), density);
+          grade?.setSize(Math.max(width, 1), Math.max(height, 1), density);
           camera.aspect = Math.max(width, 1) / Math.max(height, 1);
           camera.updateProjectionMatrix();
         };
@@ -160,7 +181,8 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
         let previous = performance.now();
         renderer.setAnimationLoop(() => {
           const now = performance.now();
-          controls?.update();
+          if (controls) { controls.enabled = !trafficEditor?.active; if (controls.enabled) controls.update(); }
+          trafficEditor?.update();
           game?.update((now - previous) / 1000, now);
           previous = now;
           if (game) {
@@ -170,7 +192,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
             sun.target.updateMatrixWorld();
           }
           if (!game?.examScreenVisible) {
-            renderer!.render(scene, camera);
+            grade!.render();
             game?.afterRender();
           }
         });
@@ -196,6 +218,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
       fitRef.current = undefined;
       renderer?.setAnimationLoop(null);
       resize?.disconnect();
+      trafficEditor?.dispose();
       controls?.dispose();
       game?.dispose();
       gameRef.current = undefined;
@@ -203,6 +226,8 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
       sunlight?.shadow.dispose();
       scene.clear();
       disposeLook?.();
+      disposeGradePanel?.();
+      grade?.dispose();
       renderer?.dispose();
       renderer?.forceContextLoss();
     };
@@ -229,7 +254,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
       >
         {status}
       </div>
-      {playing && <ExamOverlay session={examSession} onSkip={() => gameRef.current?.skipExamTransition()}
+      {playing && <ExamOverlay session={examSession}
         onComplete={score => gameRef.current?.completeExam(score)} onExit={() => gameRef.current?.returnFromExam()} />}
       {playing && <ExamDebugButton enabled={examSession.canEnter && examSession.stage === "world"}
         onTeleport={enterPortal => gameRef.current?.debugTeleportToTerrace(enterPortal)} />}

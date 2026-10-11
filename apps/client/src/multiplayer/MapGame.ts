@@ -1,14 +1,22 @@
+import type { ContextAction } from "./actionHud.ts";
+import { DeveloperCoordinates } from "./developerCoordinates.ts";
+import {createMedals} from "./medals/medals.js";
+import {PLAYER_MEDALS} from "@race/shared";
 import { decoratePlayer } from "./playerIdentity.ts";
 import * as THREE from "three";
 import * as C from "@race/shared";
 import { BATTLE_BUS_HEADING, INTERP_DELAY_MS, IDLE_INPUT, zurichWorld, isRail, railFrame, railSeat, tramDerailFrame, examSecondsRemaining, RoomPhase } from "@race/shared";
+import { TrafficRenderer } from "./traffic.ts";
+import { TrafficRoadSurface } from "./trafficRoadSurface.ts";
+import { TrafficEditor } from "./trafficEditor.ts";
 import { Network } from "./net.ts";
 import { LocalPlayer } from "./localPlayer.ts";
 import { RemotePlayers } from "./remotePlayers.ts";
 import { Vehicles } from "./vehicles.ts";
 import { Effects } from "./effects.ts";
 import { Hud } from "./hud.ts";
-import { avatar, pose, disposeAvatar, firstPersonBodyVisible } from "./avatar.ts";
+import { RaceMap } from "./raceMap.ts";
+import { avatar, pose, alignCabinAvatar, disposeAvatar, firstPersonBodyVisible } from "./avatar.ts";
 import { PlayerView } from "./view.ts";
 import { GameControls } from "./gameControls.ts";
 import { lobby } from "./lobby.ts";
@@ -33,11 +41,17 @@ export class MapGame {
   private derailRun=0;
   private explosionEvents=new Set<string>();
   private net = new Network();
+  private traffic: TrafficRenderer;
+  private trafficEditor?: TrafficEditor;
   private local = new LocalPlayer();
   private remotes: RemotePlayers;
+  private medals: ReturnType<typeof createMedals>;
+  private medalRound = 0;
   private vehicles: Vehicles;
   private effects: Effects;
   private hud: Hud;
+  private maps: RaceMap;
+  private coordinates: DeveloperCoordinates;
   private view: PlayerView;
   private disposeMapRaycasts: () => void;
   private controls: GameControls;
@@ -57,10 +71,12 @@ export class MapGame {
   private drowning: Drowning;
   private audioSources = new Map<string, LoopSource>();
   private limoTrack = new Map<string, { x: number; z: number; speed: number }>();
-  private medalTargets = new Set<string>();
   private lastCanDrop = 0;
   constructor(scene: THREE.Scene, private camera: THREE.PerspectiveCamera, private canvas: HTMLCanvasElement,
     hud: HTMLDivElement, hints: HTMLDivElement, map: THREE.Object3D, capture: () => void, onExamChange: (session: ExamSession) => void = () => {}) {
+    this.medals = createMedals({root: canvas.parentElement!, definitions: PLAYER_MEDALS});
+    this.net.onMedal = award => this.medals.awardMany(award.ids, award.eventKey);
+    this.traffic = new TrafficRenderer(scene, TrafficRoadSurface.forMap(map));
     this.exam = new ExamSequence(scene, camera, onExamChange);
     this.transitScenery = new TransitScenery(scene, map);
     this.disposeMapRaycasts = accelerateMapRaycasts(map);
@@ -69,22 +85,32 @@ export class MapGame {
     this.effects = new Effects(scene, bump => this.audio.bump(this.listener, bump));
     this.hud = new Hud(hud);
     this.drowning = new Drowning(hud.parentElement ?? document.body);
-    this.publiBikes = new PubliBikeFeature(scene, camera, this.net, this.vehicles, this.local, canvas);
+    this.coordinates = new DeveloperCoordinates(canvas.parentElement!);
+    this.publiBikes = new PubliBikeFeature(scene, camera, this.net, this.vehicles, this.local, canvas, () => this.controls.restoreGameplay());
     this.mate = new MateFeature(scene, camera, this.net, this.local, canvas);
     // Camera shutter from mini-games-2 when a photo is taken.
     this.npcs = new NpcFeature(scene, camera, this.net, this.local, this.vehicles, canvas, map, () => { this.audio.effect("shutter"); return capture(); });
     this.npcs.onMedal = () => this.audio.medal();
+    this.medals.setSoundEnabled(this.audio.settings.medalSounds);
     for (const [selector, key] of [["#vehicle-sounds", "vehicleSounds"], ["#medal-sounds", "medalSounds"]] as const) {
       const input = document.querySelector<HTMLInputElement>(selector);
       if (!input) continue;
       input.checked = this.audio.settings[key];
-      input.onchange = () => this.audio.setSetting(key, input.checked);
+      input.onchange = () => {this.audio.setSetting(key, input.checked);if(key==="medalSounds")this.medals.setSoundEnabled(input.checked);};
     }
     this.view = new PlayerView(camera, [map, this.mate.machine], zurichWorld);
+    this.npcs.playerView = this.view;
+    scene.add(camera);
     this.bus = new BattleBusIntro(scene, camera, this.net, canvas, () => this.view.sensitivity);
     this.ready = Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready, this.npcs.ready]).then(() => {});
-    this.roomFlow = new RoomFlow(this.net, this.ready, () => this.bus.unlockAudio());
-    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active, () => this.net.now()<this.derailUntil);
+    this.roomFlow = new RoomFlow(this.net, this.ready, () => this.bus.unlockAudio(), () => this.audio.effect("timer"));
+    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.trafficEditor?.active && !this.exam.active && !this.publiBikes.active && !this.mate.active && (!this.npcs.active || this.npcs.ridingVehicle), () => this.net.now()<this.derailUntil || !!this.maps?.active || (this.local.body.moodleSitUntil??0)>this.net.now(), () => this.net.now(), () => this.contextActions());
+    this.maps = new RaceMap(this.net, () => ({ ...this.local.body, enabled: this.local.enabled }),
+      () => [...this.npcs.mapMarkers(), { ...this.mate.machine.position, label: "El Tony Mate" }],
+      () => !!this.net.canPlay && !this.trafficEditor?.active && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now() >= this.derailUntil && !!document.querySelector<HTMLElement>("#pause")!.hidden,
+      () => this.controls.suspendForMap(), () => void this.controls.resume());
+    this.npcs.externalPhoneBusy=()=>this.exam.active||this.publiBikes.active||this.mate.active;
+    this.npcs.onResume=()=>this.controls.resumeAfterInteraction();
     Object.assign(this.local.body, zurichWorld.spawn);
     camera.near = 0.05;
     camera.position.set(zurichWorld.spawn.x, zurichWorld.spawn.y + 1.6, zurichWorld.spawn.z);
@@ -94,12 +120,19 @@ export class MapGame {
     this.closeLobby = lobby(selection => {
       this.bus.unlockAudio();
       return this.net.connect(this.local.body, (state, id) => {
+        if (state.startedAt !== this.medalRound) {this.medalRound = state.startedAt; this.medals.reset();}
         if (state.introStartedAt && this.introStartedAt !== state.introStartedAt) {
           this.introStartedAt = state.introStartedAt;
           this.derailVehicle="";this.derailUntil=this.derailRun=0;this.explosionEvents.clear();
           this.view.yaw = BATTLE_BUS_HEADING; this.view.pitch = 0;
         }
         if (state.introComplete) camera.up.set(0, 1, 0);
+        this.traffic.patch(state);
+        if (import.meta.env.DEV && state.devMode && state.hostId === id && !this.trafficEditor) {
+          this.trafficEditor = new TrafficEditor(scene, camera, canvas, map);
+          this.trafficEditor.bind(this.net.room);
+        }
+        this.trafficEditor?.patch(state);
         this.roomFlow.patch(state, id);
         this.vehicles.patch(state); this.remotes.patch(state, id);
         const p = state.players.get(id);
@@ -109,19 +142,40 @@ export class MapGame {
           scene.add(this.mesh, this.firstBody); this.avatarReady = true;
         }
         if (p && this.avatarReady) decoratePlayer(this.mesh, state.members.get(id)?.name ?? "Player");
-      }, hit => { this.awardRunOver(hit); this.effects.enqueue(hit); }, selection);
+      }, hit => { this.effects.enqueue(hit, this.net.room.sessionId); }, selection);
     });
   }
   get examScreenVisible() { return this.exam.screenVisible; }
   get focus() { return this.net.room?.state?.phase === RoomPhase.Lobby ? this.menuScene.focus : this.bus.active ? this.bus.focus : this.local.body; }
+  private contextActions(): ContextAction[] {
+    if (this.npcs.active) return [];
+    const p = this.local.body, actions: ContextAction[] = [];
+    const icon = p.vehicleId ? "leave" : this.npcs.nearbyTicket ? "polybahn" : this.npcs.nearbyInteraction ? "person" : this.mate.nearby ? "mate" : this.vehicles.interactionKind(p);
+    if (icon) actions.push({ icon, key: "E", label: p.vehicleId ? "Leave vehicle" : this.npcs.nearbyTicket ? "Buy Polybahn ticket" : icon === "person" ? "Talk / interact" : icon === "mate" ? "Use Mate machine" : p.vehicleId ? "Get off" : icon === "bike" ? "Ride / scan PubliBike" : "Board transport", enabled: p.knockdownUntil <= this.net.now(), run: () => this.local.requestInteraction() });
+    if (p.mateCount > 0) actions.push({ icon: "mate", key: "1", label: "Drink Mate", enabled: this.mate.canConsume, run: () => this.mate.consume() });
+    return actions;
+  }
   update(elapsed: number, now: number) {
     const dt = Math.min(0.1, elapsed), renderTime = this.net.now() - INTERP_DELAY_MS;
     const state = this.net.room?.state;
+    this.traffic.render(renderTime);
+    this.trafficEditor?.update();
+    if (this.trafficEditor?.active) {
+      this.controls.update(dt);
+      this.vehicles.stopDriving();
+      this.mesh.visible = this.firstBody.visible = false;
+      this.vehicles.render(renderTime, dt); this.remotes.render(renderTime, this.vehicles.items, dt);
+      return;
+    }
     const remaining = state?.phase === RoomPhase.Running ? examSecondsRemaining(state.endsAt, this.net.now()) : 0;
+    const examWasActive = this.exam.active;
     // Encounters keep camera ownership until they finish; vehicles also block exam entry.
     this.exam.update(this.local.body, this.net.canPlay, this.local.enabled && !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now()>=this.derailUntil, state?.startedAt ?? 0, remaining, now);
+    if (!examWasActive && this.exam.active) this.controls.suspendForMap();
     this.vehicles.render(renderTime, dt, "rail");
     this.transitScenery.update(state?.vehicles?.values() ?? [], this.net.now(), this.net.canPlay);
+    const vehicleCamera = this.npcs.ridePose;
+    this.view.setVehicle(vehicleCamera?.id ?? this.local.body.vehicleId, vehicleCamera?.rotY ?? this.local.body.rotY);
     const riding=this.vehicles.items.get(this.local.body.vehicleId)?.latest;
     if(riding?.derailStartedAt&&this.derailRun!==riding.derailStartedAt){
       this.derailRun=riding.derailStartedAt;this.derailVehicle=this.local.body.vehicleId;this.derailUntil=riding.derailStartedAt+3200;
@@ -129,33 +183,44 @@ export class MapGame {
     if (this.net.canPlay && !this.exam.active) {
       // Water kills players on foot: 10 s timeout with the meme music, then respawn where the round started.
       const drowned = this.drowning.update(this.local.body, this.net.now(),
-        !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now() >= this.derailUntil,
+        !this.publiBikes.active && !this.mate.active && !this.npcs.active && !this.npcs.ridingVehicle && this.net.now() >= this.derailUntil,
         this.net.room?.state.members.get(this.net.room.sessionId)?.introSeat ?? -1);
-      this.net.frame(dt, this.local.body, () => drowned || this.net.now()<this.derailUntil?IDLE_INPUT:this.local.controls(this.view.yaw));
+      this.net.frame(dt, this.local.body, () => drowned || this.net.now()<this.derailUntil || this.npcs.ridingVehicle || (this.local.body.moodleSitUntil??0)>this.net.now()?IDLE_INPUT:this.local.controls(this.view.yaw));
       if (drowned) this.local.takeInteraction();
-      else if (this.net.now()>=this.derailUntil && this.local.takeInteraction() && !this.npcs.active && !this.npcs.interact() && !this.mate.interact() && !this.publiBikes.interact()) this.vehicles.interact(this.local.body);
+      else if ((this.local.body.moodleSitUntil??0)<=this.net.now() && this.net.now()>=this.derailUntil && this.local.takeInteraction() && !this.npcs.active && !this.npcs.interact() && !this.mate.interact() && !this.publiBikes.interact()) this.vehicles.interact(this.local.body);
       if (this.local.body.vehicleId) this.vehicles.local(this.local.body, this.net.room.sessionId);
       else this.vehicles.stopDriving();
-      pose(this.mesh, this.local.body, dt);
+      this.mate.equip(this.mesh, this.local.body.mateFlavor ?? 2);
+      this.mate.equip(this.firstBody, this.local.body.mateFlavor ?? 2);
+      const knifeEquipped = !!this.npcs.karambit?.occupiesHands();
+      pose(this.mesh, this.local.body, dt, 0, undefined, knifeEquipped);
+      const cabin = this.vehicles.items.get(this.local.body.vehicleId)?.rendered;
+      alignCabinAvatar(this.mesh, this.local.body, cabin);
       this.mesh.visible = this.avatarReady && this.view.perspective !== 0;
       this.firstBody.visible = this.avatarReady && firstPersonBodyVisible(this.local.body, this.view.perspective);
+      if(this.view.perspective===0&&this.npcs.karambit?.occupiesHands()&&!this.local.body.vehicleId)this.firstBody.visible=false;
       if (this.publiBikes.active || this.mate.active || this.npcs.hideAvatar) this.mesh.visible = this.firstBody.visible = false;
-      this.effects.trail(this.net.room.sessionId, this.local.body, now);
+      this.effects.trail(this.net.room.sessionId, this.local.body, now, this.view.perspective !== 0);
       if (!this.publiBikes.active && !this.mate.active && !this.npcs.active) {
         const vehicle = this.vehicles.items.get(this.local.body.vehicleId)?.rendered;
         this.view.update(this.local.body, dt, vehicle && isRail(vehicle) ? railFrame(vehicle, railSeat(vehicle, this.local.body.seat).part) : undefined);
       }
-      pose(this.firstBody, this.local.body, dt, this.view.pitch, this.view.camera);
+      pose(this.firstBody, this.local.body, dt, this.view.pitch, this.view.camera, knifeEquipped);
+      if((this.local.body.moodleSitUntil??0)>this.net.now()&&!this.npcs.active){this.mesh.visible=this.avatarReady;this.firstBody.visible=false;const p=this.local.body;this.view.camera.position.set(p.x+Math.sin(this.view.yaw)*3.6,p.y+1.7,p.z+Math.cos(this.view.yaw)*3.6);this.view.camera.lookAt(p.x,p.y+.55,p.z);}
     }
     if (!this.net.canPlay || this.exam.active) { this.drowning.cancel(); this.mesh.visible = this.firstBody.visible = false; this.vehicles.stopDriving(); }
     this.effects.speed(this.local.body, this.view.camera, dt, this.net.canPlay && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.view.perspective === 0);
     this.roomFlow.update();
     this.vehicles.render(renderTime, dt, "other"); this.remotes.render(renderTime, this.vehicles.items, dt);
     for (const [id, remote] of this.remotes.players) {
+      this.mate.equip(remote.mesh, remote.rendered.mateFlavor ?? 2);
       remote.mesh.visible = this.net.room?.state.npcs?.get(id)?.kind !== "limousine";
       this.effects.trail(id, remote.rendered, now);
     }
-    this.controls.update(dt); this.effects.update(renderTime, dt); this.hud.update(dt, this.net);
+    this.medals.update(dt,{visible:this.net.canPlay&&!this.exam.active&&!this.npcs.active&&!this.mate.active&&!this.publiBikes.active});
+    this.controls.update(dt); this.effects.update(renderTime, dt); this.hud.update(dt, this.net, this.local.body);
+    this.maps.update(dt, this.net.canPlay && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now() >= this.derailUntil);
+    this.coordinates.update(this.local.body, state?.devMode === true, this.net.canPlay);
     this.vehicles.updateLabels(this.local.body, now);
     this.bus.update(dt, this.mesh, this.remotes);
     const inMenu = !state || state.phase === RoomPhase.Lobby;
@@ -164,6 +229,15 @@ export class MapGame {
     this.publiBikes.update(dt);
     this.mate.update();
     this.npcs.update(dt, this.net.canPlay && !this.exam.active && this.local.enabled && !this.publiBikes.active && !this.mate.active && this.net.now()>=this.derailUntil);
+    const limoView = this.npcs.ridePose;
+    if (limoView && this.net.canPlay) {
+      this.view.setVehicle(limoView.id, limoView.rotY);
+      this.view.update({ ...this.local.body, ...limoView, vehicleId: limoView.id, vehicleKind: 0, anim: 0 }, dt);
+    }
+    for (const [id, bike] of state?.publiBikes ?? []) {
+      const at = this.vehicles.items.get(id)?.rendered;
+      if (at) this.effects.battery(id, bike.batteryMs, at, now);
+    }
     for(const [id,visual] of this.vehicles.items){
       const v=visual.rendered;if(!v.derailStartedAt)continue;
       for(let part=0;part<3;part++){
@@ -185,14 +259,6 @@ export class MapGame {
     this.updateAudio(dt, renderTime);
   }
   private get listener() { return this.local.body; }
-  // mini-games-2 medals Bloodthirsty / Public Menace / Bike Lane Justice: running someone over.
-  private awardRunOver(hit: { a: string; b: string }) {
-    const room = this.net.room, body = this.local.body;
-    if (!room || hit.a !== room.sessionId || !body.vehicleId || (body.vehicleKind !== 0 && body.vehicleKind !== 2)) return;
-    const key = `${room.state.startedAt}:${hit.b}`;
-    if (this.medalTargets.has(key)) return;
-    this.medalTargets.add(key); this.audio.medal();
-  }
   private updateAudio(dt: number, renderTime: number) {
     const state = this.net.room?.state, id = this.net.room?.sessionId, body = this.local.body, sources = this.audioSources;
     const playing = (this.net.canPlay && !this.exam.active) || this.bus.active;
@@ -237,9 +303,9 @@ export class MapGame {
   private get controlsPaused() { return !document.querySelector<HTMLElement>("#pause")?.hidden; }
   skipExamTransition() { this.exam.skipTransition(); }
   completeExam(score: number) { this.exam.complete(score); }
-  returnFromExam() { this.exam.returnToWorld(); }
+  returnFromExam() { this.exam.returnToWorld(); this.controls.restoreGameplay(); }
   debugTeleportToTerrace(enterPortal = false) {
-    if (!import.meta.env.DEV || !this.net.canPlay || this.exam.active || this.mate.active || this.publiBikes.active || this.npcs.active || this.net.now()<this.derailUntil) return;
+    if (!import.meta.env.DEV || !this.net.room?.state.devMode || !this.net.canPlay || this.maps.active || this.exam.active || this.mate.active || this.publiBikes.active || this.npcs.active || this.net.now()<this.derailUntil) return;
     this.local.clear(); this.local.body.vx = this.local.body.vy = this.local.body.vz = 0;
     this.view.yaw = this.view.pitch = 0;
     if (enterPortal) void this.controls.resume();
@@ -247,7 +313,11 @@ export class MapGame {
   }
   afterRender() { this.publiBikes.renderPreview(); this.npcs.afterRender(); }
   dispose() {
+    this.maps.dispose(); this.hud.dispose();
+    this.coordinates.dispose();
+    this.trafficEditor?.dispose(); this.traffic.dispose();
     this.menuScene.dispose();
+    this.medals.destroy(); this.net.onMedal = undefined;
     this.exam.dispose();
     this.npcs.dispose();
     this.audio.dispose();

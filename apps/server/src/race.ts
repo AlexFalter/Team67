@@ -1,3 +1,5 @@
+import {MoodleEvents} from './moodle.ts';
+import {PlayerMedals} from "./medals.ts";
 import { Room, type Client } from "colyseus";
 import * as C from "@race/shared";
 import { Player, RaceState } from "./state.ts";
@@ -7,7 +9,9 @@ import { registerExamDebug } from "./examDebug.ts";
 import { RoundManager } from "./round.ts";
 import { PubliBikes } from "./publiBikes.ts";
 import { MateMachine } from "./mate.ts";
+import { TrafficManager } from "./traffic.ts";
 import { NpcEncounters } from "./npcs.ts";
+import { TicketMachine } from './tickets.ts';
 // The prototype runs one server process. Reserve synchronously before async
 // physics initialization so two simultaneous creates cannot claim one code.
 const codes = new Set<string>();
@@ -15,6 +19,8 @@ const codes = new Set<string>();
 export class Race extends Room<{ state: RaceState }> {
   maxClients = 40;
   state = new RaceState();
+  private moodle!:MoodleEvents;
+  private medals = new PlayerMedals();
   private lastMoves = new Map<string, number>();
   private world = process.env.GAME_WORLD === "flat" ? C.flatWorld : C.zurichWorld;
   private contact = C.createContact();
@@ -25,6 +31,9 @@ export class Race extends Room<{ state: RaceState }> {
   private publiBikes!: PubliBikes;
   private mate!: MateMachine;
   private npcs!: NpcEncounters;
+  private traffic!: TrafficManager;
+  private trafficTime = Date.now();
+  private trafficEdits = new Map<string, number>();
   async onCreate(options: { code?: unknown; devMode?: unknown; skipIntro?: unknown; goldPubliBikes?: unknown; railCrashProtection?: unknown } = {}) {
     if (options.code !== undefined) {
       const code = C.roomCode(options.code);
@@ -37,10 +46,16 @@ export class Race extends Room<{ state: RaceState }> {
     this.state.skipIntro = this.state.devMode && options.skipIntro === true;
     this.physics = await ContactWorld.create(this.world);
     this.state.serverTime = Date.now();
-    this.vehicles = new VehicleManager(this.state, this.world);
+    this.vehicles = new VehicleManager(this.state, this.world, false);
     this.publiBikes = this.createPubliBikes();
     this.mate = new MateMachine(this.state, this.world);
     this.npcs = this.createNpcs();
+    this.moodle=new MoodleEvents(this.state,(id,result)=>this.clients.find(c=>c.sessionId===id)?.send('moodleResult',result),id=>!this.npcs.busy(id));
+    this.onMessage('moodleAnswer',(client,data:unknown)=>this.moodle.answer(client.sessionId,data,Date.now()));
+    this.onMessage('moodleSettings',(client,data:unknown)=>{if(client.sessionId===this.state.hostId&&typeof data==='boolean')this.moodle.enabled(data);});
+    this.traffic = new TrafficManager(this.state);
+    const tickets = new TicketMachine(this.state,this.world);
+    this.onMessage('ticket', (client, data: unknown) => tickets.command(client,data));
     const configuredDuration = Number(process.env.ROUND_DURATION_MS ?? C.ROUND_DURATION_MS);
     const duration = Number.isFinite(configuredDuration) && configuredDuration > 0 ? configuredDuration : C.ROUND_DURATION_MS;
     const introDuration = Number(process.env.BATTLE_BUS_INTRO_MS ?? C.BATTLE_BUS_DURATION_MS);
@@ -53,12 +68,33 @@ export class Race extends Room<{ state: RaceState }> {
       onArrival: () => this.arriveFromBus(),
     });
     registerExamDebug(this, this.world, this.lastMoves, id => this.rounds.canPlay(id));
+    this.onMessage("trafficEdit", (client, data: unknown) => {
+      if (!this.state.devMode || client.sessionId !== this.state.hostId) {
+        client.send("trafficResult", { ok: false, message: "Only the development room host can edit traffic." }); return;
+      }
+      const now = Date.now();
+      if (now - (this.trafficEdits.get(client.sessionId) ?? 0) < 100) {
+        client.send("trafficResult", { ok: false, message: "Please wait before applying another edit." }); return;
+      }
+      this.trafficEdits.set(client.sessionId, now);
+      try {
+        const command = data as { network?: unknown; settings?: unknown };
+        if (!command || typeof command !== "object") throw new Error("Invalid traffic command.");
+        if (command.network !== undefined) this.traffic.replace(C.validateTrafficNetwork(command.network));
+        else if (command.settings !== undefined) this.traffic.settings(command.settings);
+        else throw new Error("Send a traffic network or settings.");
+        client.send("trafficResult", { ok: true, message: "Traffic updated." });
+      } catch (error) { client.send("trafficResult", { ok: false, message: error instanceof Error ? error.message : "Invalid traffic edit." }); }
+    });
     this.onMessage("ready", (client, ready: unknown) => this.rounds.ready(client.sessionId, ready));
     this.onMessage("restartRound", client => this.rounds.restart(client.sessionId));
     this.onMessage("finishRound", client => {
       if (client.sessionId === this.state.hostId) this.rounds.finish();
     });
     this.onMessage("move", (client, data: unknown) => this.move(client, data));
+    this.onMessage("cabinMove", (client, data: unknown) => {
+      if (this.rounds.canPlay(client.sessionId)) this.vehicles.walkCabin(client.sessionId, data);
+    });
     this.onMessage("vehicleMove", (client, data: unknown) => {
       if (this.rounds.canPlay(client.sessionId)) this.vehicles.move(client, data);
     });
@@ -76,13 +112,20 @@ export class Race extends Room<{ state: RaceState }> {
     });
     this.setPatchRate(1000 / C.SERVER_PATCH_RATE);
     this.onMessage("vehicleEnter", (client, data: unknown) => {
-      if (this.rounds.canPlay(client.sessionId) && !this.npcs.busy(client.sessionId)) this.vehicles.enter(client, data, Date.now());
+      if (this.rounds.canPlay(client.sessionId) && !this.npcs.busy(client.sessionId) && (this.state.players.get(client.sessionId)?.moodleSitUntil??0)<=Date.now()) this.vehicles.enter(client, data, Date.now());
     });
     this.onMessage("vehicleExit", client => {
       if (this.rounds.canPlay(client.sessionId)) {
         const id = this.state.players.get(client.sessionId)?.vehicleId;
-        this.vehicles.exit(client); if (id) this.publiBikes.park(id);
+        this.vehicles.exit(client);
+        const photo=this.vehicles.photoRequired(client.sessionId);if(photo)client.send("limePhotoRequired",{vehicleId:photo,roundStartedAt:this.state.startedAt});
+        if (id) this.publiBikes.park(id);
       }
+    });
+    this.onMessage("limePhotoSubmit",(client,data:unknown)=>{
+      const photo=data as {vehicleId?:unknown;roundStartedAt?:unknown}|null;
+      const ok=!!photo&&photo.roundStartedAt===this.state.startedAt&&this.rounds.canPlay(client.sessionId)&&this.vehicles.finishParkingPhoto(client.sessionId,photo.vehicleId);
+      client.send("limePhotoResult",{ok,roundStartedAt:this.state.startedAt});
     });
     this.onMessage("bikeScanBegin", (client, data: unknown) => {
       if (this.rounds.canPlay(client.sessionId) && !this.npcs.busy(client.sessionId)) this.publiBikes.begin(client, data);
@@ -92,7 +135,7 @@ export class Race extends Room<{ state: RaceState }> {
     });
     this.onMessage("bikeScanCancel", (client, data: unknown) => this.publiBikes.cancel(client, data));
     this.onMessage("mate", (client, data: unknown) => { if (!this.npcs.busy(client.sessionId)) this.mate.command(client, data); });
-    this.onMessage("npc", (client, data: unknown) => this.npcs.command(client, data));
+    this.onMessage("npc", (client, data: unknown) => {if((this.state.players.get(client.sessionId)?.moodleSitUntil??0)<=Date.now())this.npcs.command(client, data);});
     this.onMessage("npcPose", (client, data: unknown) => this.npcs.pose(client, data));
     this.setSimulationInterval(() => this.tick(), 1000 / C.COLLISION_TICK_RATE);
   }
@@ -112,10 +155,11 @@ export class Race extends Room<{ state: RaceState }> {
     this.npcs.join(id);
   }
   private resetRound() {
+    this.medals.reset();this.moodle.reset();
     const colors = new Map([...this.state.players].map(([id, p]) => [id, p.color]));
     this.state.players.clear(); this.state.vehicles.clear(); this.state.publiBikes.clear(); this.lastMoves.clear();
     this.physics.sync(new Map(), new Map());
-    this.vehicles = new VehicleManager(this.state, this.world);
+    this.vehicles = new VehicleManager(this.state, this.world, false);
     this.publiBikes = this.createPubliBikes();
     this.state.mates.clear(); this.mate = new MateMachine(this.state, this.world);
     this.state.npcs.clear(); this.npcs = this.createNpcs();
@@ -140,27 +184,44 @@ export class Race extends Room<{ state: RaceState }> {
     if (id) this.publiBikes.park(id);
     this.state.players.delete(client.sessionId);
     this.lastMoves.delete(client.sessionId);
+    this.medals.leave(client.sessionId);
+    this.trafficEdits.delete(client.sessionId);
     this.rounds.leave(client.sessionId);
   }
   onDispose() { this.physics?.dispose(); if (this.code) codes.delete(this.code); }
-  private hit(target: string, hit: C.Impulse) {
+  private hit(target: string, hit: C.Impulse, kind?: "punch" | "bicycle") {
     const p = this.state.players.get(target);
     if (p && this.rounds.canPlay(target) && !this.npcs.busy(target)) {
+      const standing = Date.now() >= p.knockdownUntil;
+      if (hit.knockdown && p.knockdownUntil > Date.now()) return;
       this.rounds.hit(hit.from, target);
       p.simTime = Date.now();
       const correction = this.correction(p);
+      hit.at = p.simTime;
       C.applyImpulse(p, hit, p.simTime);
       const client = this.clients.find(c => c.sessionId === target);
       client?.send("playerCorrection", correction);
       client?.send("impulse", hit);
+      const attacker = this.clients.find(c => c.sessionId === hit.from);
+      if (kind && standing && client && attacker && this.state.players.has(hit.from) && this.rounds.canPlay(hit.from)) {
+        const award = this.medals.record(hit.from, target, kind, this.state.startedAt);
+        if (award) attacker.send("medal", award);
+      }
+      return true;
     }
+    return false;
   }
   private bump(a: string, b: string, x: number, y: number, z: number) {
     this.broadcast("bump", { a, b, x, y, z, t: this.state.serverTime } satisfies C.Bump);
   }
-  private vehicleHit: Parameters<VehicleManager["tick"]>[1] = (from, target, x, y, z, ix, iy, iz, knockdown) => {
-    this.hit(target, { from, ix, iy, iz, knockdown, durationMs: 2500 });
-    this.bump(from, target, x, y, z);
+  private vehicleHit: Parameters<VehicleManager["tick"]>[1] = (from, target, x, y, z, ix, iy, iz, knockdown, kind) => {
+    const car = this.state.trafficCars.get(from), player = this.state.players.get(target);
+    if (car && player?.vehicleId) {
+      this.vehicles.runOver(player.vehicleId, this.state.serverTime, this.vehicleHit, car.speed, { from, rotY: car.rotY, kind: 3 });
+      return;
+    }
+    if (this.hit(target, C.collisionImpact(from, ix, iy, iz, kind === 2 ? "bike" : "vehicle", knockdown), knockdown && kind===2 ? "bicycle" : undefined))
+      this.bump(from, target, x, y, z);
   };
   private correction(p: C.PlayerState): C.PlayerCorrection {
     return { x: p.x, y: p.y, z: p.z, vx: p.vx, vy: p.vy, vz: p.vz, grounded: p.grounded,
@@ -175,7 +236,7 @@ export class Race extends Room<{ state: RaceState }> {
     )
       return;
     const p = this.state.players.get(client.sessionId);
-    if (!p || p.vehicleId) return;
+    if (!p || p.vehicleId || p.moodleSitUntil>Date.now()) return;
     const
       now = Date.now(),
       dt = Math.max(0.001, (now - (this.lastMoves.get(client.sessionId) ?? now)) / 1000);
@@ -185,10 +246,10 @@ export class Race extends Room<{ state: RaceState }> {
     const respawn =
       ((C.inWater(this.world, p.x, p.y, p.z) && start !== undefined &&
         Math.hypot(data[0] - start.x, data[2] - start.z) < 0.2 && Math.abs(data[1] - start.y) < 0.2) ||
-      (p.y < (this.world.height(p.x, p.z) ?? this.world.spawn.y) - 8 || C.inWater(this.world, p.x, p.y, p.z)) &&
+      (p.y < (this.world.height(p.x, p.z, p.y) ?? this.world.spawn.y) - 8 || C.inWater(this.world, p.x, p.y, p.z)) &&
       Math.abs(data[0] - this.world.spawn.x) <= C.SPAWN_SPREAD &&
       Math.abs(data[2] - this.world.spawn.z) <= C.SPAWN_SPREAD &&
-      Math.abs(data[1] - (this.world.height(data[0], data[2]) ?? Infinity)) <
+      Math.abs(data[1] - (this.world.height(data[0], data[2], data[1]) ?? Infinity)) <
         0.1);
     if (
       !respawn &&
@@ -213,7 +274,7 @@ export class Race extends Room<{ state: RaceState }> {
     p.vz = clamp(data[6], C.MAX_HORIZONTAL_SPEED);
     p.anim = now < p.knockdownUntil ? 3 : Math.max(0, Math.min(C.SLIDE_ANIM, Math.floor(data[7])));
     p.simTime = now;
-    p.grounded = Math.abs(p.y - (this.world.height(p.x, p.z) ?? Infinity)) < 0.1 && p.vy <= 0;
+    p.grounded = Math.abs(p.y - (this.world.height(p.x, p.z, p.y) ?? Infinity)) < 0.1 && p.vy <= 0;
     if (p.anim === C.SLIDE_ANIM && (!p.grounded || Math.hypot(p.vx, p.vz) < 1))
       p.anim = p.grounded ? 0 : 2;
     this.lastMoves.set(client.sessionId, now);
@@ -221,23 +282,42 @@ export class Race extends Room<{ state: RaceState }> {
   private attack(client: Client) {
     if (!this.rounds.canPlay(client.sessionId) || this.npcs.busy(client.sessionId)) return;
     const p = this.state.players.get(client.sessionId), now = Date.now();
-    if (!p || p.vehicleId || now < p.knockdownUntil || now < p.attackReadyAt) return;
+    if (!p || p.vehicleId || now < p.knockdownUntil || now < p.moodleSitUntil || now < p.attackReadyAt) return;
     p.simTime = now; p.attackReadyAt = now + C.ATTACK_COOLDOWN_MS;
     for (const [target, other] of this.state.players) if (target !== client.sessionId && !other.vehicleId && C.inHitCone(p, other, this.world)) {
-      this.hit(target, { from: client.sessionId, ix: Math.sin(p.rotY) * 8, iy: 1.5, iz: Math.cos(p.rotY) * 8,
-        knockdown: true, durationMs: C.ATTACK_KNOCKDOWN_MS });
-      this.bump(client.sessionId, target, other.x, other.y + 0.9, other.z);
+      if (this.hit(target, { from: client.sessionId, ix: Math.sin(p.rotY) * 8, iy: 1.5, iz: Math.cos(p.rotY) * 8,
+        knockdown: true, durationMs: C.ATTACK_KNOCKDOWN_MS }, "punch"))
+        this.bump(client.sessionId, target, other.x, other.y + 0.9, other.z);
     }
   }
   private tick() {
     const now = this.state.serverTime = Date.now(), vehicleHit = this.vehicleHit;
     this.rounds.tick(now);
+    const trafficDt = (now - this.trafficTime) / 1000;
+    this.trafficTime = now;
+    if ((this.state.phase === C.RoomPhase.Running && this.state.introComplete) || (this.state.devMode && this.state.phase === C.RoomPhase.Lobby)) {
+      const exposed = new Set([...this.state.players.values()].map(p => p.vehicleId).filter(Boolean));
+      const obstacles = [...this.state.vehicles].filter(([id, v]) => v.kind !== 4 && v.kind !== 2 && v.kind !== C.LIME_KIND && now >= v.fallenUntil &&
+        (C.isPassengerVehicle(v) || !exposed.has(id)))
+        .map(([,v]) => v)
+        .map(p => ({ x: p.x, y: p.y, z: p.z, rotY: p.rotY, speed: 0 }));
+      this.traffic.tick(trafficDt, obstacles, vehicleHit, id => this.rounds.canPlay(id) && !this.npcs.busy(id), (id, from, car) => {
+        const ridden = [...this.state.players.values()].some(p => p.vehicleId === id);
+        this.vehicles.runOver(id, now, vehicleHit, car.speed, { from, rotY: car.rotY, kind: 3 });
+        if (!ridden) this.bump(from, id, car.x, car.y + .6, car.z);
+      });
+    }
     this.publiBikes.tick(now);
     this.mate.tick(now);
     this.npcs.tick(now);
     if (this.state.phase !== C.RoomPhase.Running || !this.state.introComplete) return;
+    this.moodle.tick(now);
     const positions = new Map([...this.state.players].map(([id, p]) => [id, this.correction(p)]));
-    for (const p of this.state.players.values()) p.simTime = now;
+    for (const p of this.state.players.values()) {
+      p.simTime = now;
+      if (p.anim === 3 && now >= p.knockdownUntil)
+        p.anim = !p.grounded ? 2 : Math.hypot(p.vx, p.vz) > 0.2 ? 1 : 0;
+    }
     this.vehicles.tick(now, vehicleHit);
     this.vehicles.bikeContacts(now, vehicleHit);
     // Docked bikes and bikes currently being scanned remain held in place.
@@ -273,6 +353,6 @@ export class Race extends Room<{ state: RaceState }> {
       Object.assign(p, point, { vx: 0, vy: 0, vz: 0, grounded: true, anim: 0, simTime: Date.now() });
       this.lastMoves.set(id, p.simTime);
       this.clients.find(c => c.sessionId === id)?.send("playerCorrection", this.correction(p));
-    });
+    }, client => this.vehicles.exit(client));
   }
 }

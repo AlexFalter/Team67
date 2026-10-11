@@ -15,7 +15,7 @@ if not sun:
     sun = bpy.data.objects.new('Sun', bpy.data.lights.new('Sun', 'SUN'))
     bpy.context.scene.collection.objects.link(sun)
 sun.data.color = lin(L['sun'])
-sun.data.energy = L['sunIntensity'] * 1.6          # Blender W/m2 vs three.js intensity, eyeballed
+sun.data.energy = L['sunIntensity'] * 1.6          # W/m2; the game uses the same number (both: albedo / pi)
 sun.data.angle = math.radians(2.0)                 # slightly soft shadows
 el, az = math.radians(L['sunElevation']), math.radians(L['sunAzimuth'])
 # the lamp points down -Z of its object: rotate so it shines FROM azimuth/elevation (azimuth from north, clockwise)
@@ -28,6 +28,8 @@ world.use_nodes = True
 bg = next(n for n in world.node_tree.nodes if n.type == 'BACKGROUND')
 bg.inputs['Color'].default_value = (*lin(L['skyLight']), 1)
 bg.inputs['Strength'].default_value = L['hemiIntensity'] * 0.55
+bpy.context.scene.view_settings.view_transform = 'AgX'
+bpy.context.scene.view_settings.exposure = math.log2(L.get('exposure', 1))  # game: toneMappingExposure (linear)
 for area in bpy.context.screen.areas:
     if area.type == 'VIEW_3D':
         sh = area.spaces.active.shading

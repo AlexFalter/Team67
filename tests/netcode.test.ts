@@ -69,12 +69,16 @@ test("clients share stationary look-directed punches, cooldown and recovery with
     a.send("move", [own.x, own.y, own.z, Math.PI / 2, 0, 0, 0, 0]); a.send("hit");
     await until(() => hits.length === 1 && b.state.players.get(b.sessionId)!.knockdownUntil > Date.now(), "punch");
     assert.equal(hits[0].durationMs, C.ATTACK_KNOCKDOWN_MS);
+    const victim = b.state.players.get(b.sessionId)!;
+    assert.equal(victim.impactStartedAt, hits[0].at);
+    assert.equal(victim.impactX, hits[0].ix);
+    assert.ok(victim.impactStrength! > 8);
     assert.ok(Math.abs(b.state.players.get(a.sessionId)!.rotY - Math.PI / 2) < 0.0001);
     assert.equal(own.x, startX);
     const deadline = b.state.players.get(b.sessionId)!.knockdownUntil;
     a.send("hit"); await delay(100); assert.equal(hits.length, 1);
     assert.equal(b.state.players.get(b.sessionId)!.knockdownUntil, deadline);
-    await until(() => b.state.players.get(b.sessionId)!.simTime >= deadline, "recovery", 6500);
+    await until(() => b.state.players.get(b.sessionId)!.simTime >= deadline && b.state.players.get(b.sessionId)!.anim !== 3, "recovery without client input", 6500);
   });
 });
 
@@ -95,6 +99,8 @@ test("reported bike impact ejects its rider and replicates its fall; occupancy s
       await until(() => a.state.vehicles.get("bike-2")!.fallenUntil > Date.now(), "hit parked car");
       await until(() => !rider.body.vehicleId && rider.body.knockdownUntil > rider.body.simTime, "ejection impulse");
       assert.equal(a.state.vehicles.get("bike-2")!.driver, "");
+      assert.ok(rider.body.impactStrength! > 0);
+      assert.ok(rider.body.knockdownUntil - rider.body.impactStartedAt! > C.ATTACK_KNOCKDOWN_MS);
       assert.equal(a.state.players.get(a.sessionId)!.character, 2);
     } finally { rider.stop(); other.stop(); }
   });

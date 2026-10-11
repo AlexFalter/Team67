@@ -1,5 +1,5 @@
 import { schema, t, type SchemaType } from "@colyseus/schema";
-import { RoomPhase } from "@race/shared";
+import { RoomPhase, PUBLI_BIKE_BATTERY_MS } from "@race/shared";
 export const RoomMember = schema({
   introSeat: t.int8().default(-1),
   name: t.string().default(""),
@@ -26,15 +26,26 @@ export const Player = schema(
     character: t.uint8().default(0),
     vehicleId: t.string().default(""),
     seat: t.int8().default(-1),
+    cabinStanding: t.boolean().default(false),
+    cabinX: t.number().default(0),
+    cabinZ: t.number().default(0),
+    cabinYaw: t.number().default(0),
     grounded: t.boolean().default(true),
     groundTime: t.number().default(0),
     jumpUntil: t.number().default(0),
     knockdownUntil: t.number().default(0),
+    impactStartedAt: t.number().default(0),
+    impactX: t.number().default(0),
+    impactZ: t.number().default(0),
+    impactStrength: t.number().default(0),
+    moodleSitUntil: t.number().default(0),
     simTime: t.number().default(0),
     vehicleKind: t.int8().default(-1),
     attackReadyAt: t.number().default(0),
     mateCount: t.uint8().default(0),
     mateBoostMs: t.number().default(0),
+    mateFlavor: t.uint8().default(2),
+    mateDrinkStartedAt: t.number().default(0),
   },
   "Player",
 );
@@ -71,7 +82,7 @@ export const Vehicle = schema(
 export type Vehicle = SchemaType<typeof Vehicle>;
 export const PubliBike = schema({
   broken: t.boolean().default(false),
-  batteryMs: t.number().default(15000),
+  batteryMs: t.number().default(PUBLI_BIKE_BATTERY_MS),
   reservedBy: t.string().default(""),
   reservationUntil: t.number().default(0),
   dock: t.int8().default(-1),
@@ -86,6 +97,9 @@ export const Mate = schema({
   dropStartedAt: t.number().default(0),
 }, "Mate");
 export const Npc = schema({
+  ticketCount: t.uint8().default(0),
+  ticketReadyAt: t.number().default(0),
+  polybahnTicketed: t.boolean().default(false),
   limoVisible: t.boolean().default(false),
   limoX: t.number().default(0),
   limoY: t.number().default(0),
@@ -101,16 +115,30 @@ export const Npc = schema({
   limoSolved: t.boolean().default(false),
   limoUsed: t.boolean().default(false),
 }, "Npc");
+export const TrafficCar = schema({
+  x: t.number().default(0), y: t.number().default(0), z: t.number().default(0),
+  rotY: t.number().default(0), speed: t.number().default(0),
+}, "TrafficCar");
 export const RaceState = schema(
   {
+    trafficCars: t.map(TrafficCar),
+    trafficNetwork: t.string().default(""),
+    trafficDensity: t.number().default(60),
+    trafficSpawnInterval: t.number().default(2),
+    trafficSpeedMultiplier: t.number().default(1),
     serverTime: t.number().default(0),
     phase: t.string().default(RoomPhase.Lobby),
     hostId: t.string().default(""),
+    moodleEnabled:t.boolean().default(true),
+    moodleEventId:t.number().default(0),
+    moodleQuestionIndex:t.uint8().default(0),
+    moodleDeadline:t.number().default(0),
     startedAt: t.number().default(0),
     endsAt: t.number().default(0),
     finishedAt: t.number().default(0),
     introStartedAt: t.number().default(0),
     introComplete: t.boolean().default(false),
+    scooterArrivalAt: t.number().default(0),
     devMode: t.boolean().default(false),
     skipIntro: t.boolean().default(false),
     goldPubliBikes: t.boolean().default(true),

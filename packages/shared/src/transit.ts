@@ -8,10 +8,15 @@ import type { VehicleState } from "./types.ts";
 export const TRAM_KIND = 5, POLYBAHN_KIND = 6;
 export const TRAM_CARRIAGE_SPACING = 8.5;
 export const TRAM_START_DISTANCE = 2 * TRAM_CARRIAGE_SPACING;
+// The Polybahn route starts inside the Central hall, ~2.5 m above its floor; the modelled track deck
+// (sleepers, rails) begins 2.75 m up the line. The Central stop is far enough up that the whole cabin
+// (±2.5 m along the track) stands on the deck instead of hanging over the hall.
+export const POLYBAHN_TRACK_START = 2.75, POLYBAHN_START_DISTANCE = 5.5;
+export const railStart = (v: Pick<VehicleState, "kind">) => v.kind === TRAM_KIND ? TRAM_START_DISTANCE : POLYBAHN_START_DISTANCE;
 export const TRANSIT_BOARDING_MS = 5000, TRANSIT_DOOR_MS = 900;
 export const isRail = (v: Pick<VehicleState, "kind">) => v.kind === TRAM_KIND || v.kind === POLYBAHN_KIND;
 export const isPassengerVehicle = (v: Pick<VehicleState, "kind">) => v.kind === 1 || isRail(v);
-export const isRideable = (v: Pick<VehicleState, "kind">) => v.kind < 3 || isRail(v);
+export const isRideable = (v: Pick<VehicleState, "kind">) => v.kind < 3 || v.kind === 7 || isRail(v);
 export const transitName = (v: Pick<VehicleState, "kind">) => v.kind === POLYBAHN_KIND ? "Polybahn" : "Tram";
 function path(points: readonly GroundPoint[]) {
   const distances = [0];
@@ -144,7 +149,7 @@ export function railBoardingPoint(v: VehicleState) {
   return { x: f.x + Math.cos(f.rotY) * 2.3, y: f.y, z: f.z - Math.sin(f.rotY) * 2.3 };
 }
 export function railTripDuration(v: Pick<VehicleState, "kind">) {
-  const length = railPath(v).length - (v.kind === TRAM_KIND ? TRAM_START_DISTANCE : 0), maxSpeed = v.kind === TRAM_KIND ? 12 : 8, acceleration = 2.5;
+  const length = railPath(v).length - railStart(v), maxSpeed = v.kind === TRAM_KIND ? 12 : 8, acceleration = 2.5;
   const ramp = Math.min(maxSpeed / acceleration, Math.sqrt(length / acceleration));
   return (length / (acceleration * ramp) + ramp) * 1000;
 }
@@ -159,7 +164,7 @@ export function tramTurnLoad(v:VehicleState){
 }
 export function railMotion(v: VehicleState, now: number, reckless = false) {
   if(v.derailStartedAt)return;
-  const length = railPath(v).length, low = v.kind === TRAM_KIND ? TRAM_START_DISTANCE : 0, travel = length - low;
+  const length = railPath(v).length, low = railStart(v), travel = length - low;
   const duration = railTripDuration(v) / 1000, ramp = Math.min((v.kind === TRAM_KIND ? 12 : 8) / 2.5, Math.sqrt(travel / 2.5));
   const t = Math.max(0, Math.min(duration, (now - v.tripStartedAt) / 1000));
   let distance = t < ramp ? 1.25 * t * t : t > duration - ramp ? travel - 1.25 * (duration - t) ** 2 : 1.25 * ramp * ramp + 2.5 * ramp * (t - ramp);
@@ -176,8 +181,8 @@ export function railMotion(v: VehicleState, now: number, reckless = false) {
     // Both cabins meet at the authored passing loop, which is off-centre.
     const meeting = polybahnMeetingDistance;
     const progress = distance / travel;
-    const mapping=passingLoopProgress(v.railReverse ? 1-progress : progress,meeting/length);
-    v.railDistance=length*mapping.position;speedScale=mapping.speed;
+    const mapping=passingLoopProgress(v.railReverse ? 1-progress : progress,(meeting-low)/travel);
+    v.railDistance=low+travel*mapping.position;speedScale=mapping.speed;
   } else v.railDistance = v.railReverse ? length - distance : low + distance;
   const frame = railFrame(v); Object.assign(v, frame);
   const speed = (approachSpeed || 2.5 * Math.min(t, ramp, duration - t)) * (v.railReverse ? -1 : 1) * speedScale;

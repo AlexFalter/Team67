@@ -1,6 +1,6 @@
 # NPC encounters in multiplayer
 
-Added on `add-npcs`, using the restored `mini-games` prototype as the source. No merge or commit to main is part of this change.
+Multiplayer encounters reuse the existing mini-game feature modules, with shared placement data and server validation.
 
 ## Encounters
 
@@ -43,3 +43,9 @@ Static NPC geometry is merged using vertex colours; each animated character is r
 An initial camera comparison found 159 extra draw calls from the prototype assets. Character skin batching plus static Einstein model batching reduced that to 20 extra calls at the same camera (423 with NPCs, 403 with NPCs hidden, including the existing shadow pass). This measures that scene's draw calls, not an FPS guarantee; the underlying scene already exceeded the agreement's approximate 300-call budget.
 
 Headless browser checks are functional checks, not a deployment FPS benchmark.
+
+### Dialogue audio
+
+The 21 copied voice recordings serve from the client audio directory: scooter exchange, finance monologue, food enthusiast responses/chewing, the kid's 67 reaction, private-property speech, and tourist lines. Recorded playback uses `shared/dialogue/dialogue-audio.js`; a browser autoplay rejection waits for the next trusted key/click and retries. Pause/reset removes pending requests. Other loading/decoding errors still report failure. The helper respects the application's base URL.
+
+Einstein's conversation, the kid's opening question/non-67 answers, and limousine messages have no authored voice recordings. The inspector uses browser speech synthesis. These are distinct from missing or failed MP3 playback.

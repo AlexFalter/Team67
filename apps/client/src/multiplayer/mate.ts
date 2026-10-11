@@ -2,6 +2,7 @@ import * as THREE from "three";
 import * as C from "@race/shared";
 import type { Network } from "./net.ts";
 import type { LocalPlayer } from "./localPlayer.ts";
+import { equipMateCan } from "./avatar.ts";
 import { loadMateModel } from "./mateModel.ts";
 import { disposeMap } from "../maps/zurich/loadZurichMap.ts";
 import "./mate.css";
@@ -13,7 +14,9 @@ export class MateFeature {
   private abort = new AbortController();
   private modal = document.createElement("section");
   private inventory = document.createElement("aside");
-  private hint = document.createElement("div");
+  private rush = document.createElement("div");
+  private descriptionUntil = 0;
+  private previousCount = 0;
   private effects = document.createElement("div");
   private panel: HTMLElement;
   private card: HTMLInputElement;
@@ -32,7 +35,7 @@ export class MateFeature {
     this.prize.name = "Collectible Mate can"; this.prize.visible = false; this.machine.add(this.prize);
     this.collectionBox = new THREE.Mesh(new THREE.BoxGeometry(1.1, .36, .28), new THREE.MeshBasicMaterial({ visible: false }));
     this.collectionBox.position.set(.34, .35, -.4); this.machine.add(this.collectionBox); scene.add(this.machine);
-    this.ready = Promise.allSettled([loadMateModel("mate-machine", this.abort.signal), ...(["mate-can-basic", "mate-can-light", "mate-can-mint", "mate-can-ginger"] as const).map(name => loadMateModel(name, this.abort.signal))]).then(results => {
+    this.ready = Promise.allSettled([loadMateModel("mate-machine", this.abort.signal), ...(["mate-can-basic", "mate-can-light", "mate-can-mint", "mate-can-ginger", "mate-can-ginger"] as const).map(name => loadMateModel(name, this.abort.signal))]).then(results => {
       const failure = results.find(r => r.status === "rejected");
       if (failure || this.abort.signal.aborted) {
         results.forEach(r => { if (r.status === "fulfilled") disposeMap(r.value); });
@@ -50,17 +53,17 @@ export class MateFeature {
     this.message = this.modal.querySelector<HTMLElement>(".mate-message")!;
     this.buttons = Array.from(this.modal.querySelectorAll<HTMLButtonElement>(".mate-selection"));
     this.inventory.id = "mate-inventory"; this.inventory.hidden = true;
-    this.inventory.innerHTML = `<button type="button" id="use-mate"><img src="${asset("cans/mint.png")}" alt="Mint Mate"><span>El Tony Mate <b></b><small>1 · Drink · +35% speed / 15s</small></span></button><div role="status"></div>`;
-    this.hint.id = "mate-hint"; this.hint.hidden = true;
+    this.inventory.innerHTML = `<img src="${asset("cans/mint.png")}" alt="Mint Mate"><span>El Tony Mate <b></b><small>+50% speed · 15s · Press 1 to drink</small></span>`;
+    this.rush.id = "mate-rush"; this.rush.hidden = true; this.rush.setAttribute("role", "status");
     this.effects.id = "mate-speed-effects"; this.effects.hidden = true; this.effects.setAttribute("aria-hidden", "true");
-    canvas.parentElement!.append(this.modal, this.inventory, this.hint, this.effects);
+    document.querySelector("#combat-actions")!.append(this.inventory, this.rush);
+    canvas.parentElement!.append(this.modal, this.effects);
     const options = { signal: this.abort.signal };
     this.buttons.forEach((button, flavor) => button.addEventListener("click", () => this.send("select", flavor), options));
     for (const button of this.modal.querySelectorAll(".mate-close, .mate-collect-back")) button.addEventListener("click", () => this.close(), options);
     this.card.addEventListener("change", () => { if (Number(this.card.value) === 100) this.send("pay"); }, options);
     this.card.addEventListener("pointerup", () => { if (Number(this.card.value) < 100) this.card.value = "0"; }, options);
     this.card.addEventListener("pointerdown", e => { if (Number(this.card.value) === 0 && e.clientX > this.card.getBoundingClientRect().left + 70) e.preventDefault(); }, options);
-    this.inventory.querySelector("button")!.addEventListener("click", () => this.send("use"), options);
     window.addEventListener("keydown", e => {
       if (this.active) {
         if (e.code === "Escape") { e.preventDefault(); this.close(); }
@@ -70,7 +73,7 @@ export class MateFeature {
           const index = elements.indexOf(document.activeElement as HTMLButtonElement);
           e.preventDefault(); elements[(index + (e.shiftKey ? -1 : 1) + elements.length) % elements.length]?.focus();
         }
-      } else if (e.code === "Digit1" && !e.repeat && this.local.enabled && !(e.target instanceof HTMLInputElement)) { e.preventDefault(); this.send("use"); }
+      } else if (e.code === "Digit1" && !e.repeat && this.local.enabled && !(e.target instanceof HTMLInputElement)) { e.preventDefault(); this.consume(); }
     }, options);
     canvas.addEventListener("pointerdown", e => {
       if (!this.active || this.state?.phase !== "collect" || e.button !== 0) return;
@@ -87,6 +90,9 @@ export class MateFeature {
   }
   get active() { return !this.modal.hidden; }
   private get state() { return this.net.room?.state?.mates?.get(this.net.room.sessionId); }
+  get nearby() { return this.net.canPlay && !this.local.body.vehicleId && C.nearMate(this.local.body, C.zurichWorld); }
+  get canConsume() { const p = this.local.body; return !this.net.npcPaused && !this.pending && !this.active && !p.vehicleId && p.mateCount > 0 && p.mateBoostMs <= 0 && p.knockdownUntil <= this.net.now(); }
+  consume() { if (this.canConsume) this.send("use"); }
   interact() {
     if (!this.net.canPlay || this.local.body.vehicleId || !C.nearMate(this.local.body, C.zurichWorld)) return false;
     if (this.local.body.knockdownUntil > this.net.now()) return true;
@@ -119,19 +125,19 @@ export class MateFeature {
     this.cans.forEach((can, i) => { can.visible = i === state?.selected; });
     this.prize.visible = !!physical && this.net.canPlay;
     if (physical) { const pose = C.mateCanDropPose((now - state!.dropStartedAt) / 1000); this.prize.position.set(pose.x, pose.y, pose.z); this.prize.rotation.set(pose.roll, 0, -Math.PI / 2 + pose.tilt); }
-    this.hint.hidden = !this.net.canPlay || !this.local.enabled || !!p.vehicleId || !C.nearMate(p, C.zurichWorld);
-    this.hint.textContent = state?.phase === "success" ? "El Tony Mate · collected" : "E · El Tony Mate vending machine";
-    this.inventory.hidden = !this.net.canPlay || (!p.mateCount && !p.mateBoostMs);
-    const flavor = C.MATE_FLAVORS[state?.selected ?? 2];
+    if (p.mateCount > this.previousCount) this.descriptionUntil = now + 5000;
+    this.previousCount = p.mateCount;
+    this.inventory.hidden = !this.net.canPlay || now >= this.descriptionUntil || !p.mateCount;
+    const flavor = C.MATE_FLAVORS[p.mateFlavor ?? state?.selected ?? 2];
     if (flavor) {
       const image = this.inventory.querySelector<HTMLImageElement>("img")!;
       const source = `${import.meta.env.BASE_URL}assets/tony-mate/cans/${flavor.toLowerCase()}.png`;
       if (image.getAttribute("src") !== source) { image.src = source; image.alt = `${flavor} Mate`; }
+      this.inventory.querySelector("b")!.textContent = flavor;
     }
-    this.inventory.querySelector("b")!.textContent = `×${p.mateCount}`;
-    this.inventory.querySelector<HTMLButtonElement>("button")!.disabled = this.pending || this.active || !p.mateCount || p.mateBoostMs > 0 || !!p.vehicleId || p.knockdownUntil > now;
-    this.inventory.querySelector("[role=status]")!.textContent = p.mateBoostMs > 0 ? `Mate rush · +35% · ${Math.ceil(p.mateBoostMs / 1000)}s${p.vehicleId ? " · paused while riding" : ""}` : "";
-    this.effects.hidden = !this.net.canPlay || this.active || !!p.vehicleId || p.mateBoostMs <= 0 || Math.hypot(p.vx, p.vz) < .2;
+    this.rush.hidden = !this.net.canPlay || p.mateBoostMs <= 0;
+    this.rush.textContent = p.mateBoostMs > 0 ? `Matee rush · +50% · ${Math.ceil(p.mateBoostMs / 1000)}s` : "";
+    this.effects.hidden = !this.net.canPlay || this.active || !!p.vehicleId || p.mateBoostMs <= 0;
     if (!this.active || !state) return;
     this.modal.dataset.phase = state.phase;
     this.buttons.forEach((button, i) => {
@@ -160,5 +166,9 @@ export class MateFeature {
     const xs = points.map(p => rect.left + (p.x + 1) * rect.width / 2), ys = points.map(p => rect.top + (1 - p.y) * rect.height / 2);
     Object.assign(this.panel.style, { left: `${Math.min(...xs)}px`, top: `${Math.min(...ys)}px`, width: `${Math.max(...xs) - Math.min(...xs)}px`, height: `${Math.max(...ys) - Math.min(...ys)}px` });
   }
-  dispose() { this.close(); this.abort.abort(); this.net.onMateResult = undefined; this.modal.remove(); this.inventory.remove(); this.hint.remove(); this.effects.remove(); this.machine.removeFromParent(); disposeMap(this.machine); }
+  equip(mesh: THREE.Group, flavor: number) {
+    const can = this.cans[flavor];
+    if (can) equipMateCan(mesh, can, flavor);
+  }
+  dispose() { this.close(); this.abort.abort(); this.net.onMateResult = undefined; this.modal.remove(); this.inventory.remove(); this.rush.remove(); this.effects.remove(); this.machine.removeFromParent(); disposeMap(this.machine); }
 }

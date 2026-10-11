@@ -7,7 +7,7 @@ function fixture() {
   const net = new Network(), messages: { type: string; data: unknown }[] = [];
   net.initialized = true;
   const body = Object.assign(C.createBody(), C.zurichWorld.spawn, { simTime: Date.now() });
-  net.room = { sessionId: "local", state: { phase: C.RoomPhase.Running, introComplete: true, startedAt: 0, endsAt: Date.now() + 60000, players: new Map([["local", body]]),
+  net.room = { sessionId: "local", state: { phase: C.RoomPhase.Running, introComplete: true, startedAt: 0, endsAt: Date.now() + 60000, players: new Map([["local", body]]), vehicles: new Map(),
     members: new Map([["local", { name: "Player", spectator: false }]]) },
     send: (type: string, data: unknown) => messages.push({ type, data }) } as unknown as typeof net.room;
   return { net, body, messages };
@@ -30,7 +30,7 @@ test("actual client frame keeps feature jump and look direction; one-shot action
 
 test("actual client frame reports the current driven pose before vehicle actions", () => {
   const { net, body, messages } = fixture(), anchor = C.zurichWorld.carts[0];
-  Object.assign(body, anchor, { y: anchor.y + C.CART_SEAT_HEIGHT, vehicleId: "bike-1", vehicleKind: 2, seat: 0 });
+  Object.assign(body, anchor, { y: anchor.y + C.BIKE_SEAT_HEIGHT, vehicleId: "bike-1", vehicleKind: 2, seat: 0 });
   const x = body.x;
   net.frame(0.1, body, () => ({ ...C.IDLE_INPUT, x: 1, hit: true }));
   assert.ok(body.x > x);

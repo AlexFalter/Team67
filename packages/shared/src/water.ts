@@ -66,7 +66,7 @@ export function inWater(world: MovementWorld, x: number, y: number, z: number) {
   if (world.name !== "zurich") return false;
   const body = waterBodyAt(x, z);
   if (!body) return false;
-  const ground = world.height(x, z);
+  const ground = world.height(x, z, y);
   if (ground === undefined || y > ground + SURFACE_TOLERANCE) return false;
   return ground < body.level + LEVEL_TOLERANCE;
 }

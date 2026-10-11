@@ -1,0 +1,45 @@
+{
+  "deadlineSeconds": 30,
+  "intervalSeconds": [
+    25,
+    55
+  ],
+  "sitOutSeconds": 7,
+  "rewardSeconds": 10,
+  "urgentAtSeconds": 10,
+  "questions": [
+    {
+      "course": "Analysis I",
+      "question": "What is 2 + 2?",
+      "options": [
+        "3",
+        "4",
+        "5"
+      ],
+      "correct": 1,
+      "explanation": "2 + 2 = 4."
+    },
+    {
+      "course": "Linear Algebra",
+      "question": "What is 3 \u00d7 2?",
+      "options": [
+        "6",
+        "9",
+        "12"
+      ],
+      "correct": 0,
+      "explanation": "3 \u00d7 2 = 6."
+    },
+    {
+      "course": "Physics I",
+      "question": "You drop a ball. Which way does it fall?",
+      "options": [
+        "Up",
+        "Sideways",
+        "Down"
+      ],
+      "correct": 2,
+      "explanation": "Gravity pulls it down."
+    }
+  ]
+}

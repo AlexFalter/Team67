@@ -14,6 +14,12 @@ export * from "./finalExam.ts";
 export * from "./battleBus.ts";
 export * from "./publiBike.ts";
 export * from "./transit.ts";
+export * from "./cabin.ts";
 export * from "./mate.ts";
 export * from "./npc.ts";
+export * from "./impact.ts";
+export * from "./ticket.ts";
+
+export * from "./medals.ts";
+export * from "./traffic.ts";
 export * from "./water.ts";
