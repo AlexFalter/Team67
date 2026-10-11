@@ -65,6 +65,7 @@ export interface WorldState {
 }
 export interface RoomMember {
   introSeat: number;
+  thankedBusDriver?: boolean;
   name: string;
   character: number;
   ready: boolean;

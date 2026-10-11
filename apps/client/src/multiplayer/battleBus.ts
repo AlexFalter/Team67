@@ -51,8 +51,7 @@ export class BattleBusIntro {
       if (this.net.now() < state.introStartedAt || C.battleBusElapsed(state, this.net.now()) >= 7) return;
       e.preventDefault(); syncRide();
       if (this.ride.thank()) {
-        const name = state.members.get(this.net.room.sessionId)?.name || "You";
-        this.feed.add(`${name} thanked the bus driver.`);
+        this.net.room.send("thankBusDriver", state.introStartedAt);
       }
     }, { signal: this.abort.signal });
     this.origin.y = C.zurichWorld.height(this.origin.x, this.origin.z) ?? this.start.y;
@@ -96,6 +95,7 @@ export class BattleBusIntro {
     if (active && this.rideRun !== state!.introStartedAt) {
       this.rideRun = state!.introStartedAt; this.ride.begin(this.rideRun); this.feed.clear(); this.canvas.focus();
     }
+    this.feed.updateBusDriverThanks(state, this.net.now());
     if (!model) return;
     if (!active) {
       this.audio.pause();
