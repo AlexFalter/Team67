@@ -1,7 +1,17 @@
 import layout from "./npc-layout.json" with { type: "json" };
 import type { GroundPoint, MovementWorld } from "./world.ts";
+import { CAPSULE_RADIUS, CAPSULE_HEIGHT } from "./constants.ts";
 import { polybahnPlatforms } from './transit.ts';
 export const NPC_LAYOUT = layout;
+/** Fixed landing on the open side of the cat's bench, clear of its footprint. */
+export function einsteinDestination(world: MovementWorld): GroundPoint | undefined {
+  const { position, heading } = NPC_LAYOUT.cat;
+  const x = position[0] - Math.sin(heading) * 1.5;
+  const z = position[2] - Math.cos(heading) * 1.5;
+  const y = world.height(x, z);
+  if (y === undefined || world.blocked(x, y, z, CAPSULE_RADIUS, CAPSULE_HEIGHT)) return undefined;
+  return { x, y, z };
+}
 // The story boundary follows the current route and encounters, not the much
 // larger map export. Rail passengers remain exempt while aboard.
 export function npcBounds(world: MovementWorld) {

@@ -18,15 +18,27 @@ function fixture() {
   return {now,state,encounters,corrected,replies,client,command};
 }
 
-test("Einstein grants independent charges and server-selected safe destinations",()=>{
+test("Einstein grants independent charges and always lands in front of the cat",()=>{
   const f=fixture();f.command("alice","begin");assert.equal(f.replies.at(-1)!.ok,true);assert.equal(f.encounters.busy("alice"),true);
   assert.equal(f.state.npcs.get("bob")!.teleportUsed,false);assert.equal(f.corrected.length,0);
-  const target=f.replies.at(-1)!.target!;assert.ok(C.NPC_LAYOUT.destinations.some(stop=>Math.hypot(stop.point[0]-target.x,stop.point[1]-target.z)<=8));
+  const target=f.replies.at(-1)!.target!;assert.deepEqual(target,C.einsteinDestination(C.zurichWorld));
+  assert.equal(target.x,C.NPC_LAYOUT.cat.position[0]);
+  assert.equal(target.z,C.NPC_LAYOUT.cat.position[2]-1.5);
+  assert.equal(f.replies.at(-1)!.facing,C.NPC_LAYOUT.cat.heading);
   assert.ok(Math.hypot(target.x-C.NPC_LAYOUT.goal[0],target.z-C.NPC_LAYOUT.goal[1])>=180);
-  f.command("bob","begin");assert.equal(f.replies.at(-1)!.ok,true);
+  f.command("bob","begin");assert.equal(f.replies.at(-1)!.ok,true);assert.deepEqual(f.replies.at(-1)!.target,target);
   f.command("alice","finish", "einstein",{},f.now+4400);assert.equal(f.replies.at(-1)!.ok,false);
   f.command("alice","finish", "einstein",{},f.now+4500);assert.equal(f.replies.at(-1)!.ok,true);assert.equal(f.encounters.busy("alice"),false);assert.equal(f.corrected.length,1);
+  assert.deepEqual(f.corrected[0].point,target);assert.equal(f.state.players.get("alice")!.rotY,C.NPC_LAYOUT.cat.heading);
   f.command("alice","begin");assert.equal(f.replies.at(-1)!.ok,false);
+});
+
+test('Einstein refuses a blocked cat landing without spending the charge',()=>{
+ const f=fixture();
+ const encounters=new NpcEncounters(f.state,{...C.zurichWorld,blocked:()=>true},()=>assert.fail('unsafe teleport'));
+ encounters.command(f.client('alice'),{action:'begin',kind:'einstein',roundStartedAt:f.state.startedAt},f.now);
+ assert.equal(f.replies.at(-1)!.ok,false);assert.equal(f.state.npcs.get('alice')!.teleportUsed,false);
+ assert.equal(C.einsteinDestination({...C.zurichWorld,height:()=>undefined}),undefined);
 });
 
 test("NPC travel rejects stale rounds, spectators, vehicles, distance, and forged finishes",()=>{

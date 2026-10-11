@@ -31,7 +31,7 @@ export class NpcEncounters {
       const minDuration = npc.kind === "einstein" ? 4500 : npc.kind === "property" ? 8400 : 8000;
       if (npc.kind !== cmd.kind || now < npc.startedAt + minDuration) return reply(false, "The encounter is still running.");
       const target = { x: npc.targetX, y: npc.targetY, z: npc.targetZ };
-      const facing = npc.kind === 'property' ? C.propertyReturnFacing(this.world, target) : undefined;
+      const facing = npc.kind === 'property' ? C.propertyReturnFacing(this.world, target) : npc.kind === 'einstein' ? C.NPC_LAYOUT.cat.heading : undefined;
       if (facing !== undefined) p.rotY = facing;
       npc.kind = ""; npc.limoVisible = false; npc.parachuting=false; this.correct(id, target); return reply(true, "", target, facing);
     }
@@ -51,10 +51,7 @@ export class NpcEncounters {
     if (cmd.kind === "einstein") {
       const site = C.NPC_LAYOUT.einstein.site, actor = C.NPC_LAYOUT.einstein.position;
       if (npc.teleportUsed || (!near(site, 3.2) && !near(actor, 3.3))) return reply(false, "The teleporter has one charge per round. Move closer to Einstein.");
-      const candidates = C.NPC_LAYOUT.destinations.map(stop => C.findGround(this.world,stop.point[0],stop.point[1]))
-        .filter((point): point is C.GroundPoint => !!point && Math.hypot(point.x-p.x,point.z-p.z)>30 &&
-          point.y <= site[1]+14 && Math.hypot(point.x-C.NPC_LAYOUT.goal[0],point.z-C.NPC_LAYOUT.goal[1])>=180);
-      target = candidates[Math.floor(Math.random()*candidates.length)];
+      target = C.einsteinDestination(this.world);
       if (!target) return reply(false, "No safe destination is available.");
       npc.teleportUsed = true;
     } else if (cmd.kind === "limousine") {
@@ -71,7 +68,7 @@ export class NpcEncounters {
     npc.kind = cmd.kind!; npc.startedAt = now;
     npc.targetX = target.x; npc.targetY = target.y; npc.targetZ = target.z;
     p.vx = p.vy = p.vz = 0; this.reports.set(id, now);
-    reply(true, "", target);
+    reply(true, "", target, cmd.kind === "einstein" ? C.NPC_LAYOUT.cat.heading : undefined);
   }
   pose(client: Client, data: unknown, now = Date.now()) {
     const id=client.sessionId, npc=this.state.npcs.get(id),p=this.state.players.get(id);

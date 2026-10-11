@@ -144,8 +144,9 @@ export class NpcFeature {
     onRejection:()=>{this.janeRejection=true;this.phone.receive({sender:'Jane Street',text:'Unfortunately, we have decided not to go through with your candidacy. Thank you for your interest in Jane Street.',color:'#173d73',actionLabel:'READ REJECTION ↗',onAction:()=>{this.janeRejection=false;this.phone.close();this.limo.readRejection();}});}}));
    this.limo.limo.rotation.reorder('YXZ');
    if(this.abort.signal.aborted){this.cleanupFeatures();return;}
+   const catLanding=C.einsteinDestination(C.zurichWorld);
    this.einstein=this.own(await createEinsteinTeleporter(this.root,world,solver,{camera,uiRoot,signal:this.abort.signal,
-    placement:{...placements.einstein,fixedActor:C.NPC_LAYOUT.einstein.position,fixedSite:C.NPC_LAYOUT.einstein.site,fixedApproach:C.NPC_LAYOUT.einstein.approach},
+    placement:{...placements.einstein,fixedActor:C.NPC_LAYOUT.einstein.position,fixedSite:C.NPC_LAYOUT.einstein.site,fixedApproach:C.NPC_LAYOUT.einstein.approach,destinations:catLanding?[{name:'Bench cat',point:[catLanding.x,catLanding.z]}]:[]},
     assetUrl:path=>`${import.meta.env.BASE_URL}models/npcs/${path.split('/').at(-1)}`,onOpen:()=>this.syncLock(),
     onTravel:()=>{if(this.pending)return false;this.send('begin','einstein');return true;}}));
    if(this.abort.signal.aborted){this.cleanupFeatures();return;}
@@ -200,13 +201,13 @@ export class NpcFeature {
    this.travel={kind:result.kind,target:new THREE.Vector3(result.target.x,result.target.y,result.target.z),source:pending.source.clone(),confirmed:false};
    if(result.kind==='einstein'){
     this.einstein.markTravel([result.target.x,result.target.z]);const sourceView={position:this.camera.position.clone(),rotation:this.camera.quaternion.clone()};
-    this.camera.position.copy(this.travel.target).add(new THREE.Vector3(0,1.6,0));this.camera.up.set(0,1,0);this.camera.rotation.set(0,this.local.body.rotY+Math.PI,0);
+    this.camera.position.copy(this.travel.target).add(new THREE.Vector3(0,1.6,0));this.camera.up.set(0,1,0);this.camera.rotation.set(0,(result.facing??this.local.body.rotY)+Math.PI,0);
     this.transition.start(this.travel.source,this.travel.target,sourceView);
    }else if(result.kind==='limousine'){this.limo.setLanding(this.travel.target);this.limo.interact(this.position);}
    else this.property.maybeStart(this.travel.source,true,this.travel.target,this.camera);
   }else if(result.action==='finish'){
    if(result.target)Object.assign(this.local.body,result.target,{vx:0,vy:0,vz:0,anim:0,grounded:true});this.travel=null;
-   if(result.kind==='property'&&Number.isFinite(result.facing)){this.local.body.rotY=result.facing;this.playerView.yaw=result.facing-Math.PI;this.playerView.pitch=0;this.local.clear();}
+   if(Number.isFinite(result.facing)){this.local.body.rotY=result.facing;this.playerView.yaw=result.facing-Math.PI;this.playerView.pitch=0;this.local.clear();}
   }
   this.syncLock();
  }
