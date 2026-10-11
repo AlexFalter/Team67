@@ -274,7 +274,7 @@ export class MapGame {
     this.exam.update(this.local.body, (this.net.canPlay||this.net.spectating) && (!state?.adminMode || this.net.offline), this.local.enabled && !this.publiBikes.active && !this.mate.active && !this.npcs.active && !this.emotes.opened && this.net.now()>=this.derailUntil, state?.startedAt ?? 0, remaining, now);
     if (!examWasActive && this.exam.active) { this.net.beginExam(this.local.body); this.controls.suspendForMap(); }
     this.vehicles.render(renderTime, dt, "rail");
-    this.transitScenery.update(state?.vehicles?.values() ?? [], this.net.now(), this.net.canPlay, state?.vehicles.get(this.local.body.vehicleId));
+    this.transitScenery.update(state?.vehicles?.values() ?? [], this.net.now(), this.net.canPlay, state?.vehicles?.get(this.local.body.vehicleId));
     this.view.setVehicle(this.local.body.vehicleId, this.local.body.rotY, this.local.body.vehicleKind);
     const riding=this.vehicles.items.get(this.local.body.vehicleId)?.latest;
     if(riding?.derailStartedAt&&this.derailRun!==riding.derailStartedAt){
@@ -415,7 +415,6 @@ export class MapGame {
       }
     }
     const gtrSound=this.gtr.audioSource;if(gtrSound&&playing)sources.set("gtr-donuts",gtrSound);
-    const gtrSkid=this.gtr.skidAudioSource;if(gtrSkid&&playing)sources.set("gtr-donuts-tires",gtrSkid);
     const listener = this.bus.active ? this.bus.focus : this.listener;
     this.audio.update(sources, listener, { paused: !playing || this.controlsPaused, duck: this.npcs.active || this.mate.active || this.publiBikes.active });
     if (this.net.canPlay && !this.exam.active && !this.npcs.active) this.audio.movement(dt, body, this.local.pushing, this.net.now());
