@@ -3,13 +3,13 @@ import {
   type PlayerState,
   type WorldState,
   type VehicleState,
-  seatPosition,
+  seatPosition, cabinPosition, POLYBAHN_KIND,
   snapshot,
   createBody,
   passengerYaw,
 } from "@race/shared";
 import { decoratePlayer } from "./playerIdentity.ts";
-import { avatar, pose, disposeAvatar } from "./avatar.ts";
+import { avatar, pose, alignCabinAvatar, disposeAvatar } from "./avatar.ts";
 interface Snapshot extends PlayerState {
   t: number;
 }
@@ -44,6 +44,7 @@ export class RemotePlayers {
         character: p.character,
         vehicleId: p.vehicleId,
         seat: p.seat,
+        cabinStanding: p.cabinStanding, cabinX: p.cabinX, cabinZ: p.cabinZ, cabinYaw: p.cabinYaw,
         grounded: p.grounded,
         groundTime: p.groundTime,
         jumpUntil: p.jumpUntil,
@@ -96,18 +97,25 @@ export class RemotePlayers {
       const membership = f < 1 ? a : b;
       p.vehicleId = membership.vehicleId;
       p.seat = membership.seat;
+      p.cabinStanding = membership.cabinStanding;
+      p.cabinX = (a.cabinX ?? 0) + ((b.cabinX ?? 0) - (a.cabinX ?? 0)) * f;
+      p.cabinZ = (a.cabinZ ?? 0) + ((b.cabinZ ?? 0) - (a.cabinZ ?? 0)) * f;
+      p.cabinYaw = (a.cabinYaw ?? 0) + Math.atan2(Math.sin((b.cabinYaw ?? 0)-(a.cabinYaw ?? 0)), Math.cos((b.cabinYaw ?? 0)-(a.cabinYaw ?? 0))) * f;
       p.vehicleKind = membership.vehicleKind;
       p.grounded = membership.grounded;
       p.knockdownUntil = membership.knockdownUntil;
       p.impactStartedAt = membership.impactStartedAt; p.impactX = membership.impactX;
       p.impactZ = membership.impactZ; p.impactStrength = membership.impactStrength;
       const vehicle = vehicles?.get(p.vehicleId);
-      if (vehicle) {
+      if (vehicle && p.cabinStanding && vehicle.rendered.kind === POLYBAHN_KIND) {
+        cabinPosition(vehicle.rendered, p);
+      } else if (vehicle) {
         seatPosition(vehicle.rendered, p.seat, p);
         p.rotY = passengerYaw(vehicle.rendered, p.seat);
         p.anim = 0;
       }
       pose(r.mesh, p, dt);
+      alignCabinAvatar(r.mesh, p, vehicle?.rendered);
     }
   }
   dispose() { for (const r of this.players.values()) disposeAvatar(r.mesh); this.players.clear(); }

@@ -1,3 +1,4 @@
+import { CAPSULE_HEIGHT } from "./constants.ts";
 import layout from "./npc-layout.json" with { type: "json" };
 import type { GroundPoint, MovementWorld } from "./world.ts";
 import { polybahnPlatforms } from './transit.ts';
@@ -15,6 +16,20 @@ export function npcBounds(world: MovementWorld) {
     minZ:Math.max(world.bounds.minZ,Math.min(...points.map(p=>p.z))-55),
     maxZ:Math.min(world.bounds.maxZ,Math.max(...points.map(p=>p.z))+55) };
 }
+// Return just beyond the danger strip, preserving the player's location along the border.
+export function propertyReturnPoint(world: MovementWorld, position: GroundPoint): GroundPoint | undefined {
+  const b = npcBounds(world), safeMargin = 16;
+  const x = Math.max(b.minX + safeMargin, Math.min(b.maxX - safeMargin, position.x));
+  const z = Math.max(b.minZ + safeMargin, Math.min(b.maxZ - safeMargin, position.z));
+  for (let ring = 0; ring <= 6; ring++) for (let i = 0; i < (ring ? 16 : 1); i++) {
+    const angle = i / 16 * Math.PI * 2, px = x + Math.cos(angle) * ring, pz = z + Math.sin(angle) * ring;
+    if (Math.min(px-b.minX,b.maxX-px,pz-b.minZ,b.maxZ-pz) < 14) continue;
+    const y = world.height(px,pz);
+    if (y !== undefined && !world.blocked(px,y,pz,.5,CAPSULE_HEIGHT)) return {x:px,y,z:pz};
+  }
+  return undefined;
+}
+
 export type NpcTravelKind = "einstein" | "limousine" | "property";
 export interface NpcCommand {
   action: "solve" | "begin" | "finish" | "cancel";

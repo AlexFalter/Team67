@@ -6,7 +6,7 @@ import { createBody } from "../packages/shared/src/index.ts";
 function fixture(run: (controls: GameControls, local: { enabled: boolean; body: ReturnType<typeof createBody>; clear(): void }, menu: { hidden: boolean }, doc: { pointerLockElement: unknown; exitPointerLock(): void; querySelector(): object }) => void) {
   const original = Object.getOwnPropertyDescriptor(globalThis, "document");
   const canvas = { focus() {}, async requestPointerLock() { doc.pointerLockElement = canvas; } }, menu = { hidden: true };
-  const doc = { pointerLockElement: canvas as unknown, exitPointerLock() { this.pointerLockElement = null; }, querySelector() { return { textContent: "", focus() {} }; } };
+  const doc = { hasFocus:()=>true, pointerLockElement: canvas as unknown, exitPointerLock() { this.pointerLockElement = null; }, querySelector() { return { textContent: "", focus() {} }; } };
   Object.defineProperty(globalThis, "document", { configurable: true, value: doc });
   const controls = Object.create(GameControls.prototype) as GameControls;
   const local = { enabled: true, body: createBody(), clear() {} };

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import {createLimeScooter} from "./limeScooter.ts";
 import * as C from "@race/shared";
 import {transitStatus} from "./transitStatus.ts";
 import type { Network } from "./net.ts";
@@ -178,6 +179,9 @@ export class Vehicles {
         wheel.rotation.y = Math.PI / 2; wheel.position.set(0, 0.42, z); mesh.add(wheel);
       }
     }
+    if (v.kind === C.LIME_KIND) {
+      for(const child of [...mesh.children])disposeMap(child);mesh.clear();mesh.add(createLimeScooter());
+    }
     if (v.kind === 4) {
       mesh.children.forEach((child) => { (child as THREE.Mesh).geometry.dispose(); ((child as THREE.Mesh).material as THREE.Material).dispose(); });
       mesh.clear();
@@ -192,7 +196,7 @@ export class Vehicles {
       box(2.4, 0.7, 0.06, 0, 1.7, 2.15, "#78b8c6");
       box(2.2, 0.10, 0.12, 0, 0.85, 2.2, "#ffe8a0");
     }
-    for (let side = -1; v.kind !== 2 && v.kind !== 4 && side <= 1; side += 2)
+    for (let side = -1; v.kind !== 2 && v.kind !== 4 && v.kind !== C.LIME_KIND && side <= 1; side += 2)
       for (let axle = -1; axle <= 1; axle += 2) {
         const wheel = new THREE.Mesh(
           new THREE.CylinderGeometry(0.38, 0.38, 0.25, 10),
@@ -315,9 +319,16 @@ export class Vehicles {
     }
     if (!C.isPassengerVehicle(visual.latest) && visual.latest.driver === sessionId) {
       this.drivenId = body.vehicleId;
-      Object.assign(this.prediction, visual.latest, { x: body.x, y: body.y - (body.vehicleKind === 2 ? C.BIKE_SEAT_HEIGHT : C.CART_SEAT_HEIGHT), z: body.z, rotY: body.rotY, vx: body.vx, vz: body.vz });
+      Object.assign(this.prediction, visual.latest, { x: body.x, y: body.y - (body.vehicleKind===C.LIME_KIND?C.LIME_DECK_HEIGHT:body.vehicleKind===2?C.BIKE_SEAT_HEIGHT:C.CART_SEAT_HEIGHT), z: body.z, rotY: body.rotY, vx: body.vx, vz: body.vz });
       Object.assign(visual.rendered, this.prediction);
     } else this.drivenId = "";
+    if (visual.rendered.kind === C.POLYBAHN_KIND && body.cabinStanding) {
+      C.cabinPosition(visual.rendered, body);
+      body.vx = body.anim ? Math.sin(body.rotY) * C.CABIN_SPEED : 0;
+      body.vz = body.anim ? Math.cos(body.rotY) * C.CABIN_SPEED : 0;
+      body.vy = 0;
+      return;
+    }
     if (!this.drivenId) C.seatPosition(visual.rendered, body.seat, body);
     body.rotY = C.passengerYaw(visual.rendered, body.seat);
     body.vx = visual.rendered.vx;
@@ -359,6 +370,7 @@ export class Vehicles {
   }
   nearestId(body: C.Body) { return this.nearest(body); }
   updateLabels(body: C.Body, now: number) {
+    const own=this.items.get(body.vehicleId);if(own?.latest.kind===C.LIME_KIND)own.label.visible=false;
     for(const visual of this.items.values())if(visual.boardingZone)
       updateTramBoardingZone(visual.boardingZone,visual.latest,visual.rendered,body,this.net.now(),this.net.canPlay);
     if (now - this.lastLabels < 250) return;
@@ -370,7 +382,8 @@ export class Vehicles {
       const v = visual.latest;
       const boarding=C.isRail(v)?C.railBoardingPoint(visual.rendered):visual.rendered;
       const nearbyRail=C.isRail(v)&&Math.hypot(body.x-boarding.x,body.z-boarding.z)<25;
-      visual.label.visible = id === body.vehicleId || (!body.vehicleId && (id === nearest || nearbyRail));
+      const nearbyLime=v.kind===C.LIME_KIND&&Math.hypot(body.x-boarding.x,body.z-boarding.z)<=C.VEHICLE_BOARD_DISTANCE*2;
+      visual.label.visible = (id === body.vehicleId && v.kind!==C.LIME_KIND) || (!body.vehicleId && (id === nearest || nearbyRail || nearbyLime));
       let count = 0;
       for (const p of state?.players?.values() ?? [])
         if (p.vehicleId === id) count++;
@@ -378,6 +391,7 @@ export class Vehicles {
         C.isRail(v) ? `${C.transitName(v).toUpperCase()} ${count}/${v.capacity} · ${transitStatus(v,clock)}` :
         state?.publiBikes?.has(id)
           ? `PUBLIBIKE · ${state.publiBikes.get(id)!.broken ? "out of service" : id === body.vehicleId ? "E to get off" : v.driver ? "occupied" : state.publiBikes.get(id)!.reservedBy ? "being unlocked" : "E to scan"}` :
+        v.kind===C.LIME_KIND ? `LIME ${count}/${v.capacity} · ${id===body.vehicleId?"E to get off":count>=v.capacity?"full":"E to ride"}` :
         v.kind !== 1
           ? `${v.kind === 2 ? "BIKE" : v.kind === 3 ? "NPC CAR" : v.kind === 4 ? "LOOSE BALL" : "CART"} · ${v.kind >= 3 ? "watch out" : v.fallenUntil > this.net.now() ? "recovering" : v.driver ? "occupied" : "E to ride"}`
           : `TRAM ${count}/${v.capacity} · ${transitStatus(v,clock)}`;
@@ -385,11 +399,12 @@ export class Vehicles {
         const context = visual.canvas.getContext("2d")!;
         const { width, height } = visual.canvas;
         context.clearRect(0, 0, width, height);
-        context.fillStyle = state?.publiBikes?.has(id) ? "#68184eeF" : "#111c2cef";
+        const availableLime=v.kind===C.LIME_KIND&&count<v.capacity;
+        context.fillStyle = availableLime ? "#155a35ef" : state?.publiBikes?.has(id) ? "#68184eeF" : "#111c2cef";
         context.beginPath();
         context.roundRect(4, 4, width - 8, height - 8, 32);
         context.fill();
-        context.strokeStyle = "#ffffff50";
+        context.strokeStyle = availableLime ? "#86efac" : "#ffffff50";
         context.lineWidth = 3;
         context.stroke();
         let fontSize = 54;
@@ -397,7 +412,7 @@ export class Vehicles {
         while (context.measureText(text).width > width - 72 && fontSize > 28) {
           context.font = `600 ${--fontSize}px Arial, sans-serif`;
         }
-        context.fillStyle = "#ffffff";
+        context.fillStyle = availableLime ? "#d8ffe4" : "#ffffff";
         context.textAlign = "center";
         context.textBaseline = "middle";
         context.fillText(text, width / 2, height / 2);
@@ -410,7 +425,7 @@ export class Vehicles {
     if (riding)
       prompt =
         !C.isPassengerVehicle(riding)
-          ? "E — Leave vehicle"
+          ? riding.kind===C.LIME_KIND?(body.seat===0?"WASD ride · Shift boost · E get off · mouse look · F5/V view":"Rear passenger · E get off · mouse look · F5/V view"):"WASD drive · E exit · mouse / trackpad look · F5/V view · Esc menu"
           : riding.traveling
             ? `${C.transitName(riding)} · ${transitStatus(riding,clock)} · Exit at next stop`
             : `${C.transitName(riding)} · ${transitStatus(riding,clock)} · E — Leave`;
@@ -418,6 +433,7 @@ export class Vehicles {
       const near = this.items.get(this.nearest(body))?.latest;
       if (near)
         prompt +=
+          near.kind===C.LIME_KIND ? " · E ride Lime scooter" :
           near.kind === 2
             ? near.fallenUntil > this.net.now() ? "Bike recovering" : near.driver ? "Bike occupied" : "E — Ride bike"
             : near.kind === 0

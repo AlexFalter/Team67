@@ -383,7 +383,7 @@
       "direction": "Zoo",
       "stops": [
         "Central",
-        "ETH/Universitätsspital"
+        "ETH/Universit\u00e4tsspital"
       ],
       "points": [
         [
@@ -903,7 +903,7 @@
     ],
     "destinations": [
       {
-        "name": "Bahnhofbrücke",
+        "name": "Bahnhofbr\u00fccke",
         "point": [
           -187,
           50
@@ -927,12 +927,32 @@
   },
   "tourists": {
     "position": [
-      177,
+      198,
       66
     ],
     "viewpoint": [
-      173,
-      66
+      195.5,
+      68.7
     ]
+  },
+  "polybahnInspector": {
+    "position": [
+      193.5,
+      71.5
+    ],
+    "heading": 1.5707963267948966,
+    "doorway": {
+      "position": [
+        192,
+        70.4
+      ],
+      "normal": [
+        0.9024,
+        -0.4309
+      ],
+      "halfWidth": 5.8,
+      "halfDepth": 3,
+      "height": 48.875
+    }
   }
 }

@@ -15,7 +15,7 @@ export function cropPhonePhoto(orientation,source=document.querySelector('#game 
  if(!source)throw Error('Photo capture requires the host render canvas');
  const c=photoCrop(source.width,source.height,orientation),out=document.createElement('canvas');out.width=Math.round(c.w);out.height=Math.round(c.h);out.getContext('2d').drawImage(source,c.x,c.y,c.w,c.h,0,0,out.width,out.height);return out.toDataURL('image/png');
 }
-export function mountPhoneCamera(ui,{onAim=()=>{},yawRange=.6,pitchRange=.35,appName='Camera'}={}){
+export function mountPhoneCamera(ui,{onAim=()=>{},yawRange=.6,pitchRange=.35,appName='Camera',fullViewAim=false}={}){
  const lifecycle=createFeatureLifecycle();
  ui.classList.add('phone-encounter');
  const request=ui.querySelector('.tourist-request'),device=document.createElement('div');device.className='photo-phone phone-handset';
@@ -25,8 +25,9 @@ export function mountPhoneCamera(ui,{onAim=()=>{},yawRange=.6,pitchRange=.35,app
  const record={ui,canvas,orientation:'landscape'};previews.add(record);
  const surface=ui.querySelector('.tourist-viewfinder'),aim=createCameraAim({onAim,yawRange,pitchRange});let lastTick=performance.now(),wasFraming=false;
  surface.style.pointerEvents='auto';surface.style.touchAction='none';surface.style.cursor='crosshair';
- lifecycle.listen(surface,'pointermove',e=>{if(ui.hidden||ui.dataset.phase!=='framing')return;const r=surface.getBoundingClientRect();aim.move(e.clientX,e.clientY,r.width,r.height);});
- for(const event of ['pointerenter','pointerleave','pointercancel'])lifecycle.listen(surface,event,aim.resetPointer);
+ const aimSurface=fullViewAim?ui:surface;
+ lifecycle.listen(aimSurface,'pointermove',e=>{if(ui.hidden||ui.dataset.phase!=='framing')return;if(fullViewAim&&e.target.closest('button')){aim.resetPointer();return;}const r=aimSurface.getBoundingClientRect();aim.move(e.clientX-r.left,e.clientY-r.top,r.width,r.height,{edgePan:fullViewAim&&e.pointerType!=='touch'});});
+ for(const event of ['pointerenter','pointerleave','pointercancel'])lifecycle.listen(aimSurface,event,aim.resetPointer);
  lifecycle.listen(window,'blur',aim.resetPointer);lifecycle.listen(window,'resize',aim.resetPointer);
  function resetAim(options){aim.reset(options);lastTick=performance.now();wasFraming=false;}
  function updateAim(){const now=performance.now(),dt=(now-lastTick)/1000;lastTick=now;const framing=!ui.hidden&&ui.dataset.phase==='framing';if(!framing){aim.resetPointer();wasFraming=false;return;}if(!wasFraming)aim.resetPointer();wasFraming=true;aim.update(dt);}

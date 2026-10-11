@@ -1,0 +1,72 @@
+.phone-handset .phone-speaker{width:64px;height:5px;background:#12212b;border-radius:5px;margin:0 auto 12px}
+#game-phone{position:fixed;right:30px;bottom:80px;z-index:90;font-family:Arial,sans-serif}
+#phone-toggle{position:absolute;right:0;bottom:0;white-space:nowrap;background:#18212de8;color:white;border:1px solid #ffffff50;border-radius:5px;padding:10px 14px;cursor:pointer}
+#phone-toggle b{background:#ee7840;border-radius:20px;padding:3px 6px;margin-left:8px}
+#phone-notification{position:absolute;right:0;bottom:55px;width:290px;background:#18212df5;border:0;border-left:4px solid #ee7840;color:white;padding:15px;text-align:left;cursor:pointer;box-shadow:0 8px 24px #0006;animation:phone-alert .25s ease-out}
+#phone-notification[hidden]{display:none}
+#phone-device{position:absolute;bottom:0;right:0;width:282px;height:510px;box-sizing:border-box;background:linear-gradient(110deg,#34373d,#090b10 35%,#22252c);border:3px solid #454851;border-radius:28px;padding:34px 10px 38px;box-shadow:0 20px 45px #0009;transform:translateY(calc(100% + 100px)) rotate(12deg);opacity:0;visibility:hidden;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s,visibility .32s;pointer-events:none}
+.open #phone-device{transform:translateY(0) rotate(-2deg);opacity:1;visibility:visible;pointer-events:auto}
+.open #phone-toggle{visibility:hidden}
+.open #phone-notification{bottom:525px}
+.phone-handset .phone-speaker{position:absolute;top:15px;left:100px;width:75px;height:5px;background:#090a0c;border-radius:6px}
+#game-phone .phone-screen{height:100%;background:#edf0f4;display:flex;flex-direction:column;overflow:hidden;border-radius:4px;color:#252c38}
+#game-phone .phone-status{display:flex;justify-content:space-between;padding:8px;background:#111c35;color:white;font:9px Arial}
+.phone-toolbar{display:flex;align-items:center;background:linear-gradient(#eb9b47,#d97b2c);color:white;padding:8px 4px;gap:5px}
+.phone-toolbar strong{flex:1;text-align:center;font-size:18px}
+.phone-toolbar button{background:none;border:0;color:white;font-size:26px;cursor:pointer;width:30px;padding:0}
+.phone-toolbar button[hidden]{display:none}
+#phone-content{flex:1;overflow-y:auto;min-height:0;background:linear-gradient(145deg,#f2f4f7,#dfe6f0)}
+.phone-inbox-caption{font:10px Arial;text-transform:uppercase;letter-spacing:2px;color:#7a8497;margin:18px 12px 10px}
+.phone-conversation{display:flex;align-items:center;gap:10px;width:100%;border:0;border-bottom:1px solid #cbd4e0;background:#ffffffe0;padding:15px 10px;text-align:left;cursor:pointer;color:#25314b}
+.phone-avatar{flex-shrink:0;width:36px;height:36px;display:grid;place-items:center;border-radius:7px;color:white;font-weight:bold}
+.phone-conversation>span:nth-child(2){min-width:0;flex:1}
+.phone-conversation strong{display:block;font-size:13px;margin-bottom:5px}
+.phone-conversation small{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#717b8b;font-size:11px}
+.phone-unread{background:#d78236;color:white;min-width:18px;height:18px;border-radius:12px;text-align:center;font:11px/18px Arial}
+.phone-bottom{background:#192a49;color:#a9bad5;text-align:center;font:9px Arial;letter-spacing:2px;padding:12px}
+.phone-thread{padding:16px 12px;overflow:auto;height:100%;box-sizing:border-box}
+.phone-bubble{background:white;border-radius:2px 12px 12px 12px;margin-bottom:14px;padding:12px;box-shadow:0 2px 3px #25314b15;border-left:3px solid #e59440}
+.phone-bubble p{font:13px/1.5 Arial;margin:0 0 8px}
+.phone-bubble small{display:block;text-align:right;font-size:9px;color:#8792a5}
+.phone-empty{padding:50px 15px;text-align:center;color:#7a8497;font-size:13px}
+#phone-home{position:absolute;bottom:9px;left:calc(50% - 11px);width:22px;height:22px;border:2px solid #666b77;background:#11141b;border-radius:50%;cursor:pointer}
+#game-phone button:focus-visible{outline:3px solid #8bb7ff;outline-offset:2px}
+#phone-device{width:262px;height:min(485px,calc(100dvh - 105px))}
+.open #phone-notification{display:none}
+#phone-notification{animation:none}
+/* ETH Moodle: App Store course header, white cards and bottom tabs. */
+.phone-status,.phone-toolbar{background:#234579;color:#fff}
+.phone-toolbar{padding:10px 4px}
+.phone-toolbar strong{font-size:16px;font-weight:500}
+.phone-screen,#phone-content{background:#fff;color:#292929}
+.phone-bottom{display:flex;padding:0;background:white;border-top:1px solid #ddd;letter-spacing:0}
+.phone-bottom button{flex:1;background:none;border:0;color:#444;padding:8px 2px;font-size:20px;cursor:pointer}
+.phone-bottom button.active{color:#287bb6}
+.phone-bottom small{display:block;font-size:9px;margin-top:3px}
+.moodle-section-title{font-size:17px;font-weight:500;margin:16px 12px}
+.moodle-summary{font-size:11px;color:#646b75;margin:0 12px 15px}
+.moodle-course-card{display:flex;align-items:center;gap:10px;text-align:left;background:#fff;border:1px solid #d9dfe7;box-shadow:0 1px 2px #0001;margin:10px;width:calc(100% - 20px);padding:12px 9px;color:#292929;cursor:pointer;font-size:13px}
+.moodle-course-icon{display:grid;place-items:center;flex-shrink:0;width:37px;height:40px;background:#ae302b;color:#f4b1ad;border-radius:5px;font-size:26px}
+.moodle-course-card>span:nth-child(2){flex:1}
+.moodle-course-card small{display:block;color:#657184;font-size:10px;margin-top:7px;line-height:1.4}
+.moodle-card-badge{color:#287bb6;font-size:13px}
+.moodle-quiz{padding:16px 12px}
+.moodle-course-label{color:#626c7c;font-size:11px}
+.moodle-quiz h3{font-size:17px;font-weight:500;margin:12px 0}
+.moodle-question{font-size:13px;line-height:1.5}
+.moodle-option{display:flex;align-items:center;gap:8px;padding:12px 8px;border:1px solid #d9dfe7;margin:8px 0;font-size:13px;cursor:pointer}
+.moodle-option input{accent-color:#234579}
+.moodle-submit{background:#234579;color:white;border:0;border-radius:3px;padding:11px 12px;width:100%;margin-top:8px;cursor:pointer}
+.moodle-submit:disabled{opacity:.45;cursor:default}
+.moodle-feedback{font-size:12px;line-height:1.5;padding:12px;margin-top:14px;border-left:3px solid #bb5736;background:#fff0e9}
+.moodle-feedback.correct{background:#eef7ed;border-color:#4b8846}
+.phone-bubble{border-left-color:#234579}
+.phone-unread{background:#234579}
+.phone-message-action{display:block;margin-top:12px;padding:11px 14px;border:0;border-radius:8px;background:#f4d18a;color:#102132;font-weight:800;cursor:pointer}
+/* Shared handset casing for inbox and camera app. */
+.phone-handset{box-sizing:border-box;background:linear-gradient(110deg,#34373d,#090b10 35%,#22252c);border:3px solid #454851;border-radius:28px;padding:34px 10px 38px;box-shadow:0 20px 45px #0009}
+.phone-camera-live{width:100%;height:100%;object-fit:contain;display:block;background:#000}
+#phone-device{z-index:170}#phone-toggle,#phone-notification{pointer-events:auto}#game-phone:not(.open) #phone-device{pointer-events:none}
+
+.phone-moodle-setting{display:flex;align-items:center;gap:6px;background:#edf0f4;color:#234579;padding:8px;font:11px Arial}.moodle-penalty{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#152030ed;border:1px solid #db716a;border-radius:8px;padding:14px 20px;z-index:85;color:#fff;font:bold 14px Arial}#game-phone{pointer-events:none}#game-phone button,#game-phone.open #phone-device{pointer-events:auto}
+@media(max-width:600px){#game-phone{right:14px;bottom:70px}}

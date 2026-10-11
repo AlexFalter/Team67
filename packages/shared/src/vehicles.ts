@@ -4,8 +4,8 @@ import { resolveHouses } from "./flatObstacles.ts";
 import { flatWorld, routePoint, type MovementWorld } from "./world.ts";
 import { isRail, railSeatPosition } from "./transit.ts";
 
-export function vehicleRadius(v: Pick<VehicleState, "kind">) { return v.kind === 2 ? 0.65 : v.kind === 1 ? 2.4 : isRail(v) ? 1.3 : C.CART_RADIUS; }
-export function vehicleSpeed(v: Pick<VehicleState, "kind">) { return v.kind === 2 ? C.BIKE_SPEED : C.CART_SPEED; }
+export function vehicleRadius(v: Pick<VehicleState, "kind">) { return (v.kind === 2 || v.kind === C.LIME_KIND) ? 0.65 : v.kind === 1 ? 2.4 : isRail(v) ? 1.3 : C.CART_RADIUS; }
+export function vehicleSpeed(v: Pick<VehicleState, "kind">) { return v.kind === C.LIME_KIND ? C.LIME_SPEED : v.kind === 2 ? C.BIKE_SPEED : C.CART_SPEED; }
 
 export function createVehicle(kind = 0, x = 0, z = 0): VehicleState {
   return {
@@ -18,7 +18,7 @@ export function createVehicle(kind = 0, x = 0, z = 0): VehicleState {
     rotY: 0,
     vx: 0,
     vz: 0,
-    capacity: kind === 1 ? C.SHUTTLE_CAPACITY : kind >= 3 ? 0 : 1,
+    capacity: kind === C.LIME_KIND ? 2 : kind === 1 ? C.SHUTTLE_CAPACITY : kind >= 3 && kind !== C.LIME_KIND ? 0 : 1,
     driver: "",
     departureAt: 0,
     traveling: false,
@@ -34,7 +34,7 @@ export function createVehicle(kind = 0, x = 0, z = 0): VehicleState {
 
 export function stepCart(v: VehicleState, input: Input, dt: number, world: MovementWorld = flatWorld) {
   const previous = { x: v.x, y: v.y, z: v.z };
-  const speed = vehicleSpeed(v);
+  const speed = v.kind === C.LIME_KIND && input.sprint ? C.LIME_BOOST_SPEED : vehicleSpeed(v);
   const length = Math.hypot(input.x, input.z),
     moving = length > 0;
   const blend =
@@ -86,9 +86,9 @@ export function seatPosition(
 ) {
   if (isRail(v)) { railSeatPosition(v, seat, out); return; }
   const x = v.kind !== 1 ? 0 : seat % 2 === 0 ? -0.65 : 0.65;
-  const z = v.kind !== 1 ? 0 : (Math.floor(seat / 2) - 1) * 1.25;
+  const z = v.kind === C.LIME_KIND ? (seat===0?0:-.65) : v.kind !== 1 ? 0 : (Math.floor(seat / 2) - 1) * 1.25;
   out.x = v.x + x * Math.cos(v.rotY) + z * Math.sin(v.rotY);
-  out.y = v.y + (v.kind === 2 ? C.BIKE_SEAT_HEIGHT : v.kind !== 1 ? C.CART_SEAT_HEIGHT : C.SHUTTLE_SEAT_HEIGHT);
+  out.y = v.y + (v.kind === C.LIME_KIND ? C.LIME_DECK_HEIGHT : v.kind===2 ? C.BIKE_SEAT_HEIGHT : v.kind !== 1 ? C.CART_SEAT_HEIGHT : C.SHUTTLE_SEAT_HEIGHT);
   out.z = v.z - x * Math.sin(v.rotY) + z * Math.cos(v.rotY);
 }
 

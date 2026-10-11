@@ -87,7 +87,7 @@ test("all eight bikes can be scanned and ridden concurrently without becoming br
 
 test("prototype station positions have room for all bike footprints and the access aisle", () => {
   const site = C.publiBikeStation(C.zurichWorld); assert.equal(site.slots.length, 8);
-  assert.ok(Math.hypot(site.center.x + 205.551, site.center.z - 49.449) < 30);
+  assert.deepEqual(site.center, { x: -186.06, y: 8.25, z: 79.16 });
   for (const p of site.slots) assert.equal(C.zurichWorld.blocked(p.x, p.y, p.z, C.vehicleRadius({ kind: 2 }), C.CAPSULE_HEIGHT), false);
 });
 

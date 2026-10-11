@@ -210,3 +210,9 @@ main:has(.game-loading) > :is(header, footer) { display: none; }
 
 .context-actions { display: flex; gap: 12px; }
 .context-actions:empty { display: none; }
+#developer-coordinates{position:absolute;top:82px;right:16px;z-index:60;padding:14px 16px;border:1px solid #d7f87a;background:#0b1925ed;border-radius:8px;color:#fff;font:14px ui-monospace,monospace;box-shadow:0 4px 18px #0008}
+#developer-coordinates b,#developer-coordinates output,#developer-coordinates small{display:block}
+#developer-coordinates b{font-size:10px;letter-spacing:1px;color:#d7f87a;margin-bottom:8px}
+#developer-coordinates output{user-select:text;font-variant-numeric:tabular-nums}
+#developer-coordinates small{font-size:10px;color:#b1c3d3;margin:7px 0}
+#developer-coordinates button{padding:6px 10px;border:1px solid #7893a7;border-radius:4px;background:#203746;color:white;cursor:pointer;font:12px ui-monospace,monospace}

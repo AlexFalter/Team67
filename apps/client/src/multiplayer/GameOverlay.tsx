@@ -59,6 +59,7 @@ export function GameOverlay({ resolution, onResolutionChange }: {
           <label><input id="dev-mode" type="checkbox" /> Dev mode</label>
           <label id="skip-intro-option" hidden><input id="skip-intro" type="checkbox" defaultChecked /> Skip starting bus animation</label>
           <label id="gold-bikes-option" hidden><input id="gold-bikes" type="checkbox" defaultChecked /> Gold working PubliBikes</label>
+          <label id="coordinates-option" hidden><input id="activate-coordinates" type="checkbox" /> Activate Coordinates</label>
           <label id="rail-protection-option" hidden><input id="rail-protection" type="checkbox" /> Prevent tram derailment</label>
           <p className="hint">Saved on this browser. Applies to rooms you create; everyone in the room starts together.</p>
         </fieldset>
@@ -164,6 +165,7 @@ export function GameOverlay({ resolution, onResolutionChange }: {
           F hit<br />
           M city map · F5 / V change view · Esc menu<br />1 drink Mate · Backspace leave Polybahn</p>
         <p role="status"></p>
+        <button id="toggle-coordinates" type="button" hidden>Activate Coordinates</button>
         <button id="leave">Leave room</button>
         <button id="finish-round" hidden>End round for everyone</button>
       </div>
