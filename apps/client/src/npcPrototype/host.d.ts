@@ -10,7 +10,7 @@ export class NpcFeature {
     capture: () => void);
   externalPhoneBusy?:()=>boolean;
   onFootballReward?:()=>void;
-  onMedal?: (id: string) => void;
+  onMedal?: (id: import("@race/shared").PlayerMedalId, eventKey: string) => void;
   onResume?: () => void;
   onSuspend?: () => void;
   playerView?: import("../multiplayer/view.ts").PlayerView;

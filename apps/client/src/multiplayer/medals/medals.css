@@ -8,3 +8,19 @@
 body:has(#game-medals:not([hidden]))>.toast{top:auto;bottom:max(180px,30vh)}
 @media(max-width:700px){#game-medals{top:130px;width:160px}.medal-history{left:calc(50% + 50px);gap:4px}.medal-history-item{width:43px}.medal-history-item>div{width:43px;height:43px}.medal-history-item small{font-size:7px}.medal-multiplier{right:22px}}
 @media(prefers-reduced-motion:reduce){.medal-enter .medal-badge,.medal-enter .medal-title,.medal-enter .medal-badge::before,.medal-enter .medal-badge::after,.medal-exit .medal-badge,.medal-exit .medal-badge::after,.medal-history-item,.medal-count-update{animation:none}.medal-exit .medal-title,.medal-exit .medal-history{transition:none}}
+
+.medal-detail{display:block;margin-top:6px;font:600 12px/1.2 Arial,sans-serif;text-shadow:0 1px 3px #000;animation:medal-name-in .2s .7s both}.medal-detail[hidden]{display:none}.medal-exit .medal-detail{opacity:0;transition:opacity .16s}
+@media(prefers-reduced-motion:reduce){.medal-detail{animation:none}}
+
+#game-medals.secret-achievement{top:32%;left:auto;right:24px;transform:none;width:min(310px,calc(100% - 32px));box-sizing:border-box;display:grid;grid-template-columns:58px 1fr;column-gap:14px;align-items:center;text-align:left;padding:16px 20px 16px 14px;border:1px solid #d5b66355;border-left:3px solid #d5b663;border-radius:5px;background:linear-gradient(110deg,#182027f5,#11181eef);box-shadow:0 8px 24px #0005;filter:none;perspective:none}
+#game-medals.secret-achievement[hidden]{display:none}
+.secret-achievement .medal-badge{grid-column:1;grid-row:1/3;width:58px;height:58px;margin:0;animation:none;transform:none}
+.secret-achievement .medal-badge::before,.secret-achievement .medal-badge::after,.secret-achievement .medal-history,.secret-achievement .medal-multiplier{display:none}
+.secret-achievement .medal-title{grid-column:2;align-self:end;margin:0;color:#e7ce8d;font:700 12px/1.3 Arial,sans-serif;letter-spacing:1.1px;text-transform:uppercase;animation:none}
+.secret-achievement .medal-detail{grid-column:2;align-self:start;margin-top:5px;font:600 16px/1.3 Arial,sans-serif;animation:medal-name-in .2s .45s both}
+#game-medals.secret-achievement.medal-enter{animation:secret-slide-in .3s ease-out both}
+#game-medals.secret-achievement.medal-exit{animation:secret-slide-out .18s ease-in both}
+@keyframes secret-slide-in{from{opacity:0;transform:translateX(36px)}to{opacity:1;transform:translateX(0)}}
+@keyframes secret-slide-out{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(36px)}}
+@media(max-width:700px){#game-medals.secret-achievement{right:16px;top:30%}}
+@media(prefers-reduced-motion:reduce){#game-medals.secret-achievement.medal-enter,#game-medals.secret-achievement.medal-exit,.secret-achievement .medal-detail{animation:none}}

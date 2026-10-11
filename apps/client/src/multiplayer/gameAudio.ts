@@ -220,7 +220,7 @@ export class GameAudio {
   medal() {
     if (!this.settings.medalSounds || !this.context) return;
     void this.context.resume().then(() => {
-      if (this.context?.state === "running") this.play("bo3-medal-earned", 0.45, { cooldown: 0.4, out: this.context.destination });
+      if (this.context?.state === "running") this.play("bo3-medal-earned", 0.32, { cooldown: 0.4, out: this.context.destination });
     }).catch(() => {});
   }
 

@@ -9,9 +9,10 @@ export function createMedals({root=document.body,definitions,duration,audioUrl,s
  const ui=document.createElement('aside');
  ui.id='game-medals';ui.hidden=true;
  ui.setAttribute('role','status');ui.setAttribute('aria-live','polite');ui.setAttribute('aria-atomic','true');
- const badge=document.createElement('div'),title=document.createElement('strong'),multiplier=document.createElement('b'),history=document.createElement('div');
+ const badge=document.createElement('div'),title=document.createElement('strong'),multiplier=document.createElement('b'),history=document.createElement('div'),detail=document.createElement('small');
  badge.className='medal-badge';title.className='medal-title';multiplier.className='medal-multiplier';multiplier.hidden=true;history.className='medal-history';
- ui.append(badge,title,multiplier,history);root.append(ui);
+ detail.className="medal-detail";detail.hidden=true;
+ ui.append(badge,title,detail,multiplier,history);root.append(ui);
  let displayed=null,displayedCount=0,muted=false,destroyed=false;
  const historyNodes=new Map();
  function animate(element,className){element.classList.remove(className);void element.offsetWidth;element.classList.add(className);}
@@ -24,8 +25,8 @@ export function createMedals({root=document.body,definitions,duration,audioUrl,s
    const snapshot=model.state(),current=snapshot.current;
    if(current){
     if(displayed!==current.instance){
-     displayed=current.instance;displayedCount=0;
-     badge.innerHTML=medalArt(current.icon,current.id);title.textContent=current.title;
+     displayed=current.instance;displayedCount=0;ui.classList.toggle("secret-achievement",current.secret===true);
+     badge.innerHTML=medalArt(current.icon,current.id);title.textContent=current.title;detail.hidden=current.secret!==true;detail.textContent=detail.hidden?"":current.detail;
      ui.classList.remove('medal-exit');animate(ui,'medal-enter');if(!muted)sound.play();
     }
     if(displayedCount!==current.count){
@@ -46,7 +47,7 @@ export function createMedals({root=document.body,definitions,duration,audioUrl,s
    }else {displayed=null;displayedCount=0;historyNodes.clear();history.replaceChildren();}
    ui.hidden=!visible||!current;
   },
-  setSoundEnabled(enabled){muted=!enabled;if(muted)sound.stop();},
+  setSoundEnabled(enabled){muted=!enabled;if(muted){sound.stop();}},
   reset(){model.reset();displayed=null;displayedCount=0;historyNodes.clear();history.replaceChildren();ui.hidden=true;sound.stop();},
   state:()=>({...model.state(),sound:sound.state?.()}),
   destroy(){destroyed=true;model.reset();sound.destroy();ui.remove();},

@@ -3355,7 +3355,7 @@
       32.6,
       -27.87
     ],
-    "heading": 0
+    "heading": 1.5707963267948966
   }
 ,
   "gtrDonuts": {"center": [-173.91, 8.12, 21.68], "radius": 4.6, "periodSeconds": 4.8, "slipAngle": 0.8},

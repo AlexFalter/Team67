@@ -22,8 +22,8 @@ test("Einstein grants independent charges and always lands in front of the cat",
   const f=fixture();f.command("alice","begin");assert.equal(f.replies.at(-1)!.ok,true);assert.equal(f.encounters.busy("alice"),true);
   assert.equal(f.state.npcs.get("bob")!.teleportUsed,false);assert.equal(f.corrected.length,0);
   const target=f.replies.at(-1)!.target!;assert.deepEqual(target,C.einsteinDestination(C.zurichWorld));
-  assert.equal(target.x,C.NPC_LAYOUT.cat.position[0]);
-  assert.equal(target.z,C.NPC_LAYOUT.cat.position[2]-1.5);
+  assert.equal(target.x,C.NPC_LAYOUT.cat.position[0]-Math.sin(C.NPC_LAYOUT.cat.heading)*1.5);
+  assert.equal(target.z,C.NPC_LAYOUT.cat.position[2]-Math.cos(C.NPC_LAYOUT.cat.heading)*1.5);
   assert.equal(f.replies.at(-1)!.facing,C.NPC_LAYOUT.cat.heading);
   assert.ok(Math.hypot(target.x-C.NPC_LAYOUT.goal[0],target.z-C.NPC_LAYOUT.goal[1])>=180);
   f.command("bob","begin");assert.equal(f.replies.at(-1)!.ok,true);assert.deepEqual(f.replies.at(-1)!.target,target);
@@ -101,6 +101,7 @@ test('boundary encounter works repeatedly on every edge, stops and turns without
 test('boundary NPC dismounts drivers before returning them, while rail passengers remain aboard',()=>{
   const f=fixture(),manager=new VehicleManager(f.state,C.zurichWorld),p=f.state.players.get('alice')!,bounds=C.npcBounds(C.zurichWorld);
   const encounters=new NpcEncounters(f.state,C.zurichWorld,(_id,point)=>Object.assign(p,point),client=>manager.exit(client));
+  manager.add('cart-1',C.createVehicle(0,0,0));
   const cart=f.state.vehicles.get('cart-1')!;Object.assign(cart,{x:bounds.minX+10,z:bounds.minZ+20,y:C.zurichWorld.height(bounds.minX+10,bounds.minZ+20)!});Object.assign(p,{x:cart.x,y:cart.y,z:cart.z});
   manager.enter(f.client('alice'),'cart-1',f.now);assert.equal(p.vehicleId,'cart-1');
   encounters.command(f.client('alice'),{action:'begin',kind:'property',roundStartedAt:f.state.startedAt},f.now);
