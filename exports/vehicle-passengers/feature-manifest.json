@@ -1,0 +1,19 @@
+{
+  "name": "vehicle-passengers",
+  "entry": "src/vehicles/passengers/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "src/README.md",
+    "src/player/student-model.js",
+    "src/vehicles/passengers/README.md",
+    "src/vehicles/passengers/index.js",
+    "src/vehicles/passengers/passenger-look.js",
+    "src/vehicles/passengers/vehicle-passenger-actors.js",
+    "src/vehicles/passengers/vehicle-passengers.js",
+    "src/vehicles/passengers/vehicle-seats.js"
+  ],
+  "assets": [],
+  "dependencies": {
+    "three": "^0.186.1"
+  }
+}

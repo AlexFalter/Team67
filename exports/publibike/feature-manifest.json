@@ -1,0 +1,34 @@
+{
+  "name": "publibike",
+  "entry": "src/vehicles/publibike/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "game.config.json",
+    "src/README.md",
+    "src/config/failure-roll.js",
+    "src/config/game-config.js",
+    "src/config/validate-game-config.js",
+    "src/games/bike-scan/bike-unlock.css",
+    "src/games/bike-scan/bike-unlock.js",
+    "src/shared/phone-camera/camera-aim.js",
+    "src/shared/phone-camera/phone-camera.js",
+    "src/shared/phone-camera/photo-camera.js",
+    "src/ui/phone/phone-shell.css",
+    "src/ui/phone/phone-shell.js",
+    "src/vehicles/passengers/vehicle-passengers.js",
+    "src/vehicles/passengers/vehicle-seats.js",
+    "src/vehicles/publibike/README.md",
+    "src/vehicles/publibike/index.js",
+    "src/vehicles/publibike/publibike-model.js",
+    "src/vehicles/publibike/publibike-station.js",
+    "src/world/core/world-access.js",
+    "src/world/placements/feature-placement.js",
+    "style.css"
+  ],
+  "assets": [
+    "public/models/publibike.glb"
+  ],
+  "dependencies": {
+    "three": "^0.186.1"
+  }
+}

@@ -1,3 +1,5 @@
+import {mateDrinkPose} from './characters/mateDrink.ts';
+import {sahurSwing} from './characters/sahurSwing.ts';
 import {applyDancePose} from './emotes/dancePose.ts';
 import * as THREE from "three";
 import { updatePlayerIdentity, disposePlayerIdentity } from "./playerIdentity.ts";
@@ -19,11 +21,13 @@ interface Limb { joint: THREE.Group; bend: THREE.Group; tip: THREE.Group; foot?:
 interface Rig {
   torso: THREE.Group; chest: THREE.Group; head: THREE.Group; neck: THREE.Group; arms: Limb[]; legs: Limb[];
   viewArms?: THREE.Group;
+  stick?: THREE.Group;
   can?: THREE.Group;
   canFlavor?: number;
   phase: number; fall: number; speed: number; grounded: boolean; landing: number; air: number; firstPerson: boolean; slide: number;
 }
 const rigs = new WeakMap<THREE.Group, Rig>();
+const canParentRotation=new THREE.Quaternion(),canFacing=new THREE.Quaternion(),canTilt=new THREE.Quaternion(),canTiltAxis=new THREE.Vector3(1,0,0);
 export function avatar(color: string, character = 0, firstPerson = false) {
   const root = new THREE.Group(), torso = new THREE.Group(), chest = new THREE.Group(), head = new THREE.Group();
   root.name = CHARACTERS[character] ?? CHARACTERS[0];
@@ -139,10 +143,11 @@ export function avatar(color: string, character = 0, firstPerson = false) {
     limb.tip.name = `${name}-${i ? "ankle" : "wrist"}`;
     if (limb.toe) limb.toe.name = `${name}-toe`;
   }));
+  let stick:THREE.Group|undefined;
   if (sahur) {
     // Attach his oversized wooden club to the wrist so every existing pose
     // carries it naturally, including the lobby and first-person arms.
-    const stick = new THREE.Group(); stick.name = "sahur-stick";
+    stick = new THREE.Group(); stick.name = "sahur-stick";
     stick.rotation.x = Math.PI / 2;
     arms[1].tip.add(stick);
     part(stick, [.09, .32, .09], [0, -.08, 0], "#69401f", false, logShape);
@@ -162,7 +167,7 @@ export function avatar(color: string, character = 0, firstPerson = false) {
     viewArms = new THREE.Group(); viewArms.name = "view-arms"; viewArms.position.set(0, 1.6, 0.15); root.add(viewArms);
     for (const arm of arms) { arm.joint.position.set(arm.joint.position.x < 0 ? -0.34 : 0.34, -0.32, 0.12); viewArms.add(arm.joint); }
   }
-  rigs.set(root, { torso, chest, head, neck, arms, legs, viewArms, slide: 0, phase: 0, fall: 0, speed: 0, grounded: true, landing: 0, air: 0, firstPerson });
+  rigs.set(root, { stick, torso, chest, head, neck, arms, legs, viewArms, slide: 0, phase: 0, fall: 0, speed: 0, grounded: true, landing: 0, air: 0, firstPerson });
   return root;
 }
 
@@ -191,8 +196,9 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
   const sliding = p.anim === SLIDE_ANIM && !down;
   r.slide += ((sliding ? 1 : 0) - r.slide) * blend;
   const drinkAge = (p.simTime - (p.mateDrinkStartedAt ?? 0)) / 1000;
-  const drinking = !down && !p.vehicleId && (p.mateDrinkStartedAt ?? 0) > 0 && drinkAge >= 0 && drinkAge < 1.3;
-  const sip = drinking ? THREE.MathUtils.smoothstep(drinkAge, 0, .3) * (1 - THREE.MathUtils.smoothstep(drinkAge, .95, 1.3)) : 0;
+  const drink=mateDrinkPose(drinkAge);
+  const drinking = !down && !p.vehicleId && (p.mateDrinkStartedAt ?? 0) > 0 && drink.active;
+  const sip=drinking?drink.sip:0,opening=drinking?drink.open:0,burp=drinking?drink.burp:0;
   if (r.can) r.can.visible = drinking;
   mesh.scale.setScalar(p.vehicleId && p.cabinStanding ? .85 : 1);
   const riding = !!p.vehicleId && !p.cabinStanding, bike = riding && p.vehicleKind === 2, scooter=riding&&p.vehicleKind===LIME_KIND;
@@ -210,7 +216,10 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
   const forward = (p.vx * Math.sin(p.rotY) + p.vz * Math.cos(p.rotY)) / Math.max(0.1, Math.hypot(p.vx, p.vz));
   const sideways = (p.vx * Math.cos(p.rotY) - p.vz * Math.sin(p.rotY)) / Math.max(0.1, Math.hypot(p.vx, p.vz));
   const attack = Math.max(0, p.attackReadyAt - p.simTime - ATTACK_COOLDOWN_MS + 420) / 420;
-  const punch = !knifeEquipped && !down && !riding ? Math.sin(Math.min(1, attack) * Math.PI) : 0;
+  const clubAttack=!!r.stick&&!knifeEquipped&&!down&&!riding&&!drinking&&attack>0&&attack<=1;
+  const club=clubAttack?sahurSwing(1-attack):null;
+  if(r.stick)r.stick.visible=!knifeEquipped&&!drinking;
+  const punch = !r.stick && !knifeEquipped && !down && !riding ? Math.sin(Math.min(1, attack) * Math.PI) : 0;
   const hookSweep = THREE.MathUtils.clamp((1 - attack - 0.15) / 0.55, 0, 1);
   mesh.position.set(p.x, p.y, p.z); mesh.rotation.set(0, p.rotY, 0);
   if (r.viewArms) {
@@ -226,7 +235,9 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
   r.torso.position.z = scooter ? (p.seat === 0 ? .30 : -.08) : 0;
   r.torso.rotation.set(-r.fall * 1.52 + stride * forward * 0.14 - r.slide * 0.42 + (bike ? 0.30 : scooterLean), 0, Math.cos(r.phase) * (bike ? Math.min(1, Math.hypot(p.vx, p.vz) / 8) * 0.025 : stride * 0.025));
   r.chest.rotation.set(r.landing * 0.12, Math.sin(r.phase) * stride * 0.06 + punch * (-0.20 + hookSweep * 0.55), 0);
-  r.head.rotation.set(0, punch * -0.15, Math.sin(p.simTime / 1100) * 0.018);
+  if(club){r.chest.rotation.y+=club.twist;r.chest.rotation.x+=club.lean;}
+  r.chest.rotation.x-=burp*.07;r.head.rotation.x=-sip*.16+burp*.06;
+  r.head.rotation.set(0, punch * -0.15-(club?.twist??0)*.35, Math.sin(p.simTime / 1100) * 0.018);
   r.arms.forEach((arm, i) => {
     const swing = Math.sin(r.phase + i * Math.PI);
     const gait = -swing * stride * (r.firstPerson ? 0.16 : 0.72);
@@ -251,17 +262,28 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
     upper += (-1.4 - upper) * action;
     elbow += (-0.20 - elbow) * action;
     if (i === 0) { upper -= punch * 0.45; elbow -= punch * 0.35; }
+    if(opening){
+      upper+=((i===1?-.8:-.95)-upper)*opening;
+      elbow+=((i===1?-1.25:-1.6)-elbow)*opening;
+      if(r.firstPerson){arm.joint.position.x+=(i===1?.12:-.22)*opening;arm.joint.position.y+=.08*opening;}
+    }
     if (i === 1) {
       upper += (-1.15 - upper) * sip; elbow += (-2.1 - elbow) * sip;
       if (r.firstPerson) { arm.joint.position.x += .28 * sip; arm.joint.position.y += .16 * sip; }
     }
+    let wrist=-0.08-stride*.12-(i===1?sip*.65:0);
+    if(club){
+      if(i===1){upper+=(club.shoulder-upper)*club.weight;elbow+=(club.elbow-elbow)*club.weight;wrist+=(club.wrist-wrist)*club.weight;
+        if(r.firstPerson){arm.joint.position.y+=.12*club.weight;arm.joint.position.x+=.08*club.weight;}
+      }else{upper+=(-.75-upper)*club.weight;elbow+=(-1.2-elbow)*club.weight;}
+    }
     const swayYaw = r.firstPerson ? (i ? -1 : 1) * Math.sin(r.phase + i * Math.PI) * stride * 0.16 : 0;
-    arm.joint.rotation.y += (swayYaw + action * (-0.9 + hookSweep * 1.9) + (i === 1 ? .32 * sip : 0) - arm.joint.rotation.y) * blend;
+    arm.joint.rotation.y += (swayYaw + (club&&i===1?club.twist*.6:0) + action * (-0.9 + hookSweep * 1.9) + (i === 1 ? .32 * sip : -.45*opening) - arm.joint.rotation.y) * blend;
     arm.bend.rotation.z += (action * 1.35 - arm.bend.rotation.z) * blend;
     arm.joint.rotation.x += (upper - arm.joint.rotation.x) * blend;
     arm.joint.rotation.z += ((i === 0 ? 1 : -1) * (-0.10 + r.fall * 0.55 - (r.firstPerson ? 0.12 + Math.cos(r.phase + i * Math.PI) * stride * 0.08 : 0)) - arm.joint.rotation.z) * blend;
     arm.bend.rotation.x += (elbow - arm.bend.rotation.x) * blend;
-    arm.tip.rotation.x += ((-0.08 - stride * 0.12) - arm.tip.rotation.x) * blend;
+    arm.tip.rotation.x += (wrist - arm.tip.rotation.x) * blend;
   });
   r.legs.forEach((leg, i) => {
     const swing = Math.sin(r.phase + i * Math.PI);
@@ -309,6 +331,14 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
     r.torso.position.y=.31;r.torso.rotation.set(.12,0,0);r.head.rotation.x=.2;
     for(const leg of r.legs){leg.joint.rotation.set(-1.45,0,0);leg.bend.rotation.x=1.45;}
     for(const arm of r.arms){arm.joint.rotation.x=-.55;arm.bend.rotation.x=-.65;}
+  }
+  if(r.can?.visible){
+    // The wrist bends past 180° during a sip; the can keeps its own upright
+    // grip and tilts its opening toward the mouth, independently of that bend.
+    mesh.getWorldQuaternion(canFacing);
+    canFacing.multiply(canTilt.setFromAxisAngle(canTiltAxis,-sip*.7));
+    r.can.parent!.getWorldQuaternion(canParentRotation);
+    r.can.quaternion.copy(canParentRotation.invert().multiply(canFacing));
   }
   updatePlayerIdentity(mesh, p);
 }

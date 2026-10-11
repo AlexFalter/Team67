@@ -1,0 +1,20 @@
+{
+  "name": "dialogue",
+  "entry": "src/shared/dialogue/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "src/README.md",
+    "src/npcs/shared/rpg-dialogue.css",
+    "src/npcs/shared/rpg-dialogue.js",
+    "src/shared/dialogue/README.md",
+    "src/shared/dialogue/dialogue-distance.js",
+    "src/shared/dialogue/encounter-ui.css",
+    "src/shared/dialogue/encounter-ui.js",
+    "src/shared/dialogue/index.js",
+    "src/shared/dialogue/rpg-dialogue.css",
+    "src/shared/dialogue/rpg-dialogue.js",
+    "style.css"
+  ],
+  "assets": [],
+  "dependencies": {}
+}

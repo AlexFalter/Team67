@@ -1,0 +1,17 @@
+{
+  "name": "eth-game-world",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./index.js",
+  "scripts": {
+    "build": "vite build"
+  },
+  "dependencies": {
+    "three": "^0.186.1",
+    "three-mesh-bvh": "^0.9.16"
+  },
+  "devDependencies": {
+    "vite": "^6.4.4"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "bike-scan",
+  "entry": "src/games/bike-scan/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "game.config.json",
+    "src/README.md",
+    "src/config/game-config.js",
+    "src/config/validate-game-config.js",
+    "src/games/bike-scan/README.md",
+    "src/games/bike-scan/bike-unlock.css",
+    "src/games/bike-scan/bike-unlock.js",
+    "src/games/bike-scan/index.js",
+    "src/shared/phone-camera/camera-aim.js",
+    "src/shared/phone-camera/phone-camera.js",
+    "src/shared/phone-camera/photo-camera.js",
+    "src/ui/phone/phone-shell.css",
+    "src/ui/phone/phone-shell.js",
+    "style.css"
+  ],
+  "assets": [],
+  "dependencies": {
+    "three": "^0.186.1"
+  }
+}

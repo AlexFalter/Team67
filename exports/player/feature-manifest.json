@@ -1,0 +1,26 @@
+{
+  "name": "player",
+  "entry": "src/player/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "game.config.json",
+    "src/README.md",
+    "src/config/game-config.js",
+    "src/config/validate-game-config.js",
+    "src/games/quizzes/moodle-penalty.js",
+    "src/player/README.md",
+    "src/player/first-person-hand.js",
+    "src/player/first-person-slide.js",
+    "src/player/first-person.js",
+    "src/player/index.js",
+    "src/player/player-slide.js",
+    "src/player/rider-animation.js",
+    "src/player/student-model.js"
+  ],
+  "assets": [
+    "public/models/first-person-hand.glb"
+  ],
+  "dependencies": {
+    "three": "^0.186.1"
+  }
+}

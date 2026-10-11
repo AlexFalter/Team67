@@ -1,0 +1,30 @@
+{
+  "name": "shuttle",
+  "entry": "src/vehicles/shuttle/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "src/README.md",
+    "src/interactions/knife/npc-knockdown.js",
+    "src/player/rider-animation.js",
+    "src/player/student-model.js",
+    "src/vehicles/passengers/vehicle-passengers.js",
+    "src/vehicles/passengers/vehicle-seats.js",
+    "src/vehicles/shuttle/README.md",
+    "src/vehicles/shuttle/eth-link-cabin.js",
+    "src/vehicles/shuttle/index.js",
+    "src/vehicles/shuttle/shuttle-explosion.js",
+    "src/vehicles/shuttle/shuttle-intro.js",
+    "src/world/core/map-navigation.js",
+    "src/world/core/vehicle-path.js",
+    "src/world/placements/feature-placement.js",
+    "style.css"
+  ],
+  "assets": [
+    "public/audio/CREDITS.md",
+    "public/audio/fortnite-battle-bus.mp3"
+  ],
+  "dependencies": {
+    "three": "^0.186.1",
+    "three-mesh-bvh": "^0.9.16"
+  }
+}

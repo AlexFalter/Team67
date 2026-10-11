@@ -102,6 +102,7 @@ export class BridgeCows {
   private cows: Cow[] = [];
   private source?: THREE.Group;
   private previousNow?: number;
+  private hits=new Map<number,number>();
   private abort = new AbortController();
   constructor(private scene: THREE.Scene, private audio: GameAudio) {
     this.ready = this.load().catch(error => {
@@ -142,9 +143,18 @@ export class BridgeCows {
       this.cows.push({ root, model, mixer, walk, idle, moo });
     }
   }
+  hit(id:number,time:number,listener:THREE.Vector3,audible:boolean){
+    if(!Number.isInteger(id)||!BRIDGE_COWS[id]||!Number.isFinite(time))return;
+    this.hits.set(id,time);
+    const cow=bridgeCowPose(id,time,zurichWorld);
+    if(audible)this.audio.moo(id,listener.distanceTo(new THREE.Vector3(cow.x,cow.y,cow.z)),true);
+  }
   update(now: number, listener: THREE.Vector3, audible: boolean) {
     for (let id = 0; id < this.cows.length; id++) {
-      const cow = this.cows[id], pose = bridgeCowPose(id, now, zurichWorld), call = cowMooAge(id, now);
+      const cow = this.cows[id], pose = bridgeCowPose(id, now, zurichWorld), scheduled = cowMooAge(id, now);
+      const hit=this.hits.get(id),hitAge=hit===undefined?Infinity:now-hit+800;
+      const call=hitAge>=800&&hitAge<4000?{age:hitAge}:scheduled;
+      if(hitAge>=4000)this.hits.delete(id);
       cow.root.position.set(pose.x, pose.y, pose.z); cow.root.rotation.y = pose.rotY;
       const mooing = call.age < 4000;
       const walking = Math.min(1, Math.max(pose.speed, pose.turnSpeed * .12) / .25);
@@ -157,7 +167,7 @@ export class BridgeCows {
       cow.moo.time = call.age / 1000;
       cow.mixer.update(0);
       const cue = now - call.age + 800;
-      if (this.previousNow !== undefined && this.previousNow < cue && now >= cue && call.age < 1800 && audible) {
+      if (this.previousNow !== undefined && this.previousNow < cue && now >= cue && call.age < 1800 && call===scheduled && audible) {
         this.audio.moo(id, listener.distanceTo(cow.root.position));
       }
 
@@ -178,7 +188,7 @@ export class BridgeCows {
     this.source = undefined;
   }
   dispose() {
-    this.abort.abort();
+    this.abort.abort();this.hits.clear();
     for (const cow of this.cows) { cow.root.removeFromParent(); cow.mixer.stopAllAction(); cow.mixer.uncacheRoot(cow.model); cow.model.traverse(node => { if (node instanceof THREE.SkinnedMesh) node.skeleton.dispose(); }); }
     this.cows = []; this.disposeSource();
   }

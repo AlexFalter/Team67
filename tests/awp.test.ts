@@ -79,3 +79,52 @@ test('early refill transfers only missing darts without increasing total ammunit
 test('wall pickup inspection prevents firing and reloading until the blaster settles',()=>{
  const f=fixture(),p=f.state.players.get('a')!;p.awpOwned=false;const [x,y,z]=C.awpRackPlacement(C.flatWorld).approach;Object.assign(p,{x,y,z});f.command('pickup',1000);assert.equal(p.awpInspectUntil,3600);f.command('fire',2000);assert.equal(f.shots.length,0);p.awpAmmo=9;f.command('reload',2000);assert.equal(p.awpReloadUntil,0);f.command('fire',3600);assert.equal(f.shots.length,1);
 });
+
+test('classic triple cue requires three distinct confirmed players and starts a new group afterwards',()=>{
+ const f=fixture();f.state.players.set('d',new Player({x:22,y:0,z:0}));f.command('equip');
+ f.command('fire',1000);f.command('fire',2500);assert.equal(f.shots.at(-1)!.triple,false);
+ f.state.players.get('b')!.z=10;f.command('fire',4000);assert.equal(f.shots.at(-1)!.triple,false);
+ f.state.players.get('c')!.z=10;f.command('fire',5500);assert.equal(f.shots.at(-1)!.triple,true);
+ f.command('fire',7000);assert.equal(f.shots.at(-1)!.triple,false);
+ f.state.players.get('b')!.z=0;f.command('fire',8500);assert.equal(f.shots.at(-1)!.triple,false);
+ f.state.players.get('b')!.z=10;f.state.players.get('c')!.z=0;f.command('fire',10000);assert.equal(f.shots.at(-1)!.triple,true);
+});
+test('misses do not count toward the triple, and disconnect/round reset clears player and dummy progress',()=>{
+ for(const reset of ['leave','reset'] as const){
+  const f=fixture();f.state.players.set('d',new Player({x:22,y:0,z:0}));f.command('equip');f.command('fire',1000);
+  f.command('fire',2500,[0,0,1]);assert.equal(f.shots.at(-1)!.hit,false);
+  f.state.dummies.set('dummy',new Player({x:4,y:0,z:0}));f.command('fire',4000);assert.equal(f.shots.at(-1)!.triple,false);f.state.dummies.clear();
+  if(reset==='leave')f.manager.leave('a');else {f.manager.reset();f.state.players.get('a')!.awpOwned=true;f.command('equip',5000);}
+  f.state.players.get('b')!.z=10;f.command('fire',5500);assert.equal(f.shots.at(-1)!.triple,false);
+  f.state.players.get('c')!.z=10;f.command('fire',7000);assert.equal(f.shots.at(-1)!.triple,false);
+  f.state.players.get('b')!.z=0;f.command('fire',8500);assert.equal(f.shots.at(-1)!.triple,true);
+ }
+});
+
+test('practice dummies count toward a triple alongside players, with each target counted once',()=>{
+ const f=fixture();f.command('equip');
+ f.state.dummies.set('dummy-one',new Player({x:4,y:0,z:0}));
+ f.command('fire',1000);assert.equal(f.shots.at(-1)!.hit,true);assert.equal(f.shots.at(-1)!.triple,false);
+ f.command('fire',2500);assert.equal(f.shots.at(-1)!.hit,false);assert.equal(f.shots.at(-1)!.triple,false);
+ const dummy=f.state.dummies.get('dummy-one')!;Object.assign(dummy,{x:4,y:0,z:0,invincibleUntil:0});
+ f.command('fire',4000);assert.equal(f.shots.at(-1)!.hit,true);assert.equal(f.shots.at(-1)!.triple,false);
+ dummy.z=10;f.command('fire',5500);assert.equal(f.shots.at(-1)!.target,'b');assert.equal(f.shots.at(-1)!.triple,false);
+ f.state.dummies.set('dummy-two',new Player({x:4,y:0,z:0}));f.command('fire',7000);assert.equal(f.shots.at(-1)!.triple,true);
+});
+test('three different practice dummies alone trigger the triple sound',()=>{
+ const f=fixture();f.command('equip');
+ for(let i=0;i<3;i++){
+  for(const dummy of f.state.dummies.values())dummy.z=10;
+  f.state.dummies.set(`dummy-${i}`,new Player({x:4,y:0,z:0}));f.command('fire',1000+i*1500);
+  assert.equal(f.shots.at(-1)!.hit,true);assert.equal(f.shots.at(-1)!.triple,i===2);
+ }
+});
+
+test('secret discovery is emitted only after an accepted first AWP pickup',()=>{
+ const state=new RaceState({startedAt:123});const p=new Player();state.players.set('a',p);const discovered:string[]=[];
+ const manager=new AwpManager(state,C.flatWorld,()=>true,()=>false,()=>false,()=>{},undefined,undefined,id=>discovered.push(id));
+ const pickup=()=>manager.command('a',{action:'pickup',roundStartedAt:123},1000);
+ pickup();assert.deepEqual(discovered,[]);
+ const [x,y,z]=C.awpRackPlacement(C.flatWorld).approach;Object.assign(p,{x,y,z});pickup();assert.deepEqual(discovered,['a']);assert.equal(p.awpOwned,true);
+ pickup();assert.deepEqual(discovered,['a']);manager.reset();pickup();assert.deepEqual(discovered,['a','a']);
+});

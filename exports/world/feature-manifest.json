@@ -1,0 +1,35 @@
+{
+  "name": "world",
+  "entry": "src/world/core/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "game.config.json",
+    "src/README.md",
+    "src/config/game-config.js",
+    "src/config/validate-game-config.js",
+    "src/world/core/README.md",
+    "src/world/core/atmosphere.js",
+    "src/world/core/geo-world.js",
+    "src/world/core/index.js",
+    "src/world/core/map-boundary.js",
+    "src/world/core/map-navigation.js",
+    "src/world/core/station-passages.js",
+    "src/world/core/street-layout.js",
+    "src/world/core/vehicle-path.js",
+    "src/world/core/world-access.js",
+    "src/world/placements/feature-placement.js"
+  ],
+  "assets": [
+    "public/gameplay/feature-placements.json",
+    "public/gameplay/locations.json",
+    "public/maps/zurich",
+    "public/maps/zurich/area.json",
+    "public/maps/zurich/collision.json",
+    "public/maps/zurich/hb-eth.glb",
+    "public/maps/zurich/integration.json"
+  ],
+  "dependencies": {
+    "three": "^0.186.1",
+    "three-mesh-bvh": "^0.9.16"
+  }
+}

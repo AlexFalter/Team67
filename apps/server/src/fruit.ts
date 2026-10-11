@@ -14,7 +14,7 @@ export class FruitManager {
   if(p.vehicleId||p.bagId||p.knockdownUntil>now||p.moodleSitUntil>now||this.busy(id))return;
   if(d.action==='take'){
    const [x,y,z]=C.FRUIT_STAND.position;if(this.world.name!=='zurich'||Math.hypot(p.x-x,p.y-y,p.z-z)>3.4||!this.clear({x:p.x,y:p.y+1.6,z:p.z},{x,y:y+1.6,z}))return;
-   const held=this.stock.get(id)??0,taken=Math.min(C.TOMATO_CAPACITY-held,this.state.fruitStock);
+   const held=this.stock.get(id)??0,taken=Math.min(1,C.TOMATO_CAPACITY-held,this.state.fruitStock);
    this.state.fruitStock-=taken;this.stock.set(id,held+taken);this.send(id,this.event({kind:'stock',count:held+taken}));return;
   }
   if(d.action!=='throw'||!this.stock.get(id)||now<(this.cooldown.get(id)??0)||this.covered.has(id)||!Array.isArray(d.aim)||d.aim.length!==3||!d.aim.every(v=>typeof v==='number'&&Number.isFinite(v)))return;

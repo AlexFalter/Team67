@@ -1,0 +1,21 @@
+{
+  "name": "hud",
+  "entry": "src/ui/hud/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "game.config.json",
+    "src/README.md",
+    "src/config/game-config.js",
+    "src/config/validate-game-config.js",
+    "src/ui/hud/README.md",
+    "src/ui/hud/game-hud.css",
+    "src/ui/hud/game-hud.js",
+    "src/ui/hud/game-settings.js",
+    "src/ui/hud/index.js",
+    "style.css"
+  ],
+  "assets": [
+    "public/audio/CREDITS.md"
+  ],
+  "dependencies": {}
+}

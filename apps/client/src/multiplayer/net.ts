@@ -29,6 +29,7 @@ export class Network {
   onMoodleResult?: (data:{id:number;passed:boolean;course:string;roundStartedAt:number})=>void;
   onLimePhotoRequired?: (vehicleId:string)=>void;
   onLimePhotoResult?: (ok:boolean)=>void;
+  onCowHit?: (event:import("@race/shared").CowHitEvent)=>void;
   onMedal?: (award: import("@race/shared").MedalAward) => void;
   onVehicleResult?: (result: VehicleResult) => void;
   onBikeUnlockResult?: (result: import("@race/shared").BikeUnlockResult) => void;
@@ -143,6 +144,7 @@ export class Network {
     this.room.onMessage<import("@race/shared").MateResult>("mateResult", result => this.onMateResult?.(result));
     this.room.onMessage<import("@race/shared").NpcResult>("npcResult", result => this.onNpcResult?.(result));
     this.room.onMessage<import('@race/shared').TicketResult>('ticketResult', result => this.onTicketResult?.(result));
+    this.room.onMessage<import('@race/shared').CowHitEvent>('cowHit',event=>{if(event.roundStartedAt===this.room.state.startedAt)this.onCowHit?.(event);});
     this.room.onMessage<Bump>("bump", (hit) => {
       this.collisions++;
       onBump(hit);

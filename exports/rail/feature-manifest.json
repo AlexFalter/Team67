@@ -1,0 +1,36 @@
+{
+  "name": "rail",
+  "entry": "src/vehicles/rail/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "src/README.md",
+    "src/player/student-model.js",
+    "src/vehicles/passengers/vehicle-passenger-actors.js",
+    "src/vehicles/passengers/vehicle-passengers.js",
+    "src/vehicles/passengers/vehicle-seats.js",
+    "src/vehicles/rail/README.md",
+    "src/vehicles/rail/index.js",
+    "src/vehicles/rail/polybahn-interior.js",
+    "src/vehicles/rail/polybahn-motion.js",
+    "src/vehicles/rail/polybahn-seated.js",
+    "src/vehicles/rail/polybahn.js",
+    "src/vehicles/rail/tram-cabin.js",
+    "src/vehicles/rail/transit-models.js",
+    "src/vehicles/rail/transport.js",
+    "src/vehicles/shuttle/eth-link-cabin.js",
+    "src/world/core/map-navigation.js",
+    "src/world/core/vehicle-path.js",
+    "src/world/core/world-access.js",
+    "src/world/placements/feature-placement.js",
+    "style.css"
+  ],
+  "assets": [
+    "public/models/eth-link.glb",
+    "public/models/polybahn.glb",
+    "public/models/tram.glb"
+  ],
+  "dependencies": {
+    "three": "^0.186.1",
+    "three-mesh-bvh": "^0.9.16"
+  }
+}

@@ -12,7 +12,7 @@ function rackPlacements(rack:typeof AWP_RACK){return [0,-2,2].map(offset=>({...r
 export const AWP_RACKS=rackPlacements(AWP_RACK);
 export function awpRackPlacement(world:MovementWorld){return world.name==='zurich'?AWP_RACK:{position:[world.spawn.x+10,world.spawn.y+1.55,world.spawn.z],approach:[world.spawn.x+10,world.spawn.y,world.spawn.z],heading:0};}
 export function awpRackPlacements(world:MovementWorld){return world.name==='zurich'?AWP_RACKS:rackPlacements(awpRackPlacement(world));}
-export interface AwpShot {roundStartedAt:number;from:string;start:number[];end:number[];target:string;hit:boolean;droneEarned?:boolean;attachment?:{part:'head'|'body';offset:number[];direction:number[]}}
+export interface AwpShot {roundStartedAt:number;from:string;start:number[];end:number[];target:string;hit:boolean;triple?:boolean;droneEarned?:boolean;attachment?:{part:'head'|'body';offset:number[];direction:number[]}}
 // Exact intersection with the standing capsule: cylinder plus rounded caps.
 export function awpCapsuleDistance(origin:number[],direction:number[],p:Pick<PlayerState,'x'|'y'|'z'>){
  const [ox,oy,oz]=origin,[dx,dy,dz]=direction,r=.35,lo=p.y+r,hi=p.y+1.65-r,x=ox-p.x,z=oz-p.z;

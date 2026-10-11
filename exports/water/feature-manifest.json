@@ -1,0 +1,28 @@
+{
+  "name": "water",
+  "entry": "src/world/water/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "src/README.md",
+    "src/world/core/geo-world.js",
+    "src/world/core/station-passages.js",
+    "src/world/placements/feature-placement.js",
+    "src/world/water/README.md",
+    "src/world/water/index.js",
+    "src/world/water/river-surface.js",
+    "src/world/water/water-effects.js"
+  ],
+  "assets": [
+    "public/gameplay/feature-placements.json",
+    "public/gameplay/locations.json",
+    "public/maps/zurich",
+    "public/maps/zurich/area.json",
+    "public/maps/zurich/collision.json",
+    "public/maps/zurich/hb-eth.glb",
+    "public/maps/zurich/integration.json"
+  ],
+  "dependencies": {
+    "three": "^0.186.1",
+    "three-mesh-bvh": "^0.9.16"
+  }
+}

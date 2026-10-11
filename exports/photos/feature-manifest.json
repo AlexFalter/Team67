@@ -1,0 +1,43 @@
+{
+  "name": "photos",
+  "entry": "src/interactions/photos/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "game.config.json",
+    "src/README.md",
+    "src/config/game-config.js",
+    "src/config/validate-game-config.js",
+    "src/interactions/photos/README.md",
+    "src/interactions/photos/index.js",
+    "src/interactions/photos/scooter-photo.js",
+    "src/interactions/photos/tourist-photo.js",
+    "src/interactions/photos/tourist-voice-lines.js",
+    "src/player/student-model.js",
+    "src/shared/dialogue/encounter-ui.js",
+    "src/shared/phone-camera/camera-aim.js",
+    "src/shared/phone-camera/phone-camera.js",
+    "src/shared/phone-camera/photo-camera.js",
+    "src/shared/phone-camera/photo-dialog.js",
+    "src/ui/phone/phone-shell.css",
+    "src/ui/phone/phone-shell.js",
+    "style.css"
+  ],
+  "assets": [
+    "public/audio/CREDITS.md",
+    "public/audio/tourist-goodbye-1.mp3",
+    "public/audio/tourist-goodbye-2.mp3",
+    "public/audio/tourist-goodbye-3.mp3",
+    "public/audio/tourist-request-1.mp3",
+    "public/audio/tourist-request-2.mp3",
+    "public/audio/tourist-request-3.mp3",
+    "public/audio/tourist-sideways-1.mp3",
+    "public/audio/tourist-sideways-2.mp3",
+    "public/audio/tourist-sideways-3.mp3",
+    "public/audio/tourist-thanks-1.mp3",
+    "public/audio/tourist-thanks-2.mp3",
+    "public/audio/tourist-thanks-3.mp3"
+  ],
+  "dependencies": {
+    "three": "^0.186.1"
+  }
+}

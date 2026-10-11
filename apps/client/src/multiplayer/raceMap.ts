@@ -1,15 +1,19 @@
+import {drawVehicleMapIcon,vehicleMapIcon,vehicleMapLabel,type VehicleMapIcon} from "./mapVehicleIcons.ts";
+import {RouteNavigation} from "./navigation/RouteNavigation.ts";
+import {routeDistanceLabel} from "./navigation/routeModel.ts";
 import { DRONE_SWEEP_MS,type DroneBlip,examPortalPosition, isRideable, LIME_KIND, npcBounds, polybahnPath, raceSpawnPoint, tramPath, zurichWorld } from "@race/shared";
 import data from "./city-map-data.json";
 import type { Network } from "./net.ts";
 import type { MapPoint, MapProjection } from "./raceHudModel.ts";
-import { distanceToEth, projectPoint, raceMapRoute, zoomMap } from "./raceHudModel.ts";
+import { projectPoint, zoomMap } from "./raceHudModel.ts";
 
-export type EncounterMarker = MapPoint & { label: string };
+export type EncounterMarker = MapPoint & { label: string;icon?:VehicleMapIcon };
 const help = "Scroll to zoom · Drag to pan · + / − zoom · F fit all · C find me";
 // Adapted from mini-games-2's map-controls and encounter-map. Drawn by MapGame's
 // existing loop; the cartography uses the native LV95 origin and is cached once.
 export class RaceMap {
-  private route = raceMapRoute(zurichWorld);
+  private navigation=new RouteNavigation();
+  private navigationRound=0;
   active = false;
   private root = document.querySelector<HTMLElement>("#city-map")!;
   private radar = document.querySelector<HTMLElement>("#race-radar")!;
@@ -133,7 +137,7 @@ export class RaceMap {
   }
   private markers(): EncounterMarker[] {
     const live = [...(this.net.room?.state.vehicles.values() ?? [])].filter(v => isRideable(v) && v.kind !== LIME_KIND && !v.derailStartedAt)
-      .map(v => ({ x: v.x, z: v.z, label: v.kind === 6 ? "Polybahn" : v.kind === 5 ? "Tram" : v.kind === 2 ? "PubliBike" : "Ride" }));
+      .map(v => ({ x: v.x, z: v.z, label:vehicleMapLabel(v.kind),icon:vehicleMapIcon(v.kind) }));
     return [...this.encounters(), ...live];
   }
   private size(canvas: HTMLCanvasElement) {
@@ -158,15 +162,17 @@ export class RaceMap {
     ctx.lineCap = "round"; ctx.lineJoin = "round";
     const line = (points: readonly MapPoint[], color: string, dashed = false) => {
       ctx.beginPath(); points.forEach((point, i) => { const v = p(point); if (i) ctx.lineTo(v.x, v.y); else ctx.moveTo(v.x, v.y); });
-      ctx.strokeStyle = color; ctx.lineWidth = full ? 3 : 2; ctx.setLineDash(dashed ? [5, 4] : []); ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle = color; ctx.lineWidth = color === "#211b32" ? (full ? 8 : 7) : color === "#b893ff" ? (full ? 5 : 4) : (full ? 3 : 2); ctx.setLineDash(dashed ? [5, 4] : []); ctx.stroke(); ctx.setLineDash([]);
     };
-    line(this.route, "#ffd271");
+    line(this.navigation.points, "#211b32");
+    line(this.navigation.points, "#b893ff");
     line(tramPath.points, "#75b9ff", true); line(polybahnPath.points, "#ff8eaa");
     const bounds = this.bounds, a = p({ x: bounds.minX, z: bounds.minZ }), c = p({ x: bounds.maxX, z: bounds.maxZ });
     ctx.strokeStyle = "#a1beb180"; ctx.lineWidth = 1; ctx.setLineDash([3, 5]); ctx.strokeRect(a.x, a.y, c.x - a.x, c.y - a.y); ctx.setLineDash([]);
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     for (const marker of this.markers()) {
       const v = p(marker); if (v.x < 0 || v.y < 0 || v.x > width || v.y > height) continue;
+      if(marker.icon){drawVehicleMapIcon(ctx,marker.icon,v.x,v.y,full?21:18);continue;}
       ctx.font = `900 ${full ? 19 : 17}px ui-monospace, monospace`; ctx.lineWidth = 3; ctx.strokeStyle = "#142b31"; ctx.strokeText("?", v.x, v.y); ctx.fillStyle = "#d7f87a"; ctx.fillText("?", v.x, v.y);
     }
     const scanStart=this.droneScanStart();
@@ -193,11 +199,13 @@ export class RaceMap {
   update(dt: number, visible: boolean) {
     this.radar.hidden = !visible;
     if (!visible) this.hide(false);
+    const round=this.net.room?.state.startedAt??0;if(round!==this.navigationRound){this.navigationRound=round;this.navigation.reset();}
+    if(visible)this.navigation.update(dt,this.player());
     this.elapsed += dt; if (!visible || this.elapsed < .1) return; this.elapsed = 0;
     const local = this.player(), { width, height } = this.size(this.mini);
     this.draw(this.mini, { ...local, width, height, scale: width / 380 }, false);
-    document.querySelector<HTMLElement>("#eth-distance")!.textContent = `${Math.round(distanceToEth(local))} m`;
+    document.querySelector<HTMLElement>("#eth-distance")!.textContent = this.navigation.status==="ready"?routeDistanceLabel(this.navigation.distance):this.navigation.status==="searching"?"Calculating…":"No walking route";
     if (this.active) this.drawFull();
   }
-  dispose() { this.hide(false); this.abort.abort(); this.observer.disconnect(); this.radar.hidden = true; this.chart.width = this.chart.height = 1; }
+  dispose() { this.navigation.dispose();this.hide(false); this.abort.abort(); this.observer.disconnect(); this.radar.hidden = true; this.chart.width = this.chart.height = 1; }
 }

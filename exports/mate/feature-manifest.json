@@ -1,0 +1,32 @@
+{
+  "name": "mate",
+  "entry": "src/interactions/mate/index.js",
+  "files": [
+    "docs/feature-modules.md",
+    "game.config.json",
+    "src/README.md",
+    "src/config/game-config.js",
+    "src/config/validate-game-config.js",
+    "src/interactions/inventory/item-inventory.js",
+    "src/interactions/machine-ui/machine-panel.js",
+    "src/interactions/mate/README.md",
+    "src/interactions/mate/index.js",
+    "src/interactions/mate/mate-can-drop.js",
+    "src/interactions/mate/mate-inventory.js",
+    "src/interactions/mate/mate-machine.css",
+    "src/interactions/mate/mate-machine.js",
+    "src/world/core/world-access.js",
+    "src/world/placements/feature-placement.js",
+    "style.css"
+  ],
+  "assets": [
+    "public/assets/tony-mate",
+    "public/assets/tony-mate/cans/mint.png",
+    "public/assets/tony-mate/logo.png",
+    "public/models/mate-can-mint.glb",
+    "public/models/mate-machine.glb"
+  ],
+  "dependencies": {
+    "three": "^0.186.1"
+  }
+}
