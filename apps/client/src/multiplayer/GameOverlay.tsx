@@ -61,7 +61,7 @@ export function GameOverlay({ resolution, onResolutionChange, offline = false }:
           <label id="admin-mode-option" hidden><input id="admin-mode" type="checkbox" /> Admin free roam — no timer or final exam</label>
           <label title="Traffic cars pass through players and vehicles"><input id="no-car-collisions" type="checkbox" /> No car collisions</label>
           <label><input id="disable-moodle" type="checkbox" /> Disable Moodle notifications</label>
-          <label id="collisions-option" hidden><input id="show-collisions" type="checkbox" /> Show hitboxes + practice dummies</label>
+          <label id="collisions-option" hidden><input id="show-collisions" type="checkbox" /> Show hitboxes</label>
           <label id="skip-intro-option" hidden><input id="skip-intro" type="checkbox" defaultChecked /> Skip starting bus animation</label>
           <label id="gold-bikes-option" hidden><input id="gold-bikes" type="checkbox" defaultChecked /> Gold working PubliBikes</label>
           <label id="map-teleport-option" hidden><input id="map-teleport" type="checkbox" /> Enable map teleportation</label>
@@ -162,7 +162,7 @@ export function GameOverlay({ resolution, onResolutionChange, offline = false }:
         <details className="game-settings"><summary>Settings</summary><div>
         <label id="car-collision-setting" hidden title="Traffic cars pass through players and vehicles"><input id="no-car-collisions-toggle" type="checkbox" /> No car collisions</label>
         <label id="moodle-setting" hidden><input id="disable-moodle-toggle" type="checkbox" /> Disable Moodle notifications</label>
-        <label id="collision-setting" hidden><input id="collision-toggle" type="checkbox" /> Show hitboxes + practice dummies</label>
+        <label id="collision-setting" hidden><input id="collision-toggle" type="checkbox" /> Show hitboxes</label>
         <label><input id="bob" type="checkbox" defaultChecked /> Walking / running bob</label>
         <label><input id="vehicle-sounds" type="checkbox" defaultChecked /> Movement and vehicle sounds</label>
         <label><input id="medal-sounds" type="checkbox" defaultChecked /> Medal sounds</label>

@@ -1,4 +1,4 @@
-import { BAG_HILL, FRUIT_STAND, MATE_POSITION, NPC_LAYOUT, TICKET_POSITION, examDebugPosition, raceSpawnPoint, zurichWorld } from '@race/shared';
+import { bagHomes, FRUIT_STAND, MATE_POSITION, NPC_LAYOUT, TICKET_POSITION, examDebugPosition, raceSpawnPoint, zurichWorld } from '@race/shared';
 
 import placements from '../npcPrototype/placements.json';
 
@@ -22,7 +22,7 @@ export const UI_PLAYGROUND_LOCATIONS: readonly UiPlaygroundLocation[] = [
   { id: 'cyclist', label: 'Singing cyclist', ...at(NPC_LAYOUT.singingCyclist.center), offset: 2 },
   { id: 'tiki', label: 'Tiki performer', ...at(NPC_LAYOUT.tikiPerformer.position), offset: 2 },
   { id: 'michael', label: 'Michael / emotes', x: NPC_LAYOUT.michaelJackson.anchor[0], z: NPC_LAYOUT.michaelJackson.anchor[1], offset: 3 },
-  { id: 'bags', label: 'Ersti bags', x: BAG_HILL.dummyPoints[0][0], z: BAG_HILL.dummyPoints[0][1] },
+  { id: 'bags', label: 'Ersti bags', ...bagHomes(zurichWorld)[0] },
   { id: 'tram', label: 'Tram', x: 0, z: 0, vehicle: 'tram-1' },
   { id: 'polybahn', label: 'Polybahn', x: 0, z: 0, vehicle: 'polybahn-1' },
   { id: 'exam', label: 'Final exam entrance', ...examDebugPosition },
