@@ -93,7 +93,7 @@ export type ColorGradeHandle = ReturnType<typeof createColorGrade>;
  * for the theme ("grade" section). Plain DOM, no React state; returns a dispose function.
  */
 export function mountGradePanel(handle: ColorGradeHandle, signal: AbortSignal) {
-  const KEY = "zurich-color-grade";
+  const KEY = "zurich-color-grade", initial = { ...handle.grade };  // theme values: what Reset returns to
   try { const saved = localStorage.getItem(KEY); if (saved) handle.set(JSON.parse(saved)); } catch { /* private mode */ }
   const panel = document.createElement("div");
   panel.style.cssText = "position:fixed;top:12px;right:12px;z-index:1000;width:260px;padding:10px 12px;border-radius:8px;" +
@@ -133,7 +133,7 @@ export function mountGradePanel(handle: ColorGradeHandle, signal: AbortSignal) {
     a.href = URL.createObjectURL(new Blob([JSON.stringify({ grade: handle.grade }, null, 2)], { type: "application/json" }));
     a.download = "color-grade.json"; a.click();
   });
-  button("Reset", () => { handle.set(NEUTRAL_GRADE); refresh.forEach((f) => f()); save(); });
+  button("Reset", () => { handle.set(initial); refresh.forEach((f) => f()); try { localStorage.removeItem(KEY); } catch { /* private mode */ } });
   panel.append(buttons);
   function save() { try { localStorage.setItem(KEY, JSON.stringify(handle.grade)); } catch { /* private mode */ } }
   document.body.append(panel);
