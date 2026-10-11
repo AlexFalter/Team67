@@ -1,3 +1,4 @@
+import {AwpManager} from './awp.ts';
 import {FootballManager} from './football.ts';
 import {BagManager} from './bags.ts';
 import {FruitManager} from './fruit.ts';
@@ -28,6 +29,7 @@ export class Race extends Room<{ state: RaceState }> {
   private football!:FootballManager;
   private bags!:BagManager;
   private fruit!:FruitManager;
+  private awp!:AwpManager;
   private moodle!:MoodleEvents;
   private medals = new PlayerMedals();
   private lastMoves = new Map<string, number>();
@@ -66,6 +68,8 @@ export class Race extends Room<{ state: RaceState }> {
     this.npcs = this.createNpcs();
     this.bags=new BagManager(this.state,this.world,(from,target,bag,practice)=>!!this.bagHit(from,target,bag,practice),id=>!!this.npcs.busy(id));
     this.fruit=new FruitManager(this.state,this.world,(id,event)=>this.clients.find(c=>c.sessionId===id)?.send('tomatoEvent',event),event=>this.broadcast('tomatoEvent',event),(id,now)=>this.rounds.canPlay(id,now),id=>this.npcs.busy(id));
+    this.awp=new AwpManager(this.state,this.world,(id,now)=>this.rounds.canPlay(id,now),id=>this.npcs.busy(id),(target,hit)=>this.hit(target,hit),shot=>this.broadcast('awpShot',shot),(shot,practice)=>{const attacker=this.clients.find(c=>c.sessionId===shot.from);if(!attacker||!practice&&!this.clients.some(c=>c.sessionId===shot.target))return;const award=this.medals.awp(shot.from,shot.target,shot.roundStartedAt,shot.attachment?.part==='head',Math.hypot(...shot.end.map((v,i)=>v-shot.start[i])),practice,shot.droneEarned);if(award)attacker.send('medal',award);},(id,scan)=>this.sendDroneScan(id,scan));
+    this.onMessage('awp',(client,data:unknown)=>this.awp.command(client.sessionId,data,Date.now()));
     this.onMessage('fruit',(client,data:unknown)=>this.fruit.command(client,data,Date.now()));
     this.football=new FootballManager(this.state,this.world,(from,target,b)=>!!this.hit(target,{from,ix:b.vx*.5,iy:1.5,iz:b.vz*.5,knockdown:true,durationMs:1500}),id=>!!this.npcs.busy(id));
     this.onMessage('football',(client,data:unknown)=>this.football.command(client,data,Date.now()));
@@ -205,7 +209,7 @@ export class Race extends Room<{ state: RaceState }> {
     this.npcs.join(id);
   }
   private resetRound() {
-    this.fruit.reset();this.bags.reset();this.football.reset();this.emotes.reset();this.medals.reset();this.moodle.reset();
+    this.awp.reset();this.fruit.reset();this.bags.reset();this.football.reset();this.emotes.reset();this.medals.reset();this.moodle.reset();
     const colors = new Map([...this.state.players].map(([id, p]) => [id, p.color]));
     this.state.players.clear(); this.state.vehicles.clear(); this.state.publiBikes.clear(); this.lastMoves.clear();
     this.physics.sync(new Map(), new Map());
@@ -227,7 +231,7 @@ export class Race extends Room<{ state: RaceState }> {
   }
   private removeGameplayPlayer(client:Client){
     const id = this.state.players.get(client.sessionId)?.vehicleId;
-    this.fruit.leave(client.sessionId);this.football.leave(client.sessionId);this.bags.leave(client.sessionId);this.publiBikes.disconnect(client.sessionId);
+    this.awp.leave(client.sessionId);this.fruit.leave(client.sessionId);this.football.leave(client.sessionId);this.bags.leave(client.sessionId);this.publiBikes.disconnect(client.sessionId);
     this.mate.leave(client.sessionId);
     this.npcs.leave(client.sessionId);
     this.vehicles.disconnect(client.sessionId);
@@ -239,8 +243,10 @@ export class Race extends Room<{ state: RaceState }> {
   }
   onLeave(client:Client){this.removeGameplayPlayer(client);this.rounds.leave(client.sessionId);
   }
+  private sendDroneScan(id:string,scan:C.DroneScan){this.clients.find(c=>c.sessionId===id)?.send("droneScan",scan);}
   onDispose() { this.physics?.dispose(); if (this.code) codes.delete(this.code); }
   private hit(target: string, hit: C.Impulse, kind?: "punch" | "bicycle" | "bag") {
+    if((this.state.players.get(hit.from)?.droneCallUntil??0)>Date.now())return false;
     const p = this.state.players.get(target);
     if (p && this.rounds.canPlay(target) && !this.npcs.busy(target)) {
       if (Date.now() < p.invincibleUntil) return false;
@@ -375,7 +381,7 @@ export class Race extends Room<{ state: RaceState }> {
     this.mate.tick(now);
     this.npcs.tick(now);
     if (this.state.phase !== C.RoomPhase.Running || !this.state.introComplete) return;
-    this.fruit.tick(now);this.moodle.tick(now);this.bags.tick(now);this.football.tick(now);
+    this.awp.tick(now);this.fruit.tick(now);this.moodle.tick(now);this.bags.tick(now);this.football.tick(now);
     const positions = new Map([...this.state.players].map(([id, p]) => [id, this.correction(p)]));
     for (const p of this.state.players.values()) {
       p.simTime = now;

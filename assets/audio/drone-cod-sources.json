@@ -1,0 +1,60 @@
+{
+  "source": "https://steamcommunity.com/groups/bizarchivistsoundproject/discussions/2/152391995421803915/",
+  "archive": "Call of Duty Black Ops III Multiplayer Beta Sound, VO & Music.zip",
+  "entries": [
+    {
+      "name": "Black Ops III Multiplayer Beta Sound, VO & Music/snd/all/mpl/killstreak/tablet/tablet_beep_tech.LN100.pc.snd.flac",
+      "method": 8,
+      "compressed": 56221,
+      "size": 56201,
+      "offset": 578890849,
+      "crc": 3694183321,
+      "output": "apps/client/public/audio/drone/bo3-tablet.mp3"
+    },
+    {
+      "name": "Black Ops III Multiplayer Beta Sound, VO & Music/snd/all/mpl/killstreak/uav/minimap_beep.LN100.pc.snd.flac",
+      "method": 8,
+      "compressed": 44980,
+      "size": 45605,
+      "offset": 580181658,
+      "crc": 1720753622,
+      "output": "apps/client/public/audio/drone/bo3-scan.mp3"
+    },
+    {
+      "name": "Black Ops III Multiplayer Beta Sound, VO & Music/snd/en/vox/scripted/mpl/vox_ruin (Ruin)/vox_ruin_kls_uav_request_00.SN100.pc.snd.flac",
+      "method": 8,
+      "compressed": 72248,
+      "size": 72223,
+      "offset": 1587354009,
+      "crc": 3740216798,
+      "output": "apps/client/public/audio/drone/bo3-request.mp3"
+    },
+    {
+      "name": "Black Ops III Multiplayer Beta Sound, VO & Music/snd/en/vox/scripted/mpl/vox_bdo (Black Ops Drone Operators)/vox_bdo1/vox_bdo1_kls_uav_arrive_00.SN100.pc.snd.flac",
+      "method": 8,
+      "compressed": 146768,
+      "size": 146732,
+      "offset": 1264487526,
+      "crc": 3467775310,
+      "output": "apps/client/public/audio/drone/bo3-online.mp3"
+    },
+    {
+      "name": "Black Ops III Multiplayer Beta Sound, VO & Music/snd/en/vox/scripted/mpl/vox_tacb (Black Ops TacCom)/vox_tacb_kls_uav_ready_00.SN100.pc.snd.flac",
+      "method": 8,
+      "compressed": 60694,
+      "size": 60785,
+      "offset": 1686546147,
+      "crc": 2983470845,
+      "output": "apps/client/public/audio/drone/bo3-ready.mp3"
+    },
+    {
+      "name": "Black Ops III Multiplayer Beta Sound, VO & Music/snd/en/vox/scripted/mpl/vox_bdo (Black Ops Drone Operators)/vox_bdo1/vox_bdo1_kls_uav_timeout_00.SN100.pc.snd.flac",
+      "method": 8,
+      "compressed": 133717,
+      "size": 133681,
+      "offset": 1265171192,
+      "crc": 1496470128,
+      "output": "apps/client/public/audio/drone/bo3-end.mp3"
+    }
+  ]
+}

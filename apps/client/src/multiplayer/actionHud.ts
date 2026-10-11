@@ -16,10 +16,12 @@ export function actionAvailability(p: Body, sprinting: boolean, now: number) {
   };
 }
 
-export interface ContextAction { icon: "camera" | "football" | "emote" | "bag" | "knife" | "spin" | "holster" | "equip" | "person" | "polybahn" | "tram" | "bike" | "mate" | "cart" | "leave" | "computer" | "scooter"; label: string; key: string; enabled: boolean; run: () => void }
-export interface WeaponAction { kind?: "knife" | "bag" | "football" | "tomato"; enabled: boolean; run: () => void }
+export interface ContextAction { icon: "camera" | "drone" | "awp" | "football" | "emote" | "bag" | "knife" | "spin" | "holster" | "equip" | "person" | "polybahn" | "tram" | "bike" | "mate" | "cart" | "leave" | "computer" | "scooter"; label: string; key: string; enabled: boolean; run: () => void }
+export interface WeaponAction { kind?: "awp" | "knife" | "bag" | "football" | "tomato"; enabled: boolean; run: () => void }
 const icons = {
   camera: '<path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="4"/>',
+  drone: '<path d="M7 7h10v10H7zM4 4l4 4m8 0 4-4M4 20l4-4m8 0 4 4"/><circle cx="4" cy="4" r="3"/><circle cx="20" cy="4" r="3"/><circle cx="4" cy="20" r="3"/><circle cx="20" cy="20" r="3"/>',
+  awp: '<path d="M2 11h16l4-2v4h-8l-2 5H8l1-5H2m6-2V7h7v4m-4-4V5h3"/>',
   emote: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5m0 7V21M4.2 7.5 9 10.3m6 3.4 4.8 2.8M4.2 16.5 9 13.7m6-3.4 4.8-2.8"/>',
   bag: '<path d="M7 8V6a5 5 0 0 1 10 0v2M5 8h14l2 14H3zM8 13l4 5 4-5"/>',
   holster: '<path d="M6 11h7v7a3.5 3.5 0 0 1-7 0zM8 11V4h3v7M6 4h7M18 3v10m-3-3 3 3 3-3"/>',
@@ -44,6 +46,7 @@ export class ActionHud {
   private punchIcon = this.punch.querySelector("svg")!.innerHTML;
   private primary?: ContextAction;
   private punchLabel = document.createElement("small");
+  private slideLabel = document.createElement("small");
   private slide = this.root.querySelector<HTMLButtonElement>("#slide-action")!;
   private context = document.createElement("div");
   private instructions = document.createElement("div");
@@ -51,6 +54,7 @@ export class ActionHud {
   private abort = new AbortController();
   private boost = document.createElement("button");
   constructor(private local: LocalPlayer, private now: () => number, focus: () => void, private getContext: () => ContextAction[] = () => [], private getWeapon: () => WeaponAction | undefined = () => undefined) {
+    this.slideLabel.className="action-label";this.slideLabel.textContent="Slide";this.slide.parentElement!.append(this.slideLabel);
     this.punchLabel.className="action-label";this.punchLabel.hidden=true;this.punch.parentElement!.append(this.punchLabel);
     this.context.className = "context-actions"; this.root.prepend(this.context);
     this.instructions.className = "action-instructions";
@@ -115,21 +119,21 @@ export class ActionHud {
       const svg = entry.button.querySelector("svg")!;
       if (svg.dataset.icon !== action.icon) { svg.innerHTML = icons[action.icon]; svg.dataset.icon = action.icon; }
       const caption=entry.item.querySelector<HTMLElement>('.action-label')!;
-      caption.hidden=action.icon!=='holster'&&action.icon!=='equip';caption.textContent=action.icon==='holster'?'Holster':'Equip';
-      entry.button.disabled = !action.enabled; entry.button.removeAttribute("title");
+      caption.hidden=false;caption.textContent=action.label;
+      entry.button.disabled = !action.enabled; entry.button.title = `${action.label} · ${action.key}`;
       entry.button.setAttribute("aria-label", `${action.label} · ${action.key}`);
     });
     const weapon = this.primary ? undefined : this.getWeapon();
     const punchSvg = this.punch.querySelector('svg')!;
-    const isBag=weapon?.kind==='bag'||weapon?.kind==='tomato',isFootball=weapon?.kind==='football',verb=isBag?(weapon?.kind==='tomato'?'Throw tomato':'Throw bag'):isFootball?'Kick football':'Slash';
-    const icon = this.primary?.icon ?? (weapon ? (isBag?'bag':isFootball?'football':'knife') : 'punch');
-    if(punchSvg.dataset.icon!==icon){punchSvg.innerHTML=this.primary ? icons[this.primary.icon] : weapon?icons[isBag?"bag":isFootball?"football":"knife"]:this.punchIcon;punchSvg.dataset.icon=icon;}
+    const isAwp=weapon?.kind==='awp',isBag=weapon?.kind==='bag'||weapon?.kind==='tomato',isFootball=weapon?.kind==='football',verb=isAwp?'Fire AWP':isBag?(weapon?.kind==='tomato'?'Throw tomato':'Throw bag'):isFootball?'Kick football':'Slash';
+    const icon = this.primary?.icon ?? (weapon ? (isAwp?'awp':isBag?'bag':isFootball?'football':'knife') : 'punch');
+    if(punchSvg.dataset.icon!==icon){punchSvg.innerHTML=this.primary ? icons[this.primary.icon] : weapon?icons[isAwp?"awp":isBag?"bag":isFootball?"football":"knife"]:this.punchIcon;punchSvg.dataset.icon=icon;}
     this.punch.parentElement!.querySelector('kbd')!.textContent=this.primary || weapon?'Q':'Click';
-    this.punchLabel.hidden=!weapon;this.punchLabel.textContent=isBag?"Throw":isFootball?"Kick":"Slash";
+    this.punchLabel.hidden=false;this.punchLabel.textContent=this.primary?.label??(isAwp?"Fire dart":isBag?(weapon?.kind==="tomato"?"Throw tomato":"Throw bag"):isFootball?"Kick ball":weapon?"Slash":"Punch");
     this.punch.title=this.primary ? `${this.primary.label} · Q or click` : weapon?`${verb} · Q or click`:'Right hook · Q or click';
     const state = actionAvailability(this.local.body, this.local.sprinting, this.now());
     for (const [button, available, seconds, label] of [
-      [this.punch, (this.primary ? this.primary.enabled : (isBag||isFootball)?weapon!.enabled:state.punch && (!weapon || weapon.enabled)), this.primary ? Math.ceil(Math.max(0, p.knockdownUntil-this.now(), Math.min(KARAMBIT_COOLDOWN_MS,p.attackReadyAt-this.now()))/1000) : (isBag||isFootball)?0:state.punchSeconds, this.primary ? `${this.primary.label} (Q / click)` : weapon ? `${verb} (Q / click)` : "Punch (click)"],
+      [this.punch, (this.primary ? this.primary.enabled : (isAwp||isBag||isFootball)?weapon!.enabled:state.punch && (!weapon || weapon.enabled)), this.primary ? Math.ceil(Math.max(0, p.knockdownUntil-this.now(), Math.min(KARAMBIT_COOLDOWN_MS,p.attackReadyAt-this.now()))/1000) : (isAwp||isBag||isFootball)?0:state.punchSeconds, this.primary ? `${this.primary.label} (Q / click)` : weapon ? `${verb} (Q / click)` : "Punch (click)"],
       [this.slide, state.slide, state.slideSeconds, "Slide (C)"],
     ] as const) {
       button.disabled = !available;
@@ -138,5 +142,5 @@ export class ActionHud {
       button.setAttribute("aria-label", seconds ? `${label}, ${seconds} seconds remaining` : available ? label : `${label}, unavailable`);
     }
   }
-  dispose() { this.local.holdBoost(false); this.instructions.remove(); this.boost.remove(); this.entries.forEach(entry => entry.item.remove()); this.abort.abort(); this.root.hidden = true; this.context.remove();this.punchLabel.remove();const svg=this.punch.querySelector("svg")!;svg.innerHTML=this.punchIcon;delete svg.dataset.icon;this.punch.parentElement!.querySelector("kbd")!.textContent="Click";this.punch.title="Right hook · click";this.punch.setAttribute("aria-label","Punch (click)"); }
+  dispose() { this.local.holdBoost(false); this.instructions.remove(); this.boost.remove(); this.entries.forEach(entry => entry.item.remove()); this.abort.abort(); this.root.hidden = true; this.context.remove();this.punchLabel.remove();this.slideLabel.remove();const svg=this.punch.querySelector("svg")!;svg.innerHTML=this.punchIcon;delete svg.dataset.icon;this.punch.parentElement!.querySelector("kbd")!.textContent="Click";this.punch.title="Right hook · click";this.punch.setAttribute("aria-label","Punch (click)"); }
 }

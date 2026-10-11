@@ -93,3 +93,11 @@ test('room awards Bloodthirsty on the third recovered-player bag hit, never on d
  assert.equal(awards.filter(e=>e.data.ids.includes('threePlayers')).length,1);
  assert(awards.every(e=>e.to==='a'));
 });
+test('AWP headshots earn Sharpshooter, distant hits earn Long Shot, and practice cannot consume First Blood',()=>{
+ const m=new PlayerMedals();assert.deepEqual(m.awp('a','dummy',1,true,5,true)?.ids,['sharpshooter']);assert.deepEqual(m.awp('a','b',1,true,35)?.ids,['firstBlood','sharpshooter','longShot']);assert.equal(m.awp('a','b',1,false,10),undefined);assert.deepEqual(m.awp('a','c',1,false,30)?.ids,['threePlayers','longShot']);assert.equal(m.awp('a','a',1,true,50),undefined);assert.equal(m.awp('a','b',1,true,NaN),undefined);
+});
+
+test('earning a drone from mannequin hits awards Drone Ready without consuming First Blood',()=>{
+ const medals=new PlayerMedals();assert.deepEqual(medals.awp('a','dummy',1,false,8,true,true)?.ids,['droneReady']);
+ assert.deepEqual(medals.record('a','b','punch',1)?.ids,['firstBlood']);
+});

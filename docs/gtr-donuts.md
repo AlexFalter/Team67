@@ -1,0 +1,9 @@
+# Nissan GT-R donuts
+
+An original stylized R35 GT-R continuously drifts around a small loop near spawn. Use the **GT-R donuts** map marker to find it. `packages/shared/src/npc-layout.json` configures its center (-255, 7.27, -115), 4.6 m radius, 4.8 s lap and 0.8 rad drift angle. The path leaves spawn clear and was sampled for dry ground/building clearance.
+
+`packages/shared/src/gtrDonuts.ts` defines its shared-clock pose, so clients see the same lap. This is ambient scenery, with no boarding or combat collision. `apps/client/src/multiplayer/vehicles/gtr/GtrDonuts.ts` loads the model, grounds the body on actual road geometry (terrain fallback), counter-steers the front wheels, spins the rear wheels, renders two grounded circular tire marks and a bounded pool of 64 instanced smoke puffs. It uses MapGame's existing loop. Engine audio reuses the game's recorded car-engine loop at a higher playback rate, respects distance, vehicle sound settings and pause, and disappears with the source.
+
+The model is original Blender geometry: red wide-body coupe, smoked windows, rear wing, quad circular lamps, quad exhaust, grille and separate wheel pivots. Editable source: `assets/blender/gtr.blend`; rebuild with `assets/blender/build-gtr.py`. Static parts are joined by material, and wheels retain their pivots. No third-party model is embedded.
+
+Validation: periodic path/clearance, model footprint/wheel positions, slope grounding and lifecycle tests in `tests/gtr-donuts.test.ts`; browser check verifies actual motion, smoke, engine source and disposal.

@@ -1,4 +1,4 @@
-import { examPortalPosition, isRideable, LIME_KIND, npcBounds, polybahnPath, raceSpawnPoint, tramPath, zurichWorld } from "@race/shared";
+import { DRONE_SWEEP_MS,type DroneBlip,examPortalPosition, isRideable, LIME_KIND, npcBounds, polybahnPath, raceSpawnPoint, tramPath, zurichWorld } from "@race/shared";
 import data from "./city-map-data.json";
 import type { Network } from "./net.ts";
 import type { MapPoint, MapProjection } from "./raceHudModel.ts";
@@ -31,7 +31,7 @@ export class RaceMap {
   private bounds = npcBounds(zurichWorld);
   constructor(private net: Network, private player: () => MapPoint & { rotY: number; enabled: boolean },
     private encounters: () => EncounterMarker[], private available: () => boolean,
-    private suspend: () => void, private resume: () => void) {
+    private suspend: () => void, private resume: () => void,private droneBlips:()=>DroneBlip[]=()=>[],private droneScanStart:()=>number|undefined=()=>undefined) {
     this.radar.classList.add("pixel-panel");
     this.root.querySelector(".city-map-panel")!.classList.add("pixel-panel");
     this.makeChart();
@@ -169,9 +169,11 @@ export class RaceMap {
       const v = p(marker); if (v.x < 0 || v.y < 0 || v.x > width || v.y > height) continue;
       ctx.font = `900 ${full ? 19 : 17}px ui-monospace, monospace`; ctx.lineWidth = 3; ctx.strokeStyle = "#142b31"; ctx.strokeText("?", v.x, v.y); ctx.fillStyle = "#d7f87a"; ctx.fillText("?", v.x, v.y);
     }
-    for (const [id, player] of this.net.room?.state.players ?? []) {
-      if (id === this.net.room.sessionId || this.net.room.state.members.get(id)?.spectator) continue;
-      const v = p(player); ctx.beginPath(); ctx.arc(v.x, v.y, full ? 5 : 3, 0, Math.PI * 2); ctx.fillStyle = "#ec9dce"; ctx.fill();
+    const scanStart=this.droneScanStart();
+    if(scanStart!==undefined){const phase=((this.net.now()-scanStart)%DRONE_SWEEP_MS)/DRONE_SWEEP_MS;ctx.strokeStyle=`rgba(255,88,72,${.5*(1-phase)})`;ctx.lineWidth=2;ctx.beginPath();ctx.arc(width/2,height/2,Math.hypot(width,height)/2*phase,0,Math.PI*2);ctx.stroke();}
+    for(const blip of this.droneBlips()){
+      const v=p(blip);if(!full){v.x=Math.max(8,Math.min(width-8,v.x));v.y=Math.max(8,Math.min(height-8,v.y));}
+      ctx.beginPath();ctx.arc(v.x,v.y,full?5:4,0,Math.PI*2);ctx.fillStyle="#ff3b35";ctx.shadowColor="#ff3b35";ctx.shadowBlur=8;ctx.fill();ctx.shadowBlur=0;
     }
     for (const [point, label, color] of [[raceSpawnPoint(zurichWorld), "BUS DROP-OFF / START", "#c4ded2"], [examPortalPosition, "ETH HG / EXAM", "#ffd271"]] as const) {
       const v = p(point); ctx.fillStyle = color; ctx.beginPath(); ctx.arc(v.x, v.y, full ? 7 : 5, 0, Math.PI * 2); ctx.fill();

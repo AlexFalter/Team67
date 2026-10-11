@@ -58,13 +58,14 @@ npm start
 
 Open **http://localhost:2567**. On another device on the same LAN, open `http://<server-LAN-IP>:2567` and allow that port through the host firewall. Production derives its WebSocket URL from the page's host and port, using `wss:` with HTTPS. No client environment override is required in production. For Vite development from another device, set `VITE_COLYSEUS_URL=ws://<server-LAN-IP>:2567` and restart Vite; otherwise its default points at that device's own localhost.
 
-Docker Compose runs two services: `client` (Caddy) and `server` (Colyseus). Caddy on **8080** forwards `/matchmake/*` and WebSocket upgrade requests to Colyseus and serves the frontend:
+Docker Compose runs two services: `client` (Caddy) and `server` (Colyseus). For a server deployment, point a public DNS `A` record (and, if used, `AAAA` record) at the server, then allow inbound TCP ports **80** and **443** through its firewall. Caddy obtains and renews the TLS certificate, redirects HTTP to HTTPS, and proxies `/matchmake/*` and WebSocket upgrades to Colyseus over the private Docker network. The browser connects using HTTPS and secure WebSockets (`wss:`); the Colyseus port is not published publicly. Caddy's `/data` and `/config` are persisted in named Docker volumes so certificates survive container replacement.
 
 ```sh
+printf 'DOMAIN=game.example.com\n' > .env
 docker compose up -d --build --remove-orphans
 ```
 
-Open http://localhost:8080. No `.env` file or API key is required. The service names have changed; `--remove-orphans` removes containers from the previous layout. View logs with `docker compose logs -f client server` and stop the game with `docker compose down`.
+Replace `game.example.com` with the domain already pointed at the server. Open `https://game.example.com`; the first startup needs outbound internet access so Caddy can obtain the certificate. On later updates, pull the deployment branch and run `docker compose up -d --build --remove-orphans` again. `docker compose down` keeps the certificate volumes; `docker compose down -v` removes them. View logs with `docker compose logs -f client server`. Local `npm run dev` remains available over HTTP on localhost.
 
 The original hackathon template documents that the **portal proxy rejects WebSockets with 502**. Caddy routing cannot fix a proxy upstream of it. Use direct LAN access, an SSH tunnel, or a deployment endpoint that supports WebSockets; portal compatibility must be verified separately. Inspection mode still works without a multiplayer connection.
 

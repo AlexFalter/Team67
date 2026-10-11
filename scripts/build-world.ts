@@ -133,11 +133,8 @@ const route = indices
       indices[i] - indices[i - 1] !== indices[i + 1] - indices[i],
   )
   .map(point);
-const carts = [
-  [-6, 0],
-  [0, -6],
-  [6, 0],
-].map(([dx, dz]) => point(closest(spawn.x + dx, spawn.z + dz, 2)));
+// Starter carts were removed from the HB forecourt; keep the GT-R area clear.
+const carts: ReturnType<typeof point>[] = [];
 function encode(values: Float32Array) {
   const buffer = Buffer.alloc(values.length * 2);
   for (let i = 0; i < values.length; i++)

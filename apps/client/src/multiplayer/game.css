@@ -332,6 +332,13 @@ body:has(:is(#pause, #lobby, #room-screen):not([hidden])) .lime-trick-score { di
   box-shadow: 0 4px 20px #0006;
 }
 .stuck-hint[hidden] { display: none; }
+/* Keep every action readable without requiring hover. */
+#combat-actions { flex-wrap: wrap; justify-content: center; gap: 10px; width: max-content; max-width: min(820px, calc(100vw - 340px)); }
+#combat-actions .context-actions { display: contents; }
+#combat-actions .combat-action { width: 76px; }
+#combat-actions .action-label { width: 76px; min-height: 24px; font: 11px/1.15 Arial, sans-serif; text-align: center; overflow-wrap: anywhere; }
+@media (max-width: 700px) { #combat-actions { max-width: calc(100vw - 24px); gap: 6px; } #combat-actions .combat-action, #combat-actions .action-label { width: 62px; } }
+#combat-actions { z-index: 46; }
 
 /* Main's new gameplay feedback uses the same UI frame. */
 .stuck-hint,.lime-trick-score{border:2px solid var(--ui-border);border-radius:2px;background:var(--ui-background);box-shadow:inset 3px 3px 0 #ffffff12,inset -3px -3px 0 #0004,4px 4px 0 #071a2480;color:var(--ui-heading);font:14px/1.5 var(--ui-font);text-shadow:none}

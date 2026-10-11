@@ -75,7 +75,7 @@ test("predicted map vehicles preserve elevation and the shuttle completes a roun
   const state = new RaceState(),
     manager = new VehicleManager(state, world);
   // Explicit fixtures exercise legacy movement without adding prototype spawns to Zurich.
-  const cartHome=world.carts[0], [from,to]=world.stops;
+  const cartHome=world.spawn, [from,to]=world.stops;
   manager.add('cart-1',{...C.createVehicle(0,cartHome.x,cartHome.z),y:cartHome.y});
   manager.add('shuttle-1',{...C.createVehicle(1,from.x,from.z),y:from.y,toX:to.x,toZ:to.z,rotY:Math.atan2(to.x-from.x,to.z-from.z)});
   const messages: C.VehicleResult[] = [];
@@ -83,7 +83,7 @@ test("predicted map vehicles preserve elevation and the shuttle completes a roun
     sessionId: "map-player",
     send: (_: string, data: C.VehicleResult) => messages.push(data),
   } as unknown as Client;
-  const p = new Player({ ...world.carts[0] });
+  const p = new Player({ ...world.spawn });
   state.players.set(client.sessionId, p);
   manager.enter(client, "cart-1", 100000);
   const cart = state.vehicles.get("cart-1")!;
