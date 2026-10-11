@@ -95,3 +95,10 @@ At Central, press **E** in front of the Polybahn ticket machine. Swipe the card,
 Dev mode is available under **Testing** before creating a room. Enable **Dev mode → Skip starting bus animation** to start everyone directly at the normal bus drop-off when the host starts the match. These preferences are saved on the browser and belong to the room creator; joining a room follows that room’s settings. Dev mode can also keep the intro enabled. The skip persists for subsequent rounds in the same room.
 
 Traffic starts populated on three fixed one-way tracks: HB traffic uses the left uphill lane, traffic from under the Polybahn carriage bridge uses the right uphill lane, and southern river traffic turns toward Polybahn. The tracks have no branching junctions and leave the uphill tram corridor clear. Development hosts can hand draw roads that snap to asphalt, batch-delete unwanted segments, and simulate traffic live before starting a round, adjust density or enable rush hour, and export/import JSON. See [the traffic guide](docs/traffic.md).
+### Michael Jackson and emotes
+
+Find Michael near the bridge, press **E**, and type back his two lines (`hee-hee` and `I wanna dance`) to unlock the emote wheel for the round. Press **B**, then click a dance or use **1–6**. Floss, Orange Justice, Take the L, Dance Moves, Dab, and The Robot are available. Moving stops the dance. Other players see the emote; nearby players hear the original Fortnite clips (the original Dab is silent). See the [emote feature guide](apps/client/src/multiplayer/emotes/README.md) for placement, server rules, and extension points.
+
+### Ersti bags
+
+Four bags lie on a small hill beside the bridge spawn. **E** picks one up; **Q** or click throws it. A player hit falls over, receives the bag, and can throw it back after recovering. Confirmed hits award **Bagged**. In a dev room, the host can enable **Spawn practice dummies** from the Escape menu. See [Ersti bag gameplay and modules](docs/ersti-bags.md).

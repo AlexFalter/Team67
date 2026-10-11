@@ -31,6 +31,12 @@ export class LocalPlayer {
   clear() {
     this.boostHeld = false; this.keys.clear(); this.slide = this.jump = this.interaction = this.hit = false;
   }
+  /** Preserve the movement key that supplied a fresh cursor-capture gesture. */
+  resumeMovement(keys: ReadonlySet<string>) {
+    if (!this.enabled) return;
+    for (const code of keys)
+      if (["KeyW", "KeyA", "KeyS", "KeyD", "ShiftLeft", "ShiftRight"].includes(code)) this.keys.add(code);
+  }
   dispose() { this.abort.abort(); this.enabled = false; this.clear(); }
   punch() { if (this.enabled) this.hit = true; }
   requestInteraction() { if (this.enabled) this.interaction = true; }

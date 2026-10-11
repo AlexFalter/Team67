@@ -24,7 +24,7 @@ export class NpcEncounters {
       this.state.phase !== C.RoomPhase.Running || !this.state.introComplete || now < this.state.startedAt ||
       now >= this.state.endsAt || cmd.roundStartedAt !== this.state.startedAt) return reply(false, "Wait for the current round.");
     if (cmd.action === "cancel") {
-      if (npc.kind === cmd.kind) { npc.kind = ""; npc.limoVisible = false; this.correct(id, p); }
+      if (npc.kind === cmd.kind) { npc.kind = ""; npc.limoVisible = false; npc.parachuting=false; this.correct(id, p); }
       return reply(true);
     }
     if (cmd.action === "finish") {
@@ -33,7 +33,7 @@ export class NpcEncounters {
       const target = { x: npc.targetX, y: npc.targetY, z: npc.targetZ };
       const facing = npc.kind === 'property' ? C.propertyReturnFacing(this.world, target) : undefined;
       if (facing !== undefined) p.rotY = facing;
-      npc.kind = ""; npc.limoVisible = false; this.correct(id, target); return reply(true, "", target, facing);
+      npc.kind = ""; npc.limoVisible = false; npc.parachuting=false; this.correct(id, target); return reply(true, "", target, facing);
     }
     let boundaryVehicle = false;
     if (cmd.action === 'begin' && cmd.kind === 'property' && p.vehicleId && !npc.kind && p.knockdownUntil <= now) {
@@ -58,7 +58,7 @@ export class NpcEncounters {
       if (!target) return reply(false, "No safe destination is available.");
       npc.teleportUsed = true;
     } else if (cmd.kind === "limousine") {
-      if (!npc.limoSolved || npc.limoUsed || !near(C.NPC_LAYOUT.interview.pickup, 9.5)) return reply(false, "Complete the challenge and meet your limousine.");
+      if (!npc.limoSolved || npc.limoUsed || !near(C.NPC_LAYOUT.interview.pickup, 9.5)) return reply(false, "Complete the challenge and meet your helicopter.");
       const landing = C.NPC_LAYOUT.interview.landing;
       target = C.findGround(this.world,landing[0]+4,landing[2]);
       npc.limoUsed = true;
@@ -75,19 +75,18 @@ export class NpcEncounters {
   }
   pose(client: Client, data: unknown, now = Date.now()) {
     const id=client.sessionId, npc=this.state.npcs.get(id),p=this.state.players.get(id);
-    const pose=data as {roundStartedAt?:unknown;car?:unknown;player?:unknown}|null;
+    const pose=data as {roundStartedAt?:unknown;car?:unknown;player?:unknown;parachuting?:unknown}|null;
     if (!p || !npc?.limoSolved || npc.limoUsed&&npc.kind!=="limousine" || this.state.phase !== C.RoomPhase.Running || !this.state.introComplete || now<this.state.startedAt || now>=this.state.endsAt || pose?.roundStartedAt!==this.state.startedAt) return;
     const car=pose?.car;
     if(!Array.isArray(car)||car.length!==5||!car.every(Number.isFinite))return;
     const [cx,cy,cz,yaw,pitch]=car,carElapsed=Math.min(1,(now-(this.carReports.get(id)??now))/1000);
-    const carRoute=npc.kind==='limousine'?C.NPC_LAYOUT.interview.samples:[...C.NPC_LAYOUT.interview.samples,...C.NPC_LAYOUT.interview.approachSamples];
-    if(!carRoute.some(point=>Math.hypot(point[0]-cx,point[2]-cz)<8)||Math.abs(cy-(this.world.height(cx,cz)??Infinity))>1)return;
+    if(!C.interviewAirPosition(this.world,cx,cy,cz))return;
     if(npc.limoVisible&&Math.hypot(cx-npc.limoX,cz-npc.limoZ)>50*carElapsed+1)return;
-    Object.assign(npc,{limoVisible:true,limoX:cx,limoY:cy,limoZ:cz,limoYaw:yaw,limoPitch:pitch});this.carReports.set(id,now);
+    Object.assign(npc,{limoVisible:true,limoX:cx,limoY:cy,limoZ:cz,limoYaw:yaw,limoPitch:pitch,parachuting:npc.kind==='limousine'&&pose.parachuting===true});this.carReports.set(id,now);
     if(npc.kind!=="limousine")return;
     const player=pose.player;if(!Array.isArray(player)||player.length!==4||!player.every(Number.isFinite))return;
     const [x,y,z,rotY]=player,elapsed=Math.min(1,(now-(this.reports.get(id)??now))/1000);
-    if (Math.hypot(x-p.x,z-p.z)>30*elapsed+1 || !C.NPC_LAYOUT.interview.samples.some(point=>Math.hypot(point[0]-x,point[2]-z)<12) || Math.abs(y-(this.world.height(x,z)??Infinity))>6) return;
+    if (Math.hypot(x-p.x,z-p.z)>30*elapsed+1 || !C.interviewAirPosition(this.world,x,y,z)) return;
     Object.assign(p,{x,y,z,rotY,anim:0,vx:0,vy:0,vz:0,simTime:now});this.reports.set(id,now);
   }
   tick(now = Date.now()) {
@@ -95,8 +94,8 @@ export class NpcEncounters {
       const [x,z]=C.NPC_LAYOUT.scooter.ridePoints.at(-1)!,y=this.world.height(x,z);
       if(y!==undefined&&[...this.state.players].some(([id,p])=>this.state.members.has(id)&&!this.state.members.get(id)!.spectator&&Math.hypot(p.x-x,p.z-z)<C.NPC_LAYOUT.scooter.triggerDistance&&Math.abs(p.y-y)<3))this.state.scooterArrivalAt=now;
     }
-    for (const [id, npc] of this.state.npcs) if (npc.kind && (this.state.phase !== C.RoomPhase.Running || now-npc.startedAt>90000)) {
-      npc.kind=""; npc.limoVisible=false;const p=this.state.players.get(id);if(p)this.correct(id,p);
+    for (const [id, npc] of this.state.npcs) if (npc.kind && (this.state.phase !== C.RoomPhase.Running || now-npc.startedAt>(npc.kind==='limousine'?C.NPC_LAYOUT.interview.timeoutMs:90000))) {
+      npc.kind=""; npc.limoVisible=false; npc.parachuting=false;const p=this.state.players.get(id);if(p)this.correct(id,p);
     }
   }
 }

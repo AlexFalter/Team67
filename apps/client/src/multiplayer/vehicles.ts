@@ -347,7 +347,9 @@ export class Vehicles {
       if (C.isRail(v.latest) && (v.latest.traveling || (v.latest.departureAt && this.net.now()>=v.latest.departureAt))) continue;
       if (v.latest.fallenUntil > this.net.now()) continue;
       if (v.latest.kind === C.LIME_KIND) {
-        const riders = [...(this.net.room?.state.players.values() ?? [])].filter(p => p.vehicleId === id).length;
+        let riders = 0;
+        for (const player of this.net.room?.state.players.values() ?? [])
+          if (player.vehicleId === id) riders++;
         if (riders >= v.latest.capacity) continue;
       } else if (!C.isPassengerVehicle(v.latest) && v.latest.driver) continue;
       if (this.net.room?.state.publiBikes.get(id)?.reservedBy) continue;

@@ -77,7 +77,7 @@ test('derail camera suspends controls without disabling movement and resumes on 
  try{
   const controls=Object.create(GameControls.prototype) as GameControls;
   const local={enabled:true,clear(){}},view={perspective:0,look(){}};
-  Object.assign(controls,{local,view,canvas,menu,crosshair,captured:true,edge:{x:0,y:0},ready:()=>true,suspended:()=>suspended});
+  Object.assign(controls,{local,view,canvas,menu,crosshair,capturePrompt:{hidden:true},abort:new AbortController(),resumeKeys:new Set(),captured:true,ready:()=>true,suspended:()=>suspended});
   controls.update();assert(local.enabled);assert(menu.hidden);assert.equal(releases,0);
   suspended=false;controls.update();assert(local.enabled);assert(menu.hidden);assert.equal(releases,0);
  }finally{if(original)Object.defineProperty(globalThis,'document',original);else Reflect.deleteProperty(globalThis,'document');}

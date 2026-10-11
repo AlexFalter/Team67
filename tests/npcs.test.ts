@@ -137,3 +137,11 @@ test("scooter arrival starts once near an active player and shares the server cl
  f.state.members.get('alice')!.spectator=false;f.encounters.tick(f.now);assert.equal(f.state.scooterArrivalAt,f.now);
  f.encounters.tick(f.now+1000);assert.equal(f.state.scooterArrivalAt,f.now,'nearby players do not restart the animation');
 });
+
+test('Einstein uses the requested location and has a reachable adjacent teleporter',()=>{
+ assert.deepEqual(C.NPC_LAYOUT.einstein.position,[44.32,11.77,140.83]);
+ for(const [x,y,z] of [C.NPC_LAYOUT.einstein.position,C.NPC_LAYOUT.einstein.site,C.NPC_LAYOUT.einstein.approach]){
+  assert(Math.abs(C.zurichWorld.height(x,z)!-y)<.03);
+  assert.equal(C.zurichWorld.blocked(x,y,z,C.CAPSULE_RADIUS,C.CAPSULE_HEIGHT),false);
+ }
+});

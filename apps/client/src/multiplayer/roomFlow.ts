@@ -15,6 +15,10 @@ export class RoomFlow {
   private restart = this.root.querySelector<HTMLButtonElement>("#room-restart")!;
   private table = this.root.querySelector<HTMLTableElement>("#room-results")!;
   private timer = document.querySelector<HTMLElement>("#round-timer")!;
+  private carCollisionSetting = document.querySelector<HTMLElement>("#car-collision-setting")!;
+  private noCarCollisionsToggle = document.querySelector<HTMLInputElement>("#no-car-collisions-toggle")!;
+  private moodleSetting = document.querySelector<HTMLElement>("#moodle-setting")!;
+  private disableMoodleToggle = document.querySelector<HTMLInputElement>("#disable-moodle-toggle")!;
   private timerValue = document.querySelector<HTMLElement>("#timer-value")!;
   private timerFill = document.querySelector<HTMLElement>("#timer-fill")!;
   private timerLabel = document.querySelector<HTMLElement>("#timer-label")!;
@@ -39,18 +43,20 @@ export class RoomFlow {
       const member = net.room?.state.members.get(net.room.sessionId);
       if (member && this.prepared && net.room.state.hostId === net.room.sessionId) { unlockAudio(); net.room.send("ready", true); }
     }, options);
+    this.noCarCollisionsToggle.addEventListener("change", () => net.room.send("carCollisionSettings", this.noCarCollisionsToggle.checked), options);
+    this.disableMoodleToggle.addEventListener("change", () => net.room.send("moodleSettings", !this.disableMoodleToggle.checked), options);
     this.restart.addEventListener("click", () => net.room.send("restartRound"), options);
     this.finish.addEventListener("click", () => net.room.send("finishRound"), options);
     this.root.querySelector("#room-leave")!.addEventListener("click", () => location.reload(), options);
   }
   patch(state: WorldState, id: string) {
-    const signature = JSON.stringify([state.phase, state.introComplete, state.devMode, state.skipIntro, state.hostId, id,
+    const signature = JSON.stringify([state.phase, state.introComplete, state.devMode, state.adminMode, state.skipIntro, state.hostId, id,
       [...state.members].map(([key, m]) => [key, m.name, m.ready, m.spectator]),
       [...state.results].map(([key, r]) => [key, r.name, r.hitsLanded, r.hitsReceived])]);
     if (signature === this.signature) return;
     this.signature = signature;
     const member = state.members.get(id), host = state.hostId === id;
-    this.root.hidden = state.phase === RoomPhase.Running && !!member && !member.spectator;
+    this.root.hidden = state.phase === RoomPhase.Running && !!member && (!member.spectator||this.net.spectating);
     this.root.dataset.phase = state.phase;
     this.root.querySelector<HTMLElement>("#room-count")!.textContent = `${state.members.size} / 40 PLAYERS`;
     this.root.querySelector<HTMLElement>("#room-code-label")!.textContent = `ROOM ${this.net.room.roomId}`;
@@ -97,29 +103,35 @@ export class RoomFlow {
   }
   private lobbyMessage() {
     const state = this.net.room?.state;
-    const prefix = state?.devMode ? `Dev mode${state.skipIntro ? " · bus intro skipped" : ""}. ` : "";
+    const prefix = state?.adminMode ? "Admin free roam · no time limit. " : state?.devMode ? `Dev mode${state.skipIntro ? " · bus intro skipped" : ""}. ` : "";
     return prefix + (state?.hostId === this.net.room?.sessionId
       ? "Share the room code. When you're ready, start the match for everyone."
       : "You're in. The host will start the match—every player competes solo.");
   }
   update() {
+    if(this.net.spectating)this.root.hidden=true;
     if (this.net.room?.state.phase === RoomPhase.Lobby && !this.prepared)
       this.message.textContent = this.preparationError || "Loading the battle bus before you can ready up…";
     const canPlay = this.net.canPlay;
-    this.timer.hidden = !canPlay;
+    const state = this.net.room?.state;
+    this.moodleSetting.hidden = !state || state.hostId !== this.net.room?.sessionId;
+    this.disableMoodleToggle.checked = state?.moodleEnabled === false;
+    this.carCollisionSetting.hidden = !state || state.hostId !== this.net.room?.sessionId;
+    this.noCarCollisionsToggle.checked = state?.noCarCollisions === true;
+    this.timer.hidden = !canPlay || state?.adminMode === true;
     const remaining = canPlay ? Math.max(0, this.net.room.state.endsAt - this.net.now()) : 0;
     const finalCountdown = canPlay && remaining > 0 && remaining <= 10000;
     this.timer.dataset.final = String(finalCountdown);
     this.timer.dataset.urgent = String(canPlay && remaining <= 30000);
     const round = this.net.room?.state.startedAt ?? 0;
     if (round !== this.timerRound) { this.timerRound = round; this.timerCues.clear(); this.lastRemaining = undefined; }
-    if (canPlay) {
+    if (canPlay && !state?.adminMode) {
       const crossed = [120000, 60000, 30000].filter(t => this.lastRemaining !== undefined && this.lastRemaining > t && remaining <= t && !this.timerCues.has(t));
       crossed.forEach(t => this.timerCues.add(t));
       if (crossed.length && remaining > 0) this.timerCue();
       this.lastRemaining = remaining;
     }
-    if (canPlay) {
+    if (canPlay && !state?.adminMode) {
       const seconds = Math.ceil(remaining / 1000);
       const text = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
       this.timerFill.style.width = `${Math.min(100, 100 * remaining / Math.max(1, this.net.room.state.endsAt - this.net.room.state.startedAt))}%`;
@@ -140,5 +152,5 @@ export class RoomFlow {
       this.ready.hidden = this.restart.hidden = this.finish.hidden = true;
     }
   }
-  dispose() { this.abort.abort(); this.countdownAnimation?.cancel(); this.timer.hidden = true; }
+  dispose() { this.abort.abort(); this.countdownAnimation?.cancel(); this.timer.hidden = true; this.moodleSetting.hidden = true; this.carCollisionSetting.hidden = true; }
 }

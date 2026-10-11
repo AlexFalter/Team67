@@ -38,13 +38,13 @@ export class BattleBusIntro {
       if (run !== this.rideRun) { this.rideRun = run; this.ride.begin(run); this.feed.clear(); }
     };
     canvas.addEventListener("mousemove", e => {
-      if (!this.active) return;
+      if (!this.active || document.querySelector<HTMLElement>("#pause")?.hidden===false) return;
       syncRide();
       const elapsed = C.battleBusElapsed(this.net.room.state, this.net.now());
       if (elapsed >= 1.2 && elapsed < 7) this.ride.look(e.movementX, e.movementY, sensitivity());
     }, { signal: this.abort.signal });
     window.addEventListener("keydown", e => {
-      if (e.code !== "Space" || e.repeat || !this.active) return;
+      if (e.code !== "Space" || e.repeat || !this.active || document.querySelector<HTMLElement>("#pause")?.hidden===false) return;
       const target = e.target as HTMLElement | null;
       if (target?.closest("input, textarea, select, button, [contenteditable=true]")) return;
       const state = this.net.room.state;

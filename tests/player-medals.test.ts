@@ -36,7 +36,9 @@ test('real room combat awards only the attacker and ignores misses, incapacitate
  assert.deepEqual(events.filter(e=>e.type==='medal').map(e=>[e.to,e.data.ids]),[['a',['firstBlood']]]);
  for(let i=0;i<5;i++){a.attackReadyAt=0;room.attack(room.clients[0]);}
  assert.equal(events.filter(e=>e.type==='medal').length,1,'spam on a knocked-down victim earns nothing');
- for(let i=0;i<2;i++){a.attackReadyAt=0;b.knockdownUntil=0;room.attack(room.clients[0]);}
+ b.knockdownUntil=0;a.attackReadyAt=0;room.attack(room.clients[0]);
+ assert.equal(events.filter(e=>e.type==='medal').length,1,'recovery protection blocks medal farming even after knockdown ends');
+ for(let i=0;i<2;i++){a.attackReadyAt=0;b.knockdownUntil=0;b.invincibleUntil=0;room.attack(room.clients[0]);}
  assert.deepEqual(events.filter(e=>e.type==='medal').at(-1)?.data.ids,['repeatOffender']);
  b.x=10;state.players.set('npc',new Player({x:1.6,z:0}));a.attackReadyAt=0;room.attack(room.clients[0]);
  assert.equal(events.filter(e=>e.type==='medal').length,2,'entities without connected clients do not count');

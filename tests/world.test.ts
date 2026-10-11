@@ -21,7 +21,7 @@ test("Zürich spawn, carts, and docks are on terrain outside buildings, in the o
   assert.equal(world.blocked(-287, y, -66, 0.5, 1.8), true);
 });
 
-test("shared movement walks on terrain, jumps, blocks buildings, and respawns at HB", () => {
+test("shared movement walks on terrain, jumps, blocks buildings, and respawns at the bus drop-off", () => {
   const p = C.createBody();
   Object.assign(p, world.spawn);
   const initialX = p.x;
@@ -47,7 +47,7 @@ test("shared movement walks on terrain, jumps, blocks buildings, and respawns at
   p.grounded = false;
   C.stepMovement(p, idle, 1 / 60, 20000, world);
   assert.ok(
-    Math.hypot(p.x - world.spawn.x, p.z - world.spawn.z) < C.SPAWN_SPREAD,
+    Math.hypot(p.x - C.raceSpawnPoint(world).x, p.z - C.raceSpawnPoint(world).z) < C.SPAWN_SPREAD,
   );
   assert.ok(Math.abs(p.y - world.height(p.x, p.z)!) < 0.001);
 });

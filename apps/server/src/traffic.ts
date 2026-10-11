@@ -63,6 +63,8 @@ export class TrafficManager {
     }
   }
   tick(dt: number, obstacles: TrafficCarState[] = [], hit?: Parameters<VehicleManager['tick']>[1], canHit: (id: string) => boolean = () => true, hitBike?: BikeHit) {
+    // Keep traffic flowing, but let players and their vehicles pass through cars.
+    if (this.state.noCarCollisions) { obstacles = []; hit = undefined; hitBike = undefined; }
     for (const id of this.playerHits.keys()) if (!this.state.players.has(id)) this.playerHits.delete(id);
     // Small fixed substeps bound travel through collision checks after server stalls.
     let remaining = Math.max(0, Math.min(dt, 0.2));

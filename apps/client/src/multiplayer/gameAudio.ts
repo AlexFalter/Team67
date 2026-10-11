@@ -5,9 +5,9 @@ import * as C from "@race/shared";
 // Samples are decoded once into one AudioContext; engine and rail beds loop seamlessly.
 
 const BASE = `${(import.meta.env?.BASE_URL ?? "/")}audio/`;
-type Sample = "bus-engine" | "car-engine" | "rail-running" | "vehicle-door" | "footstep-left"
+type Sample = "helicopter-rotor" | "bus-engine" | "car-engine" | "rail-running" | "vehicle-door" | "footstep-left"
   | "footstep-right" | "collision-thud" | "bo3-medal-earned";
-const SAMPLES: Sample[] = ["bus-engine", "car-engine", "rail-running", "vehicle-door", "footstep-left",
+const SAMPLES: Sample[] = ["helicopter-rotor", "bus-engine", "car-engine", "rail-running", "vehicle-door", "footstep-left",
   "footstep-right", "collision-thud", "bo3-medal-earned"];
 const STORAGE_KEY = "race-to-eth-sound-settings";
 export type EffectKind = "step" | "jump" | "land" | "collision" | "door" | "crash" | "canDrop" | "shutter" | "slide" | "timer";
@@ -15,12 +15,13 @@ export type EffectKind = "step" | "jump" | "land" | "collision" | "door" | "cras
 /** One looping engine/rail bed, keyed by vehicle id. */
 export interface LoopSource {
   /** Omitted for vehicles that only produce one-shots (PubliBike crashes). */
-  sample?: "bus-engine" | "car-engine" | "rail-running";
+  sample?: "helicopter-rotor" | "bus-engine" | "car-engine" | "rail-running";
   active: boolean;
   /** Motors idle quietly when stopped; rail beds are silent when stopped. */
   motor: boolean;
   speed: number;
   x: number;
+  y?: number;
   z: number;
   aboard: boolean;
   door?: boolean;
@@ -212,7 +213,7 @@ export class GameAudio {
   }
 
   /** Engine, rail and door sounds for every vehicle near the listener. */
-  update(sources: Map<string, LoopSource>, listener: { x: number; z: number }, { paused = false, duck = false } = {}) {
+  update(sources: Map<string, LoopSource>, listener: { x: number; z: number; y?: number }, { paused = false, duck = false } = {}) {
     if (!this.context) return;
     this.paused = paused || document.hidden;
     if (this.paused) for (const shot of this.shots) { try { shot.stop(); } catch { /* already stopped */ } }
@@ -221,12 +222,13 @@ export class GameAudio {
     for (const [key, voice] of this.voices) if (!sources.has(key)) { this.stop(voice); this.voices.delete(key); this.previous.delete(key); }
     for (const [key, s] of sources) {
       const voice = this.voice(key), old = this.previous.get(key);
-      const distance = Math.hypot(listener.x - s.x, listener.z - s.z);
-      const proximity = s.aboard ? 1 : Math.max(0, 1 - distance / 30) ** 2;
+      const helicopter = s.sample === "helicopter-rotor";
+      const distance = Math.hypot(listener.x - s.x, listener.z - s.z, s.y === undefined ? 0 : (listener.y ?? s.y) - s.y);
+      const proximity = s.aboard ? 1 : Math.max(0, 1 - distance / (helicopter ? 100 : 30)) ** 2;
       const audible = this.settings.vehicleSounds && !this.paused && s.active && !s.crashed;
       const moving = Math.abs(s.speed) > 0.1;
-      const level = s.motor ? (moving ? 0.23 : 0.12) : moving ? 0.17 : 0;
-      const target = audible && s.sample ? proximity * (duck ? 0.3 : 1) * level : 0;
+      const level = helicopter ? (moving ? 0.36 : 0.28) : s.motor ? (moving ? 0.23 : 0.12) : moving ? 0.17 : 0;
+      const target = audible && s.sample ? proximity * (duck && !helicopter ? 0.3 : 1) * level : 0;
       if (target > 0.001 && s.sample && this.buffers.has(s.sample)) {
         voice.target = target;
         if (!voice.source) {

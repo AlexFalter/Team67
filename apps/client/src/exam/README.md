@@ -8,24 +8,14 @@ in front of HG (local x=226, y=50.7, z=149). Update the LV95 anchor if the team
 moves the entrance; keep the shared coordinate contract intact.
 
 During a running round, walk into the yellow ring on foot. `ExamSequence.ts`
-owns the four-second bird's-eye orbit, the room-animation handoff and the
-exam phase. It disables map controls and releases pointer lock; the original
-network connection and server clock keep running. Each player can enter once
-per round. The next round resets the entrance. The exam uses the exact server
-`endsAt - Network.now()` time; its standalone 30s / `?time=` setting is ignored.
-Finishing the deck early leaves the score screen open. Returning to the world
-preserves membership and lets the existing room results/restart UI work.
-Exam scores are currently local to Campusless, not added to the shared hit table.
+shows a brief “Chance for bonus points” banner, then opens the building quiz
+without moving the camera. Map controls pause while the quiz is active; the
+server clock and network connection keep running. Each player can enter once
+per round. The next round resets the entrance. The exam uses the server's
+remaining round time. Finishing early leaves the score screen open; returning
+to the world preserves membership. Exam scores are local to Campusless.
 
-## Add the seated exam-room animation
-
-Replace `playExamRoomAnimation` in `examRoomAnimation.ts`. It receives the
-scene, camera, a coordinate-based seat anchor and an AbortSignal. Add the
-room / paper assets there, animate the seat and camera, then resolve the
-promise when the paper is ready. The current implementation is a brief dark
-transition with “Take your seat.” Respect cancellation and dispose temporary
-resources. Expiry and “Skip intro” cancel the sequence and open the exam;
-no new countdown starts. `ExamOverlay.tsx` owns the presentation.
+The old flyover and seated-room animation handoff has been removed.
 
 ## Temporary debug teleport
 
@@ -43,3 +33,14 @@ when finished testing.
 Existing wiring is limited to MapGame, MapViewer, Race, the shared export and
 optional `startImmediately` / `onExit` props on EthBlur. All scene assets and
 transition logic stay in separate files for straightforward merging.
+
+Choose **Spectate instead** during the entrance or building quiz to watch the
+current round. The server removes the player body but keeps room membership.
+Left/right arrows switch players; drag the canvas to orbit and scroll to zoom.
+Choose **Free flight** for a camera that passes through geometry: WASD flies in
+the look direction, Space rises, Shift descends and Ctrl increases speed. Escape
+opens the game menu, which also offers **Follow players** and **Back to exam**.
+Returning to the exam uses the existing round deadline and keeps the player as
+a server spectator; **Spectate instead** returns to the spectator camera.
+At round end the results appear, and the next round restores normal participation.
+The phone and its notifications are hidden during the exam and while spectating.

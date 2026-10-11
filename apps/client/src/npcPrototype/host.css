@@ -8,3 +8,5 @@
 
 
 .property-boundary-warning{position:absolute;left:50%;top:100px;transform:translateX(-50%);z-index:50;padding:12px 22px;border:2px solid #ffb35b;background:#471a0aeb;color:#fff0cf;border-radius:6px;font:bold 15px Arial,sans-serif;letter-spacing:1px;pointer-events:none;box-shadow:0 4px 18px #0008;white-space:nowrap}
+.michael-challenge{position:absolute;left:50%;bottom:16%;transform:translateX(-50%);width:min(420px,88vw);pointer-events:auto}
+.michael-challenge label{display:grid;gap:8px;font-size:13px}.michael-challenge input{background:#121923;color:white;border:1px solid #7c8797;border-radius:5px;padding:12px;font:inherit}.michael-challenge [role=status]{min-height:24px;margin-top:8px;font-size:13px;color:#ffbc84}

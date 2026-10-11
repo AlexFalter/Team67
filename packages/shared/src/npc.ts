@@ -55,6 +55,7 @@ export interface NpcState {
   ticketReadyAt: number;
   polybahnTicketed: boolean;
   limoVisible: boolean;
+  parachuting?:boolean;
   limoX: number;
   limoY: number;
   limoZ: number;
@@ -68,4 +69,13 @@ export interface NpcState {
   teleportUsed: boolean;
   limoSolved: boolean;
   limoUsed: boolean;
+}
+
+/** Air corridor for the interview helicopter and its parachuting passenger. */
+export function interviewAirPosition(world: MovementWorld, x: number, y: number, z: number, margin = 28) {
+  const a=NPC_LAYOUT.interview.pickup,b=NPC_LAYOUT.interview.landing;
+  const dx=b[0]-a[0],dz=b[2]-a[2],t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[2])*dz)/(dx*dx+dz*dz)));
+  const ground=world.height(x,z),bounds=world.bounds;
+  return ground!==undefined && x>=bounds.minX && x<=bounds.maxX && z>=bounds.minZ && z<=bounds.maxZ &&
+    Math.hypot(x-a[0]-t*dx,z-a[2]-t*dz)<=margin && y>=ground-1 && y<=Math.max(a[1],b[1])+72;
 }

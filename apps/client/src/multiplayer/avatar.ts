@@ -1,3 +1,4 @@
+import {applyDancePose} from './emotes/dancePose.ts';
 import * as THREE from "three";
 import { updatePlayerIdentity, disposePlayerIdentity } from "./playerIdentity.ts";
 import { LIME_KIND, LIME_SPEED, LIME_BOOST_SPEED, impactPose, ATTACK_COOLDOWN_MS, SLIDE_ANIM, tramDerailFrame, type VehicleState, TRAM_KIND, POLYBAHN_KIND, type PlayerState } from "@race/shared";
@@ -137,6 +138,9 @@ export function avatar(color: string, character = 0, firstPerson = false) {
   rigs.set(root, { torso, chest, head, neck, arms, legs, viewArms, slide: 0, phase: 0, fall: 0, speed: 0, grounded: true, landing: 0, air: 0, firstPerson });
   return root;
 }
+
+export function bagCarryPose(mesh:THREE.Group,p:PlayerState){const r=rigs.get(mesh);if(!r||r.firstPerson||p.knockdownUntil>p.simTime)return;const arm=r.arms[0];arm.joint.rotation.set(-.65,0,-.12);arm.bend.rotation.set(-.6,0,0);arm.tip.rotation.set(0,0,0);}
+export function dancePose(mesh:THREE.Group,id:string,time:number){const rig=rigs.get(mesh);if(rig&&!rig.firstPerson)applyDancePose(rig,id,time);}
 
 // Roughly 3–4 alternating footfalls per second, not six tiny sprint steps.
 // Can clones share immutable resources owned by MateFeature, never by the rig.

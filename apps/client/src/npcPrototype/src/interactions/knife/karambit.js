@@ -1,12 +1,11 @@
 import {sampleKarambitAttack,KARAMBIT_ATTACK_DURATION,KARAMBIT_CONTACT_TIME} from './karambit-attack.js';
 import {disposeOwnedObject} from '../../shared/runtime/feature-lifecycle.js';
-import './karambit.css';
 import * as THREE from 'three';
 import {makeFirstPersonHand} from '../../player/first-person-hand.js';
 import {createKnifeMotion} from './knife-motion.js';
 
 // Original game model: curved blade, finger ring and a marbled Doppler finish.
-export async function createKarambit(camera,{onStrike=()=>false,uiRoot=document.body}={}){
+export async function createKarambit(camera,{onStrike=()=>false}={}){
  const root=new THREE.Group();root.name='Karambit Doppler first-person viewmodel';camera.add(root);root.visible=false;root.scale.setScalar(.82);
  const wrist=new THREE.Group();root.add(wrist);
  const grip=new THREE.Group();grip.name='Index finger spin pivot';grip.scale.setScalar(.8);grip.position.set(.035,-.045,.02);wrist.add(grip);
@@ -29,14 +28,12 @@ export async function createKarambit(camera,{onStrike=()=>false,uiRoot=document.
  const hand=await makeFirstPersonHand();hand.name='Blender student hand';wrist.add(hand);
  const motion=createKnifeMotion();let motionState={};
  root.traverse(o=>{if(o.isMesh){o.layers.set(0);o.material.depthTest=true;o.material.depthWrite=true;o.renderOrder=2200;o.frustumCulled=false;}});
- const inventory=document.createElement('aside');inventory.id='knife-inventory';inventory.hidden=true;inventory.innerHTML='<small>KARAMBIT DOPPLER</small><div id="karambit-hint" hidden></div><button type="button">3 · EQUIP / HOLSTER</button>';uiRoot.append(inventory);inventory.querySelector('button').onclick=()=>toggle();
- const hint=inventory.querySelector('#karambit-hint');
  let owned=false,equipped=false,age=0,bobAge=0,phase='idle',spins=0,swings=0,hits=0,strikePending=false,attackVariant=0;
  function inspect(){if(!owned||!equipped||phase!=='idle')return false;phase='inspect';age=0;spins++;return true;}
  function attack(){if(!owned||!equipped||phase!=='idle')return false;phase='attack';age=0;attackVariant=swings%2;swings++;strikePending=true;return true;}
  function give(){if(owned)return false;owned=equipped=true;inspect();return true;}
  function toggle(){if(!owned)return false;equipped=!equipped;phase='idle';age=0;return true;}
- function update(dt,visible,moving=false,sliding=false,movement={}){inventory.hidden=!owned||!visible;root.visible=owned&&equipped&&visible;hint.hidden=!owned||!visible||!equipped;const text='CLICK / Q: SLASH · F: SPIN';if(hint.textContent!==text)hint.textContent=text;if(!root.visible){if(phase==='attack'){phase='idle';strikePending=false;age=0;}return;}
+ function update(dt,visible,moving=false,sliding=false,movement={}){root.visible=owned&&equipped&&visible;if(!root.visible){if(phase==='attack'){phase='idle';strikePending=false;age=0;}return;}
   motionState=motion.update(dt,{speed:moving?6:0,...movement,sliding});
   age+=dt;bobAge+=dt;root.position.set(.25,-.12,-.65);root.rotation.set(-.12,-.55,.3);grip.rotation.set(0,0,-.22);wrist.rotation.set(0,0,0);
   if(phase==='inspect'){
@@ -57,5 +54,5 @@ export async function createKarambit(camera,{onStrike=()=>false,uiRoot=document.
   }
   const m=motionState;root.position.x+=m.x;root.position.y+=m.y+Math.sin(bobAge*2)*.002;root.position.z+=m.z;root.rotation.x+=m.pitch;root.rotation.y+=m.yaw;root.rotation.z+=m.roll;
  }
- return {dispose(){this.reset();inventory.remove();hint.remove();disposeOwnedObject(root);},root,grip,give,inspect,attack,toggle,update,holster(){equipped=false;phase='idle';strikePending=false;},owns:()=>owned,occupiesHands:()=>owned&&equipped,reset(){inventory.hidden=true;owned=equipped=false;phase='idle';age=spins=swings=hits=0;strikePending=false;motion.reset();motionState={};root.visible=false;hint.hidden=true;},state:()=>({owned,equipped,phase,age,spins,swings,hits,visible:root.visible,spinRadians:grip.rotation.z,motion:motionState,attackVariant})};
+ return {dispose(){this.reset();disposeOwnedObject(root);},root,grip,give,inspect,attack,toggle,update,holster(){equipped=false;phase='idle';strikePending=false;},owns:()=>owned,occupiesHands:()=>owned&&equipped,reset(){owned=equipped=false;phase='idle';age=spins=swings=hits=0;strikePending=false;motion.reset();motionState={};root.visible=false;},state:()=>({owned,equipped,phase,age,spins,swings,hits,visible:root.visible,spinRadians:grip.rotation.z,motion:motionState,attackVariant})};
 }

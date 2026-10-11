@@ -1,4 +1,8 @@
 export interface PlayerState {
+  bagId?: string;
+  emotesUnlocked?: boolean;
+  emoteId?: string;
+  emoteStartedAt?: number;
   x: number;
   y: number;
   z: number;
@@ -39,11 +43,15 @@ export interface WorldState {
   trafficDensity?: number;
   trafficSpawnInterval?: number;
   trafficSpeedMultiplier?: number;
+  bags?: Map<string, import("./bags.ts").BagState>;
+  dummies?: Map<string, PlayerState>;
+  debugDummies?: boolean;
   npcs?: Map<string, import("./npc.ts").NpcState>;
   serverTime: number;
   phase: string;
   hostId: string;
   moodleEnabled?:boolean;
+  noCarCollisions?:boolean;
   moodleEventId?:number;
   moodleQuestionIndex?:number;
   moodleDeadline?:number;
@@ -53,7 +61,9 @@ export interface WorldState {
   introStartedAt: number;
   introComplete: boolean;
   scooterArrivalAt?: number;
+  mapTeleport?: boolean;
   devMode: boolean;
+  adminMode?: boolean;
   skipIntro: boolean;
   goldPubliBikes: boolean;
   railCrashProtection: boolean;
