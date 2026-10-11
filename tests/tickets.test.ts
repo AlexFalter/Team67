@@ -44,6 +44,7 @@ test('successful Polybahn boarding consumes one ticket; failed boarding and othe
   // The default cabin now starts along the track; ticket boarding is tested at its platform.
   const cabin=f.state.vehicles.get('polybahn-1')!;cabin.railDistance=0;Object.assign(cabin,C.railFrame(cabin));
   npc.ticketCount=1;manager.enter(f.clients[0],'polybahn-1',f.now);assert.equal(p.vehicleId,'');assert.equal(npc.ticketCount,1);
+  const home=C.zurichWorld.carts[0];manager.add('cart-1',{...C.createVehicle(0,home.x,home.z),y:home.y});
   const cart=f.state.vehicles.get('cart-1')!;Object.assign(p,{x:cart.x,y:cart.y,z:cart.z});p.vehicleId='';manager.enter(f.clients[0],'cart-1',f.now);assert.equal(npc.ticketCount,1);manager.exit(f.clients[0]);
   Object.assign(p,C.railBoardingPoint(f.state.vehicles.get('polybahn-1')!));manager.enter(f.clients[0],'polybahn-1',f.now);
   assert.equal(p.vehicleId,'polybahn-1');assert.equal(npc.ticketCount,0);assert.equal(npc.polybahnTicketed,true);

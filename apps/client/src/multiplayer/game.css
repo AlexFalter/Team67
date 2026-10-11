@@ -162,6 +162,7 @@ button:disabled { cursor: wait; opacity: 0.6; }
 #room-results tr[data-eth=reached] td:first-child { box-shadow: inset 3px 0 #f6d77a; }
 #room-results tr[data-eth=missed] td { color: #ff8f86; background: #ff5a4f12; }
 #room-results tr[data-eth=missed] td:first-child { box-shadow: inset 3px 0 #ff6b61; }
+#room-results td:nth-child(4) { white-space: nowrap; font-variant-numeric: tabular-nums; }
 #room-results td:nth-child(3) { font-weight: 700; font-variant-numeric: tabular-nums; }
 /* Podium places stand out on top of the gold/red row colour. */
 #room-results tr[data-podium] td:first-child { font-weight: 800; font-size: 12px; }
@@ -294,3 +295,27 @@ body:has(:is(#pause, #lobby, #room-screen):not([hidden])) .drowned-overlay { dis
 #lobby .options-close { display: block; width: 100%; margin-top: 16px; padding: 10px; border: 2px solid #b9d4cb70; border-radius: 2px; background: #244034; color: #edf4ef; font: 12px ui-monospace, monospace; cursor: pointer; }
 #lobby .options-close:hover { background: #355445; }
 #lobby .buttons button { border-radius: 2px; border-width: 2px; box-shadow: inset 2px 2px 0 #ffffff18, inset -2px -2px 0 #0004, 2px 2px 0 #071a2480; }
+
+.lime-trick-score {
+  position: absolute; left: 50%; bottom: 32%; z-index: 30;
+  display: flex; align-items: baseline; gap: 14px;
+  transform: translateX(-50%) rotate(-6deg); pointer-events: none;
+  font: italic 900 clamp(30px, 4vw, 56px)/1.1 Arial, sans-serif;
+  color: #fff; white-space: nowrap;
+  text-shadow: -2px -2px 0 #13251b, 2px -2px 0 #13251b, -2px 2px 0 #13251b, 3px 4px 0 #13251b;
+}
+.lime-trick-score strong { color: #86efac; font-size: 1.3em; }
+.lime-trick-score[hidden] { display: none; }
+body:has(:is(#pause, #lobby, #room-screen):not([hidden])) .lime-trick-score { display: none; }
+
+.lime-trick-multiplier { color: #ffd368; font-size: 1.15em; }
+
+.stuck-hint {
+  position: absolute; left: 50%; top: 20%; z-index: 25;
+  transform: translateX(-50%); width: max-content; max-width: calc(100% - 48px);
+  padding: 14px 20px; border: 2px solid #ffd368; border-radius: 8px;
+  background: #13251bf2; color: #fff1bf; text-align: center;
+  font: 600 16px/1.5 system-ui, sans-serif; pointer-events: none;
+  box-shadow: 0 4px 20px #0006;
+}
+.stuck-hint[hidden] { display: none; }

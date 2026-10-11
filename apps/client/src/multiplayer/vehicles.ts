@@ -298,6 +298,12 @@ export class Vehicles {
       return;
     }
     v.mesh.position.set(v.rendered.x, v.rendered.y, v.rendered.z);
+    if (v.rendered.kind === C.LIME_KIND) {
+      const trick = C.limeTailwhipPose(v.latest, v.latest.driver === this.net.room?.sessionId ? this.net.now() : t);
+      v.mesh.position.y += trick.height;
+      const deck = v.mesh.getObjectByName("Lime tailwhip deck");
+      if (deck) deck.rotation.y = trick.rotation;
+    }
     v.mesh.rotation.y = v.rendered.rotY;
     if (v.rendered.kind === 2) {
       const speed = v.rendered.vx * Math.sin(v.rendered.rotY) + v.rendered.vz * Math.cos(v.rendered.rotY);
@@ -398,7 +404,7 @@ export class Vehicles {
       const text =
         C.isRail(v) ? `${C.transitName(v).toUpperCase()} ${count}/${v.capacity} · ${transitStatus(v,clock)}` :
         state?.publiBikes?.has(id)
-          ? `PUBLIBIKE · ${state.publiBikes.get(id)!.broken ? "out of service" : id === body.vehicleId ? "riding" : v.driver ? "occupied" : state.publiBikes.get(id)!.reservedBy ? "being unlocked" : "available"}` :
+          ? `PUBLIBIKE · ${state.publiBikes.get(id)!.broken || state.publiBikes.get(id)!.batteryMs <= 0 ? "seems broken" : id === body.vehicleId ? "riding" : v.driver ? "occupied" : state.publiBikes.get(id)!.reservedBy ? "being unlocked" : "available"}` :
         v.kind===C.LIME_KIND ? `LIME ${count}/${v.capacity} · ${id===body.vehicleId?"in use":count>=v.capacity?"full":"available"}` :
         v.kind !== 1
           ? `${v.kind === 2 ? "BIKE" : v.kind === 3 ? "NPC CAR" : v.kind === 4 ? "LOOSE BALL" : "CART"} · ${v.kind >= 3 ? "watch out" : v.fallenUntil > this.net.now() ? "recovering" : v.driver ? "occupied" : v.kind === 2 ? "available" : "available"}`

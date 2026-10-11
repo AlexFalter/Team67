@@ -1,3 +1,4 @@
+import { limeTailwhipPose } from "@race/shared";
 import * as THREE from "three";
 import {
   type PlayerState,
@@ -117,6 +118,7 @@ export class RemotePlayers {
       }
       pose(r.mesh, p, dt);
       alignCabinAvatar(r.mesh, p, vehicle?.rendered);
+      r.mesh.position.y += limeTailwhipPose(vehicle?.rendered, t).height;
     }
   }
   dispose() { for (const r of this.players.values()) disposeAvatar(r.mesh); this.players.clear(); }

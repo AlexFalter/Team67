@@ -10,7 +10,7 @@ import type {
   VehicleMove,
   VehicleResult,
 } from "@race/shared";
-import { stepCabin, POLYBAHN_KIND, CLIENT_SEND_RATE, packMove, respawn, zurichWorld, snapshot, stepPlayer, applyImpulse, CART_MIN_HIT_SPEED, RoomPhase } from "@race/shared";
+import { LIME_KIND, LIME_TAILWHIP_ENABLED, stepCabin, POLYBAHN_KIND, CLIENT_SEND_RATE, packMove, respawn, zurichWorld, snapshot, stepPlayer, applyImpulse, CART_MIN_HIT_SPEED, RoomPhase } from "@race/shared";
 export class Network {
   room!: Room<object, WorldState>;
   private disposed = false;
@@ -172,6 +172,8 @@ export class Network {
   frame(dt: number, body: Body, controls: () => Input) {
     if (!this.canPlay || this.npcPaused) return;
     const cmd = controls();
+    if (cmd.jump && body.vehicleKind === LIME_KIND && body.vehicleId && body.seat === 0 && LIME_TAILWHIP_ENABLED && this.now() >= body.knockdownUntil)
+      this.room.send("limeTailwhip", this.room.state.startedAt);
     let remaining = Math.min(0.1, dt), first = true, impact = 0;
     // Cooldowns use main's synchronized clock, including after a background tab.
     body.simTime = this.now() - remaining * 1000;

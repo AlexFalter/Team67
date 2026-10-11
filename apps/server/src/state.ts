@@ -89,6 +89,7 @@ export const Vehicle = schema(
     tripStartedAt: t.number().default(0),
     arrivalAt: t.number().default(0),
     fallenUntil: t.number().default(0),
+    tailwhipStartedAt: t.number().default(0),
   },
   "Vehicle",
 );

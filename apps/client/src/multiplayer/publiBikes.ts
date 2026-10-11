@@ -100,7 +100,7 @@ export class PubliBikeFeature {
     if (this.request) return true;
     const bike = this.net.room.state.publiBikes.get(id)!;
     if (bike.broken || bike.batteryMs <= 0) {
-      this.net.onVehicleResult?.({ ok: false, message: "This bike is out of battery. Find another bike." });
+      this.net.onVehicleResult?.({ ok: false, message: "This PubliBike seems broken. Try another bike nearby." });
       return true;
     }
     if (this.net.room.state.vehicles.get(id)?.driver || bike.reservedBy) {

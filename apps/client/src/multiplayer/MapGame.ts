@@ -1,4 +1,6 @@
 import {FruitFeature} from './fruit/FruitFeature.ts';
+import { StuckHint } from "./stuckHint.ts";
+import { LimeTrickScore } from "./limeTrickScore.ts";
 import {FootballFeature} from './football.ts';
 import {BagFeature} from './bags/BagFeature.ts';
 import {Spectator} from './spectator.ts';
@@ -58,6 +60,8 @@ export class MapGame {
   private vehicles: Vehicles;
   private effects: Effects;
   private hud: Hud;
+  private trickScore: LimeTrickScore;
+  private stuckHint: StuckHint;
   private maps: RaceMap;
   private coordinates: DeveloperCoordinates;
   private collisions: CollisionDebug;
@@ -99,6 +103,8 @@ export class MapGame {
     this.vehicles = new Vehicles(scene, this.net, hints);
     this.effects = new Effects(scene, bump => this.audio.bump(this.listener, bump));
     this.hud = new Hud(hud);
+    this.trickScore = new LimeTrickScore(canvas.parentElement!);
+    this.stuckHint = new StuckHint(canvas.parentElement!);
     this.drowning = new Drowning(hud.parentElement ?? document.body, () => this.net.room.send('respawn'));
     this.coordinates = new DeveloperCoordinates(canvas.parentElement!);
     this.collisions = new CollisionDebug(scene,this.net,canvas.parentElement!);
@@ -179,14 +185,18 @@ export class MapGame {
     if (this.npcs.active) return [];
     const p = this.local.body, actions: ContextAction[] = [];
     const npcPrompt = this.npcs.interactionPrompt;
-    const near = this.vehicles.items.get(this.vehicles.nearestId(p))?.latest;
+    const nearId = this.vehicles.nearestId(p), near = this.vehicles.items.get(nearId)?.latest;
+    const nearbyBike = this.net.room?.state.publiBikes?.get(nearId);
     const icon = npcPrompt?.icon ?? (p.vehicleId ? "leave" : this.mate.nearby ? "mate" : this.vehicles.interactionKind(p));
-    const label = npcPrompt?.label ?? (p.vehicleId ? "Leave vehicle" : this.mate.nearby ? "Use Mate machine" : near?.kind === C.LIME_KIND ? "Ride Lime scooter" : icon === "bike" ? (this.net.room?.state.publiBikes?.has(this.vehicles.nearestId(p)) ? "Unlock PubliBike" : "Ride bike") : near && C.isRail(near) ? `Enter ${C.transitName(near)}` : "Enter vehicle");
+    const label = npcPrompt?.label ?? (p.vehicleId ? "Leave vehicle" : this.mate.nearby ? "Use Mate machine" : near?.kind === C.LIME_KIND ? "Ride Lime scooter" : icon === "bike" ? (nearbyBike ? nearbyBike.broken || nearbyBike.batteryMs <= 0 ? "This PubliBike seems broken" : "Unlock PubliBike" : "Ride bike") : near && C.isRail(near) ? `Enter ${C.transitName(near)}` : "Enter vehicle");
     if(this.fruit.nearby)actions.push({icon:"mate",key:"E",label:this.fruit.remaining===0?"No tomatoes left":this.fruit.count>=5?"Tomato inventory full":`Take tomatoes (${this.fruit.remaining} left)`,enabled:this.fruit.canTake,run:()=>this.local.requestInteraction()});
     else if(this.football.nearby)actions.push({icon:"football",key:"E",label:"Pick up football",enabled:this.football.available,run:()=>this.local.requestInteraction()});
     else if(this.bags.nearby)actions.push({icon:"bag",key:"E",label:"Pick up Ersti bag",enabled:p.knockdownUntil<=this.net.now(),run:()=>this.local.requestInteraction()});
     else if (icon) actions.push({ icon, key: "E", label, enabled: p.knockdownUntil <= this.net.now(), run: () => this.local.requestInteraction() });
     if(this.fruit.count>0)actions.push({icon:"bag",key:"5",label:this.fruit.occupiesHands?"Holster tomato":"Equip tomato",enabled:!p.bagId&&!p.vehicleId,run:()=>this.fruit.toggle()});
+    const scooter = this.vehicles.items.get(p.vehicleId)?.latest;
+    if (C.LIME_TAILWHIP_ENABLED && scooter?.kind === C.LIME_KIND && scooter.driver === this.net.room?.sessionId)
+      actions.push({icon:"scooter",key:"Space",label:"Tailwhip",enabled:p.knockdownUntil<=this.net.now() && this.net.now()>=(scooter.tailwhipStartedAt || 0)+C.LIME_TAILWHIP_COOLDOWN_MS,run:()=>this.local.requestJump()});
     if (p.mateCount > 0) actions.push({ icon: "mate", key: "1", label: "Drink Mate", enabled: this.mate.canConsume, run: () => this.mate.consume() });
     const knife = this.npcs.karambit;
     if (knife?.owns() && !p.bagId) {
@@ -210,6 +220,7 @@ export class MapGame {
     this.traffic.render(renderTime);
     this.trafficEditor?.update();
     if (this.trafficEditor?.active) {
+      this.stuckHint.update(this.local.body, now, false);
       this.controls.update(dt);
       this.vehicles.stopDriving();
       this.mesh.visible = this.firstBody.visible = false;
@@ -250,12 +261,17 @@ export class MapGame {
       if(this.view.perspective===0&&(this.npcs.karambit?.occupiesHands()||this.bags.occupiesHands)&&!this.local.body.vehicleId)this.firstBody.visible=false;
       if (this.publiBikes.active || this.mate.active || (this.npcs.hideAvatar&&!railPhone)) this.mesh.visible = this.firstBody.visible = false;
       this.effects.trail(this.net.room.sessionId, this.local.body, now);
+      const trickVehicle = this.vehicles.items.get(this.local.body.vehicleId);
+      const trickHeight = C.limeTailwhipPose(trickVehicle?.latest,
+        trickVehicle?.latest.driver === this.net.room.sessionId ? this.net.now() : renderTime).height;
+      this.mesh.position.y += trickHeight;
       if (!this.publiBikes.active && !this.mate.active && (!this.npcs.active||railPhone)) {
         const vehicle = this.vehicles.items.get(this.local.body.vehicleId)?.rendered;
         // A phone freezes input, while the passenger camera still follows the moving cabin.
         this.view.update(this.local.body, dt, vehicle && isRail(vehicle) ? railFrame(vehicle, railSeat(vehicle, this.local.body.seat).part) : undefined);
+        this.view.camera.position.y += trickHeight;
       }
-      pose(this.firstBody, this.local.body, dt, this.view.pitch, this.view.camera, knifeEquipped);
+      pose(this.firstBody, trickHeight ? {...this.local.body, y: this.local.body.y + trickHeight} : this.local.body, dt, this.view.pitch, this.view.camera, knifeEquipped);
       if((this.local.body.moodleSitUntil??0)>this.net.now()&&!this.npcs.active){this.mesh.visible=this.avatarReady;this.firstBody.visible=false;const p=this.local.body;this.view.camera.position.set(p.x+Math.sin(this.view.yaw)*3.6,p.y+1.7,p.z+Math.cos(this.view.yaw)*3.6);this.view.camera.lookAt(p.x,p.y+.55,p.z);}
     }
     if (!this.net.canPlay || this.exam.active) { this.drowning.cancel(); this.mesh.visible = this.firstBody.visible = false; this.vehicles.stopDriving(); }
@@ -271,6 +287,16 @@ export class MapGame {
     if(this.npcs.karambit?.occupiesHands())this.football.holster();
     this.football.update(dt);
     this.bags.update(dt,this.mesh,this.remotes.players);
+    const scoreVehicle = this.vehicles.items.get(this.local.body.vehicleId)?.latest;
+    this.stuckHint.update(this.local.body, now,
+      this.net.canPlay && !this.exam.active && !this.npcs.active && !this.mate.active &&
+      !this.publiBikes.active && !this.maps.active && !this.emotes.opened && !this.controlsPaused &&
+      !this.drowning.active(this.net.now()) && this.net.now() >= this.derailUntil &&
+      this.net.now() >= this.local.body.knockdownUntil && this.net.now() >= (this.local.body.moodleSitUntil ?? 0) &&
+      (!this.local.body.vehicleId || scoreVehicle?.driver === this.net.room?.sessionId));
+    this.trickScore.update(scoreVehicle?.tailwhipStartedAt ?? 0, this.net.now(), state?.startedAt ?? 0,
+      this.net.canPlay && !this.exam.active && !this.npcs.active && !this.mate.active && !this.publiBikes.active &&
+      scoreVehicle?.kind === C.LIME_KIND && scoreVehicle.driver === this.net.room?.sessionId && !this.controlsPaused);
     this.medals.update(dt,{visible:this.net.canPlay&&!this.exam.active&&!this.npcs.active&&!this.mate.active&&!this.publiBikes.active});
     this.controls.update(dt); this.effects.update(renderTime, dt); this.hud.update(dt, this.net, this.local.body);
     this.maps.update(dt, this.net.canPlay && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now() >= this.derailUntil);
@@ -368,7 +394,7 @@ export class MapGame {
   afterRender() { this.publiBikes.renderPreview(); this.npcs.afterRender(); }
   dispose() {
     this.spectator.dispose();this.net.onSpectate=undefined;
-    this.maps.dispose(); this.hud.dispose();
+    this.maps.dispose(); this.hud.dispose(); this.trickScore.dispose(); this.stuckHint.dispose();
     this.coordinates.dispose(); this.collisions.dispose();
     this.cows.dispose(); this.trafficEditor?.dispose(); this.traffic.dispose();
     this.menuScene.dispose();

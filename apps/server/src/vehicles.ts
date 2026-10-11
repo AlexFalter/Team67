@@ -10,23 +10,25 @@ export class VehicleManager {
   private contact: C.VehicleContact = { nx: 0, nz: 0, closing: 0 };
   constructor(private state: RaceState, private world: C.MovementWorld = C.flatWorld, legacyTraffic = true) {
     this.trafficStart = state.serverTime;
-    world.carts.forEach((p, i) =>
-      this.add(`cart-${i + 1}`, { ...C.createVehicle(0, p.x, p.z), y: p.y }),
-    );
-    const [a, b] = world.stops,
-      shuttle = C.createVehicle(1, a.x, a.z);
-    shuttle.y = a.y;
-    shuttle.toX = b.x;
-    shuttle.toZ = b.z;
-    shuttle.rotY = Math.atan2(b.x - a.x, b.z - a.z);
-    this.add("shuttle-1", shuttle);
-    const addNear = (id: string, kind: number, x: number, z: number, vx = 0, vz = 0) => {
-      const p = world.name === "flat" ? { x, y: 0, z } : C.findGround(world, world.spawn.x + x, world.spawn.z + z);
-      if (p) this.add(id, { ...C.createVehicle(kind, p.x, p.z), y: p.y, vx, vz });
-    };
-    addNear("bike-1", 2, 3, 4); addNear("bike-2", 2, -3, 4);
-    if (legacyTraffic) addNear("npc-car", 3, -20, 6);
-    addNear("loose-ball", 4, 10, -5, 7, 3);
+    // Prototype vehicles belong to the flat test arena, not the Zurich map.
+    if (world.name === "flat") {
+      world.carts.forEach((p, i) =>
+        this.add(`cart-${i + 1}`, { ...C.createVehicle(0, p.x, p.z), y: p.y }),
+      );
+      const [a, b] = world.stops,
+        shuttle = C.createVehicle(1, a.x, a.z);
+      shuttle.y = a.y;
+      shuttle.toX = b.x;
+      shuttle.toZ = b.z;
+      shuttle.rotY = Math.atan2(b.x - a.x, b.z - a.z);
+      this.add("shuttle-1", shuttle);
+      const addNear = (id: string, kind: number, x: number, z: number, vx = 0, vz = 0) => {
+        this.add(id, { ...C.createVehicle(kind, x, z), vx, vz });
+      };
+      addNear("bike-1", 2, 3, 4); addNear("bike-2", 2, -3, 4);
+      if (legacyTraffic) addNear("npc-car", 3, -20, 6);
+      addNear("loose-ball", 4, 10, -5, 7, 3);
+    }
     if (world.name === "zurich") {
       C.NPC_LAYOUT.lime.positions.forEach(([x,y,z],i)=>
         this.add(`lime-${i+1}`,{...C.createVehicle(C.LIME_KIND,x,z),y}));

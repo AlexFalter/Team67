@@ -76,7 +76,8 @@ test('derailed tram removes its stale track collider and cannot hit or displace 
   manager.contacts(now+9000,()=>{hits++;});
   assert.equal(hits,0);assert.deepEqual([...players.values()].map(p=>[p.x,p.y,p.z]),before,'fallback contacts do not push walkers');
   for(const id of players.keys())state.players.delete(id);
-  const bike=state.vehicles.get('bike-1') ?? [...state.vehicles.values()].find(other=>other.kind===2)!;
+  manager.add('test-bike',C.createVehicle(2,v.x-.5,v.z));
+  const bike=state.vehicles.get('test-bike')!;
   bike.x=v.x-.5;bike.y=v.y;bike.z=v.z;bike.vx=v.vx+20;bike.vz=v.vz;
   manager.contacts(now+9000,()=>{hits++;});assert.equal(bike.fallenUntil,0,'the ghost wreck cannot crash a bike');
   assert.deepEqual([v.vx,v.vz],impactVelocity,'shared wreck animation retains its impact velocity');

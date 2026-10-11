@@ -137,6 +137,10 @@ export class Race extends Room<{ state: RaceState }> {
     this.onMessage("cabinMove", (client, data: unknown) => {
       if (this.rounds.canPlay(client.sessionId)) this.vehicles.walkCabin(client.sessionId, data);
     });
+    this.onMessage("limeTailwhip", (client, round: unknown) => {
+      if (this.rounds.canPlay(client.sessionId) && !this.npcs.busy(client.sessionId))
+        C.startLimeTailwhip(this.state, client.sessionId, round, Date.now());
+    });
     this.onMessage("vehicleMove", (client, data: unknown) => {
       if (this.rounds.canPlay(client.sessionId)) this.vehicles.move(client, data);
     });

@@ -107,7 +107,7 @@ export class RoomFlow {
         if (index < 3) row.dataset.podium = String(index + 1);
         const score = finalScore(result);
         for (const value of [placeLabel(index + 1), result.name, score > 0 ? `+${score}` : score < 0 ? `−${-score}` : "0",
-          reached ? `At ETH · ${result.examScore} exam` : `${Math.round(result.distanceToEth)} m to go`, result.hitsLanded, result.hitsReceived]) {
+          `${Math.round(result.distanceToEth)} m`, result.hitsLanded, result.hitsReceived]) {
           const cell = document.createElement("td"); cell.textContent = String(value); row.append(cell);
         }
         rows.append(row);

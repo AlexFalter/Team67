@@ -58,8 +58,8 @@ test('Lime uses terrain collision and accelerates to a higher speed with Shift',
  const v=C.createVehicle(C.LIME_KIND,0,C.flatWorld.bounds.maxZ-1);for(let i=0;i<60;i++)C.stepCart(v,{...C.IDLE_INPUT,z:1},1/60);assert.ok(v.z<=C.flatWorld.bounds.maxZ-C.vehicleRadius(v));
  const state=new RaceState();new VehicleManager(state,C.zurichWorld);
  const scooters=[...state.vehicles.values()].filter(v=>v.kind===C.LIME_KIND);
- assert.equal(scooters.length,6,'the two existing, two bridge and two Haldenegg scooters spawn');
- assert.deepEqual(scooters.map(v=>[v.x,v.y,v.z]),[[-58.78,9.34,57.53],[-21.84,8.32,124.78],[-159,8.28,60],[-156,8.2925,60.5],[8.18,21.9491,-131.57],[10.18,21.9791,-131.57]]);
+ assert.equal(scooters.length,9,'all nine configured Lime scooters spawn');
+ assert.deepEqual(scooters.map(v=>[v.x,v.y,v.z]),[[-58.78,9.34,57.53],[-21.84,8.32,124.78],[-159,8.28,60],[-156,8.2925,60.5],[8.18,21.9491,-131.57],[10.18,21.9791,-131.57],[89,20.585,147],[97,20.86,147],[91,20.76,156]]);
 });
 
 test('Lime boost lasts seven seconds at twenty percent less speed, never recharges, even on foot or after remounting',()=>{

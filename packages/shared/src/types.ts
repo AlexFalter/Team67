@@ -122,6 +122,7 @@ export interface VehicleState {
   tripStartedAt: number;
   arrivalAt: number;
   fallenUntil: number;
+  tailwhipStartedAt: number;
 }
 export interface VehicleResult {
   ok: boolean;

@@ -128,3 +128,5 @@ solid obstacles. Terrain rejection can safely stop the bike without reporting a
 crash; walls, bounds and entity impacts still cause falls. Server driver reports
 resolve ground using the current vehicle elevation, matching prediction under
 bridges and other stacked walkable surfaces.
+
+Zurich has one eight-bike station at `(-158.42, 8.41, 81.49)`, configured in `NPC_LAYOUT.publiBike`. Empty-battery bikes show “This PubliBike seems broken” nearby.

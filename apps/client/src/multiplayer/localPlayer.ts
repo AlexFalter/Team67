@@ -40,6 +40,7 @@ export class LocalPlayer {
   }
   dispose() { this.abort.abort(); this.enabled = false; this.clear(); }
   punch(karambit = false) { if (this.enabled) { this.hit = true; this.karambitHit = karambit; } }
+  requestJump() { if (this.enabled) this.jump = true; }
   requestInteraction() { if (this.enabled) this.interaction = true; }
   requestSlide() { if (this.enabled) this.slide = true; }
   holdBoost(held: boolean) { this.boostHeld = held && this.enabled; }
