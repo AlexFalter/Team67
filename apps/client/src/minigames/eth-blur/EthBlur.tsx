@@ -12,9 +12,9 @@ import { ExamPaperHeader } from './ExamPaperHeader';
 import './exam-paper.css';
 
 /** The final clock can override the standalone 30-second timer. */
-export type EthBlurProps = { remainingSeconds?: number; onComplete?: (score: number) => void; onProgress?: (progress: ExamScore) => void; startImmediately?: boolean; onExit?: () => void; visible?: boolean };
+export type EthBlurProps = { unlimited?: boolean; remainingSeconds?: number; onComplete?: (score: number) => void; onProgress?: (progress: ExamScore) => void; startImmediately?: boolean; onExit?: () => void; visible?: boolean };
 type Feedback = { kind: 'correct' | 'wrong' | 'skip'; text: string } | null;
-export function EthBlur({ remainingSeconds, onComplete, onProgress, startImmediately = true, onExit, visible = true }: EthBlurProps) {
+export function EthBlur({ unlimited = false, remainingSeconds, onComplete, onProgress, startImmediately = true, onExit, visible = true }: EthBlurProps) {
   const [started, setStarted] = useState(startImmediately);
   const [duration] = useState(() => readDuration(window.location.search));
   const [deck] = useState(createDeck);
@@ -39,7 +39,7 @@ export function EthBlur({ remainingSeconds, onComplete, onProgress, startImmedia
   const progressCallback = useRef(onProgress);
   const scoreRef = useRef(0);
   const current = deck[Math.min(index, deck.length - 1)];
-  const left = Math.max(0, remainingSeconds ?? seconds);
+  const left = unlimited ? Infinity : Math.max(0, remainingSeconds ?? seconds);
   const clockSeconds = Math.ceil(left);
   const clockLabel = clockSeconds >= 60 ? `${Math.floor(clockSeconds / 60)}:${String(clockSeconds % 60).padStart(2, '0')}` : String(clockSeconds);
   const exhausted = index >= deck.length;
@@ -54,12 +54,12 @@ export function EthBlur({ remainingSeconds, onComplete, onProgress, startImmedia
   }, [visible, started, ended, resolving, index]);
   useEffect(() => { const previous = document.title; document.title = 'Campusless · ETH Zürich'; return () => { document.title = previous; }; }, []);
   useEffect(() => {
-    if (!started || !ready || remainingSeconds !== undefined || ended) return;
+    if (unlimited || !started || !ready || remainingSeconds !== undefined || ended) return;
     if (deadline.current === 0) deadline.current = Date.now() + duration * 1000;
     const tick = () => setSeconds(Math.max(0, (deadline.current - Date.now()) / 1000));
     const id = window.setInterval(tick, 100);
     return () => window.clearInterval(id);
-  }, [started, ready, remainingSeconds, ended, duration]);
+  }, [started, ready, remainingSeconds, ended, duration, unlimited]);
   useEffect(() => {
     if (ended && !notified.current) {
       notified.current = true;
@@ -135,7 +135,7 @@ export function EthBlur({ remainingSeconds, onComplete, onProgress, startImmedia
         <div className="exam-spread">
         <section className="exam-cover" aria-labelledby="exam-title">
           <div className="exam-timer">
-            <span className={left < 10 ? 'exam-time urgent' : 'exam-time'} role="timer" aria-label="Time remaining">{clockLabel}{clockSeconds < 60 && 's'}</span>
+            <span className={left < 10 ? 'exam-time urgent' : 'exam-time'} role="timer" aria-label={unlimited ? "No time limit" : "Time remaining"}>{unlimited ? 'No timer' : clockLabel}{!unlimited && clockSeconds < 60 && 's'}</span>
           </div>
           <form className="exam-answer-form" onSubmit={event => { event.preventDefault(); guess(); }}>
             <label htmlFor="building-answer">Type Building Code</label>

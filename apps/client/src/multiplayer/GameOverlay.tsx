@@ -4,14 +4,15 @@ import "./game.css";
 import "./raceHud.css";
 import { CHARACTERS as characters } from "./avatar.ts";
 
-export function GameOverlay({ resolution, onResolutionChange }: {
+export function GameOverlay({ resolution, onResolutionChange, offline = false }: {
+  offline?: boolean;
   resolution: "performance" | "high";
   onResolutionChange: (resolution: "performance" | "high") => void;
 }) {
   const [character, setCharacter] = useState(0);
   const cycleCharacter = (direction: number) => setCharacter(current => (current + direction + characters.length) % characters.length);
   return <>
-    <section id="lobby" aria-label="Multiplayer lobby">
+    <section id="lobby" hidden={offline} aria-label="Multiplayer lobby">
       <div className="menu-story">
         <p className="menu-place">ZÜRICH / SCHWEIZ</p>
         <h2>Race to ETH</h2>
@@ -125,7 +126,7 @@ export function GameOverlay({ resolution, onResolutionChange }: {
         <small>The round keeps running while you check the map. Map data © OpenStreetMap contributors · City model: Stadt Zürich / CC0</small>
       </div>
     </section>
-    <div id="battle-bus-intro" hidden role="status" aria-live="polite"></div>
+    <PixelPanel id="battle-bus-intro" hidden role="status" aria-live="polite"></PixelPanel>
     <div id="activity-feed" hidden role="log" aria-live="polite" aria-label="Activity feed"></div>
     <div id="crosshair" hidden aria-hidden="true">+</div>
     <div id="combat-actions" hidden role="group" aria-label="Player actions">
@@ -149,13 +150,14 @@ export function GameOverlay({ resolution, onResolutionChange }: {
       </div>
     </div>
     <section id="pause" hidden aria-label="Game menu">
-      <div>
+      <PixelPanel className="game-menu-panel">
         <h2>Game menu</h2>
-        <p>Press Escape, WASD, or Enter to resume. The multiplayer world keeps running.</p>
+        <p>Press Escape, WASD, or Enter to resume. {offline ? "The offline world keeps running." : "The multiplayer world keeps running."}</p>
         <button id="resume">Resume game</button>
         <div id="spectator-settings" hidden><button id="spectator-flight">Free flight</button><button id="spectator-exam">Back to exam</button></div>
         <button id="respawn">Respawn at bus drop-off</button>
         <button id="perspective">View: First person</button>
+        <details className="game-settings"><summary>Settings</summary><div>
         <label id="car-collision-setting" hidden title="Traffic cars pass through players and vehicles"><input id="no-car-collisions-toggle" type="checkbox" /> No car collisions</label>
         <label id="moodle-setting" hidden><input id="disable-moodle-toggle" type="checkbox" /> Disable Moodle notifications</label>
         <label id="collision-setting" hidden><input id="collision-toggle" type="checkbox" /> Show hitboxes + practice dummies</label>
@@ -170,15 +172,21 @@ export function GameOverlay({ resolution, onResolutionChange }: {
           <option value="performance">Performance</option>
           <option value="high">High — sharper image</option>
         </select>
-        <p>Performance reduces rendering resolution for smoother play. High uses more GPU power.</p>
-        <p>Mouse / trackpad: look · click to punch.<br />
-          WASD run · Shift sprint · Space jump · C slide while sprinting · E ride<br />
-          M city map · F change view · Esc menu<br />1 drink Mate · Backspace leave Polybahn</p>
+        <p className="setting-help">Performance lowers rendering resolution; High uses more GPU power.</p>
+        </div></details>
+        <details className="game-controls-guide"><summary>Controls</summary>
+        <dl className="game-control-list">{[
+          ["W A S D", "Move"], ["Shift", "Sprint"], ["Space", "Jump"], ["C", "Slide"],
+          ["Click", "Punch"], ["E", "Interact"], ["F", "Change view"], ["M", "City map"],
+          ["P", "Phone"], ["B", "Emotes"], ["1", "Drink Mate"], ["3", "Karambit"],
+          ["Q", "Knife slash"], ["4", "Football"], ["Backspace", "Leave Polybahn"], ["Esc", "Game menu"],
+        ].map(([key, label]) => <div key={key}><dt><kbd>{key}</kbd></dt><dd>{label}</dd></div>)}</dl>
+        </details>
         <p role="status"></p>
         <button id="toggle-coordinates" type="button" hidden>Activate Coordinates</button>
         <button id="leave">Leave room</button>
         <button id="finish-round" hidden>End round for everyone</button>
-      </div>
+      </PixelPanel>
     </section>
   </>;
 }

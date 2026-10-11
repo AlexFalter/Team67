@@ -5,7 +5,12 @@ export class Hud {
   private leaderboard = document.querySelector<HTMLElement>("#race-leaderboard")!;
   private leaders = document.querySelector<HTMLOListElement>("#race-leaders")!;
   private ownRank = document.querySelector<HTMLElement>("#race-own-rank")!;
-  constructor(private element: HTMLDivElement) { this.root = element.parentElement!; element.hidden = true; }
+  constructor(private element: HTMLDivElement) {
+    this.root = element.parentElement!;
+    element.classList.add("pixel-panel");
+    this.leaderboard.classList.add("pixel-panel");
+    element.hidden = true;
+  }
   private elapsed = 0;
   private frames = 0;
   update(dt: number, net: Network, local: MapPoint) {
@@ -16,7 +21,10 @@ export class Hud {
     this.elapsed += dt;
     this.frames++;
     if (this.elapsed < 0.25) return;
-    if (dev) this.element.textContent = `${net.status} · Room ${net.room?.roomId ?? "—"}\nFPS ${Math.round(this.frames / this.elapsed)} · ping ${net.rtt} ms\nPlayers ${net.room?.state?.players?.size ?? 0} · collisions ${net.collisions}`;
+    if (dev) {
+      const fps = Math.round(this.frames / this.elapsed);
+      this.element.textContent = `${fps} FPS · ${net.offline ? "OFFLINE" : `${net.rtt} ms ping`}\n${net.room?.state?.players?.size ?? 0} players · ${net.collisions} collisions`;
+    }
     if (net.canPlay) {
       const ranked = raceStandings(net.room.state, net.room.sessionId, local);
       const rows = ranked.slice(0, 5).map((player, index) => {

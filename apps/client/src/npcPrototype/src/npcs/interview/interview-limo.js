@@ -1,3 +1,4 @@
+import '../../shared/dialogue/encounter-panels.css';
 import {helicopterEjectionPose,EJECTION_DURATION} from './helicopter-ejection.js';
 import {createLimousineLook} from './limousine-look.js';
 import {createInterviewHelicopter,createParachute} from './helicopter-model.js';
@@ -72,7 +73,7 @@ export async function createInterviewLimo(scene,world,solver,{onClose,onBoard,on
  const throwOrigin=new THREE.Vector3(),throwOrientation=new THREE.Quaternion(),throwEye=new THREE.Vector3(),throwCameraRotation=new THREE.Quaternion();
  const ejectRig=createFlightAvatar(playerAppearance);let ejectPlayer;const ejectStart=new THREE.Vector3(),drop=new THREE.Vector3(),landingEye=new THREE.Vector3(),landingRotation=new THREE.Quaternion();
  let phase='idle',age=0,distance=0,speed=0,solved=false,rides=0;
- const ui=document.createElement('div');ui.id='interview-laptop';ui.hidden=true;ui.innerHTML=`<section role="dialog" aria-modal="true" aria-labelledby="interview-title"><div class="interview-kicker">CODE CHALLENGE</div><h2 id="interview-title">Fill in the blank.</h2><p id="interview-hint">Print <strong>0, 1, 2</strong>. Fill in the missing number.</p><form><pre class="interview-editor"><code><span class="code-keyword">for</span> (let i = 0; i &lt; <input id="interview-code" aria-label="Missing number in the loop condition" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="___" maxlength="8" aria-describedby="interview-hint interview-feedback">; i++) {
+ const ui=document.createElement('div');ui.id='interview-laptop';ui.hidden=true;ui.innerHTML=`<section class="pixel-panel" role="dialog" aria-modal="true" aria-labelledby="interview-title"><div class="interview-kicker">CODE CHALLENGE</div><h2 id="interview-title">Fill in the blank.</h2><p id="interview-hint">Print <strong>0, 1, 2</strong>. Fill in the missing number.</p><form><pre class="interview-editor"><code><span class="code-keyword">for</span> (let i = 0; i &lt; <input id="interview-code" aria-label="Missing number in the loop condition" autocomplete="off" spellcheck="false" inputmode="numeric" placeholder="___" maxlength="8" aria-describedby="interview-hint interview-feedback">; i++) {
   console.log(i);
 }</code></pre><p id="interview-feedback" role="status" aria-live="polite"></p><button type="submit">RUN CODE ↗</button></form><button class="interview-close" type="button">CLOSE</button></section>`;uiRoot.append(ui);
  const panel=ui.querySelector('section'),form=ui.querySelector('form'),input=ui.querySelector('input'),feedback=ui.querySelector('#interview-feedback'),close=ui.querySelector('.interview-close');

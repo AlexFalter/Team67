@@ -46,7 +46,7 @@ export class MapGame {
   private derailUntil=0;
   private derailRun=0;
   private explosionEvents=new Set<string>();
-  private net = new Network();
+  private net: Network;
   private traffic: TrafficRenderer;
   private cows: BridgeCows;
   private trafficEditor?: TrafficEditor;
@@ -85,12 +85,13 @@ export class MapGame {
   private limoTrack = new Map<string, { x: number; z: number; speed: number }>();
   private lastCanDrop = 0;
   constructor(scene: THREE.Scene, private camera: THREE.PerspectiveCamera, private canvas: HTMLCanvasElement,
-    hud: HTMLDivElement, hints: HTMLDivElement, map: THREE.Object3D, capture: () => void, onExamChange: (session: ExamSession) => void = () => {}) {
+    hud: HTMLDivElement, hints: HTMLDivElement, map: THREE.Object3D, capture: () => void, onExamChange: (session: ExamSession) => void = () => {}, offline = false) {
+    this.net = new Network(import.meta.env.DEV && offline);
     this.medals = createMedals({root: canvas.parentElement!, definitions: PLAYER_MEDALS});
     this.net.onMedal = award => this.medals.awardMany(award.ids, award.eventKey);
     this.cows = new BridgeCows(scene, this.audio);
     this.traffic = new TrafficRenderer(scene, TrafficRoadSurface.forMap(map));
-    this.exam = new ExamSequence(scene, camera, onExamChange);
+    this.exam = new ExamSequence(scene, camera, onExamChange, this.net.offline);
     this.transitScenery = new TransitScenery(scene, map);
     this.disposeMapRaycasts = accelerateMapRaycasts(map);
     this.remotes = new RemotePlayers(scene);
@@ -121,7 +122,12 @@ export class MapGame {
     this.ready = Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready, this.npcs.ready, this.cows.ready, this.bags.ready]).then(() => {});
     this.roomFlow = new RoomFlow(this.net, this.ready, () => this.bus.unlockAudio(), () => this.audio.effect("timer"));
     this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.trafficEditor?.active && !this.emotes?.opened && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active, () => this.net.now()<this.derailUntil || !!this.maps?.active || (this.local.body.moodleSitUntil??0)>this.net.now(), () => this.net.now(), () => this.contextActions(), () => {if(this.bags.occupiesHands)return {kind:"bag",enabled:this.bags.canThrow,run:()=>this.bags.throwBag()};if(this.football.occupiesHands)return {kind:"football",enabled:this.football.canKick,run:()=>this.football.kick()};const knife=this.npcs.karambit;return knife?.occupiesHands()&&!this.local.body.vehicleId&&this.view.perspective===0?{enabled:this.npcs.canUseKarambit()&&knife.state().phase!=='attack'&&this.local.body.attackReadyAt<=this.net.now(),run:()=>this.npcs.attackKarambit()}:undefined;}, () => this.net.room.send('respawn'));
-    this.emotes=new EmoteFeature(this.net,this.local,this.view,canvas.parentElement!,()=>this.net.canPlay&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.npcs.active&&!this.maps?.active&&this.net.now()>=this.derailUntil&&!!document.querySelector<HTMLElement>('#pause')?.hidden,()=>this.controls.resumeAfterInteraction());
+    const resumeInteraction = () => {
+      // Resetting offline encounters must keep the playground controls accessible.
+      if (this.net.offline && !document.querySelector<HTMLElement>("#pause")?.hidden) return;
+      this.controls.resumeAfterInteraction();
+    };
+    this.emotes=new EmoteFeature(this.net,this.local,this.view,canvas.parentElement!,()=>this.net.canPlay&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.npcs.active&&!this.maps?.active&&this.net.now()>=this.derailUntil&&!!document.querySelector<HTMLElement>('#pause')?.hidden,resumeInteraction);
     this.spectator=new Spectator(this.net,camera,canvas,()=>{this.controls.suspendForMap();this.exam.returnToExam();},()=>{void this.controls.resume();});
     this.net.onSpectate=()=>{this.maps.closeForTeleport();this.local.enabled=false;this.local.clear();this.exam.spectate();this.controls.suspendForMap();};
     this.maps = new RaceMap(this.net, () => ({ ...this.local.body, enabled: this.local.enabled }),
@@ -130,7 +136,7 @@ export class MapGame {
       () => this.controls.suspendForMap(), () => void this.controls.resume());
     this.net.onMapTeleport=({from,target})=>{this.maps.closeForTeleport();this.local.clear();this.npcs.playMapTeleport(from,target);};
     this.npcs.externalPhoneBusy=()=>this.exam.active||this.publiBikes.active||this.mate.active||!document.querySelector<HTMLElement>("#pause")?.hidden;
-    this.npcs.onResume=()=>this.controls.resumeAfterInteraction();
+    this.npcs.onResume=resumeInteraction;
     this.npcs.onSuspend=()=>this.controls.suspendForInteraction();
     this.controls.externalCapture=()=>this.npcs.rideMouseCapture||this.spectator.captureActive;
     this.controls.externalMenuReady=()=>this.bus.active||(this.net.canPlay&&this.npcs.pauseAvailable)||(this.net.spectating&&this.exam.spectating);
@@ -141,7 +147,7 @@ export class MapGame {
     this.menuScene = new MenuScene(scene, camera);
     scene.add(this.mesh, this.firstBody);
     this.mesh.visible = this.firstBody.visible = false;
-    this.closeLobby = lobby(selection => {
+    const connect = (selection: import("./lobby").Selection) => {
       this.bus.unlockAudio();
       return this.net.connect(this.local.body, (state, id) => {
         if (state.startedAt !== this.medalRound) {this.medalRound = state.startedAt; this.medals.reset();}
@@ -152,7 +158,7 @@ export class MapGame {
         }
         if (state.introComplete) camera.up.set(0, 1, 0);
         this.traffic.patch(state);
-        if (import.meta.env.DEV && state.devMode && state.hostId === id && !this.trafficEditor) {
+        if (import.meta.env.DEV && state.devMode && state.hostId === id && !this.trafficEditor && (!this.net.offline || new URLSearchParams(location.search).has("trafficEditor"))) {
           this.trafficEditor = new TrafficEditor(scene, camera, canvas, map);
           this.trafficEditor.bind(this.net.room);
         }
@@ -167,7 +173,12 @@ export class MapGame {
         }
         if (p && this.avatarReady) decoratePlayer(this.mesh, state.members.get(id)?.name ?? "Player");
       }, hit => { this.effects.enqueue(hit, this.net.room.sessionId); }, selection);
-    });
+    };
+    this.closeLobby = lobby(connect);
+    if (this.net.offline) {
+      document.querySelector<HTMLElement>("#lobby")!.hidden = true;
+      this.ready = Promise.all([this.ready, connect({ mode: "create", code: "OFFLINE", name: "UI playground", character: 0 })]).then(() => {});
+    }
   }
   stopAfterFailure(){this.local.enabled=false;this.local.clear();this.net.dispose();}
   get examScreenVisible() { return this.exam.screenVisible; }
@@ -199,6 +210,7 @@ export class MapGame {
   update(elapsed: number, now: number) {
     const dt = Math.min(0.1, elapsed), renderTime = this.net.now() - INTERP_DELAY_MS;
     const state = this.net.room?.state;
+    this.canvas.parentElement!.dataset.uiBusy = String(this.maps.active || (this.exam.active && !this.exam.spectating) || this.mate.active || this.publiBikes.active || this.npcs.active || this.emotes.opened);
     this.cows.update(this.net.now(), this.camera.position, this.net.canPlay && !this.exam.active);
     this.traffic.render(renderTime);
     this.trafficEditor?.update();
@@ -213,7 +225,7 @@ export class MapGame {
     if(this.exam.spectating&&!this.net.spectating)this.exam.returnToWorld();
     const examWasActive = this.exam.active;
     // Encounters keep camera ownership until they finish; vehicles also block exam entry.
-    this.exam.update(this.local.body, (this.net.canPlay||this.net.spectating) && !state?.adminMode, this.local.enabled && !this.publiBikes.active && !this.mate.active && !this.npcs.active && !this.emotes.opened && this.net.now()>=this.derailUntil, state?.startedAt ?? 0, remaining, now);
+    this.exam.update(this.local.body, (this.net.canPlay||this.net.spectating) && (!state?.adminMode || this.net.offline), this.local.enabled && !this.publiBikes.active && !this.mate.active && !this.npcs.active && !this.emotes.opened && this.net.now()>=this.derailUntil, state?.startedAt ?? 0, remaining, now);
     if (!examWasActive && this.exam.active) { this.net.beginExam(this.local.body); this.controls.suspendForMap(); }
     this.vehicles.render(renderTime, dt, "rail");
     this.transitScenery.update(state?.vehicles?.values() ?? [], this.net.now(), this.net.canPlay);
@@ -357,10 +369,24 @@ export class MapGame {
     if (enterPortal) void this.controls.resume();
     this.net.room.send("debugTeleportToPolyterrasse", enterPortal ? "portal" : "terrace");
   }
+  uiPlayground(action: "teleport" | "tools" | "reset" | "moodle" | "menu" | "bus" | "players", location?: string): string {
+    if (!import.meta.env.DEV || !this.net.offline || !this.net.room) return "Loading the playground…";
+    if (action === "reset" && this.exam.active) this.exam.returnToWorld();
+    if (this.maps.active || this.exam.active || this.mate.active || this.publiBikes.active || this.npcs.active || this.emotes.opened)
+      return "Close the current menu or encounter first.";
+    this.controls.holdPlaygroundMenu();
+    if (action === "menu") return "Game menu opened.";
+    this.local.clear();
+    this.net.room.send(action === "teleport" ? "uiTeleport" : action === "tools" ? "uiTools" : action === "reset" ? "uiReset" : action === "bus" ? "uiBus" : action === "players" ? "uiPlayers" : "uiMoodle", location);
+    if (action === "teleport" || action === "reset") { this.view.yaw = this.local.body.rotY - Math.PI; this.view.pitch = 0; }
+    if (action === "players") { this.view.yaw = 0; this.view.pitch = 0; }
+    return action === "tools" ? "Mate, Karambit, football and emotes unlocked." : action === "moodle" ? "Moodle question sent to your phone." : "Ready. Press Enter to play.";
+  }
   renderMenuPreview(renderer: THREE.WebGLRenderer) { this.menuScene.renderPreview(renderer); }
   afterRender() { this.publiBikes.renderPreview(); this.npcs.afterRender(); }
   dispose() {
     this.spectator.dispose();this.net.onSpectate=undefined;
+    delete this.canvas.parentElement!.dataset.uiBusy;
     this.maps.dispose(); this.hud.dispose();
     this.coordinates.dispose(); this.collisions.dispose();
     this.cows.dispose(); this.trafficEditor?.dispose(); this.traffic.dispose();

@@ -1,0 +1,23 @@
+/* Scanner UI uses the same frame and type as the lobby panels. */
+#publibike-scan .bike-phone {
+  --panel-border: var(--ui-border);
+  --panel-background: var(--ui-background);
+  width: min(360px, calc(100vw - 32px), calc((100dvh - 210px) * .75));
+  padding: 12px;
+  border: 2px solid var(--ui-border);
+  border-radius: 2px;
+  background: var(--ui-background);
+  box-shadow: inset 3px 3px 0 #ffffff12, inset -3px -3px 0 #0004, 4px 4px 0 #071a2480;
+  color: #edf4ef;
+  font-family: var(--ui-font);
+}
+#publibike-scan .bike-phone-status { padding: 2px 0 8px; font: 11px var(--ui-font); color: var(--ui-heading); }
+#publibike-scan .bike-phone h2 { padding: 4px 0 12px; font: 700 20px/1.25 var(--ui-font); color: var(--ui-heading); }
+#publibike-scan .bike-phone-controls { padding: 12px 0; }
+#publibike-scan .bike-phone p { font: 13px/1.5 var(--ui-font); }
+#publibike-scan .bike-phone-home { padding: 0; }
+#publibike-scan .bike-phone-home button { width: 100%; height: auto; padding: 10px; border: 1px solid var(--ui-border); border-radius: 2px; background: #071c26; color: var(--ui-heading); font: 700 13px var(--ui-font); box-shadow: inset 0 -3px #0004; }
+#publibike-scan .bike-phone-home button:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 3px; }
+#publibike-scan .bike-scan-progress { border-radius: 0; height: 5px; }
+#publibike-scan .bike-scan-progress i { background: var(--ui-accent); }
+#publi-bike-battery { padding: 8px 10px; border: 1px solid var(--ui-border); border-radius: 2px; color: var(--ui-heading); background: var(--ui-background); font: 12px/1.4 var(--ui-font); }

@@ -2,12 +2,12 @@
 :root {
  --font-ui: Inter, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;
  --font-display: 'Barlow Condensed', var(--font-ui);
- --font-dialogue: var(--font-ui);
- --dialogue-size: clamp(16px, 1.6vw, 21px);
+ --font-dialogue: var(--ui-font, ui-monospace, monospace);
+ --dialogue-size: clamp(15px, 1.25vw, 17px);
  --dialogue-leading: 1.5;
- --dialogue-color: #fff;
- --dialogue-surface: #14232bf2;
- --dialogue-accent: #f6c86d;
+ --dialogue-color: #e4eee9;
+ --dialogue-surface: var(--ui-background, #102731);
+ --dialogue-accent: var(--ui-accent, #d7f87a);
 }
 /* Specificity beats the old per-encounter font shorthands, including panels. */
 body :is(#kid-question, #bridge-scooter-caption, #einstein-dialogue, .encounter-line).encounter-line {
@@ -32,9 +32,9 @@ body :is(#bridge-scooter-caption, .encounter-subtitle).encounter-subtitle {
  margin: 0;
  padding: 12px 20px;
  background: var(--dialogue-surface);
- border: 1px solid #ffffff26;
- border-top: 2px solid var(--dialogue-accent);
- border-radius: 6px;
+ border: 2px solid var(--ui-border, #b9d4cb70);
+ border-radius: 2px;
+ box-shadow: inset 3px 3px 0 #ffffff12, inset -3px -3px 0 #0004, 4px 4px 0 #071a2480;
  pointer-events: none;
 }
 .encounter-subtitle[hidden] { display: none; }

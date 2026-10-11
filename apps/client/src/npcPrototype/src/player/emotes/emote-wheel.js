@@ -4,7 +4,7 @@ const movement=new Set(['KeyW','KeyA','KeyS','KeyD','Space','KeyE','KeyM','KeyR'
 export function createEmoteWheel(student,{canUse=()=>true,canChoose=()=>true,onStart=()=>{},onStop=()=>{},root=document.body,animator:providedAnimator,onOpen=()=>{},onClose=()=>{}}={}){
  const animator=providedAnimator??createEmoteAnimator(student);let open=false,selected=0;
  const ui=document.createElement('section');ui.className='emote-overlay';ui.hidden=true;ui.setAttribute('role','dialog');ui.setAttribute('aria-label','Emote wheel');
- ui.innerHTML='<div class="emote-heading">EMOTES<small>B / ESC TO CLOSE · 1–6 OR CLICK TO DANCE</small></div><div class="emote-wheel"><div class="emote-center"><strong>CHOOSE A MOVE</strong><small>Move to stop dancing</small></div></div>';
+ ui.innerHTML='<div class="emote-panel pixel-panel"><div class="emote-heading">EMOTES<small>B / ESC TO CLOSE · 1–6 OR CLICK TO DANCE</small></div><div class="emote-wheel"><div class="emote-center"><strong>CHOOSE A MOVE</strong><small>Move to stop dancing</small></div></div></div>';
  const wheel=ui.querySelector('.emote-wheel'),center=ui.querySelector('.emote-center strong');
 
  function highlight(i){selected=i;wheel.style.setProperty('--selection-angle',`${i*60-30}deg`);buttons.forEach((b,j)=>b.classList.toggle('selected',i===j));center.textContent=emoteDefinitions[i].name;}

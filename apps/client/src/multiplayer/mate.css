@@ -45,3 +45,31 @@
 
 #mate-minigame .mate-selection { min-height: 38px; padding: 5px 6px; }
 #mate-minigame .mate-selection img { width: 18px; height: 29px; }
+
+/* The machine's interaction surface stays anchored, with readable controls. */
+#mate-minigame .mate-cabinet {
+  --panel-border: var(--ui-border);
+  --panel-background: var(--ui-background);
+  padding: 18px;
+  color: #edf4ef;
+  font: 13px/1.5 var(--ui-font);
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+#mate-minigame .mate-message { padding: 0 0 8px; background: none; color: var(--ui-heading); font: 700 20px/1.25 var(--ui-font); }
+#mate-minigame .mate-message.mate-message-failure { background: none; }
+#mate-minigame .mate-detail { background: none; font-size: 12px; min-height: 18px; color: var(--ui-heading); }
+#mate-minigame .mate-loading-track { margin: 8px 0 12px; background: #ffffff1c; }
+#mate-minigame .mate-loading-track i { background: var(--ui-accent); }
+#mate-minigame .mate-selections { gap: 8px; }
+#mate-minigame .mate-selection { min-height: 54px; padding: 8px 10px; border: 1px solid var(--ui-border); border-radius: 2px; border-bottom-width: 3px; background: #19333c; font-weight: 700; }
+#mate-minigame .mate-selection.selected { border-color: var(--ui-accent); }
+#mate-minigame .mate-selection small { font-size: 12px; font-weight: 400; color: var(--ui-heading); }
+#mate-minigame .mate-selection img { width: 23px; height: 38px; }
+#mate-minigame :is(.mate-payment-slot, .mate-selection-required, .mate-collection-hint) { padding: 10px; font-size: 12px; background: #071c26; border: 1px solid var(--ui-border); }
+#mate-minigame :is(.mate-close, .mate-collect-back) { padding: 9px 12px; font-size: 13px; border-radius: 2px; border-color: var(--ui-border); color: var(--ui-heading); }
+#mate-minigame button:focus-visible, #mate-card:focus-visible { outline-color: var(--ui-accent); }
+#mate-card::-webkit-slider-thumb { border-radius: 2px; }
+#mate-card::-moz-range-thumb { border-radius: 2px; }
+#mate-inventory { --panel-border: var(--ui-border); --panel-background: var(--ui-background); padding: 8px 10px; color: #edf4ef; font: 12px/1.5 var(--ui-font); }
+#mate-inventory small { font-size: 11px; color: var(--ui-heading); }

@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { Client } from "colyseus";
 import * as C from "@race/shared";
 import { PubliBike, type RaceState } from "./state.ts";
@@ -42,7 +41,7 @@ export class PubliBikes {
       : this.reply(client, bikeId, requestId, false, "Another player is unlocking this bike.");
     if ([...this.leases.values()].some(l => l.owner === client.sessionId))
       return this.reply(client, bikeId, requestId, false, "Finish or cancel your current scan first.");
-    const token = randomUUID();
+    const token = crypto.randomUUID();
     this.leases.set(bikeId, { owner: client.sessionId, token, requestId, startedAt: now });
     bike.reservedBy = client.sessionId; bike.reservationUntil = now + C.PUBLI_BIKE_LEASE_MS;
     this.reply(client, bikeId, requestId, true, "Aim at the rear QR code and hold still.", token);

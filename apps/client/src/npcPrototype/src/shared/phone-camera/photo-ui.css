@@ -1,0 +1,32 @@
+/* Keep the live view and camera controls intact while sharing lobby typography. */
+body :is(#tourist-photo,#scooter-photo,#ticket-qr-camera) { font-family: var(--ui-font,ui-monospace,monospace); }
+body :is(#tourist-photo,#scooter-photo,#ticket-qr-camera) > .tourist-request {
+  --panel-border: var(--ui-border,#b9d4cb70);
+  --panel-background: var(--ui-background,#102731);
+  top: max(16px,env(safe-area-inset-top))!important; left: 50%!important; right: auto!important; transform: translateX(-50%);
+  width: min(740px,calc(100vw - 32px)); box-sizing: border-box; padding: 12px 18px!important;
+  background: var(--panel-background)!important; border: 2px solid var(--panel-border)!important; border-radius: 2px;
+  box-shadow: inset 3px 3px #ffffff12,inset -3px -3px #0004,4px 4px #071a2480;
+  pointer-events: none;
+}
+body :is(#tourist-photo,#scooter-photo,#ticket-qr-camera) .tourist-request b { font: 700 12px/1.4 var(--ui-font,ui-monospace,monospace); letter-spacing: .6px; color: var(--ui-heading,#c3d5cc); }
+body :is(#tourist-photo,#scooter-photo,#ticket-qr-camera) .tourist-request p { margin: 6px 0; font: 700 16px/1.4 var(--ui-font,ui-monospace,monospace); color: #e4eee9; }
+body :is(#tourist-photo,#scooter-photo,#ticket-qr-camera) .tourist-request small { font: 12px/1.45 var(--ui-font,ui-monospace,monospace); color: #a9c1b9; }
+body :is(#tourist-photo,#scooter-photo,#ticket-qr-camera) .photo-phone { margin-top: 140px; height: min(430px,calc(100dvh - 190px)); }
+body :is(#tourist-photo,#scooter-photo,#ticket-qr-camera)[data-orientation="portrait"] .photo-phone { height: min(680px,calc(100dvh - 190px)); }
+body :is(#tourist-photo,#scooter-photo,#ticket-qr-camera) .photo-app-title { font: 700 14px/1.5 var(--ui-font,ui-monospace,monospace); color: var(--ui-heading,#c3d5cc); }
+body :is(#tourist-photo,#scooter-photo,#ticket-qr-camera) .photo-orientation { font-size: 11px; color: #a9c1b9; }
+body :is(#tourist-photo,#scooter-photo,#ticket-qr-camera) .tourist-camera-controls { background: var(--ui-background,#102731); gap: 8px; }
+body :is(#tourist-photo,#scooter-photo,#ticket-qr-camera) .tourist-camera-controls button,
+body :is(#tourist-preview,#scooter-preview) button { min-height: 36px; padding: 8px 12px!important; border-radius: 1px!important; border: 1px solid var(--ui-border,#b9d4cb70)!important; font: 700 12px/1.4 var(--ui-font,ui-monospace,monospace); }
+body :is(#tourist-photo #tourist-shutter,#scooter-photo #scooter-shutter,#tourist-hand-back) { background: var(--ui-accent,#d7f87a)!important; color: #102731!important; }
+body :is(#tourist-photo,#scooter-photo,#ticket-qr-camera) .tourist-camera-controls small { font: 11px/1.5 var(--ui-font,ui-monospace,monospace); color: #a9c1b9; }
+body :is(#tourist-preview,#scooter-preview) { background: var(--ui-background,#102731); }
+body :is(#tourist-preview,#scooter-preview) p { font: 14px/1.5 var(--ui-font,ui-monospace,monospace); color: #e4eee9; }
+body :is(#tourist-photo,#scooter-photo) .photo-key-hint,
+body .scooter-photo-key-hint { padding: 10px 14px; border: 2px solid var(--ui-border,#b9d4cb70); border-radius: 2px; background: var(--ui-background,#102731); box-shadow: inset 3px 3px #ffffff12,inset -3px -3px #0004,4px 4px #071a2480; color: var(--ui-heading,#c3d5cc); font: 13px/1.5 var(--ui-font,ui-monospace,monospace); }
+@media(max-width:600px) {
+  body :is(#tourist-photo,#scooter-photo,#ticket-qr-camera) > .tourist-request { top: 10px!important; padding: 10px 12px!important; }
+  body :is(#tourist-photo,#scooter-photo,#ticket-qr-camera) .tourist-request p { font-size: 14px; }
+  body :is(#tourist-photo,#scooter-photo,#ticket-qr-camera) .tourist-request small { font-size: 11px; }
+}

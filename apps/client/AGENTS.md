@@ -1,5 +1,11 @@
 # Frontend development agreement
 
+## UI design baseline
+
+Use the Join/Create and room lobbies as the visual reference for in-game UI. Reuse `src/multiplayer/PixelPanel.tsx` for the pixel boundary and inset/drop shadow. `pixelPanel.css` defines the shared `--ui-font`, `--ui-heading`, `--ui-border`, `--ui-background` and `--ui-accent` tokens: monospace headings like “CHOOSE YOUR CHARACTER”, gray borders, dark teal panels and lime accents. Keep this style consistent when updating other menus.
+
+For browser-only UI work, `/dev/ui` on Vite starts the offline playground without a multiplayer server. It uses the same `MapGame` and server gameplay managers through a development transport; the production bundle excludes that transport. Feature shortcuts, item grants, Moodle and encounter reset are in the collapsible playground panel. Escape releases the cursor; Enter resumes play.
+
 ## Integrated workspace
 
 This frontend now mounts the Zürich multiplayer game. The canonical Colyseus server is `../server`, shared movement/protocol/world data is `../../packages/shared`, and plain TypeScript gameplay modules are in `src/multiplayer`. The old standalone prototype and Python demo backend have been removed. Use the root npm workspace install and lockfile.

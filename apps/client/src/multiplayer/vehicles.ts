@@ -398,8 +398,8 @@ export class Vehicles {
       const text =
         C.isRail(v) ? `${C.transitName(v).toUpperCase()} ${count}/${v.capacity} · ${transitStatus(v,clock)}` :
         state?.publiBikes?.has(id)
-          ? `PUBLIBIKE · ${state.publiBikes.get(id)!.broken ? "out of service" : id === body.vehicleId ? "riding" : v.driver ? "occupied" : state.publiBikes.get(id)!.reservedBy ? "being unlocked" : "available"}` :
-        v.kind===C.LIME_KIND ? `LIME ${count}/${v.capacity} · ${id===body.vehicleId?"in use":count>=v.capacity?"full":"available"}` :
+          ? `PUBLIBIKE · ${state.publiBikes.get(id)!.broken ? "out of service" : id === body.vehicleId ? "riding" : v.driver ? "occupied" : state.publiBikes.get(id)!.reservedBy ? "unlocking" : "unlock"}` :
+        v.kind===C.LIME_KIND ? `LIME · ${id===body.vehicleId?"riding":count>=v.capacity?"occupied":"ride"}` :
         v.kind !== 1
           ? `${v.kind === 2 ? "BIKE" : v.kind === 3 ? "NPC CAR" : v.kind === 4 ? "LOOSE BALL" : "CART"} · ${v.kind >= 3 ? "watch out" : v.fallenUntil > this.net.now() ? "recovering" : v.driver ? "occupied" : v.kind === 2 ? "available" : "available"}`
           : `TRAM ${count}/${v.capacity} · ${transitStatus(v,clock)}`;
@@ -407,23 +407,42 @@ export class Vehicles {
         const context = visual.canvas.getContext("2d")!;
         const { width, height } = visual.canvas;
         context.clearRect(0, 0, width, height);
-        const availableLime=v.kind===C.LIME_KIND&&count<v.capacity;
-        context.fillStyle = availableLime ? "#155a35ef" : state?.publiBikes?.has(id) ? "#68184eeF" : "#111c2cef";
-        context.beginPath();
-        context.roundRect(4, 4, width - 8, height - 8, 32);
-        context.fill();
-        context.strokeStyle = availableLime ? "#86efac" : "#ffffff50";
-        context.lineWidth = 3;
-        context.stroke();
-        let fontSize = 54;
-        context.font = `600 ${fontSize}px Arial, sans-serif`;
-        while (context.measureText(text).width > width - 72 && fontSize > 28) {
-          context.font = `600 ${--fontSize}px Arial, sans-serif`;
+        const compact = v.kind === C.LIME_KIND || state?.publiBikes?.has(id);
+        if (compact) {
+          context.font = "600 52px ui-monospace, monospace";
+          const tagWidth = Math.min(width - 32, context.measureText(text).width + 64);
+          const left = (width - tagWidth) / 2, top = 22, tagHeight = height - 44;
+          context.fillStyle = "#071a2480";
+          context.fillRect(left + 8, top + 8, tagWidth, tagHeight);
+          context.fillStyle = "#102731f2";
+          context.fillRect(left, top, tagWidth, tagHeight);
+          context.strokeStyle = "#b9d4cb70";
+          context.lineWidth = 4;
+          context.strokeRect(left + 2, top + 2, tagWidth - 4, tagHeight - 4);
+          context.fillStyle = "#ffffff12";
+          context.fillRect(left + 4, top + 4, tagWidth - 8, 5);
+          context.fillStyle = "#d7f87a";
+          context.textAlign = "center";
+          context.textBaseline = "middle";
+          context.fillText(text, width / 2, height / 2, tagWidth - 40);
+        } else {
+          context.fillStyle = "#111c2cef";
+          context.beginPath();
+          context.roundRect(4, 4, width - 8, height - 8, 32);
+          context.fill();
+          context.strokeStyle = "#ffffff50";
+          context.lineWidth = 3;
+          context.stroke();
+          let fontSize = 54;
+          context.font = `600 ${fontSize}px Arial, sans-serif`;
+          while (context.measureText(text).width > width - 72 && fontSize > 28) {
+            context.font = `600 ${--fontSize}px Arial, sans-serif`;
+          }
+          context.fillStyle = "#ffffff";
+          context.textAlign = "center";
+          context.textBaseline = "middle";
+          context.fillText(text, width / 2, height / 2);
         }
-        context.fillStyle = availableLime ? "#d8ffe4" : "#ffffff";
-        context.textAlign = "center";
-        context.textBaseline = "middle";
-        context.fillText(text, width / 2, height / 2);
         (visual.label.material as THREE.SpriteMaterial).map!.needsUpdate = true;
         visual.labelText = text;
       }

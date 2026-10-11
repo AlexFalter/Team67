@@ -47,12 +47,12 @@ export class MateFeature {
     });
     const asset = (path: string) => `${import.meta.env.BASE_URL}assets/tony-mate/${path}`;
     this.modal.id = "mate-minigame"; this.modal.hidden = true;
-    this.modal.innerHTML = `<section class="mate-cabinet" role="dialog" aria-modal="true" aria-label="El Tony Mate vending machine"><p class="mate-message" role="status" aria-live="polite"></p><small class="mate-detail"></small><div class="mate-loading-track"><i></i></div><div class="mate-selections">${C.MATE_FLAVORS.map((flavor, i) => `<button type="button" class="mate-selection" data-flavor="${i}"><span>0${i + 1} · ${flavor}<small>330 ml · CHF 3.50</small></span><img src="${asset(`cans/${flavor.toLowerCase()}.png`)}" alt="${flavor} can"></button>`).join("")}</div><p class="mate-selection-required" role="status">You have to select something.</p><label class="mate-payment-slot" hidden>SWIPE CARD →<input disabled id="mate-card" type="range" min="0" max="100" step="25" value="0" aria-label="Swipe card to pay CHF 3.50"><small class="mate-card-status">Select a flavor first</small></label><div class="mate-collection-hint" hidden><b>CLICK THE CAN IN THE DISPENSER</b><small>Enter also collects your Mate.</small><button type="button" class="mate-collect-back">Back · Esc</button></div><button type="button" class="mate-close">Step away · Esc</button></section>`;
+    this.modal.innerHTML = `<section class="mate-cabinet pixel-panel" role="dialog" aria-modal="true" aria-label="El Tony Mate vending machine"><p class="mate-message" role="status" aria-live="polite"></p><small class="mate-detail"></small><div class="mate-loading-track"><i></i></div><div class="mate-selections">${C.MATE_FLAVORS.map((flavor, i) => `<button type="button" class="mate-selection" data-flavor="${i}"><span>0${i + 1} · ${flavor}<small>330 ml · CHF 3.50</small></span><img src="${asset(`cans/${flavor.toLowerCase()}.png`)}" alt="${flavor} can"></button>`).join("")}</div><p class="mate-selection-required" role="status">You have to select something.</p><label class="mate-payment-slot" hidden>SWIPE CARD →<input disabled id="mate-card" type="range" min="0" max="100" step="25" value="0" aria-label="Swipe card to pay CHF 3.50"><small class="mate-card-status">Select a flavor first</small></label><div class="mate-collection-hint" hidden><b>CLICK THE CAN IN THE DISPENSER</b><small>Enter also collects your Mate.</small><button type="button" class="mate-collect-back">Back · Esc</button></div><button type="button" class="mate-close">Step away · Esc</button></section>`;
     this.panel = this.modal.querySelector<HTMLElement>(".mate-cabinet")!;
     this.card = this.modal.querySelector<HTMLInputElement>("input")!;
     this.message = this.modal.querySelector<HTMLElement>(".mate-message")!;
     this.buttons = Array.from(this.modal.querySelectorAll<HTMLButtonElement>(".mate-selection"));
-    this.inventory.id = "mate-inventory"; this.inventory.hidden = true;
+    this.inventory.id = "mate-inventory"; this.inventory.className = "pixel-panel"; this.inventory.hidden = true;
     this.inventory.innerHTML = `<img src="${asset("cans/mint.png")}" alt="Mint Mate"><span>El Tony Mate <b></b><small>2× speed · 8s · Press 1 to drink</small></span>`;
     this.rush.id = "mate-rush"; this.rush.hidden = true; this.rush.setAttribute("role", "status");
     this.effects.id = "mate-speed-effects"; this.effects.hidden = true; this.effects.setAttribute("aria-hidden", "true");
@@ -170,7 +170,11 @@ export class MateFeature {
     const rect = this.canvas.getBoundingClientRect();
     const points = [[-.91, .56], [-.91, 2.32], [-.25, .56], [-.25, 2.32]].map(([x, y]) => this.machine.localToWorld(new THREE.Vector3(x, y, -.515)).project(this.camera));
     const xs = points.map(p => rect.left + (p.x + 1) * rect.width / 2), ys = points.map(p => rect.top + (1 - p.y) * rect.height / 2);
-    Object.assign(this.panel.style, { left: `${Math.min(...xs)}px`, top: `${Math.min(...ys)}px`, width: `${Math.max(...xs) - Math.min(...xs)}px`, height: `${Math.max(...ys) - Math.min(...ys)}px` });
+    // Keep the physical machine framing, but give its controls a readable size.
+    const width = Math.min(320, rect.width - 32);
+    const left = THREE.MathUtils.clamp(Math.max(...xs) - width, rect.left + 16, rect.right - width - 16);
+    const top = THREE.MathUtils.clamp(Math.min(...ys), rect.top + 16, rect.bottom - Math.min(440, rect.height - 32) - 16);
+    Object.assign(this.panel.style, { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: "auto", maxHeight: `${rect.bottom - top - 16}px` });
   }
   equip(mesh: THREE.Group, flavor: number) {
     const can = this.cans[flavor];

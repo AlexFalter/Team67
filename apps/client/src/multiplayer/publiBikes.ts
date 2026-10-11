@@ -7,6 +7,7 @@ import type { Vehicles } from "./vehicles.ts";
 import type { LocalPlayer } from "./localPlayer.ts";
 import { disposeMap } from "../maps/zurich/loadZurichMap.ts";
 import { randomUuid } from "./randomUuid.ts";
+import "./publiBikeUi.css";
 
 export class PubliBikeFeature {
   private abort = new AbortController();
@@ -59,7 +60,7 @@ export class PubliBikeFeature {
     this.station.add(this.sign); scene.add(this.station);
     this.modal.id = "publibike-scan"; this.modal.hidden = true; this.modal.setAttribute("role", "dialog");
     this.modal.setAttribute("aria-modal", "true"); this.modal.setAttribute("aria-label", "Unlock PubliBike");
-    this.modal.innerHTML = `<div class="bike-phone"><div class="bike-phone-status" aria-hidden="true"><span>9:41</span><span>▰</span></div><h2>PubliBike <span></span></h2><div class="bike-viewfinder"><canvas width="600" height="800" aria-label="Live PubliBike QR scanner"></canvas><i></i></div><div class="bike-phone-controls"><div class="bike-scan-progress"><i></i></div><p role="status" aria-live="polite"></p></div><div class="bike-phone-home"><button type="button" aria-label="Close scanner" title="Close scanner · Esc"></button></div></div>`;
+    this.modal.innerHTML = `<div class="bike-phone pixel-panel"><div class="bike-phone-status" aria-hidden="true"><span>9:41</span><span>▰</span></div><h2>PubliBike <span></span></h2><div class="bike-viewfinder"><canvas width="600" height="800" aria-label="Live PubliBike QR scanner"></canvas><i></i></div><div class="bike-phone-controls"><div class="bike-scan-progress"><i></i></div><p role="status" aria-live="polite"></p></div><div class="bike-phone-home"><button type="button" aria-label="Close scanner" title="Close scanner · Esc">Close · Esc</button></div></div>`;
     this.preview = this.modal.querySelector("canvas")!;
     this.status = this.modal.querySelector("[role=status]")!; this.bar = this.modal.querySelector(".bike-scan-progress i")!;
     this.battery.id = "publi-bike-battery"; this.battery.hidden = true; this.battery.setAttribute("role", "status");

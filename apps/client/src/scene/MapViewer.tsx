@@ -12,6 +12,7 @@ import {
 } from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { disposeMap, loadZurichMap } from "../maps/zurich/loadZurichMap";
+import { UiPlayground } from "../multiplayer/UiPlayground";
 import { GameOverlay } from "../multiplayer/GameOverlay";
 import { TrafficEditor } from "../multiplayer/trafficEditor";
 import { MapGame } from "../multiplayer/MapGame";
@@ -24,15 +25,15 @@ import { activeTheme, applyRendererLook, sharpenMapTextures, themeLights } from 
 import { createSky } from "../maps/zurich/sky";
 import { createColorGrade, mountGradePanel, type ColorGradeHandle } from "./colorGrade";
 
-export function MapViewer({ examPreview = false }: { examPreview?: boolean }) {
+export function MapViewer({ examPreview = false, offline = false }: { examPreview?: boolean; offline?: boolean }) {
   const [examSession, setExamSession] = useState<ExamSession>(emptyExamSession);
-  const [playing, setPlaying] = useState(examPreview || !(import.meta.env.DEV && new URLSearchParams(location.search).has("trafficEditor")));
+  const [playing, setPlaying] = useState(offline || examPreview || !(import.meta.env.DEV && new URLSearchParams(location.search).has("trafficEditor")));
   const [resolution, setResolution] = useState<"performance" | "high">("high");
   return (
     <div className="map-viewer" data-playing={playing} data-exam-active={examSession.stage !== "world" && examSession.stage !== "spectate"}>
       <MapCanvas key={playing ? "play" : "inspect"} playing={playing}
-        resolution={resolution} onResolutionChange={setResolution} examSession={examSession} onExamChange={setExamSession} examPreview={examPreview} />
-      {!examPreview && <button
+        resolution={resolution} onResolutionChange={setResolution} examSession={examSession} onExamChange={setExamSession} examPreview={examPreview} offline={offline} />
+      {!examPreview && !offline && <button
         className="mode-toggle"
         onClick={() => { setExamSession(emptyExamSession); setPlaying((value) => !value); }}
       >
@@ -42,7 +43,8 @@ export function MapViewer({ examPreview = false }: { examPreview?: boolean }) {
   );
 }
 
-function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExamChange, examPreview }: {
+function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExamChange, examPreview, offline }: {
+  offline: boolean;
   examPreview: boolean;
   examSession: ExamSession;
   onExamChange: (session: ExamSession) => void;
@@ -161,7 +163,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
           preview = new ExamSequence(scene, camera, onExamChange);
           previewRef.current = preview;
         }
-        else if (playing) { game = new MapGame(scene, camera, canvas!, hud!, hints!, map, () => grade!.render(), onExamChange); gameRef.current = game; }
+        else if (playing) { game = new MapGame(scene, camera, canvas!, hud!, hints!, map, () => grade!.render(), onExamChange, offline); gameRef.current = game; }
         else {
           camera.position.set(650, 850, 900);
           controls = new OrbitControls(camera, canvas!);
@@ -263,7 +265,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
       renderer?.dispose();
       renderer?.forceContextLoss();
     };
-  }, [playing, onExamChange, examPreview]);
+  }, [playing, onExamChange, examPreview, offline]);
 
   return (
     <>
@@ -293,7 +295,9 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
         onExit={() => examPreview ? location.assign("/") : gameRef.current?.returnFromExam()} />}
       {playing && !examPreview && <ExamDebugButton enabled={examSession.canEnter && examSession.stage === "world"}
         onTeleport={enterPortal => gameRef.current?.debugTeleportToTerrace(enterPortal)} />}
-      {playing && !examPreview && <GameOverlay resolution={resolution} onResolutionChange={onResolutionChange} />}
+      {playing && !examPreview && <GameOverlay offline={offline} resolution={resolution} onResolutionChange={onResolutionChange} />}
+      {import.meta.env.DEV && offline && <UiPlayground ready={initialized && !failed}
+        onAction={(action, location) => gameRef.current?.uiPlayground(action, location) ?? "Loading the playground…"} />}
       <div ref={hudRef} className="game-hud" hidden={!playing || examPreview} />
       <div ref={controlsRef} className="map-controls" hidden={examPreview}>
         {playing

@@ -1,3 +1,4 @@
+import '../../shared/dialogue/encounter-panels.css';
 import {createDialogueAudio} from '../../shared/dialogue/dialogue-audio.js';
 import {disposeOwnedObject} from '../../shared/runtime/feature-lifecycle.js';
 import {featurePlacement} from '../../world/placements/feature-placement.js';
@@ -46,7 +47,7 @@ export function createFinanceGuy(scene,world,solver,{onComplete,placement,uiRoot
  }
  if(!site)throw Error('No clear accessible finance NPC detour');actor.position.copy(site);actor.rotation.y=baseHeading;
  const audio=createDialogueAudio('/audio/finance-guy.mp3');audio.preload='auto';audio.volume=gameConfig.npcs.finance.volume;
- const overlay=document.createElement('section');overlay.id='finance-guy-cinema';overlay.classList.add('inspection-cinema');overlay.hidden=true;overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label','Finance Guy conversation');overlay.innerHTML='<div class="inspection-top"><span>UNSCHEDULED NETWORKING</span><b>FINANCE GUY</b></div><div class="inspection-subtitle"><span>FINANCE GUY</span><p class="finance-topic"></p><small>Unskippable conversation</small><div class="inspection-progress finance-progress"><i></i></div></div>';uiRoot.append(overlay);styleEncounterLine(overlay.querySelector('.finance-topic'));
+ const overlay=document.createElement('section');overlay.id='finance-guy-cinema';overlay.classList.add('inspection-cinema');overlay.hidden=true;overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label','Finance Guy conversation');overlay.innerHTML='<div class="inspection-top"><span>UNSCHEDULED NETWORKING</span><b>FINANCE GUY</b></div><div class="inspection-subtitle pixel-panel"><span>FINANCE GUY</span><p class="finance-topic"></p><small>Unskippable conversation</small><div class="inspection-progress finance-progress"><i></i></div></div>';uiRoot.append(overlay);styleEncounterLine(overlay.querySelector('.finance-topic'));
  const topic=overlay.querySelector('.finance-topic'),progress=overlay.querySelector('.finance-progress i');let duration=0;const topics=financeAudioEdit.segments.map((clip,i)=>{const topic=[duration,clip.topic];duration+=clip.end-clip.start+(i<financeAudioEdit.segments.length-1?financeAudioEdit.gapSeconds:0);return topic;});duration=Math.round(duration*1000)/1000;
  let active=false,used=false,age=0,count=0,audioPlayed=false,audioFailed=false,generation=0;const frozen=new THREE.Vector3();
  function end(){active=false;audio.pause();overlay.hidden=true;document.body.classList.remove('finance-guy-cutscene');mouth.scale.y=1;actor.rotation.set(0,baseHeading,0);restPose();onComplete(frozen.clone());}

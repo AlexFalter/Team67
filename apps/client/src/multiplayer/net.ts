@@ -12,6 +12,7 @@ import type {
 } from "@race/shared";
 import { stepCabin, POLYBAHN_KIND, CLIENT_SEND_RATE, packMove, respawn, zurichWorld, snapshot, stepPlayer, applyImpulse, CART_MIN_HIT_SPEED, RoomPhase } from "@race/shared";
 export class Network {
+  constructor(readonly offline = false) {}
   room!: Room<object, WorldState>;
   private disposed = false;
   private phase = "";
@@ -65,10 +66,12 @@ export class Network {
     const url = import.meta.env.DEV
       ? import.meta.env.VITE_COLYSEUS_URL || `ws://${location.hostname}:2567`
       : `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}`;
-    const client = new Client(url);
-    const room = selection.mode === "create"
-      ? await client.create<WorldState>("race", { code: selection.code, character: selection.character, name: selection.name, devMode: selection.devMode, adminMode: selection.adminMode, moodleEnabled: selection.moodleEnabled, noCarCollisions: selection.noCarCollisions, mapTeleport:selection.mapTeleport, skipIntro: selection.skipIntro, goldPubliBikes: selection.goldPubliBikes, railCrashProtection: selection.railCrashProtection })
-      : await client.joinById<WorldState>(selection.code, { character: selection.character, name: selection.name });
+    const offlineRoom = import.meta.env.DEV && this.offline
+      ? new (await import("./offlineRoom")).OfflineRoom(selection.character) : undefined;
+    const client = offlineRoom ? undefined : new Client(url);
+    const room = offlineRoom ? offlineRoom.asRoom() : selection.mode === "create"
+      ? await client!.create<WorldState>("race", { code: selection.code, character: selection.character, name: selection.name, devMode: selection.devMode, adminMode: selection.adminMode, moodleEnabled: selection.moodleEnabled, noCarCollisions: selection.noCarCollisions, mapTeleport:selection.mapTeleport, skipIntro: selection.skipIntro, goldPubliBikes: selection.goldPubliBikes, railCrashProtection: selection.railCrashProtection })
+      : await client!.joinById<WorldState>(selection.code, { character: selection.character, name: selection.name });
     // This prototype releases seats on disconnect and has no server reconnection grace.
     room.reconnection.enabled = false;
     if (this.disposed) {
@@ -154,9 +157,10 @@ export class Network {
     this.room.onError((code, message) => {
       this.status = `Connection error ${code}: ${message}`;
     });
-    this.sync();
+    offlineRoom?.start();
+    if (!offlineRoom) this.sync();
     this.timers.push(
-      setInterval(() => this.sync(), 10000),
+      setInterval(() => { if (!offlineRoom) this.sync(); }, 10000),
       setInterval(() => {
         if (!this.canPlay || this.npcPaused) return;
         if (body.vehicleId) {

@@ -60,7 +60,7 @@ export function createBridgeScooter(scene,world,{horns=gameConfig.npcs.scooter.h
  function point(distance){return frame(distance).p;}
  for(let d=0;d<=length;d+=.25){const p=point(d);if(p.z<=bounds.maxZ&&!safe(p.x,p.z))throw Error('Scooter arrival route is not clear');}
  const audio=createDialogueAudio('/audio/frankfurt-dialogue.mp3?v=2'),clips=[audio];for(const audio of clips){audio.preload='auto';audio.volume=gameConfig.npcs.scooter.volume;}
- const caption=document.createElement('aside');caption.id='bridge-scooter-caption';caption.hidden=true;caption.setAttribute('aria-live','polite');uiRoot.append(caption);styleEncounterLine(caption);caption.classList.add('encounter-subtitle');
+ const caption=document.createElement('aside');caption.id='bridge-scooter-caption';caption.hidden=true;caption.setAttribute('aria-live','polite');uiRoot.append(caption);styleEncounterLine(caption);caption.classList.add('encounter-subtitle','pixel-panel');
  let distance=0,age=0,used=false,moving=false,playing=false,played=false,failed=false,line=-1,generation=0,cooldown=0,speed=0,heading=0,stopDistance=length,phase='waiting',diverted=false,lastScan=-1;
  const [homeX,homeZ]=bridge.at(-1),pursuit={x:homeX,y:world.height(homeX,homeZ),z:homeZ,homeX,homeZ,heading:0,speed:0,chasing:false,returning:false,lean:0};
  const pursuitWorld={height:world.height,blocked:(x,y,z,r,h)=>world.isWater(x,z)||world.bodyBlocked(x,y,z,r,h)};

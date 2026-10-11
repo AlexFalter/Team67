@@ -18,6 +18,7 @@ export class GameControls {
   private resumeKeys = new Set<string>();
   private discardMouseDelta = false;
   private releasePauseAt = 0;
+  private playgroundPaused = false;
   private actions: ActionHud;
   constructor(private canvas: HTMLCanvasElement, private local: LocalPlayer, private view: PlayerView, private ready: () => boolean, private suspended: () => boolean = () => false, now: () => number = () => Date.now(), context: () => ContextAction[] = () => [], weapon: () => WeaponAction | undefined = () => undefined, respawn: () => void = () => {}) {
     const options = { signal: this.abort.signal };
@@ -81,6 +82,7 @@ export class GameControls {
   }
   resumeAfterInteraction() {this.restoreGameplay();}
   restoreGameplay() {
+    if (this.playgroundPaused) return;
     if (!this.ready() || this.suspended() || !document.hasFocus()) return;
     this.available=true;this.recaptureOnInput=true;
     this.captured = document.pointerLockElement === this.canvas;
@@ -105,6 +107,7 @@ export class GameControls {
     this.local.enabled=false;this.local.clear();this.menu.hidden=true;this.recaptureOnInput=true;this.update();
   }
   async resume() {
+    this.playgroundPaused = false;
     if(this.externalMenuReady?.()&&!this.suspended()&&document.hasFocus()){
       this.menu.hidden=true;this.local.enabled=false;this.local.clear();this.canvas.focus();
       if(this.externalCapture?.())try{await this.canvas.requestPointerLock();}catch{/* Ride look also supports an uncaptured cursor. */}
@@ -133,6 +136,7 @@ export class GameControls {
     if (document.pointerLockElement === this.canvas) document.exitPointerLock();
     this.update(); if (!this.menu.hidden) document.querySelector<HTMLButtonElement>("#resume")!.focus();
   }
+  holdPlaygroundMenu() { this.playgroundPaused = true; this.pause(); }
   suspendForMap() {this.suspendForInteraction();this.menu.hidden=true;}
   suspendForInteraction() {
     this.recovery?.cancel();this.resumeKeys?.clear();this.capturePending=false;
@@ -160,7 +164,7 @@ export class GameControls {
     }
     if (!this.ready()) {
       if(this.capturePending){this.recovery?.cancel();this.resumeKeys?.clear();this.capturePending=false;}
-      this.local.enabled = false; this.local.clear(); if(!this.externalMenuReady?.())this.menu.hidden = true;
+      this.local.enabled = false; this.local.clear(); if(!this.externalMenuReady?.()&&!this.playgroundPaused)this.menu.hidden = true;
 
       // An encounter can open before its host's syncLock runs. Hand off
       // capture here too, before releasing it or receiving a queued event.

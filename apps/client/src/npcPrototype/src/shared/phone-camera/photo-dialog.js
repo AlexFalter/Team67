@@ -1,3 +1,4 @@
+import './photo-ui.css';
 // Keyboard contract shared by mandatory photo apps. Workflow state remains
 // with the encounter: this helper only traps focus and routes the shutter.
 export function handlePhotoDialogKey(event,ui,{framing,onShutter}){

@@ -7,10 +7,10 @@ export function ExamOverlay({ session, onComplete, onProgress, onExit, onSpectat
 }) {
   if (session.stage === 'world') return null;
   if (session.stage === 'exam' || session.stage === 'complete' || session.stage === 'spectate') return <div className="exam-game-screen" hidden={session.stage === 'spectate'}><EthBlur
-    startImmediately visible={session.stage !== 'spectate'} remainingSeconds={session.remainingSeconds} onComplete={onComplete} onProgress={onProgress} onExit={onExit} />{session.canEnter && onSpectate && <button className="exam-spectate" onClick={onSpectate}>Spectate instead</button>}</div>;
+    startImmediately visible={session.stage !== 'spectate'} unlimited={session.unlimited} remainingSeconds={session.remainingSeconds} onComplete={onComplete} onProgress={onProgress} onExit={onExit} />{session.canEnter && onSpectate && <button className="exam-spectate" onClick={onSpectate}>Spectate instead</button>}</div>;
   const seconds = Math.ceil(session.remainingSeconds);
   return <section className={`exam-transition ${session.stage}`} aria-label="Final exam entrance">
-    <div className="exam-transition-clock">◷ {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')} remaining</div>
+    <div className="exam-transition-clock">{session.unlimited ? 'UI playground · no timer' : <>◷ {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')} remaining</>}</div>
     <div className="exam-transition-heading"><img className="exam-transition-logo" src="/assets/eth-zurich.svg" alt="ETH Zürich" /><h1>Exam Starts</h1></div>
   </section>;
 }

@@ -1,0 +1,5 @@
+.map-viewer #battle-bus-intro { --panel-border: var(--ui-border); --panel-background: var(--ui-background); max-width: calc(100% - 32px); width: max-content; padding: 14px 20px; border-radius: 2px; color: var(--ui-heading); font: 14px/1.5 var(--ui-font); letter-spacing: .3px; text-align: center; }
+.map-viewer #battle-bus-intro[data-thanked=true] { color: var(--ui-accent); }
+.map-viewer #activity-feed { font: 12px/1.5 var(--ui-font); color: var(--ui-heading); max-width: min(290px,calc(100% - 32px)); text-shadow: none; }
+.map-viewer #activity-feed > .pixel-panel { --panel-border: var(--ui-border); --panel-background: var(--ui-background); padding: 10px 12px; border-radius: 2px; }
+@media(max-width:600px) { .map-viewer #battle-bus-intro { bottom: 24px; font-size: 12px; padding: 12px 14px; } .map-viewer #activity-feed { font-size: 11px; } }
