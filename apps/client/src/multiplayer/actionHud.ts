@@ -92,7 +92,9 @@ export class ActionHud {
     this.boost.classList.toggle("exhausted", remaining === 0);
     this.boost.setAttribute("aria-label", `Shift to boost, ${Math.ceil(remaining * LIME_BOOST_DURATION_MS / 1000)} seconds available`);
     const allActions = this.getContext();
-    this.primary = allActions.find(action => action.key === "Q");
+    const heldWeapon = this.getWeapon();
+    // AWP uses Q for scope; keep it separate from the click-to-fire action.
+    this.primary = heldWeapon?.kind === "awp" ? undefined : allActions.find(action => action.key === "Q");
     const actions = allActions.filter(action => action !== this.primary);
     const interaction = actions.find(action => action.key === "E");
     const hint = this.instructions.querySelector<HTMLElement>(".interaction-instruction")!;
@@ -117,7 +119,7 @@ export class ActionHud {
       entry.button.disabled = !action.enabled; entry.button.title = `${action.label} · ${action.key}`;
       entry.button.setAttribute("aria-label", `${action.label} · ${action.key}`);
     });
-    const weapon = this.primary ? undefined : this.getWeapon();
+    const weapon = this.primary ? undefined : heldWeapon;
     const punchSvg = this.punch.querySelector('svg')!;
     const isAwp=weapon?.kind==='awp',isBag=weapon?.kind==='bag'||weapon?.kind==='tomato',isFootball=weapon?.kind==='football',verb=isAwp?'Fire AWP':isBag?(weapon?.kind==='tomato'?'Throw tomato':'Throw bag'):isFootball?'Kick football':'Slash';
     const icon = this.primary?.icon ?? (weapon ? (isAwp?'awp':isBag?'bag':isFootball?'football':'knife') : 'punch');

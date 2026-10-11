@@ -28,6 +28,9 @@ export class RoomFlow {
   private timerValue = document.querySelector<HTMLElement>("#timer-value")!;
   private timerFill = document.querySelector<HTMLElement>("#timer-fill")!;
   private timerLabel = document.querySelector<HTMLElement>("#timer-label")!;
+  private codeLabel = this.root.querySelector<HTMLElement>("#room-code-label")!;
+  private codeToggle = this.root.querySelector<HTMLButtonElement>("#room-code-visibility")!;
+  private codeVisible = false;
   private finish = document.querySelector<HTMLButtonElement>("#finish-round")!;
   private countdownAnimation?: Animation;
   private signature = "";
@@ -45,6 +48,7 @@ export class RoomFlow {
     } })
       .catch(error => { if (!this.abort.signal.aborted) this.preparationError = `${String(error)} Reload to retry loading the game.`; });
     const options = { signal: this.abort.signal };
+    this.codeToggle.addEventListener("click", () => { this.codeVisible = !this.codeVisible; this.updateCode(); }, options);
     this.ready.addEventListener("click", () => {
       const member = net.room?.state.members.get(net.room.sessionId);
       if (member && this.prepared && net.room.state.hostId === net.room.sessionId) { unlockAudio(); net.room.send("ready", true); }
@@ -63,7 +67,7 @@ export class RoomFlow {
     this.root.hidden = state.phase === RoomPhase.Running && !!member && (!member.spectator||this.net.spectating);
     this.root.dataset.phase = state.phase;
     this.root.querySelector<HTMLElement>("#room-count")!.textContent = `${state.members.size} / 40 PLAYERS`;
-    this.root.querySelector<HTMLElement>("#room-code-label")!.textContent = `ROOM ${this.net.room.roomId}`;
+    this.updateCode();
     this.title.textContent = state.phase === RoomPhase.Running ? "Round in progress" : state.phase === RoomPhase.Finished ? "Round finished" : "Room lobby";
     this.ready.hidden = state.phase !== RoomPhase.Lobby || !member || !host;
     this.ready.textContent = "Start match ↗";
@@ -108,6 +112,12 @@ export class RoomFlow {
       }
       this.table.tBodies[0].replaceChildren(rows);
     }
+  }
+  private updateCode() {
+    this.codeLabel.textContent = this.codeVisible ? this.net.room?.roomId ?? "" : "••••••";
+    this.codeToggle.textContent = this.codeVisible ? "Hide" : "Show";
+    this.codeToggle.setAttribute("aria-label", this.codeVisible ? "Hide room code" : "Show room code");
+    this.codeToggle.setAttribute("aria-pressed", String(this.codeVisible));
   }
   private lobbyMessage() {
     const state = this.net.room?.state;

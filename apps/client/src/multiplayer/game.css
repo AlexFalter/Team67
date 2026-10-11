@@ -39,6 +39,9 @@ main:has(:is(#lobby, #room-screen):not([hidden])) > :is(header, footer) { displa
 #lobby input::placeholder { color: #819c90; }
 #lobby :is(input, select):focus-visible { outline: none; border-color: #d7f87a; box-shadow: 0 0 0 3px #d7f87a16; }
 #room-code { text-transform: uppercase; letter-spacing: 1.5px; }
+.room-code-input { display: grid; grid-template-columns: minmax(0, 1fr) 70px; gap: 8px; }
+:is(#lobby, #room-screen) .code-visibility { cursor: pointer; border: 2px solid #5f817180; border-radius: 2px; background: #244034; color: #edf4ef; padding: 8px 10px; font: 12px/1.4 var(--ui-font); box-shadow: inset 2px 2px 0 #ffffff18, inset -2px -2px 0 #0004, 2px 2px 0 #071a2480; }
+:is(#lobby, #room-screen) .code-visibility:hover:not(:disabled) { background: #355445; }
 #lobby .buttons { display: flex; gap: 8px; margin-top: 24px; }
 #lobby .buttons button { flex: 1; min-height: 46px; padding: 12px 10px; cursor: pointer; border: 1px solid #5f817180; border-radius: 2px; background: #244034; color: #edf4ef; font: 650 12px system-ui, sans-serif; transition: background .15s, transform .15s; }
 #lobby .buttons button:first-child { background: #d7f87a; border-color: #c3e664; color: #173137; }
@@ -91,6 +94,10 @@ button:disabled { cursor: wait; opacity: 0.6; }
 .room-card .eyebrow { display: inline-block; margin: 14px 0 0; padding: 10px 12px; border: 2px solid #b9d4cb70; border-radius: 2px; background: #0a1e27c9; color: #d7f87a; font: 12px/1.4 ui-monospace, monospace; letter-spacing: 1.5px; overflow-wrap: anywhere; box-shadow: inset 2px 2px 0 #ffffff12, inset -2px -2px 0 #0004; }
 .room-card button { display: block; width: 100%; min-height: 46px; cursor: pointer; border: 2px solid #5f817180; border-radius: 2px; background: #244034; color: #edf4ef; padding: 12px 10px; margin: 10px 0 0; font: 12px/1.4 ui-monospace, monospace; box-shadow: inset 2px 2px 0 #ffffff18, inset -2px -2px 0 #0004, 2px 2px 0 #071a2480; transition: background .15s; }
 .room-card button:hover:not(:disabled) { background: #355445; }
+.room-card .room-code-display { display: flex; align-items: center; gap: 12px; width: 100%; box-sizing: border-box; }
+.room-code-caption { font-size: 9px; color: #b9ccc7; letter-spacing: 1px; }
+#room-code-label { flex: 1; min-width: 0; }
+.room-card .room-code-display .code-visibility { width: auto; min-height: 32px; margin: 0; flex-shrink: 0; letter-spacing: 0; }
 .room-card :is(#room-ready, #room-restart) { background: #d7f87a; color: #173137; border-color: #c3e664; }
 .room-card :is(#room-ready, #room-restart):hover:not(:disabled) { background: #c9ee67; }
 #room-roster { list-style: none; padding: 0; margin: 20px 0 24px; max-height: 30vh; overflow-y: auto; scrollbar-width: thin; }

@@ -12,6 +12,7 @@ export function GameOverlay({ resolution, onResolutionChange, offline = false }:
   onResolutionChange: (resolution: RenderingQuality) => void;
 }) {
   const [character, setCharacter] = useState(0);
+  const [showCode, setShowCode] = useState(false);
   const cycleCharacter = (direction: number) => setCharacter(current => (current + direction + characters.length) % characters.length);
   return <>
     <section id="lobby" hidden={offline} aria-label="Multiplayer lobby">
@@ -54,7 +55,10 @@ export function GameOverlay({ resolution, onResolutionChange, offline = false }:
         <label htmlFor="player-name">Your name</label>
         <input id="player-name" autoComplete="nickname" maxLength={24} required placeholder="Your name" />
         <label htmlFor="room-code">Room code</label>
-        <input id="room-code" autoComplete="off" maxLength={12} minLength={4} placeholder="e.g. ZURICH" />
+        <div className="room-code-input">
+          <input id="room-code" type={showCode ? "text" : "password"} autoComplete="off" maxLength={12} minLength={4} placeholder="e.g. ZURICH" />
+          <button type="button" className="code-visibility" aria-label={showCode ? "Hide room code" : "Show room code"} aria-controls="room-code" aria-pressed={showCode} onClick={() => setShowCode(value => !value)}>{showCode ? "Hide" : "Show"}</button>
+        </div>
         <fieldset id="dev-settings" className="pixel-panel" popover="auto">
           <legend>Options</legend>
           <label><input id="dev-mode" type="checkbox" /> Dev mode</label>
@@ -87,7 +91,11 @@ export function GameOverlay({ resolution, onResolutionChange, offline = false }:
       <div className="room-location"><span className="location-dot" aria-hidden="true"></span><div>POLYTERRASSE<span>ETH ZENTRUM / ZÜRICH</span></div></div>
       <PixelPanel className="room-card">
         <div className="room-card-top"><span>PRIVATE ROOM</span><span id="room-count"></span></div>
-        <p className="eyebrow" id="room-code-label"></p>
+        <div className="eyebrow room-code-display">
+          <span className="room-code-caption">ROOM CODE</span>
+          <span id="room-code-label">••••••</span>
+          <button id="room-code-visibility" type="button" className="code-visibility" aria-label="Show room code" aria-controls="room-code-label" aria-pressed="false">Show</button>
+        </div>
         <h1 id="room-title">Room lobby</h1>
         <p id="room-message" role="status"></p>
         <ul id="room-roster" aria-label="Players in this room"></ul>
