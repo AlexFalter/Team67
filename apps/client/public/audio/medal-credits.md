@@ -72,3 +72,23 @@ The runtime plays the eight celebrations sequentially with silent gaps and dista
 `bo3-medal-earned.mp3`: original Treyarch/Activision Black Ops III multiplayer beta medal effect, sourced from Bizargh's extraction linked in [the Sound Collection archive](https://steamcommunity.com/groups/bizarchivistsoundproject/discussions/2/152391995421803915/). Archive: `Call of Duty Black Ops III Multiplayer Beta Sound, VO & Music.zip`; entry: `snd/all/mpl/medal_earn/medal_earned.LN100.pc.snd.flac` (173761 bytes, ZIP CRC32 732D11AA). Converted to 192 kbps MP3 without pitch, duration or waveform effects. This is the beta recording; retail byte identity has not been established. Attribution does not grant a redistribution licence.
 
 `timgio-hol-ihn-raus.mp3`: original 00:41.00–00:44.00, the response selected by the user. Same -20 LUFS / -3 dBTP edit and fades. The current conversation uses this response; the previous funny ending clip is no longer loaded. Current ambient order: Germany 1, Curaçao equaliser, Germany 2 through 7.
+
+### Nerf AWP mechanical sounds
+
+`audio/awp/bo3-{bolt-up,bolt-back,bolt-forward,bolt-down,mag-out,mag-in}.mp3` use six original `fly_dsr50_*_00.LN100.pc.snd.flac` recordings from the same **Black Ops III Multiplayer Beta Sound, VO & Music.zip** archive and Sound Collection source linked above. Archive directory: `snd/all/fly/weapon/reload/sniper/dsr50/`. Each extracted file was checked against its ZIP CRC32, then transcoded to 128 kbps MP3 without pitch, speed, or sound-design effects. Runtime gain is 0.32. These are beta archive recordings; retail identity has not been established. Rights remain with Treyarch/Activision. Exact entries, offsets, sizes and CRCs are recorded in `assets/audio/awp-cod-sources.json`.
+
+The clips play separately at the magazine-removal/insertion and bolt lift/back/forward/lock animation phases. No synthesized replacement mechanical sounds are used.
+
+## Nerf AWP firing sound
+
+“Nerf Hammershot Dart Shot” by ImAFoley (2020), Freesound sound 516745, CC0 1.0.
+Source: https://freesound.org/people/ImAFoley/sounds/516745/
+License: https://creativecommons.org/publicdomain/zero/1.0/
+Downloaded HQ preview: https://cdn.freesound.org/previews/516/516745_7117640-hq.mp3
+The shot at 2.474 seconds is trimmed to 0.46 seconds, converted to mono, filtered at 80 Hz / 12 kHz, given a short fade and mild compression, and saved as `awp/nerf-fire.mp3`. Playback gain is 0.65. This replaces the synthesized firing tone; bolt/reload recordings remain separate.
+
+### UAV / drone call-in
+
+`drone/bo3-{ready,request,tablet,online,scan,end}.mp3` are original recordings extracted from Bizargh's **Black Ops III Multiplayer Beta Sound, VO & Music.zip**, linked at https://steamcommunity.com/groups/bizarchivistsoundproject/discussions/2/152391995421803915/ . They include Black Ops TacCom's UAV-ready announcement, Ruin's UAV request, the Black Ops drone operator's arrival/timeout responses, `tablet_beep_tech` and `minimap_beep`. Every extracted FLAC was verified against its ZIP entry CRC32 and transcoded to 128 kbps MP3 without changing pitch or speed. Exact entry names, sizes, offsets and CRCs are in `assets/audio/drone-cod-sources.json`. These are BO3 beta recordings; retail byte identity has not been established. Rights remain with Treyarch/Activision.
+
+The request plays only after the server confirms the call; tablet beeps follow its three button presses. Arrival accompanies the start of the scan, with a quieter ping for each new server sweep and an operator response at expiry. Playback follows the movement/vehicle sound setting and stops on pause or disposal. Runtime gains before the shared 0.65 master: radio voices 0.55, tablet 0.28, sweep 0.16.

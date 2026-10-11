@@ -1,3 +1,6 @@
+import {DroneFeature} from './streaks/DroneFeature.ts';
+import {GtrDonuts} from './vehicles/gtr/GtrDonuts.ts';
+import {AwpFeature} from './weapons/AwpFeature.ts';
 import {FruitFeature} from './fruit/FruitFeature.ts';
 import { StuckHint } from "./stuckHint.ts";
 import { LimeTrickScore } from "./limeTrickScore.ts";
@@ -53,6 +56,7 @@ export class MapGame {
   private inputAbort = new AbortController();
   private traffic: TrafficRenderer;
   private cows: BridgeCows;
+  private gtr:GtrDonuts;
   private trafficEditor?: TrafficEditor;
   private local = new LocalPlayer();
   private remotes: RemotePlayers;
@@ -86,6 +90,8 @@ export class MapGame {
   private football:FootballFeature;
   private bags: BagFeature;
   private fruit:FruitFeature;
+  private awp:AwpFeature;
+  private drone:DroneFeature;
   private audio = new GameAudio();
   private drowning: Drowning;
   private audioSources = new Map<string, LoopSource>();
@@ -103,6 +109,7 @@ export class MapGame {
     this.medals = createMedals({root: canvas.parentElement!, definitions: PLAYER_MEDALS});
     this.net.onMedal = award => this.medals.awardMany(award.ids, award.eventKey);
     this.cows = new BridgeCows(scene, this.audio);
+    this.gtr=new GtrDonuts(scene,TrafficRoadSurface.forMap(map));
     this.traffic = new TrafficRenderer(scene, TrafficRoadSurface.forMap(map));
     this.exam = new ExamSequence(scene, camera, onExamChange, this.net.offline);
     this.transitScenery = new TransitScenery(scene, map);
@@ -120,11 +127,13 @@ export class MapGame {
     this.mate = new MateFeature(scene, camera, this.net, this.local, canvas,
       () => this.controls.suspendForInteraction(), () => this.controls.resumeAfterInteraction());
     this.view = new PlayerView(camera, [map, this.mate.machine], zurichWorld);
-    this.bags=new BagFeature(scene,camera,this.net,this.local,this.view,canvas.parentElement!,()=>this.net.canPlay&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.npcs?.active&&!this.emotes?.opened&&!this.maps?.active,()=>{if(this.npcs?.karambit?.occupiesHands())this.npcs.karambit.toggle();});
-    this.fruit=new FruitFeature(scene,camera,this.net,this.local,()=>this.net.canPlay&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.npcs?.active&&!this.emotes?.opened&&!this.maps?.active&&!!document.querySelector<HTMLElement>('#pause')?.hidden,()=>{this.football?.holster();if(this.npcs?.karambit?.occupiesHands())this.npcs.karambit.toggle();});
+    this.bags=new BagFeature(scene,camera,this.net,this.local,this.view,canvas.parentElement!,()=>this.net.canPlay&&!this.drone?.calling&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.npcs?.active&&!this.emotes?.opened&&!this.maps?.active,()=>{if(this.npcs?.karambit?.occupiesHands())this.npcs.karambit.toggle();});
+    this.fruit=new FruitFeature(scene,camera,this.net,this.local,()=>this.net.canPlay&&!this.drone?.calling&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.npcs?.active&&!this.emotes?.opened&&!this.maps?.active&&!!document.querySelector<HTMLElement>('#pause')?.hidden,()=>{this.awp?.holster();this.football?.holster();if(this.npcs?.karambit?.occupiesHands())this.npcs.karambit.toggle();});
     // Camera shutter from mini-games-2 when a photo is taken.
     this.npcs = new NpcFeature(scene, camera, this.net, this.local, this.vehicles, canvas, map, () => { this.audio.effect("shutter"); return capture(); });
-    this.football=new FootballFeature(scene,camera,this.net,this.local,()=>!this.npcs.active&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.emotes?.opened&&!this.maps?.active&&document.querySelector<HTMLElement>('#pause')?.hidden!==false,()=>{if(this.npcs.karambit?.occupiesHands())this.npcs.karambit.toggle();});
+    this.football=new FootballFeature(scene,camera,this.net,this.local,()=>!this.drone?.calling&&!this.npcs.active&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.emotes?.opened&&!this.maps?.active&&document.querySelector<HTMLElement>('#pause')?.hidden!==false,()=>{this.awp?.holster();if(this.npcs.karambit?.occupiesHands())this.npcs.karambit.toggle();});
+    this.awp=new AwpFeature(scene,camera,this.net,this.local,()=>!this.drone?.calling&&!this.npcs.active&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.emotes?.opened&&!this.maps?.active&&!this.trafficEditor?.active&&this.net.now()>=this.derailUntil&&document.querySelector<HTMLElement>('#pause')?.hidden!==false,()=>{this.view.perspective=0;this.fruit.holster();this.football.holster();if(this.npcs.karambit?.occupiesHands())this.npcs.karambit.toggle();},id=>id===this.net.room?.sessionId?this.mesh:this.remotes.players.get(id)?.mesh??this.bags.avatarFor(id));
+    this.drone=new DroneFeature(camera,this.net,this.local,()=>!this.awp.cycling&&!this.awp.reloading&&!this.awp.inspecting&&!this.npcs.active&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.emotes?.opened&&!this.maps?.active&&!this.trafficEditor?.active&&this.net.now()>=this.derailUntil&&document.querySelector<HTMLElement>('#pause')?.hidden!==false,()=>{this.view.perspective=0;this.awp.holster();this.fruit.holster();this.football.holster();if(this.npcs.karambit?.occupiesHands())this.npcs.karambit.toggle();},sound=>this.audio.drone(sound));
     this.npcs.onFootballReward=()=>this.football.grant();
     this.medals.setSoundEnabled(this.audio.settings.medalSounds);
     for (const [selector, key] of [["#vehicle-sounds", "vehicleSounds"], ["#medal-sounds", "medalSounds"]] as const) {
@@ -136,21 +145,21 @@ export class MapGame {
     this.npcs.playerView = this.view;
     scene.add(camera);
     this.bus = new BattleBusIntro(scene, camera, this.net, canvas, () => this.view.sensitivity);
-    this.ready = Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready, this.npcs.ready, this.cows.ready, this.bags.ready,this.fruit.ready]).then(() => {});
+    this.ready = Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready, this.npcs.ready, this.cows.ready, this.bags.ready,this.fruit.ready,this.awp.ready,this.gtr.ready]).then(() => {});
     this.roomFlow = new RoomFlow(this.net, this.ready, () => this.bus.unlockAudio(), () => this.audio.effect("timer"));
-    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.trafficEditor?.active && !this.emotes?.opened && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active, () => this.net.now()<this.derailUntil || !!this.maps?.active || (this.local.body.moodleSitUntil??0)>this.net.now(), () => this.net.now(), () => this.contextActions(), () => {if(this.fruit.occupiesHands)return {kind:"tomato",enabled:this.fruit.canThrow,run:()=>this.fruit.throw()};if(this.bags.occupiesHands)return {kind:"bag",enabled:this.bags.canThrow,run:()=>this.bags.throwBag()};if(this.football.occupiesHands)return {kind:"football",enabled:this.football.canKick,run:()=>this.football.kick()};const knife=this.npcs.karambit;return knife?.occupiesHands()&&!this.local.body.vehicleId&&this.view.perspective===0?{enabled:this.npcs.canUseKarambit()&&knife.state().phase!=='attack'&&this.local.body.attackReadyAt<=this.net.now(),run:()=>this.npcs.attackKarambit()}:undefined;}, () => this.net.room.send('respawn'));
+    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.trafficEditor?.active && !this.emotes?.opened && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active, () => this.net.now()<this.derailUntil || !!this.maps?.active || (this.local.body.moodleSitUntil??0)>this.net.now(), () => this.net.now(), () => this.contextActions(), () => {if(this.drone.calling)return {kind:"awp",enabled:false,run:()=>{}};if(this.awp.occupiesHands)return {kind:"awp",enabled:this.awp.canFire,run:()=>this.awp.fire()};if(this.fruit.occupiesHands)return {kind:"tomato",enabled:this.fruit.canThrow,run:()=>this.fruit.throw()};if(this.bags.occupiesHands)return {kind:"bag",enabled:this.bags.canThrow,run:()=>this.bags.throwBag()};if(this.football.occupiesHands)return {kind:"football",enabled:this.football.canKick,run:()=>this.football.kick()};const knife=this.npcs.karambit;return knife?.occupiesHands()&&!this.local.body.vehicleId&&this.view.perspective===0?{enabled:this.npcs.canUseKarambit()&&knife.state().phase!=='attack'&&this.local.body.attackReadyAt<=this.net.now(),run:()=>this.npcs.attackKarambit()}:undefined;}, () => this.net.room.send('respawn'));
     const resumeInteraction = () => {
       // Resetting offline encounters must keep the playground controls accessible.
       if (this.net.offline && !document.querySelector<HTMLElement>("#pause")?.hidden) return;
       this.controls.resumeAfterInteraction();
     };
-    this.emotes=new EmoteFeature(this.net,this.local,this.view,canvas.parentElement!,()=>this.net.canPlay&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.npcs.active&&!this.maps?.active&&this.net.now()>=this.derailUntil&&!!document.querySelector<HTMLElement>('#pause')?.hidden,resumeInteraction);
+    this.emotes=new EmoteFeature(this.net,this.local,this.view,canvas.parentElement!,()=>this.net.canPlay&&!this.drone?.calling&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.npcs.active&&!this.maps?.active&&this.net.now()>=this.derailUntil&&!!document.querySelector<HTMLElement>('#pause')?.hidden,resumeInteraction);
     this.spectator=new Spectator(this.net,camera,canvas,()=>{this.controls.suspendForMap();this.exam.returnToExam();},()=>{void this.controls.resume();});
     this.net.onSpectate=()=>{this.maps.closeForTeleport();this.local.enabled=false;this.local.clear();this.exam.spectate();this.controls.suspendForMap();};
     this.maps = new RaceMap(this.net, () => ({ ...this.local.body, enabled: this.local.enabled }),
-      () => [...this.npcs.mapMarkers(), { ...this.mate.machine.position, label: "El Tony Mate" }],
+      () => [...this.npcs.mapMarkers(), { ...this.mate.machine.position, label: "El Tony Mate" },{x:C.AWP_RACK.approach[0],y:C.AWP_RACK.approach[1],z:C.AWP_RACK.approach[2],label:"Nerf AWP"},{x:C.GTR_DONUTS.center[0],y:C.GTR_DONUTS.center[1],z:C.GTR_DONUTS.center[2],label:"GT-R donuts"}],
       () => !!this.net.canPlay && !this.trafficEditor?.active && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now() >= this.derailUntil && !!document.querySelector<HTMLElement>("#pause")!.hidden,
-      () => this.controls.suspendForMap(), () => void this.controls.resume());
+      () => this.controls.suspendForMap(), () => void this.controls.resume(),()=>this.drone.blips,()=>this.drone.active?this.drone.scanStart:undefined);
     this.net.onMapTeleport=({from,target})=>{this.maps.closeForTeleport();this.local.clear();this.npcs.playMapTeleport(from,target);};
     this.npcs.externalPhoneBusy=()=>this.exam.active||this.publiBikes.active||this.mate.active||!document.querySelector<HTMLElement>("#pause")?.hidden;
     this.npcs.onResume=resumeInteraction;
@@ -208,10 +217,14 @@ export class MapGame {
     const nearbyBike = this.net.room?.state.publiBikes?.get(nearId);
     const icon = npcPrompt?.icon ?? (p.vehicleId ? "leave" : this.mate.nearby ? "mate" : this.vehicles.interactionKind(p));
     const label = npcPrompt?.label ?? (p.vehicleId ? "Leave vehicle" : this.mate.nearby ? "Use Mate machine" : near?.kind === C.LIME_KIND ? "Ride Lime scooter" : icon === "bike" ? (nearbyBike ? nearbyBike.broken || nearbyBike.batteryMs <= 0 ? "This PubliBike seems broken" : "Unlock PubliBike" : "Ride bike") : near && C.isRail(near) ? `Enter ${C.transitName(near)}` : "Enter vehicle");
-    if(this.fruit.nearby)actions.push({icon:"mate",key:"E",label:this.fruit.remaining===0?"No tomatoes left":this.fruit.count>=5?"Tomato inventory full":`Take tomatoes (${this.fruit.remaining} left)`,enabled:this.fruit.canTake,run:()=>this.local.requestInteraction()});
+    if(this.awp.nearby)actions.push({icon:"awp",key:"E",label:"Pick up Nerf AWP",enabled:this.awp.eligible,run:()=>this.local.requestInteraction()});
+    else if(this.fruit.nearby)actions.push({icon:"mate",key:"E",label:this.fruit.remaining===0?"No tomatoes left":this.fruit.count>=5?"Tomato inventory full":`Take tomatoes (${this.fruit.remaining} left)`,enabled:this.fruit.canTake,run:()=>this.local.requestInteraction()});
     else if(this.football.nearby)actions.push({icon:"football",key:"E",label:"Pick up football",enabled:this.football.available,run:()=>this.local.requestInteraction()});
     else if(this.bags.nearby)actions.push({icon:"bag",key:"E",label:"Pick up Ersti bag",enabled:p.knockdownUntil<=this.net.now(),run:()=>this.local.requestInteraction()});
     else if (icon) actions.push({ icon, key: "E", label, enabled: p.knockdownUntil <= this.net.now(), run: () => this.local.requestInteraction() });
+    if(this.drone.ready)actions.push({icon:"drone",key:"7",label:"Call drone",enabled:this.drone.canActivate,run:()=>this.drone.activate()});
+    if(this.awp.owned)actions.push({icon:"awp",key:"6",label:this.awp.occupiesHands?"Holster Nerf AWP":"Equip Nerf AWP",enabled:this.awp.available,run:()=>this.awp.toggle()});
+    if(this.awp.occupiesHands){actions.push({icon:"awp",key:"F",label:"Zoom / unzoom",enabled:this.awp.canZoom,run:()=>this.awp.toggleScope()});actions.push({icon:"equip",key:"R",label:"Reload darts",enabled:this.awp.canReload,run:()=>this.awp.reload()});}
     if(this.fruit.count>0)actions.push({icon:"bag",key:"5",label:this.fruit.occupiesHands?"Holster tomato":"Equip tomato",enabled:!p.bagId&&!p.vehicleId,run:()=>this.fruit.toggle()});
     const scooter = this.vehicles.items.get(p.vehicleId)?.latest;
     if (C.LIME_TAILWHIP_ENABLED && scooter?.kind === C.LIME_KIND && scooter.driver === this.net.room?.sessionId)
@@ -228,7 +241,7 @@ export class MapGame {
     }
     if(this.football.owns)actions.push({icon:"football",key:"4",label:this.football.occupiesHands?"Put away football":"Equip football",enabled:this.football.available,run:()=>this.football.toggle()});
     if(this.emotes)actions.push({icon:"emote",key:"B",label:"Emote wheel",enabled:this.emotes.available,run:()=>this.emotes.open()});
-    actions.push({icon:"camera",key:"F",label:"Change view",enabled:true,run:()=>{this.view.cycle();this.controls.update();}});
+    if(!this.awp.occupiesHands)actions.push({icon:"camera",key:"F",label:"Change view",enabled:!this.drone.calling,run:()=>{this.view.cycle();this.controls.update();}});
     return actions;
   }
   update(elapsed: number, now: number) {
@@ -236,8 +249,13 @@ export class MapGame {
     const state = this.net.room?.state;
     this.canvas.parentElement!.dataset.uiBusy = String(this.maps.active || (this.exam.active && !this.exam.spectating) || this.mate.active || this.publiBikes.active || this.npcs.active || this.emotes.opened);
     if(this.football.occupiesHands||this.npcs.karambit?.occupiesHands()||this.local.body.bagId)this.fruit.holster();
+    if(this.fruit.occupiesHands||this.football.occupiesHands||this.npcs.karambit?.occupiesHands())this.awp.holster();
+    this.drone.update(dt);
+    this.awp.update(dt);
+    if(this.awp.occupiesHands)this.view.perspective=0;
     this.fruit.update();
     this.cows.update(this.net.now(), this.camera.position, this.net.canPlay && !this.exam.active);
+    this.gtr.update(renderTime,this.net.canPlay&&!this.exam.active);
     this.traffic.render(renderTime);
     this.trafficEditor?.update();
     if (this.trafficEditor?.active) {
@@ -267,7 +285,7 @@ export class MapGame {
         !this.publiBikes.active && !this.mate.active && !this.npcs.active && !this.npcs.ridingVehicle && this.net.now() >= this.derailUntil);
       this.net.frame(dt, this.local.body, () => drowned || this.net.now()<this.derailUntil || this.npcs.ridingVehicle || (this.local.body.moodleSitUntil??0)>this.net.now()?IDLE_INPUT:this.local.controls(this.view.yaw));
       if (drowned) this.local.takeInteraction();
-      else if ((this.local.body.moodleSitUntil??0)<=this.net.now() && this.net.now()>=this.derailUntil && this.local.takeInteraction() && !this.npcs.active && !this.fruit.interact() && !this.football.interact() && !this.bags.interact() && !this.npcs.interact() && !this.mate.interact() && !this.publiBikes.interact()) this.vehicles.interact(this.local.body);
+      else if ((this.local.body.moodleSitUntil??0)<=this.net.now() && this.net.now()>=this.derailUntil && this.local.takeInteraction() && !this.drone.calling && !this.npcs.active && !this.awp.interact() && !this.fruit.interact() && !this.football.interact() && !this.bags.interact() && !this.npcs.interact() && !this.mate.interact() && !this.publiBikes.interact()) this.vehicles.interact(this.local.body);
       if (this.local.body.vehicleId) this.vehicles.local(this.local.body, this.net.room.sessionId);
       else this.vehicles.stopDriving();
       this.mate.equip(this.mesh, this.local.body.mateFlavor ?? 2);
@@ -278,8 +296,8 @@ export class MapGame {
       const railPhone=this.npcs.phoneOpen&&!!cabin&&isRail(cabin);
       alignCabinAvatar(this.mesh, this.local.body, cabin);
       this.mesh.visible = this.avatarReady && this.view.perspective !== 0;
-      this.firstBody.visible = this.avatarReady && firstPersonBodyVisible(this.local.body, this.view.perspective);
-      if(this.view.perspective===0&&(this.npcs.karambit?.occupiesHands()||this.bags.occupiesHands)&&!this.local.body.vehicleId)this.firstBody.visible=false;
+      this.firstBody.visible = !this.drone.calling && this.avatarReady && firstPersonBodyVisible(this.local.body, this.view.perspective);
+      if(this.view.perspective===0&&(this.awp.occupiesHands||this.npcs.karambit?.occupiesHands()||this.bags.occupiesHands)&&!this.local.body.vehicleId)this.firstBody.visible=false;
       if (this.publiBikes.active || this.mate.active || (this.npcs.hideAvatar&&!railPhone)) this.mesh.visible = this.firstBody.visible = false;
       this.effects.trail(this.net.room.sessionId, this.local.body, now);
       const trickVehicle = this.vehicles.items.get(this.local.body.vehicleId);
@@ -291,6 +309,7 @@ export class MapGame {
         // A phone freezes input, while the passenger camera still follows the moving cabin.
         this.view.update(this.local.body, dt, vehicle && isRail(vehicle) ? railFrame(vehicle, railSeat(vehicle, this.local.body.seat).part) : undefined);
         this.view.camera.position.y += trickHeight;
+        this.awp.applyCamera();
       }
       pose(this.firstBody, trickHeight ? {...this.local.body, y: this.local.body.y + trickHeight} : this.local.body, dt, this.view.pitch, this.view.camera, knifeEquipped);
       if((this.local.body.moodleSitUntil??0)>this.net.now()&&!this.npcs.active){this.mesh.visible=this.avatarReady;this.firstBody.visible=false;const p=this.local.body;this.view.camera.position.set(p.x+Math.sin(this.view.yaw)*3.6,p.y+1.7,p.z+Math.cos(this.view.yaw)*3.6);this.view.camera.lookAt(p.x,p.y+.55,p.z);}
@@ -394,6 +413,7 @@ export class MapGame {
         this.lastCanDrop = mate.dropStartedAt; this.audio.effect("canDrop");
       }
     }
+    const gtrSound=this.gtr.audioSource;if(gtrSound&&playing)sources.set("gtr-donuts",gtrSound);
     const listener = this.bus.active ? this.bus.focus : this.listener;
     this.audio.update(sources, listener, { paused: !playing || this.controlsPaused, duck: this.npcs.active || this.mate.active || this.publiBikes.active });
     if (this.net.canPlay && !this.exam.active && !this.npcs.active) this.audio.movement(dt, body, this.local.pushing, this.net.now());
@@ -432,11 +452,11 @@ export class MapGame {
     delete this.canvas.parentElement!.dataset.uiBusy;
     this.maps.dispose(); this.hud.dispose(); this.trickScore.dispose(); this.stuckHint.dispose();
     this.coordinates.dispose(); this.collisions.dispose();
-    this.cows.dispose(); this.trafficEditor?.dispose(); this.traffic.dispose();
+    this.gtr.dispose();this.cows.dispose(); this.trafficEditor?.dispose(); this.traffic.dispose();
     this.menuScene.dispose();
     this.medals.destroy(); this.net.onMedal = undefined;
     this.exam.dispose();
-    this.fruit.dispose();this.football.dispose();this.bags.dispose();this.emotes.dispose();this.npcs.dispose();
+    this.drone.dispose();this.awp.dispose();this.fruit.dispose();this.football.dispose();this.bags.dispose();this.emotes.dispose();this.npcs.dispose();
     this.audio.dispose();
     this.drowning.dispose();
     this.mate.dispose();

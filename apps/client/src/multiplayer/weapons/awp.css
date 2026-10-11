@@ -1,0 +1,16 @@
+.awp-reticle { position: fixed; inset: 0; pointer-events: none; z-index: 45; display: none; }
+.awp-cross { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: white; font: 24px monospace; z-index: 3; }
+.awp-scope-blur, .awp-scope-lens { display: none; }
+.awp-reticle.is-scoped .awp-scope-blur {
+  display: block; position: absolute; inset: 0; backdrop-filter: blur(7px);
+  background: radial-gradient(circle at center, transparent 30vmin, #07101b44 32vmin, #07101be8 36vmin);
+  mask-image: radial-gradient(circle at center, transparent 29.5vmin, #000 32.5vmin);
+}
+.awp-reticle.is-scoped .awp-scope-lens {
+  display: block; position: absolute; left: 50%; top: 50%; width: 64vmin; height: 64vmin;
+  transform: translate(-50%, -50%); border: 3px solid #152131; border-radius: 50%; overflow: hidden;
+  box-shadow: 0 0 8px 4px #050a12b0, inset 0 0 18px 7px #050a1266;
+}
+.awp-scope-lens svg { width: 100%; height: 100%; }
+.awp-reticle.is-scoped .awp-cross { font-size: 20px; text-shadow: 0 0 2px black; }
+.awp-ammo { position: fixed; right: 24px; bottom: 150px; padding: 10px 14px; background: #102338e8; color: white; border-right: 3px solid #ff8422; font: 14px monospace; font-variant-numeric: tabular-nums; pointer-events: none; z-index: 46; display: none; }
