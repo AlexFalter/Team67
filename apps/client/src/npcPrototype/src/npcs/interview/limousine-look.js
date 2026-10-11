@@ -15,11 +15,11 @@ export function createLimousineLook(canvas,{active=()=>false,label='LIMO'}={}){
  listen(canvas,'pointerenter',()=>pointer=null);listen(canvas,'pointerleave',()=>pointer=null);
  listen(window,'pointerup',()=>drag=null);listen(window,'pointercancel',()=>drag=null);
  listen(window,'keyup',e=>keys.delete(e.code));listen(window,'blur',()=>{keys.clear();drag=pointer=null;});
- return {resumeCapture(){if(active()){canvas?.focus();return capture();}},keydown(e){if(!active())return false;if(e.code!=='Escape')void capture();if(e.code==='KeyV'&&!e.repeat){firstPerson=!firstPerson;return true;}if(e.code.startsWith('Arrow')){keys.add(e.code);return true;}return false;},
+ return {resumeCapture(){if(active()){canvas?.focus();return capture();}},keydown(e){if(!active())return false;if(e.code!=='Escape')void capture();if(e.code==='KeyF'&&!e.repeat){firstPerson=!firstPerson;return true;}if(e.code.startsWith('Arrow')){keys.add(e.code);return true;}return false;},
   update(dt,limo,camera,seat,world){
    const enabled=active();if(!enabled){keys.clear();drag=pointer=null;}if(enabled&&!wasActive)void capture();wasActive=enabled;
    projection??={camera,near:camera.near};const near=firstPerson?Math.min(projection.near,.035):projection.near;if(camera.near!==near){camera.near=near;camera.updateProjectionMatrix();}
-   hint.hidden=false;hint.textContent=`${label} · MOUSE / ARROWS: LOOK · V: ${firstPerson?'EXTERIOR':'FIRST PERSON'}`;
+   hint.hidden=false;hint.textContent=`${label} · MOUSE / ARROWS: LOOK · F: ${firstPerson?'EXTERIOR':'FIRST PERSON'}`;
    yaw+=(Number(keys.has('ArrowLeft'))-Number(keys.has('ArrowRight')))*dt*1.5;
    pitch=THREE.MathUtils.clamp(pitch+(Number(keys.has('ArrowUp'))-Number(keys.has('ArrowDown')))*dt,-1.1,1.1);
    limo.updateMatrixWorld(true);const facing=new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch,yaw+(seat.yaw??0),0,'YXZ'));

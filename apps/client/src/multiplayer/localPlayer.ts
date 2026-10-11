@@ -23,7 +23,6 @@ export class LocalPlayer {
       if (e.code === "Space" && !e.repeat) this.jump = true;
       if (e.code === "KeyC" && !e.repeat) this.slide = true;
       if (e.code === "KeyE" && !e.repeat) this.interaction = true;
-      if (e.code === "KeyF" && !e.repeat) this.hit = true;
       this.keys.add(e.code);
     }, { signal: this.abort.signal });
     window.addEventListener("keyup", (e) => this.keys.delete(e.code), { signal: this.abort.signal });

@@ -1,6 +1,6 @@
 import {emoteIcon} from './emote-icons.js';
 import {emoteDefinitions,createEmoteAnimator} from './emotes.js';
-const movement=new Set(['KeyW','KeyA','KeyS','KeyD','Space','KeyE','KeyM','KeyV','KeyR','KeyF','KeyQ','Digit3']);
+const movement=new Set(['KeyW','KeyA','KeyS','KeyD','Space','KeyE','KeyM','KeyR','KeyF','KeyQ','Digit3']);
 export function createEmoteWheel(student,{canUse=()=>true,canChoose=()=>true,onStart=()=>{},onStop=()=>{},root=document.body,animator:providedAnimator,onOpen=()=>{},onClose=()=>{}}={}){
  const animator=providedAnimator??createEmoteAnimator(student);let open=false,selected=0;
  const ui=document.createElement('section');ui.className='emote-overlay';ui.hidden=true;ui.setAttribute('role','dialog');ui.setAttribute('aria-label','Emote wheel');

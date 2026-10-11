@@ -90,7 +90,7 @@ export class ActionHud {
     this.boost.classList.toggle("exhausted", remaining === 0);
     this.boost.setAttribute("aria-label", `Shift to boost, ${Math.ceil(remaining * LIME_BOOST_DURATION_MS / 1000)} seconds available`);
     const allActions = this.getContext();
-    this.primary = allActions.find(action => action.key === "F");
+    this.primary = allActions.find(action => action.key === "Q");
     const actions = allActions.filter(action => action !== this.primary);
     const interaction = actions.find(action => action.key === "E");
     const hint = this.instructions.querySelector<HTMLElement>(".interaction-instruction")!;
@@ -122,12 +122,12 @@ export class ActionHud {
     const isBag=weapon?.kind==='bag',verb=isBag?'Throw bag':'Slash';
     const icon = this.primary?.icon ?? (weapon ? (isBag?'bag':'knife') : 'punch');
     if(punchSvg.dataset.icon!==icon){punchSvg.innerHTML=this.primary ? icons[this.primary.icon] : weapon?icons[isBag?"bag":"knife"]:this.punchIcon;punchSvg.dataset.icon=icon;}
-    this.punch.parentElement!.querySelector('kbd')!.textContent=weapon?'Q':'F';
+    this.punch.parentElement!.querySelector('kbd')!.textContent=this.primary || weapon?'Q':'Click';
     this.punchLabel.hidden=!weapon;this.punchLabel.textContent=isBag?"Throw":"Slash";
-    this.punch.title=this.primary ? `${this.primary.label} · F or click` : weapon?`${verb} · Q or click`:'Right hook · F or click';
+    this.punch.title=this.primary ? `${this.primary.label} · Q or click` : weapon?`${verb} · Q or click`:'Right hook · click';
     const state = actionAvailability(this.local.body, this.local.sprinting, this.now());
     for (const [button, available, seconds, label] of [
-      [this.punch, (this.primary ? this.primary.enabled : isBag?weapon!.enabled:state.punch && (!weapon || weapon.enabled)), this.primary ? Math.ceil(Math.max(0, p.knockdownUntil-this.now(), Math.min(KARAMBIT_COOLDOWN_MS,p.attackReadyAt-this.now()))/1000) : isBag?0:state.punchSeconds, this.primary ? `${this.primary.label} (F)` : weapon ? `${verb} (Q / click)` : "Punch (F)"],
+      [this.punch, (this.primary ? this.primary.enabled : isBag?weapon!.enabled:state.punch && (!weapon || weapon.enabled)), this.primary ? Math.ceil(Math.max(0, p.knockdownUntil-this.now(), Math.min(KARAMBIT_COOLDOWN_MS,p.attackReadyAt-this.now()))/1000) : isBag?0:state.punchSeconds, this.primary ? `${this.primary.label} (Q / click)` : weapon ? `${verb} (Q / click)` : "Punch (click)"],
       [this.slide, state.slide, state.slideSeconds, "Slide (C)"],
     ] as const) {
       button.disabled = !available;
@@ -136,5 +136,5 @@ export class ActionHud {
       button.setAttribute("aria-label", seconds ? `${label}, ${seconds} seconds remaining` : available ? label : `${label}, unavailable`);
     }
   }
-  dispose() { this.local.holdBoost(false); this.instructions.remove(); this.boost.remove(); this.entries.forEach(entry => entry.item.remove()); this.abort.abort(); this.root.hidden = true; this.context.remove();this.punchLabel.remove();const svg=this.punch.querySelector("svg")!;svg.innerHTML=this.punchIcon;delete svg.dataset.icon;this.punch.parentElement!.querySelector("kbd")!.textContent="F";this.punch.title="Right hook · F or click";this.punch.setAttribute("aria-label","Punch (F)"); }
+  dispose() { this.local.holdBoost(false); this.instructions.remove(); this.boost.remove(); this.entries.forEach(entry => entry.item.remove()); this.abort.abort(); this.root.hidden = true; this.context.remove();this.punchLabel.remove();const svg=this.punch.querySelector("svg")!;svg.innerHTML=this.punchIcon;delete svg.dataset.icon;this.punch.parentElement!.querySelector("kbd")!.textContent="Click";this.punch.title="Right hook · click";this.punch.setAttribute("aria-label","Punch (click)"); }
 }

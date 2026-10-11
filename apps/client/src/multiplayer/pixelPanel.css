@@ -1,0 +1,6 @@
+.pixel-panel {
+  border: 2px solid var(--panel-border, #d7f87a70);
+  border-radius: 2px;
+  background: var(--panel-background, #10272fee);
+  box-shadow: inset 3px 3px 0 #ffffff12, inset -3px -3px 0 #0004, 4px 4px 0 #071a2480;
+}

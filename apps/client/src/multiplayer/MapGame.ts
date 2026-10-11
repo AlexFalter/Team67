@@ -184,7 +184,7 @@ export class MapGame {
       actions.push({ icon: "knife", key: "3", label: equipped ? "Holster Karambit" : "Equip Karambit", enabled, run: () => this.npcs.toggleKarambit() });
       if (equipped && this.view.perspective === 0 && !p.vehicleId) {
         const ready = enabled && knife.state().phase !== "attack" && p.attackReadyAt <= this.net.now();
-        actions.push({ icon: "knife", key: "F", label: "Slash", enabled: ready, run: () => this.npcs.attackKarambit() });
+        actions.push({ icon: "knife", key: "Q", label: "Slash", enabled: ready, run: () => this.npcs.attackKarambit() });
       }
     }
     if(this.emotes)actions.push({icon:"emote",key:"B",label:"Emote wheel",enabled:this.emotes.available,run:()=>this.emotes.open()});
@@ -349,6 +349,7 @@ export class MapGame {
     if (enterPortal) void this.controls.resume();
     this.net.room.send("debugTeleportToPolyterrasse", enterPortal ? "portal" : "terrace");
   }
+  renderMenuPreview(renderer: THREE.WebGLRenderer) { this.menuScene.renderPreview(renderer); }
   afterRender() { this.publiBikes.renderPreview(); this.npcs.afterRender(); }
   dispose() {
     this.spectator.dispose();this.net.onSpectate=undefined;

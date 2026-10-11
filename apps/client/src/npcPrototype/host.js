@@ -85,7 +85,7 @@ export class NpcFeature {
    if(e.code==='Backspace'&&this.local.enabled&&this.currentPoly()&&!this.active){e.preventDefault();if(this.net.canPlay)this.net.room.send('vehicleExit');return;}
    if(this.canUseKarambit()){
     if(e.code==='Digit3'&&!e.repeat){this.toggleKarambit();e.preventDefault();e.stopImmediatePropagation();return;}
-    if(this.playerView?.perspective===0&&this.karambit.occupiesHands()&&e.code==='KeyF'){if(!e.repeat){this.attackKarambit();}e.preventDefault();e.stopImmediatePropagation();return;}
+    if(this.playerView?.perspective===0&&this.karambit.occupiesHands()&&e.code==='KeyQ'){if(!e.repeat){this.attackKarambit();}e.preventDefault();e.stopImmediatePropagation();return;}
    }
    if(!this.active)return;
    if(this.limePhotoPending&&!this.limePhoto?.active()){e.preventDefault();e.stopImmediatePropagation();return;}

@@ -62,7 +62,7 @@ export class GameControls {
       if (!ready() || this.suspended()) return;
       if(this.recaptureOnInput&&!e.repeat&&resumeKey(e.code)&&!(e.target instanceof HTMLInputElement)&&!(e.target instanceof HTMLTextAreaElement)&&!(e.target instanceof HTMLSelectElement)&&!(e.target instanceof HTMLElement&&e.target.isContentEditable)){e.preventDefault();this.resumeKeys.add(e.code);void this.resume();return;}
       if (e.code === "Escape") { e.preventDefault(); e.stopImmediatePropagation(); if(e.repeat)return; this.escape(); }
-      if (local.enabled && ["F5", "KeyV"].includes(e.code)) { e.preventDefault(); if (!e.repeat) view.cycle(); this.update(); }
+      if (local.enabled && e.code === "KeyF") { e.preventDefault(); if (!e.repeat) view.cycle(); this.update(); }
     }, {...options,capture:true});
   }
   dispose() { this.capturePrompt.remove();this.actions.dispose(); this.abort.abort(); this.recovery?.cancel(); this.local.enabled = false; if (document.pointerLockElement === this.canvas) document.exitPointerLock(); }

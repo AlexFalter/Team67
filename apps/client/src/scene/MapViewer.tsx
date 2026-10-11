@@ -214,6 +214,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
           }
           if (!game?.examScreenVisible && !preview?.screenVisible) {
             grade!.render();
+            game?.renderMenuPreview(renderer!);
             game?.afterRender();
           }
         }, error => {
