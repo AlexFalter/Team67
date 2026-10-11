@@ -1,0 +1,14 @@
+.traffic-editor { position: fixed; top: 70px; left: 12px; z-index: 80; width: 300px; max-height: calc(100vh - 90px); overflow: auto; padding: 10px; background: #172331ed; color: #fff; border-radius: 8px; font: 13px/1.4 system-ui; }
+.traffic-editor-body[hidden] { display: none; }
+.traffic-editor label { display: block; margin: 6px 0; }
+.traffic-editor input:not([type=checkbox]):not([type=file]), .traffic-editor select { max-width: 175px; margin-left: 5px; }
+.traffic-editor input[type=number] { width: 65px; }
+.traffic-editor button { margin: 4px 4px 4px 0; cursor: pointer; }
+.traffic-editor p { margin: 6px 0; color: #b6d9e9; }
+.traffic-editor small { display: block; margin-top: 8px; }
+
+.map-viewer[data-traffic-editing] :is(#room-screen, #pause, #play, #crosshair, #round-timer, .game-hud, .map-controls) { display: none !important; }
+
+.traffic-editor fieldset { margin: 8px 0; border: 1px solid #38f5e965; }
+
+.traffic-editor textarea { box-sizing: border-box; width: 100%; font: 11px monospace; }

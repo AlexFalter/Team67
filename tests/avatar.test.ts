@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { Box3, Mesh, MeshStandardMaterial, PerspectiveCamera, Vector3, Raycaster } from "three";
-import { avatar, pose, disposeAvatar, CHARACTERS, gaitRate } from "../apps/client/src/multiplayer/avatar.ts";
+import { Box3, Group, BoxGeometry, Mesh, MeshStandardMaterial, PerspectiveCamera, Vector3, Raycaster } from "three";
+import { avatar, pose, disposeAvatar, CHARACTERS, gaitRate, equipMateCan } from "../apps/client/src/multiplayer/avatar.ts";
 import { PlayerView } from "../apps/client/src/multiplayer/view.ts";
 import { createBody, ATTACK_COOLDOWN_MS } from "../packages/shared/src/index.ts";
 
@@ -149,4 +149,27 @@ test("first-person slide shows its leading shoe at neutral gaze after the camera
   const ray = new Raycaster(camera.position, position.sub(camera.position).normalize());
   assert.equal(ray.intersectObject(mesh, true)[0]?.object, shoe, "body does not cover the foot");
   disposeAvatar(mesh);
+});
+
+
+test("drinking lifts the right hand with the matching can in both rigs, then lowers it", () => {
+  const can = new Group(), material = new MeshStandardMaterial({ color: "#8dcf61" });
+  const geometry = new BoxGeometry(.06, .16, .06); can.add(new Mesh(geometry, material));
+  for (const first of [false, true]) {
+    const mesh = avatar("#fff", 0, first), p = createBody();
+    equipMateCan(mesh, can, 2);
+    p.simTime = 1000; pose(mesh, p);
+    const held = mesh.getObjectByName("held-mate-2")!;
+    assert.equal(held.visible, false);
+    const hand = mesh.getObjectByName("right-arm")!.getObjectByName("hand")!;
+    const before = hand.getWorldPosition(new Vector3());
+    p.mateDrinkStartedAt = 1000; p.simTime = 1600;
+    for (let i = 0; i < 20; i++) pose(mesh, p);
+    assert.equal(held.visible, true);
+    assert.ok(hand.getWorldPosition(new Vector3()).y > before.y + .15, "right hand rises toward the mouth");
+    p.simTime = 2500; pose(mesh, p); assert.equal(held.visible, false);
+    equipMateCan(mesh, can, 3); assert.ok(mesh.getObjectByName("held-mate-3")); assert.equal(held.parent, null);
+    disposeAvatar(mesh);
+  }
+  geometry.dispose(); material.dispose();
 });

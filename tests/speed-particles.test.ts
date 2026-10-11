@@ -10,7 +10,7 @@ test("speed particles flash at the view edges, clear instantly when stopped or s
   p.vz = 11; effect.update(p, camera, 1 / 60, true); assert.equal(effect.mesh.visible, false, "ordinary sprint has no streaks");
   p.grounded = false; p.anim = 2;
   effect.update(p, camera, 1 / 60, true); assert.equal(effect.mesh.visible, false, "ordinary jumps and falls have no streaks");
-  p.sprintJump = true; effect.update(p, camera, 1 / 60, true); assert.equal(effect.mesh.visible, false, "sprint jumps have no streaks");
+  p.sprintJump = true; effect.update(p, camera, 1 / 60, true); assert.equal(effect.mesh.visible, false, "sprint jumps also have no first-person streaks");
   p.grounded = true; p.anim = 1; effect.update(p, camera, 1 / 60, true); assert.equal(effect.mesh.visible, false, "landing removes streaks");
   p.sprintJump = false; p.anim = 4; p.vz = 5; effect.update(p, camera, 1 / 60, true); assert.equal(effect.mesh.visible, true, "slides retain streaks as they slow");
   effect.mesh.updateMatrixWorld(true); camera.updateMatrixWorld(true);

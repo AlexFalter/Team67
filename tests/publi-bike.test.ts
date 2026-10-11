@@ -61,12 +61,12 @@ test("walking away, knockdown, and finished rooms release locks; bikes stay avai
   assert.equal(state.publiBikes.get(request.bikeId)!.reservedBy, "");
   state.players.get("a")!.knockdownUntil = 0; fleet.begin(a, request, 1400); state.phase = C.RoomPhase.Finished; fleet.tick(1500);
   assert.equal(state.publiBikes.get(request.bikeId)!.reservedBy, "");
-  state.phase = C.RoomPhase.Running; state.publiBikes.get(request.bikeId)!.broken = true;
+  state.phase = C.RoomPhase.Running; state.publiBikes.get(request.bikeId)!.broken = false;
   fleet.begin(a, request, 2000); fleet.finish(a, { ...request, token: last("a").token }, 5000);
   assert.equal(last("a").ok, true); assert.equal(state.vehicles.get(request.bikeId)!.driver, "a");
 });
 
-test("all eight bikes can be scanned and ridden concurrently without becoming broken or running out", () => {
+test("all eight bikes can be scanned and ridden concurrently and each battery expires after 25 seconds", () => {
   const { state, fleet, client, last } = setup();
   for (const [id, bike] of state.publiBikes) {
     assert.equal(bike.broken, false);
@@ -77,11 +77,13 @@ test("all eight bikes can be scanned and ridden concurrently without becoming br
     fleet.finish(a, { ...request, token: last(id).token }, 4000);
     assert.equal(last(id).ok, true);
   }
-  fleet.tick(4000); fleet.tick(64000);
+  fleet.tick(4000); fleet.tick(28999);
+  assert.ok([...state.publiBikes.values()].every(b => b.batteryMs === 1 && !b.broken));
+  fleet.tick(29000);
   for (const [id, bike] of state.publiBikes) {
-    assert.equal(bike.broken, false); assert.equal(bike.batteryMs, C.PUBLI_BIKE_BATTERY_MS);
-    assert.equal(state.vehicles.get(id)!.driver, id);
-    assert.equal(state.players.get(id)!.vehicleId, id);
+    assert.equal(bike.broken, true); assert.equal(bike.batteryMs, 0);
+    assert.equal(state.vehicles.get(id)!.driver, "");
+    assert.equal(state.players.get(id)!.vehicleId, "");
   }
 });
 
@@ -118,7 +120,7 @@ test("live clients compete for a reservation; leaving frees it and reset restore
     await until(() => !loser.state.publiBikes.get("publibike-1")!.reservedBy, "finish release");
     loser.send("restartRound"); await until(() => loser.state.phase === C.RoomPhase.Lobby, "reset");
     assert.equal(loser.state.publiBikes.size, 8);
-    assert.ok([...loser.state.publiBikes.values()].every(bike => bike.batteryMs === C.PUBLI_BIKE_BATTERY_MS && !bike.reservedBy));
+    assert.ok([...loser.state.publiBikes.values()].every(bike => bike.batteryMs > C.PUBLI_BIKE_BATTERY_MS - 1000 && !bike.reservedBy));
   });
 });
 
@@ -138,4 +140,22 @@ test("displaced bikes clear stale docks, and returning bikes can reuse their emp
   assert.equal(state.publiBikes.get("publibike-1")!.dock, 0);
   returning.driver = "rider";
   assert.equal(C.publiBikeIsDocked(state.publiBikes.get("publibike-1")!, returning, fleet.station.slots), false);
+});
+
+
+test("dismounting and rescanning do not refill a used battery; exhausted bikes stay unavailable", () => {
+  const { state, fleet, vehicles, client, last } = setup(), a = client("a");
+  const request = { bikeId: "publibike-1", requestId: "scan" };
+  fleet.begin(a, request, 1000); fleet.finish(a, { ...request, token: last("a").token }, 4000);
+  fleet.tick(14000); assert.equal(state.publiBikes.get(request.bikeId)!.batteryMs, 15000);
+  vehicles.exit(a); fleet.tick(14000); fleet.tick(90000);
+  const v = state.vehicles.get(request.bikeId)!;
+  Object.assign(state.players.get("a")!, { x: v.x, y: v.y, z: v.z - 2 });
+  fleet.begin(a, request, 90000); fleet.finish(a, { ...request, token: last("a").token }, 93000);
+  assert.equal(state.publiBikes.get(request.bikeId)!.batteryMs, 15000);
+  fleet.tick(108000); assert.equal(state.publiBikes.get(request.bikeId)!.batteryMs, 0);
+  Object.assign(state.players.get("a")!, { x: v.x, y: v.y, z: v.z - 2 });
+  fleet.begin(a, request, 200000); assert.equal(last("a").ok, false);
+  vehicles.enter(a, request.bikeId, 200000, true); assert.equal(state.players.get("a")!.vehicleId, "");
+  fleet.tick(300000); assert.equal(state.publiBikes.get(request.bikeId)!.batteryMs, 0);
 });

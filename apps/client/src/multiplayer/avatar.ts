@@ -17,6 +17,8 @@ interface Limb { joint: THREE.Group; bend: THREE.Group; tip: THREE.Group; foot?:
 interface Rig {
   torso: THREE.Group; chest: THREE.Group; head: THREE.Group; neck: THREE.Group; arms: Limb[]; legs: Limb[];
   viewArms?: THREE.Group;
+  can?: THREE.Group;
+  canFlavor?: number;
   phase: number; fall: number; speed: number; grounded: boolean; landing: number; air: number; firstPerson: boolean; slide: number; airPhase: number;
 }
 const rigs = new WeakMap<THREE.Group, Rig>();
@@ -137,6 +139,18 @@ export function avatar(color: string, character = 0, firstPerson = false) {
 }
 
 // Roughly 3–4 alternating footfalls per second, not six tiny sprint steps.
+// Can clones share immutable resources owned by MateFeature, never by the rig.
+export function equipMateCan(mesh: THREE.Group, source: THREE.Group, flavor: number) {
+  const r = rigs.get(mesh);
+  if (!r || r.canFlavor === flavor) return;
+  r.can?.removeFromParent();
+  const can = new THREE.Group(), model = source.clone(true);
+  const bounds = new THREE.Box3().setFromObject(model), center = bounds.getCenter(new THREE.Vector3());
+  const scale = .16 / Math.max(.001, bounds.max.y - bounds.min.y);
+  model.position.sub(center); can.add(model); can.scale.setScalar(scale);
+  can.position.set(0, -.015, .045); can.visible = false; can.name = `held-mate-${flavor}`;
+  r.arms[1].tip.add(can); r.can = can; r.canFlavor = flavor;
+}
 export function gaitRate(speed: number) { return Math.PI * 2 * (1.15 + Math.min(speed, 16.5) * 0.055) * Math.min(1, speed / 2); }
 export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, camera?: THREE.PerspectiveCamera, knifeEquipped = false) {
   const r = rigs.get(mesh)!;
@@ -145,6 +159,10 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
   const impact = impactPose(p);
   const sliding = p.anim === SLIDE_ANIM && !down;
   r.slide += ((sliding ? 1 : 0) - r.slide) * blend;
+  const drinkAge = (p.simTime - (p.mateDrinkStartedAt ?? 0)) / 1000;
+  const drinking = !down && !p.vehicleId && (p.mateDrinkStartedAt ?? 0) > 0 && drinkAge >= 0 && drinkAge < 1.3;
+  const sip = drinking ? THREE.MathUtils.smoothstep(drinkAge, 0, .3) * (1 - THREE.MathUtils.smoothstep(drinkAge, .95, 1.3)) : 0;
+  if (r.can) r.can.visible = drinking;
   mesh.scale.setScalar(p.vehicleId && p.cabinStanding ? .85 : 1);
   const riding = !!p.vehicleId && !p.cabinStanding, bike = riding && p.vehicleKind === 2, scooter=riding&&p.vehicleKind===LIME_KIND;
   r.speed += ((down || riding ? 0 : Math.hypot(p.vx, p.vz)) - r.speed) * blend;
@@ -200,8 +218,12 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
     upper += (-1.4 - upper) * action;
     elbow += (-0.20 - elbow) * action;
     if (i === 0) { upper -= punch * 0.45; elbow -= punch * 0.35; }
+    if (i === 1) {
+      upper += (-1.15 - upper) * sip; elbow += (-2.1 - elbow) * sip;
+      if (r.firstPerson) { arm.joint.position.x += .28 * sip; arm.joint.position.y += .16 * sip; }
+    }
     const swayYaw = r.firstPerson ? (i ? -1 : 1) * Math.sin(r.phase + i * Math.PI) * stride * 0.16 : 0;
-    arm.joint.rotation.y += (swayYaw + action * (-0.9 + hookSweep * 1.9) - arm.joint.rotation.y) * blend;
+    arm.joint.rotation.y += (swayYaw + action * (-0.9 + hookSweep * 1.9) + (i === 1 ? .32 * sip : 0) - arm.joint.rotation.y) * blend;
     arm.bend.rotation.z += (action * 1.35 - arm.bend.rotation.z) * blend;
     arm.joint.rotation.x += (upper - arm.joint.rotation.x) * blend;
     arm.joint.rotation.z += ((i === 0 ? 1 : -1) * (-0.10 + r.fall * 0.55 - (r.firstPerson ? 0.12 + Math.cos(r.phase + i * Math.PI) * stride * 0.08 : 0)) - arm.joint.rotation.z) * blend;
@@ -259,6 +281,7 @@ export function pose(mesh: THREE.Group, p: PlayerState, dt = 1 / 60, pitch = 0, 
   updatePlayerIdentity(mesh, p);
 }
 export function disposeAvatar(mesh: THREE.Group) {
+  rigs.get(mesh)?.can?.removeFromParent();
   disposePlayerIdentity(mesh);
   const materials = new Set<THREE.Material>();
   mesh.traverse(child => { if (child instanceof THREE.Mesh) materials.add(child.material as THREE.Material); });

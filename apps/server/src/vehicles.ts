@@ -8,7 +8,7 @@ export class VehicleManager {
   private trafficStart: number;
   private hitTimes = new Map<string, Map<string, number>>();
   private contact: C.VehicleContact = { nx: 0, nz: 0, closing: 0 };
-  constructor(private state: RaceState, private world: C.MovementWorld = C.flatWorld) {
+  constructor(private state: RaceState, private world: C.MovementWorld = C.flatWorld, legacyTraffic = true) {
     this.trafficStart = state.serverTime;
     world.carts.forEach((p, i) =>
       this.add(`cart-${i + 1}`, { ...C.createVehicle(0, p.x, p.z), y: p.y }),
@@ -25,7 +25,7 @@ export class VehicleManager {
       if (p) this.add(id, { ...C.createVehicle(kind, p.x, p.z), y: p.y, vx, vz });
     };
     addNear("bike-1", 2, 3, 4); addNear("bike-2", 2, -3, 4);
-    addNear("npc-car", 3, -20, 6);
+    if (legacyTraffic) addNear("npc-car", 3, -20, 6);
     addNear("loose-ball", 4, 10, -5, 7, 3);
     if (world.name === "zurich") {
       const [x,z]=C.NPC_LAYOUT.lime.position,site=C.findGround(world,x,z);
@@ -47,6 +47,8 @@ export class VehicleManager {
     const p = this.state.players.get(client.sessionId),
       v = typeof data === "string" ? this.state.vehicles.get(data) : undefined;
     if (!p || !v) return this.result(client, false, "Vehicle not found.");
+    const battery = this.state.publiBikes.get(data as string);
+    if (battery && (battery.broken || battery.batteryMs <= 0)) return this.result(client, false, "This bike is permanently out of battery.");
     if (this.state.publiBikes.has(data as string) && !scanned)
       return this.result(client, false, "Scan the PubliBike QR code to unlock it.");
     if (this.parkingPhotos.has(client.sessionId) || [...this.parkingPhotos.values()].includes(data as string))
@@ -118,7 +120,7 @@ export class VehicleManager {
       return this.result(client, false, "Stay aboard until the next stop.");
     const id=p.vehicleId;this.release(p);
     if(v.kind===C.LIME_KIND&&!this.occupied(id))this.parkingPhotos.set(client.sessionId,id);
-    this.result(client, true, this.parkingPhotos.has(client.sessionId)?"Parked. Take your Lime parking photo.":"Exited vehicle.");
+    this.result(client, true, this.parkingPhotos.has(client.sessionId)?"Parked. Take your Lime parking photo.":"");
   }
   photoRequired(id:string){return this.parkingPhotos.get(id);}
   finishParkingPhoto(id:string,vehicle:unknown){
@@ -287,6 +289,23 @@ export class VehicleManager {
     speed ??= Math.hypot(v.vx, v.vz);
     v.fallenUntil = now + 2500;
     this.ejectDriver(v, impact?.from ?? id, speed, hit, impact?.rotY ?? v.rotY, impact?.kind ?? v.kind);
+  }
+  /** Traffic ejects exposed riders at the impact point, using the normal vehicle impact. */
+  runOver(id: string, now: number, hit: Parameters<VehicleManager['tick']>[1], speed: number, impact: { from: string; rotY: number; kind: number }) {
+    const v = this.state.vehicles.get(id);
+    if (!v || C.isPassengerVehicle(v)) return;
+    if (v.kind === 2) this.crashBike(id, now, hit, speed, impact);
+    else {
+      v.fallenUntil = now + 2500;
+      this.ejectDriver(v, impact.from, speed, hit, impact.rotY, impact.kind);
+    }
+    this.reports.delete(id);
+    // The Lime's second rider must also leave; no automatic driver promotion on impact.
+    for (const [target, rider] of this.state.players) if (rider.vehicleId === id) {
+      rider.vehicleId = ''; rider.vehicleKind = -1; rider.seat = -1; rider.cabinStanding = false;
+      hit(impact.from, target, rider.x, rider.y + 0.8, rider.z,
+        Math.sin(impact.rotY) * speed * 0.6, 2, Math.cos(impact.rotY) * speed * 0.6, true, impact.kind);
+    }
   }
   private ejectDriver(v: Vehicle, from: string, speed: number, hit: Parameters<VehicleManager["tick"]>[1], rotY = v.rotY, sourceKind = v.kind) {
     const rider = this.state.players.get(v.driver), driver = v.driver;

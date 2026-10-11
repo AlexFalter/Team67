@@ -21,10 +21,13 @@ export class RoomFlow {
   private finish = document.querySelector<HTMLButtonElement>("#finish-round")!;
   private countdownAnimation?: Animation;
   private signature = "";
+  private timerRound = -1;
+  private lastRemaining?: number;
+  private timerCues = new Set<number>();
   private abort = new AbortController();
   private prepared = false;
   private preparationError = "";
-  constructor(private net: Network, preparation: Promise<void>, unlockAudio: () => void) {
+  constructor(private net: Network, preparation: Promise<void>, unlockAudio: () => void, private timerCue: () => void = () => {}) {
     this.ready.disabled = true;
     void preparation.then(() => { if (!this.abort.signal.aborted) {
       this.prepared = true; this.ready.disabled = false;
@@ -108,7 +111,14 @@ export class RoomFlow {
     const finalCountdown = canPlay && remaining > 0 && remaining <= 10000;
     this.timer.dataset.final = String(finalCountdown);
     this.timer.dataset.urgent = String(canPlay && remaining <= 30000);
-    if (!finalCountdown) this.countdownAnimation?.cancel();
+    const round = this.net.room?.state.startedAt ?? 0;
+    if (round !== this.timerRound) { this.timerRound = round; this.timerCues.clear(); this.lastRemaining = undefined; }
+    if (canPlay) {
+      const crossed = [120000, 60000, 30000].filter(t => this.lastRemaining !== undefined && this.lastRemaining > t && remaining <= t && !this.timerCues.has(t));
+      crossed.forEach(t => this.timerCues.add(t));
+      if (crossed.length && remaining > 0) this.timerCue();
+      this.lastRemaining = remaining;
+    }
     if (canPlay) {
       const seconds = Math.ceil(remaining / 1000);
       const text = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
@@ -117,9 +127,9 @@ export class RoomFlow {
       if (this.timerValue.textContent !== text) {
         this.timerValue.textContent = text;
         this.timer.setAttribute("aria-label", `${seconds} seconds remaining`);
-        if (finalCountdown && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
           this.countdownAnimation?.cancel();
-          this.countdownAnimation = this.timerValue.animate([{ scale: "1.12" }, { scale: "1" }],
+          this.countdownAnimation = this.timerValue.animate([{ transform: "translateY(0)", scale: "1" }, { transform: "translateY(-3px)", scale: finalCountdown ? "1.10" : "1.025", offset: .3 }, { transform: "translateY(0)", scale: "1" }],
             { duration: 240, easing: "ease-out" });
         }
       }

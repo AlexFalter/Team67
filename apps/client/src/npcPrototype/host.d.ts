@@ -14,6 +14,8 @@ export class NpcFeature {
   readonly ready: Promise<void>;
   readonly root: THREE.Group;
   readonly active: boolean;
+  readonly ridingVehicle: boolean;
+  readonly ridePose: { id: string; x: number; y: number; z: number; rotY: number } | null;
   readonly hideAvatar: boolean;
   readonly nearbyInteraction: boolean;
   readonly nearbyTicket: boolean;

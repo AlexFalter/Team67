@@ -97,6 +97,10 @@ export class PubliBikeFeature {
     if (!this.net.room.state.publiBikes.has(id) || this.local.body.vehicleId) return false;
     if (this.request) return true;
     const bike = this.net.room.state.publiBikes.get(id)!;
+    if (bike.broken || bike.batteryMs <= 0) {
+      this.net.onVehicleResult?.({ ok: false, message: "This bike is out of battery. Find another bike." });
+      return true;
+    }
     if (this.net.room.state.vehicles.get(id)?.driver || bike.reservedBy) {
       this.net.onVehicleResult?.({ ok: false, message: "This bike is occupied or being unlocked." });
       return true;
@@ -178,7 +182,7 @@ export class PubliBikeFeature {
     }
     const bike = state?.publiBikes?.get(this.local.body.vehicleId);
     this.battery.hidden = !this.net.canPlay || !bike;
-    if (bike) this.battery.textContent = "PUBLIBIKE · E to get off";
+    if (bike) this.battery.textContent = `PubliBike in use · ${Math.ceil(bike.batteryMs / 1000)}s battery`;
     const request = this.request; if (!request) return;
     if (!request.token || request.sent) return;
     const visual = this.vehicles.items.get(request.bikeId), tag = visual?.mesh.getObjectByName("PubliBike QR");

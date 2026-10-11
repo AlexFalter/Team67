@@ -66,6 +66,8 @@ export class Effects {
   private floorSound = false;
   private speedParticles: SpeedParticles;
   private particles: Particle[] = [];
+  private batteries = new Map<string, number>();
+  private nextBatterySpark = new Map<string, number>();
   private audio?: AudioContext;
   private motion = new Map<string, { grounded: boolean; sprintJump: boolean; nextDust: number; seen: number }>();
   private geometry = new THREE.SphereGeometry(0.07, 6, 4);
@@ -94,11 +96,25 @@ export class Effects {
       this.floorSound = true; this.impactSound(p.impactStrength ?? 8, true);
     }
   }
+  battery(id: string, remaining: number, at: { x: number; y: number; z: number }, now = performance.now()) {
+    const previous = this.batteries.get(id); this.batteries.set(id, remaining);
+    if (remaining > 0) { this.nextBatterySpark.delete(id); return; }
+    const depleted = previous !== undefined && previous > 0;
+    if (!depleted && now < (this.nextBatterySpark.get(id) ?? 0)) return;
+    this.nextBatterySpark.set(id, now + 150);
+    for (let i = 0; i < (depleted ? 18 : 3) && this.particles.length < 400; i++) {
+      const mesh = new THREE.Mesh(this.geometry, new THREE.MeshBasicMaterial({ color: i % 2 ? "#8cdbff" : "#fff5b0", transparent: true, depthWrite: false }));
+      mesh.scale.set(.3, .3, 1.6); mesh.position.set(at.x, at.y + .6, at.z);
+      const velocity = new THREE.Vector3((Math.random() - .5) * 4, 1 + Math.random() * 3, (Math.random() - .5) * 4);
+      mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), velocity.clone().normalize());
+      this.scene.add(mesh); this.particles.push({ mesh, velocity, age: 0, gravity: 8 });
+    }
+  }
   enqueue(b: Bump, localId = "") {
     this.queue.push({ ...b, localVictim: b.b === localId });
     this.queue.sort((a, b) => a.t - b.t);
   }
-  trail(id: string, p: PlayerState, now: number) {
+  trail(id: string, p: PlayerState, now: number, jumpParticles = true) {
     let last = this.motion.get(id);
     if (!last) { last = { grounded: p.grounded, sprintJump: false, nextDust: now, seen: now }; this.motion.set(id, last); }
     const landing = !last.grounded && p.grounded;
@@ -106,7 +122,7 @@ export class Effects {
       ((p as Body).sprintJump ?? Math.hypot(p.vx, p.vz) >= SLIDE_MIN_SPEED);
     if (takeoff) last.sprintJump = true;
     const slide = p.grounded && p.anim === SLIDE_ANIM && now > last.nextDust;
-    if (!p.vehicleId && p.anim !== 3 && ((landing && last.sprintJump) || takeoff || slide)) {
+    if (!p.vehicleId && p.anim !== 3 && (slide || (jumpParticles && ((landing && last.sprintJump) || takeoff)))) {
       last.nextDust = now + 90;
       for (let i = 0; i < (slide ? 3 : 9) && this.particles.length < 400; i++) {
         const mesh = new THREE.Mesh(this.geometry, new THREE.MeshBasicMaterial({ color: "#d1d9bc", transparent: true, opacity: 0.55, depthWrite: false }));
@@ -195,7 +211,7 @@ export class Effects {
       p.mesh.removeFromParent();
       (p.mesh.material as THREE.Material).dispose();
     }
-    this.particles = [];
+    this.particles = []; this.batteries.clear(); this.nextBatterySpark.clear();
     this.geometry.dispose();
     this.speedParticles.dispose();
     if (this.audio) void this.audio.close();

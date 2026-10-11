@@ -1,5 +1,5 @@
 import { schema, t, type SchemaType } from "@colyseus/schema";
-import { RoomPhase } from "@race/shared";
+import { RoomPhase, PUBLI_BIKE_BATTERY_MS } from "@race/shared";
 export const RoomMember = schema({
   introSeat: t.int8().default(-1),
   name: t.string().default(""),
@@ -44,6 +44,8 @@ export const Player = schema(
     attackReadyAt: t.number().default(0),
     mateCount: t.uint8().default(0),
     mateBoostMs: t.number().default(0),
+    mateFlavor: t.uint8().default(2),
+    mateDrinkStartedAt: t.number().default(0),
   },
   "Player",
 );
@@ -80,7 +82,7 @@ export const Vehicle = schema(
 export type Vehicle = SchemaType<typeof Vehicle>;
 export const PubliBike = schema({
   broken: t.boolean().default(false),
-  batteryMs: t.number().default(15000),
+  batteryMs: t.number().default(PUBLI_BIKE_BATTERY_MS),
   reservedBy: t.string().default(""),
   reservationUntil: t.number().default(0),
   dock: t.int8().default(-1),
@@ -113,8 +115,17 @@ export const Npc = schema({
   limoSolved: t.boolean().default(false),
   limoUsed: t.boolean().default(false),
 }, "Npc");
+export const TrafficCar = schema({
+  x: t.number().default(0), y: t.number().default(0), z: t.number().default(0),
+  rotY: t.number().default(0), speed: t.number().default(0),
+}, "TrafficCar");
 export const RaceState = schema(
   {
+    trafficCars: t.map(TrafficCar),
+    trafficNetwork: t.string().default(""),
+    trafficDensity: t.number().default(60),
+    trafficSpawnInterval: t.number().default(2),
+    trafficSpeedMultiplier: t.number().default(1),
     serverTime: t.number().default(0),
     phase: t.string().default(RoomPhase.Lobby),
     hostId: t.string().default(""),

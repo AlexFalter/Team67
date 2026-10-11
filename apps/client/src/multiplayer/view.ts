@@ -5,7 +5,7 @@ import { gaitRate } from "./avatar.ts";
 export const PERSPECTIVES = ["First person", "Third person — behind", "Third person — front"];
 const SPRING_LENGTH = 4.5;
 const POLYBAHN_SPRING_LENGTH = 10;
-const TRAM_SPRING_LENGTH = 18;
+const TRAM_SPRING_LENGTH = 13;
 const SPRING_CLEARANCE = 0.2;
 const SPRING_RETURN_RATE = 8;
 // Presentation only: predicted player positions remain the movement authority.
@@ -29,6 +29,8 @@ export class PlayerView {
   private desired = new THREE.Vector3();
   private intersections: THREE.Intersection[] = [];
   private springLength = SPRING_LENGTH;
+  private vehicleRide = "";
+  private footPerspective = 0;
   private railRide = "";
   private railYaw = 0;
   constructor(readonly camera: THREE.PerspectiveCamera, private walls: THREE.Object3D[], private world?: MovementWorld) {
@@ -42,6 +44,16 @@ export class PlayerView {
     const previous = this.perspective;
     this.perspective = (this.perspective + 1) % PERSPECTIVES.length;
     if (previous === 0 && this.perspective !== 0) this.springLength = 0;
+  }
+  get scriptedRide() { return this.vehicleRide === "npc-limousine"; }
+  setVehicle(id: string, heading: number) {
+    if (id === this.vehicleRide) return;
+    if (id) {
+      if (!this.vehicleRide) this.footPerspective = this.perspective;
+      this.perspective = 1; this.yaw = heading + Math.PI; this.pitch = -0.12;
+      this.springLength = 0;
+    } else this.perspective = this.footPerspective;
+    this.vehicleRide = id;
   }
   update(p: PlayerState, dt: number, railFrame?: { rotY: number; pitch: number }) {
     const cabinYaw = railFrame?.rotY ?? p.rotY;
@@ -97,10 +109,11 @@ export class PlayerView {
       this.direction.set(-Math.sin(this.yaw) * Math.cos(this.pitch), Math.sin(this.pitch), -Math.cos(this.yaw) * Math.cos(this.pitch));
       const polybahn = p.vehicleKind === POLYBAHN_KIND && !!p.vehicleId;
       const tram = p.vehicleKind === TRAM_KIND && !!p.vehicleId;
-      const distance = tram ? TRAM_SPRING_LENGTH : polybahn ? POLYBAHN_SPRING_LENGTH : SPRING_LENGTH;
+      const limo = p.vehicleId === "npc-limousine";
+      const distance = tram ? TRAM_SPRING_LENGTH : polybahn ? POLYBAHN_SPRING_LENGTH : limo ? 8 : p.vehicleId && p.vehicleKind === 0 ? 6 : SPRING_LENGTH;
       if (rail) this.origin.y += .65;
       this.desired.copy(this.direction).multiplyScalar(this.perspective === 1 ? -distance : distance);
-      this.desired.y += tram ? 5 : polybahn ? 3 : .3;
+      this.desired.y += tram ? 2.6 : polybahn ? 3 : limo ? 1.4 : .3;
       const desiredLength = this.desired.length();
       this.direction.copy(this.desired).normalize();
       this.ray.set(this.origin, this.direction);
