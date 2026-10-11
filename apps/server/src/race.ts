@@ -251,7 +251,7 @@ export class Race extends Room<{ state: RaceState }> {
     return false;
   }
   private bagHit(from:string,target:string,bag:C.BagState,practice:boolean){
-    const hit:C.Impulse={from,ix:bag.vx*.55,iy:2,iz:bag.vz*.55,knockdown:true,durationMs:3000};
+    const hit:C.Impulse={from,ix:bag.vx*.65,iy:2.4,iz:bag.vz*.65,knockdown:true,durationMs:3000};
     if(practice){const p=this.state.dummies.get(target),attacker=this.clients.find(c=>c.sessionId===from);if(!p||!attacker||!this.rounds.canPlay(from))return false;C.applyImpulse(p,hit,Date.now());attacker.send('medal',this.medals.practiceBag(this.state.startedAt));return true;}
     return this.hit(target,hit,'bag');
   }
