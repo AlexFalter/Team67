@@ -1,4 +1,5 @@
 export const PLAYER_MEDALS = {
+ droneReady: {title:"Drone Ready",detail:"Land five Nerf AWP hits on players or debug mannequins",icon:"scope"},
  sharpshooter: {title:'Sharpshooter',detail:'Land a Nerf AWP headshot',icon:'scope'},
  longShot: {title:'Long Shot',detail:'Hit a player from at least 30 metres',icon:'scope'},
  bagged: {title: 'Bagged', detail: 'Hit a player with an Ersti bag', icon: 'bag'},

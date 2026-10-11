@@ -30,7 +30,7 @@ export class AwpFeature {
   window.addEventListener('mousedown',e=>{if(e.button===2&&this.occupiesHands&&this.available){e.preventDefault();this.toggleScope();}},{signal:this.abort.signal});
   window.addEventListener('keydown',e=>{if(e.defaultPrevented||e.repeat||e.target instanceof HTMLInputElement||e.target instanceof HTMLTextAreaElement||!this.available)return;if(e.code==='Digit6'){this.toggle();e.preventDefault();e.stopImmediatePropagation();}else if(e.code==='KeyF'&&this.occupiesHands){this.toggleScope();e.preventDefault();e.stopImmediatePropagation();}else if(e.code==='KeyR'&&this.occupiesHands){this.reload();e.preventDefault();e.stopImmediatePropagation();}else if(e.code==='KeyQ'&&this.occupiesHands){this.fire();e.preventDefault();e.stopImmediatePropagation();}},{capture:true,signal:this.abort.signal});
  }
- get eligible(){return this.net.canPlay&&this.local.enabled&&this.canUse()&&!this.local.body.vehicleId&&!this.local.body.bagId&&this.local.body.knockdownUntil<=this.net.now()&&(this.local.body.moodleSitUntil??0)<=this.net.now()&&!this.net.room?.state.players.get(this.net.room.sessionId)?.emoteId;}
+ get eligible(){return (this.player?.droneCallUntil??0)<=this.net.now()&&this.net.canPlay&&this.local.enabled&&this.canUse()&&!this.local.body.vehicleId&&!this.local.body.bagId&&this.local.body.knockdownUntil<=this.net.now()&&(this.local.body.moodleSitUntil??0)<=this.net.now()&&!this.net.room?.state.players.get(this.net.room.sessionId)?.emoteId;}
  get owned(){return this.player?.awpOwned===true;}
  get available(){return this.owned&&this.eligible;}
  get nearby(){const p=this.local.body,[x,y,z]=AWP_RACK.approach;return !this.owned&&this.eligible&&Math.hypot(p.x-x,p.y-y,p.z-z)<1.7;}

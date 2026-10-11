@@ -5,7 +5,7 @@ export const AWP_RANGE=150, AWP_COOLDOWN_MS=1400, AWP_MAGAZINE=10, AWP_RESERVE=1
 export const AWP_KNOCKBACK=28, AWP_LIFT=5;
 export const AWP_RACK=layout.awpRack;
 export function awpRackPlacement(world:MovementWorld){return world.name==='zurich'?AWP_RACK:{position:[world.spawn.x+10,world.spawn.y+1.55,world.spawn.z],approach:[world.spawn.x+10,world.spawn.y,world.spawn.z],heading:0};}
-export interface AwpShot {roundStartedAt:number;from:string;start:number[];end:number[];target:string;hit:boolean;attachment?:{part:'head'|'body';offset:number[];direction:number[]}}
+export interface AwpShot {roundStartedAt:number;from:string;start:number[];end:number[];target:string;hit:boolean;droneEarned?:boolean;attachment?:{part:'head'|'body';offset:number[];direction:number[]}}
 // Exact intersection with the standing capsule: cylinder plus rounded caps.
 export function awpCapsuleDistance(origin:number[],direction:number[],p:Pick<PlayerState,'x'|'y'|'z'>){
  const [ox,oy,oz]=origin,[dx,dy,dz]=direction,r=.35,lo=p.y+r,hi=p.y+1.65-r,x=ox-p.x,z=oz-p.z;

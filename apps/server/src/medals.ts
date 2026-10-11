@@ -24,10 +24,10 @@ export class PlayerMedals {
   }
   return ids.length ? { ids, eventKey: `${roundStartedAt}:${++this.sequence}`, roundStartedAt } : undefined;
  }
- awp(attacker:string,target:string,roundStartedAt:number,headshot:boolean,distance:number,practice=false):MedalAward|undefined {
+ awp(attacker:string,target:string,roundStartedAt:number,headshot:boolean,distance:number,practice=false,droneEarned=false):MedalAward|undefined {
   if(!attacker||!target||attacker===target||!Number.isFinite(distance))return;
   const base=practice?undefined:this.record(attacker,target,'awp',roundStartedAt),ids:PlayerMedalId[]=[...(base?.ids??[])];
-  if(headshot)ids.push('sharpshooter');if(distance>=30)ids.push('longShot');
+  if(droneEarned)ids.push('droneReady');if(headshot)ids.push('sharpshooter');if(distance>=30)ids.push('longShot');
   return ids.length?{ids,eventKey:base?.eventKey??`${roundStartedAt}:${++this.sequence}${practice?':practice':''}`,roundStartedAt}:undefined;
  }
  practiceBag(roundStartedAt:number):MedalAward {return {ids:['bagged'],eventKey:`${roundStartedAt}:${++this.sequence}:practice`,roundStartedAt};}

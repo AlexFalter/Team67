@@ -68,7 +68,7 @@ export class Race extends Room<{ state: RaceState }> {
     this.npcs = this.createNpcs();
     this.bags=new BagManager(this.state,this.world,(from,target,bag,practice)=>!!this.bagHit(from,target,bag,practice),id=>!!this.npcs.busy(id));
     this.fruit=new FruitManager(this.state,this.world,(id,event)=>this.clients.find(c=>c.sessionId===id)?.send('tomatoEvent',event),event=>this.broadcast('tomatoEvent',event),(id,now)=>this.rounds.canPlay(id,now),id=>this.npcs.busy(id));
-    this.awp=new AwpManager(this.state,this.world,(id,now)=>this.rounds.canPlay(id,now),id=>this.npcs.busy(id),(target,hit)=>this.hit(target,hit),shot=>this.broadcast('awpShot',shot),(shot,practice)=>{const attacker=this.clients.find(c=>c.sessionId===shot.from);if(!attacker||!practice&&!this.clients.some(c=>c.sessionId===shot.target))return;const award=this.medals.awp(shot.from,shot.target,shot.roundStartedAt,shot.attachment?.part==='head',Math.hypot(...shot.end.map((v,i)=>v-shot.start[i])),practice);if(award)attacker.send('medal',award);});
+    this.awp=new AwpManager(this.state,this.world,(id,now)=>this.rounds.canPlay(id,now),id=>this.npcs.busy(id),(target,hit)=>this.hit(target,hit),shot=>this.broadcast('awpShot',shot),(shot,practice)=>{const attacker=this.clients.find(c=>c.sessionId===shot.from);if(!attacker||!practice&&!this.clients.some(c=>c.sessionId===shot.target))return;const award=this.medals.awp(shot.from,shot.target,shot.roundStartedAt,shot.attachment?.part==='head',Math.hypot(...shot.end.map((v,i)=>v-shot.start[i])),practice,shot.droneEarned);if(award)attacker.send('medal',award);},(id,scan)=>this.sendDroneScan(id,scan));
     this.onMessage('awp',(client,data:unknown)=>this.awp.command(client.sessionId,data,Date.now()));
     this.onMessage('fruit',(client,data:unknown)=>this.fruit.command(client,data,Date.now()));
     this.football=new FootballManager(this.state,this.world,(from,target,b)=>!!this.hit(target,{from,ix:b.vx*.5,iy:1.5,iz:b.vz*.5,knockdown:true,durationMs:1500}),id=>!!this.npcs.busy(id));
@@ -243,8 +243,10 @@ export class Race extends Room<{ state: RaceState }> {
   }
   onLeave(client:Client){this.removeGameplayPlayer(client);this.rounds.leave(client.sessionId);
   }
+  private sendDroneScan(id:string,scan:C.DroneScan){this.clients.find(c=>c.sessionId===id)?.send("droneScan",scan);}
   onDispose() { this.physics?.dispose(); if (this.code) codes.delete(this.code); }
   private hit(target: string, hit: C.Impulse, kind?: "punch" | "bicycle" | "bag") {
+    if((this.state.players.get(hit.from)?.droneCallUntil??0)>Date.now())return false;
     const p = this.state.players.get(target);
     if (p && this.rounds.canPlay(target) && !this.npcs.busy(target)) {
       if (Date.now() < p.invincibleUntil) return false;

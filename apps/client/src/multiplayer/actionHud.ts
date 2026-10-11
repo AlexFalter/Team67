@@ -16,9 +16,10 @@ export function actionAvailability(p: Body, sprinting: boolean, now: number) {
   };
 }
 
-export interface ContextAction { icon: "awp" | "football" | "emote" | "bag" | "knife" | "spin" | "holster" | "equip" | "person" | "polybahn" | "tram" | "bike" | "mate" | "cart" | "leave" | "computer" | "scooter"; label: string; key: string; enabled: boolean; run: () => void }
-export interface WeaponAction { kind?: "awp" | "knife" | "bag" | "football" | "tomato"; enabled: boolean; run: () => void }
+export interface ContextAction { icon: "drone" | "awp" | "football" | "emote" | "bag" | "knife" | "spin" | "holster" | "equip" | "person" | "polybahn" | "tram" | "bike" | "mate" | "cart" | "leave" | "computer" | "scooter"; label: string; key: string; enabled: boolean; run: () => void }
+export interface WeaponAction { kind?: "drone" | "awp" | "knife" | "bag" | "football" | "tomato"; enabled: boolean; run: () => void }
 const icons = {
+  drone: '<path d="M7 7h10v10H7zM4 4l4 4m8 0 4-4M4 20l4-4m8 0 4 4"/><circle cx="4" cy="4" r="3"/><circle cx="20" cy="4" r="3"/><circle cx="4" cy="20" r="3"/><circle cx="20" cy="20" r="3"/>',
   awp: '<path d="M2 11h16l4-2v4h-8l-2 5H8l1-5H2m6-2V7h7v4m-4-4V5h3"/>',
   emote: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5m0 7V21M4.2 7.5 9 10.3m6 3.4 4.8 2.8M4.2 16.5 9 13.7m6-3.4 4.8-2.8"/>',
   bag: '<path d="M7 8V6a5 5 0 0 1 10 0v2M5 8h14l2 14H3zM8 13l4 5 4-5"/>',

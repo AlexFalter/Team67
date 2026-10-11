@@ -1,3 +1,4 @@
+import {DroneFeature} from './streaks/DroneFeature.ts';
 import {GtrDonuts} from './vehicles/gtr/GtrDonuts.ts';
 import {AwpFeature} from './weapons/AwpFeature.ts';
 import {FruitFeature} from './fruit/FruitFeature.ts';
@@ -89,6 +90,7 @@ export class MapGame {
   private bags: BagFeature;
   private fruit:FruitFeature;
   private awp:AwpFeature;
+  private drone:DroneFeature;
   private audio = new GameAudio();
   private drowning: Drowning;
   private audioSources = new Map<string, LoopSource>();
@@ -116,12 +118,13 @@ export class MapGame {
     this.publiBikes = new PubliBikeFeature(scene, camera, this.net, this.vehicles, this.local, canvas, () => this.controls.restoreGameplay());
     this.mate = new MateFeature(scene, camera, this.net, this.local, canvas);
     this.view = new PlayerView(camera, [map, this.mate.machine], zurichWorld);
-    this.bags=new BagFeature(scene,camera,this.net,this.local,this.view,canvas.parentElement!,()=>this.net.canPlay&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.npcs?.active&&!this.emotes?.opened&&!this.maps?.active,()=>{if(this.npcs?.karambit?.occupiesHands())this.npcs.karambit.toggle();});
-    this.fruit=new FruitFeature(scene,camera,this.net,this.local,()=>this.net.canPlay&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.npcs?.active&&!this.emotes?.opened&&!this.maps?.active&&!!document.querySelector<HTMLElement>('#pause')?.hidden,()=>{this.awp?.holster();this.football?.holster();if(this.npcs?.karambit?.occupiesHands())this.npcs.karambit.toggle();});
+    this.bags=new BagFeature(scene,camera,this.net,this.local,this.view,canvas.parentElement!,()=>this.net.canPlay&&!this.drone?.calling&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.npcs?.active&&!this.emotes?.opened&&!this.maps?.active,()=>{if(this.npcs?.karambit?.occupiesHands())this.npcs.karambit.toggle();});
+    this.fruit=new FruitFeature(scene,camera,this.net,this.local,()=>this.net.canPlay&&!this.drone?.calling&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.npcs?.active&&!this.emotes?.opened&&!this.maps?.active&&!!document.querySelector<HTMLElement>('#pause')?.hidden,()=>{this.awp?.holster();this.football?.holster();if(this.npcs?.karambit?.occupiesHands())this.npcs.karambit.toggle();});
     // Camera shutter from mini-games-2 when a photo is taken.
     this.npcs = new NpcFeature(scene, camera, this.net, this.local, this.vehicles, canvas, map, () => { this.audio.effect("shutter"); return capture(); });
-    this.football=new FootballFeature(scene,camera,this.net,this.local,()=>!this.npcs.active&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.emotes?.opened&&!this.maps?.active&&document.querySelector<HTMLElement>('#pause')?.hidden!==false,()=>{this.awp?.holster();if(this.npcs.karambit?.occupiesHands())this.npcs.karambit.toggle();});
-    this.awp=new AwpFeature(scene,camera,this.net,this.local,()=>!this.npcs.active&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.emotes?.opened&&!this.maps?.active&&!this.trafficEditor?.active&&this.net.now()>=this.derailUntil&&document.querySelector<HTMLElement>('#pause')?.hidden!==false,()=>{this.view.perspective=0;this.fruit.holster();this.football.holster();if(this.npcs.karambit?.occupiesHands())this.npcs.karambit.toggle();},id=>id===this.net.room?.sessionId?this.mesh:this.remotes.players.get(id)?.mesh??this.bags.avatarFor(id));
+    this.football=new FootballFeature(scene,camera,this.net,this.local,()=>!this.drone?.calling&&!this.npcs.active&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.emotes?.opened&&!this.maps?.active&&document.querySelector<HTMLElement>('#pause')?.hidden!==false,()=>{this.awp?.holster();if(this.npcs.karambit?.occupiesHands())this.npcs.karambit.toggle();});
+    this.awp=new AwpFeature(scene,camera,this.net,this.local,()=>!this.drone?.calling&&!this.npcs.active&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.emotes?.opened&&!this.maps?.active&&!this.trafficEditor?.active&&this.net.now()>=this.derailUntil&&document.querySelector<HTMLElement>('#pause')?.hidden!==false,()=>{this.view.perspective=0;this.fruit.holster();this.football.holster();if(this.npcs.karambit?.occupiesHands())this.npcs.karambit.toggle();},id=>id===this.net.room?.sessionId?this.mesh:this.remotes.players.get(id)?.mesh??this.bags.avatarFor(id));
+    this.drone=new DroneFeature(camera,this.net,this.local,()=>!this.awp.cycling&&!this.awp.reloading&&!this.awp.inspecting&&!this.npcs.active&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.emotes?.opened&&!this.maps?.active&&!this.trafficEditor?.active&&this.net.now()>=this.derailUntil&&document.querySelector<HTMLElement>('#pause')?.hidden!==false,()=>{this.view.perspective=0;this.awp.holster();this.fruit.holster();this.football.holster();if(this.npcs.karambit?.occupiesHands())this.npcs.karambit.toggle();},sound=>this.audio.drone(sound));
     this.npcs.onFootballReward=()=>this.football.grant();
     this.medals.setSoundEnabled(this.audio.settings.medalSounds);
     for (const [selector, key] of [["#vehicle-sounds", "vehicleSounds"], ["#medal-sounds", "medalSounds"]] as const) {
@@ -135,14 +138,14 @@ export class MapGame {
     this.bus = new BattleBusIntro(scene, camera, this.net, canvas, () => this.view.sensitivity);
     this.ready = Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready, this.npcs.ready, this.cows.ready, this.bags.ready,this.fruit.ready,this.awp.ready,this.gtr.ready]).then(() => {});
     this.roomFlow = new RoomFlow(this.net, this.ready, () => this.bus.unlockAudio(), () => this.audio.effect("timer"));
-    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.trafficEditor?.active && !this.emotes?.opened && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active, () => this.net.now()<this.derailUntil || !!this.maps?.active || (this.local.body.moodleSitUntil??0)>this.net.now(), () => this.net.now(), () => this.contextActions(), () => {if(this.awp.occupiesHands)return {kind:"awp",enabled:this.awp.canFire,run:()=>this.awp.fire()};if(this.fruit.occupiesHands)return {kind:"tomato",enabled:this.fruit.canThrow,run:()=>this.fruit.throw()};if(this.bags.occupiesHands)return {kind:"bag",enabled:this.bags.canThrow,run:()=>this.bags.throwBag()};if(this.football.occupiesHands)return {kind:"football",enabled:this.football.canKick,run:()=>this.football.kick()};const knife=this.npcs.karambit;return knife?.occupiesHands()&&!this.local.body.vehicleId&&this.view.perspective===0?{enabled:this.npcs.canUseKarambit()&&knife.state().phase!=='attack'&&this.local.body.attackReadyAt<=this.net.now(),run:()=>this.npcs.attackKarambit()}:undefined;}, () => this.net.room.send('respawn'));
-    this.emotes=new EmoteFeature(this.net,this.local,this.view,canvas.parentElement!,()=>this.net.canPlay&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.npcs.active&&!this.maps?.active&&this.net.now()>=this.derailUntil&&!!document.querySelector<HTMLElement>('#pause')?.hidden,()=>this.controls.resumeAfterInteraction());
+    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.trafficEditor?.active && !this.emotes?.opened && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active, () => this.net.now()<this.derailUntil || !!this.maps?.active || (this.local.body.moodleSitUntil??0)>this.net.now(), () => this.net.now(), () => this.contextActions(), () => {if(this.drone.calling)return {kind:"awp",enabled:false,run:()=>{}};if(this.awp.occupiesHands)return {kind:"awp",enabled:this.awp.canFire,run:()=>this.awp.fire()};if(this.fruit.occupiesHands)return {kind:"tomato",enabled:this.fruit.canThrow,run:()=>this.fruit.throw()};if(this.bags.occupiesHands)return {kind:"bag",enabled:this.bags.canThrow,run:()=>this.bags.throwBag()};if(this.football.occupiesHands)return {kind:"football",enabled:this.football.canKick,run:()=>this.football.kick()};const knife=this.npcs.karambit;return knife?.occupiesHands()&&!this.local.body.vehicleId&&this.view.perspective===0?{enabled:this.npcs.canUseKarambit()&&knife.state().phase!=='attack'&&this.local.body.attackReadyAt<=this.net.now(),run:()=>this.npcs.attackKarambit()}:undefined;}, () => this.net.room.send('respawn'));
+    this.emotes=new EmoteFeature(this.net,this.local,this.view,canvas.parentElement!,()=>this.net.canPlay&&!this.drone?.calling&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.npcs.active&&!this.maps?.active&&this.net.now()>=this.derailUntil&&!!document.querySelector<HTMLElement>('#pause')?.hidden,()=>this.controls.resumeAfterInteraction());
     this.spectator=new Spectator(this.net,camera,canvas,()=>{this.controls.suspendForMap();this.exam.returnToExam();},()=>{void this.controls.resume();});
     this.net.onSpectate=()=>{this.maps.closeForTeleport();this.local.enabled=false;this.local.clear();this.exam.spectate();this.controls.suspendForMap();};
     this.maps = new RaceMap(this.net, () => ({ ...this.local.body, enabled: this.local.enabled }),
       () => [...this.npcs.mapMarkers(), { ...this.mate.machine.position, label: "El Tony Mate" },{x:C.AWP_RACK.approach[0],y:C.AWP_RACK.approach[1],z:C.AWP_RACK.approach[2],label:"Nerf AWP"},{x:C.GTR_DONUTS.center[0],y:C.GTR_DONUTS.center[1],z:C.GTR_DONUTS.center[2],label:"GT-R donuts"}],
       () => !!this.net.canPlay && !this.trafficEditor?.active && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now() >= this.derailUntil && !!document.querySelector<HTMLElement>("#pause")!.hidden,
-      () => this.controls.suspendForMap(), () => void this.controls.resume());
+      () => this.controls.suspendForMap(), () => void this.controls.resume(),()=>this.drone.blips,()=>this.drone.active?this.drone.scanStart:undefined);
     this.net.onMapTeleport=({from,target})=>{this.maps.closeForTeleport();this.local.clear();this.npcs.playMapTeleport(from,target);};
     this.npcs.externalPhoneBusy=()=>this.exam.active||this.publiBikes.active||this.mate.active||!document.querySelector<HTMLElement>("#pause")?.hidden;
     this.npcs.onResume=()=>this.controls.resumeAfterInteraction();
@@ -200,6 +203,7 @@ export class MapGame {
     else if(this.football.nearby)actions.push({icon:"football",key:"E",label:"Pick up football",enabled:this.football.available,run:()=>this.local.requestInteraction()});
     else if(this.bags.nearby)actions.push({icon:"bag",key:"E",label:"Pick up Ersti bag",enabled:p.knockdownUntil<=this.net.now(),run:()=>this.local.requestInteraction()});
     else if (icon) actions.push({ icon, key: "E", label, enabled: p.knockdownUntil <= this.net.now(), run: () => this.local.requestInteraction() });
+    if(this.drone.ready)actions.push({icon:"drone",key:"7",label:"Call drone",enabled:this.drone.canActivate,run:()=>this.drone.activate()});
     if(this.awp.owned)actions.push({icon:"awp",key:"6",label:this.awp.occupiesHands?"Holster Nerf AWP":"Equip Nerf AWP",enabled:this.awp.available,run:()=>this.awp.toggle()});
     if(this.awp.occupiesHands){actions.push({icon:"awp",key:"F",label:"Zoom / unzoom",enabled:this.awp.canZoom,run:()=>this.awp.toggleScope()});actions.push({icon:"equip",key:"R",label:"Reload darts",enabled:this.awp.canReload,run:()=>this.awp.reload()});}
     if(this.fruit.count>0)actions.push({icon:"bag",key:"5",label:this.fruit.occupiesHands?"Holster tomato":"Equip tomato",enabled:!p.bagId&&!p.vehicleId,run:()=>this.fruit.toggle()});
@@ -225,6 +229,7 @@ export class MapGame {
     const state = this.net.room?.state;
     if(this.football.occupiesHands||this.npcs.karambit?.occupiesHands()||this.local.body.bagId)this.fruit.holster();
     if(this.fruit.occupiesHands||this.football.occupiesHands||this.npcs.karambit?.occupiesHands())this.awp.holster();
+    this.drone.update(dt);
     this.awp.update(dt);
     if(this.awp.occupiesHands)this.view.perspective=0;
     this.fruit.update();
@@ -270,7 +275,7 @@ export class MapGame {
       const railPhone=this.npcs.phoneOpen&&!!cabin&&isRail(cabin);
       alignCabinAvatar(this.mesh, this.local.body, cabin);
       this.mesh.visible = this.avatarReady && this.view.perspective !== 0;
-      this.firstBody.visible = this.avatarReady && firstPersonBodyVisible(this.local.body, this.view.perspective);
+      this.firstBody.visible = !this.drone.calling && this.avatarReady && firstPersonBodyVisible(this.local.body, this.view.perspective);
       if(this.view.perspective===0&&(this.awp.occupiesHands||this.npcs.karambit?.occupiesHands()||this.bags.occupiesHands)&&!this.local.body.vehicleId)this.firstBody.visible=false;
       if (this.publiBikes.active || this.mate.active || (this.npcs.hideAvatar&&!railPhone)) this.mesh.visible = this.firstBody.visible = false;
       this.effects.trail(this.net.room.sessionId, this.local.body, now);
@@ -415,7 +420,7 @@ export class MapGame {
     this.menuScene.dispose();
     this.medals.destroy(); this.net.onMedal = undefined;
     this.exam.dispose();
-    this.awp.dispose();this.fruit.dispose();this.football.dispose();this.bags.dispose();this.emotes.dispose();this.npcs.dispose();
+    this.drone.dispose();this.awp.dispose();this.fruit.dispose();this.football.dispose();this.bags.dispose();this.emotes.dispose();this.npcs.dispose();
     this.audio.dispose();
     this.drowning.dispose();
     this.mate.dispose();

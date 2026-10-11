@@ -1,3 +1,4 @@
+import type {DroneSound} from './streaks/droneSoundCues.ts';
 import * as C from "@race/shared";
 
 // Recorded sound effects ported from the mini-games-2 branch (vehicle-audio.js and
@@ -5,9 +6,10 @@ import * as C from "@race/shared";
 // Samples are decoded once into one AudioContext; engine and rail beds loop seamlessly.
 
 const BASE = `${(import.meta.env?.BASE_URL ?? "/")}audio/`;
-type Sample = "helicopter-rotor" | "bus-engine" | "car-engine" | "rail-running" | "vehicle-door" | "footstep-left"
+type DroneSample = `drone/bo3-${DroneSound}`;
+type Sample = DroneSample | "helicopter-rotor" | "bus-engine" | "car-engine" | "rail-running" | "vehicle-door" | "footstep-left"
   | "footstep-right" | "collision-thud" | "bo3-medal-earned" | "cow-moo";
-const SAMPLES: Sample[] = ["helicopter-rotor", "bus-engine", "car-engine", "rail-running", "vehicle-door", "footstep-left",
+const SAMPLES: Sample[] = ["drone/bo3-ready","drone/bo3-request","drone/bo3-tablet","drone/bo3-online","drone/bo3-scan","drone/bo3-end","helicopter-rotor", "bus-engine", "car-engine", "rail-running", "vehicle-door", "footstep-left",
   "footstep-right", "collision-thud", "bo3-medal-earned", "cow-moo"];
 const STORAGE_KEY = "race-to-eth-sound-settings";
 export type EffectKind = "step" | "jump" | "land" | "collision" | "door" | "crash" | "canDrop" | "shutter" | "slide" | "timer";
@@ -43,6 +45,7 @@ export class GameAudio {
   private cooldowns = new Map<string, number>();
   private abort = new AbortController();
   private paused = false;
+  private droneVoice?:AudioBufferSourceNode;
   private stepAge = 0;
   private stepSide = 0;
   private contact = false;
@@ -106,7 +109,7 @@ export class GameAudio {
     source.connect(gain); gain.connect(out ?? this.master!);
     this.shots.add(source);
     source.onended = () => { this.shots.delete(source); source.disconnect(); gain.disconnect(); if (disposeOut) out?.disconnect(); };
-    source.start();
+    source.start();return source;
   }
 
   moo(id: number, distance: number) {
@@ -192,6 +195,14 @@ export class GameAudio {
   }
 
   /** The BO3 "medal earned" sting, independent of the movement/vehicle switch. */
+  drone(sound:DroneSound){
+    if(!this.settings.vehicleSounds||!this.running)return;
+    const radio=sound!=="scan"&&sound!=="tablet";
+    if(radio&&this.droneVoice){try{this.droneVoice.stop();}catch{/* already stopped */}}
+    const source=this.play(`drone/bo3-${sound}`,sound==="scan"?.16:sound==="tablet"?.28:.55,{cooldown:0});
+    if(radio)this.droneVoice=source;
+  }
+
   medal() {
     if (!this.settings.medalSounds || !this.context) return;
     void this.context.resume().then(() => {

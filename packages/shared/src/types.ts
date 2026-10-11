@@ -13,6 +13,10 @@ export interface PlayerState {
   vz: number;
   anim: number;
   color: string;
+  droneReady?: boolean;
+  droneStreak?: number;
+  droneCallUntil?: number;
+  droneScanUntil?: number;
   awpOwned?: boolean;
   awpEquipped?: boolean;
   awpAmmo?: number;

@@ -86,3 +86,9 @@ Source: https://freesound.org/people/ImAFoley/sounds/516745/
 License: https://creativecommons.org/publicdomain/zero/1.0/
 Downloaded HQ preview: https://cdn.freesound.org/previews/516/516745_7117640-hq.mp3
 The shot at 2.474 seconds is trimmed to 0.46 seconds, converted to mono, filtered at 80 Hz / 12 kHz, given a short fade and mild compression, and saved as `awp/nerf-fire.mp3`. Playback gain is 0.65. This replaces the synthesized firing tone; bolt/reload recordings remain separate.
+
+### UAV / drone call-in
+
+`drone/bo3-{ready,request,tablet,online,scan,end}.mp3` are original recordings extracted from Bizargh's **Black Ops III Multiplayer Beta Sound, VO & Music.zip**, linked at https://steamcommunity.com/groups/bizarchivistsoundproject/discussions/2/152391995421803915/ . They include Black Ops TacCom's UAV-ready announcement, Ruin's UAV request, the Black Ops drone operator's arrival/timeout responses, `tablet_beep_tech` and `minimap_beep`. Every extracted FLAC was verified against its ZIP entry CRC32 and transcoded to 128 kbps MP3 without changing pitch or speed. Exact entry names, sizes, offsets and CRCs are in `assets/audio/drone-cod-sources.json`. These are BO3 beta recordings; retail byte identity has not been established. Rights remain with Treyarch/Activision.
+
+The request plays only after the server confirms the call; tablet beeps follow its three button presses. Arrival accompanies the start of the scan, with a quieter ping for each new server sweep and an operator response at expiry. Playback follows the movement/vehicle sound setting and stops on pause or disposal. Runtime gains before the shared 0.65 master: radio voices 0.55, tablet 0.28, sweep 0.16.
