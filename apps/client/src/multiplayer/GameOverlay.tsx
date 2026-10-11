@@ -160,9 +160,6 @@ export function GameOverlay({ resolution, onResolutionChange, offline = false }:
         <button id="respawn">Respawn at bus drop-off</button>
         <button id="perspective">View: First person</button>
         <details className="game-settings"><summary>Settings</summary><div>
-        <label id="car-collision-setting" hidden title="Traffic cars pass through players and vehicles"><input id="no-car-collisions-toggle" type="checkbox" /> No car collisions</label>
-        <label id="moodle-setting" hidden><input id="disable-moodle-toggle" type="checkbox" /> Disable Moodle notifications</label>
-        <label id="collision-setting" hidden><input id="collision-toggle" type="checkbox" /> Show hitboxes + practice dummies</label>
         <label><input id="bob" type="checkbox" defaultChecked /> Walking / running bob</label>
         <label><input id="vehicle-sounds" type="checkbox" defaultChecked /> Movement and vehicle sounds</label>
         <label><input id="medal-sounds" type="checkbox" defaultChecked /> Medal sounds</label>

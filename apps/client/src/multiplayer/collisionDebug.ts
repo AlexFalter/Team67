@@ -16,10 +16,7 @@ export function collisionProbes(world:C.MovementWorld,player:Pick<C.PlayerState,
 
 export class CollisionDebug {
  private root=new THREE.Group();
- private setting=document.querySelector<HTMLElement>('#collision-setting')!;
  private checkbox=document.querySelector<HTMLInputElement>('#show-collisions')!;
- private toggle=document.querySelector<HTMLInputElement>('#collision-toggle')!;
- private abort=new AbortController();
  private legend=document.createElement('aside');
  private obstacles:THREE.InstancedMesh;
  private ground:THREE.InstancedMesh;
@@ -39,11 +36,9 @@ export class CollisionDebug {
   this.legend.textContent='COLLISION CHECKS · 24 m nearby · orange: blocked player space at your height · cyan: ground · yellow: players / practice dummies · pink: vehicle contacts · red: map bounds';
   Object.assign(this.legend.style,{position:'absolute',top:'70px',left:'20px',maxWidth:'400px',padding:'8px 12px',fontSize:'12px',color:'#fff',background:'#132027dd',pointerEvents:'none',zIndex:'40'});
   this.legend.hidden=true;parent.append(this.legend);
-  this.toggle.addEventListener('change',()=>{this.checkbox.checked=this.toggle.checked;this.checkbox.dispatchEvent(new Event('change'));},{signal:this.abort.signal});
  }
  update(player:C.PlayerState){
   const state=this.net.room?.state,dev=state?.devMode===true;
-  this.setting.hidden=!dev;this.toggle.checked=this.checkbox.checked;
   const enabled=dev&&this.net.canPlay&&this.checkbox.checked;
   if(enabled&&state?.hostId===this.net.room.sessionId&&(!this.wasEnabled||this.dummiesRequestedRound!==state.startedAt)){
    if(!state.debugDummies)this.net.room.send("debugDummies",true);
@@ -77,7 +72,7 @@ export class CollisionDebug {
   mesh.position.set(p.x,p.y+(v?(v.kind===4?C.vehicleRadius(v):.55):C.CAPSULE_HEIGHT/2),p.z);
  }
  dispose(){
-  this.abort.abort();this.setting.hidden=true;this.legend.remove();this.scene.remove(this.root);
+  this.legend.remove();this.scene.remove(this.root);
   this.root.traverse(object=>{if(object instanceof THREE.Mesh||object instanceof THREE.LineSegments){object.geometry.dispose();const materials=Array.isArray(object.material)?object.material:[object.material];for(const material of materials)material.dispose();}});
   this.entities.clear();
  }
