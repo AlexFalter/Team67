@@ -3,8 +3,9 @@ import type { GroundPoint, MovementWorld } from "./world.ts";
 import type { WorldState } from "./types.ts";
 import { RoomPhase } from "./room.ts";
 
-// mini-games/public/gameplay/feature-placements.json, player.spawn / shuttle.
-export const BATTLE_BUS_START = { x: -191.642, z: 11.025 } as const;
+// Cabin ground contact and nearby passenger drop-off move together.
+export const BATTLE_BUS_LANDING = { x: -178.04, y: 8.25, z: 61.25 } as const;
+export const BATTLE_BUS_START = { x: -173.23488193895338, z: 61.52081436336322 } as const;
 export const BATTLE_BUS_HEADING = 2.514579388516376;
 export const BATTLE_BUS_ARRIVAL_MS = 7000;
 export const BATTLE_BUS_DURATION_MS = 13350;

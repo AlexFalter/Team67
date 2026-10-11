@@ -16,9 +16,10 @@ export function actionAvailability(p: Body, sprinting: boolean, now: number) {
   };
 }
 
-export interface ContextAction { icon: "football" | "emote" | "bag" | "knife" | "spin" | "holster" | "equip" | "person" | "polybahn" | "tram" | "bike" | "mate" | "cart" | "leave" | "computer" | "scooter"; label: string; key: string; enabled: boolean; run: () => void }
+export interface ContextAction { icon: "camera" | "football" | "emote" | "bag" | "knife" | "spin" | "holster" | "equip" | "person" | "polybahn" | "tram" | "bike" | "mate" | "cart" | "leave" | "computer" | "scooter"; label: string; key: string; enabled: boolean; run: () => void }
 export interface WeaponAction { kind?: "knife" | "bag" | "football" | "tomato"; enabled: boolean; run: () => void }
 const icons = {
+  camera: '<path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="4"/>',
   emote: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5m0 7V21M4.2 7.5 9 10.3m6 3.4 4.8 2.8M4.2 16.5 9 13.7m6-3.4 4.8-2.8"/>',
   bag: '<path d="M7 8V6a5 5 0 0 1 10 0v2M5 8h14l2 14H3zM8 13l4 5 4-5"/>',
   holster: '<path d="M6 11h7v7a3.5 3.5 0 0 1-7 0zM8 11V4h3v7M6 4h7M18 3v10m-3-3 3 3 3-3"/>',

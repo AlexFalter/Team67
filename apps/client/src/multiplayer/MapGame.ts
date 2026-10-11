@@ -228,6 +228,7 @@ export class MapGame {
     }
     if(this.football.owns)actions.push({icon:"football",key:"4",label:this.football.occupiesHands?"Put away football":"Equip football",enabled:this.football.available,run:()=>this.football.toggle()});
     if(this.emotes)actions.push({icon:"emote",key:"B",label:"Emote wheel",enabled:this.emotes.available,run:()=>this.emotes.open()});
+    actions.push({icon:"camera",key:"F",label:"Change view",enabled:true,run:()=>{this.view.cycle();this.controls.update();}});
     return actions;
   }
   update(elapsed: number, now: number) {

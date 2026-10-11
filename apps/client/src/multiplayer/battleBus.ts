@@ -28,7 +28,7 @@ export class BattleBusIntro {
   private forward = new THREE.Vector3(-Math.sin(this.heading), 0, -Math.cos(this.heading));
   private door = this.start.clone().addScaledVector(this.right, -2.7);
   private inside = this.door.clone().addScaledVector(this.right, -0.85);
-  private origin = this.door.clone().addScaledVector(this.right, -1.35).addScaledVector(this.forward, -2.6);
+  private origin = new THREE.Vector3(C.BATTLE_BUS_LANDING.x, C.BATTLE_BUS_LANDING.y, C.BATTLE_BUS_LANDING.z);
   private entry: THREE.Curve<THREE.Vector3>;
   private departure: THREE.Curve<THREE.Vector3>;
   private dropoffs = C.battleBusDropoffs(C.zurichWorld, 40);
@@ -55,7 +55,6 @@ export class BattleBusIntro {
         this.net.room.send("thankBusDriver", state.introStartedAt);
       }
     }, { signal: this.abort.signal });
-    this.origin.y = C.zurichWorld.height(this.origin.x, this.origin.z) ?? this.start.y;
     const paths = battleBusPaths(this.origin);
     this.entry = busCurve(paths.arrival); this.departure = busCurve(paths.departure);
     this.heading = busParkingHeading(paths, C.BATTLE_BUS_HEADING + Math.PI);

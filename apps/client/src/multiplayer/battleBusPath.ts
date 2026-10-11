@@ -4,10 +4,13 @@ import { zurichWorld, type MovementWorld } from "@race/shared";
 export interface BusPaths { arrival: number[][]; departure: number[][] }
 
 export function battleBusPaths(origin: THREE.Vector3): BusPaths {
-  // Authored route: lake approach, HB landing, then climb out toward ETH.
+  // Translate the authored route to the new landing. Raise the final approach
+  // guide by 4 m to clear the nearby obstacle before descending.
+  const offset = origin.clone().sub(new THREE.Vector3(-196.4471180610466, 8.022028236713115, 10.75418563663678));
+  const translate = (points: number[][]) => points.map(point => new THREE.Vector3(...point).add(offset).toArray());
   return {
-    arrival: [[-147.45, 144.08, 1183.91], [-158.6, 73.73, 511.55], [-121.5, 51.5, 317.71], [-119.68, 35.96, 115.53], origin.toArray()],
-    departure: [origin.toArray(), [-134.84, 80, 10.75], [-85.99, 110.55, -70.22], [163.12, 143.5, -113.51], [681.59, 220, 79.54]],
+    arrival: [...translate([[-147.45, 144.08, 1183.91], [-158.6, 73.73, 511.55], [-121.5, 51.5, 317.71], [-119.68, 39.96, 115.53]]), origin.toArray()],
+    departure: [origin.toArray(), ...translate([[-134.84, 80, 10.75], [-85.99, 110.55, -70.22], [163.12, 143.5, -113.51], [681.59, 220, 79.54]])],
   };
 }
 

@@ -6,10 +6,7 @@ import { busCurve, busFlightProgress, busParkingHeading, busPathBlocked, busPath
 
 const originalHeading = C.BATTLE_BUS_HEADING + Math.PI;
 const heading = originalHeading;
-const forward = new THREE.Vector3(-Math.sin(originalHeading), 0, -Math.cos(originalHeading));
-const right = new THREE.Vector3(Math.cos(originalHeading), 0, -Math.sin(originalHeading));
-const origin = new THREE.Vector3(C.BATTLE_BUS_START.x, 0, C.BATTLE_BUS_START.z).addScaledVector(right, -4.05).addScaledVector(forward, -2.6);
-origin.y = C.zurichWorld.height(origin.x, origin.z)!;
+const origin = new THREE.Vector3(C.BATTLE_BUS_LANDING.x, C.BATTLE_BUS_LANDING.y, C.BATTLE_BUS_LANDING.z);
 
 test("default arrival and departure clear the city grid with the bus footprint", () => {
   const paths = battleBusPaths(origin);
