@@ -87,3 +87,41 @@ docker compose up -d --build
 ```
 
 Caddy obtains the HTTPS certificate and routes matchmaking and WebSocket traffic to the private game server.
+
+For server lag diagnostics, add `SERVER_PERF_LOG=1` to `.env`, recreate the server with
+`docker compose up -d --build server`, and read `docker compose logs -f server` while a full room plays.
+Every five seconds the server logs process CPU usage (100% means one CPU core), memory,
+event-loop delay, and each room's simulation rate, tick duration, tick spacing and state-patch duration.
+`tickOverBudget` counts ticks taking longer than the 50 ms simulation budget. Low `tickHz`
+with short tick durations points to scheduling stalls or work elsewhere in the process;
+long tick durations point to simulation work. Event-loop measurements include a 10 ms sampling interval.
+These logs are disabled by default; set `SERVER_PERF_LOG=0` and recreate the server to stop them.
+Use `docker stats` alongside the logs to check container CPU, memory and network usage, and check
+the VM's CPU allocation/throttling and available network bandwidth. RAM and disk capacity alone
+do not establish how much simulation work the VM can handle.
+
+Run `npm run perf:server -- --players=20,40 --seconds=8` to compare isolated 20- and 40-player
+rooms on a machine. This launches a separate test server and real headless clients using the
+shared movement code, samples idle, crowded sprinting and spread-out sprinting, then cleans up.
+It reports server-process CPU, memory, simulation/physics/patch timings, pre-compression payload
+bandwidth and actual socket bandwidth after WebSocket framing/compression (excluding TCP/IP/TLS overhead).
+`compressedClients` confirms compression negotiation and `bufferedBytes` shows queued sends.
+It does not measure browser FPS, remote latency
+or client rendering, and the load generator shares the test machine's CPU with the test server.
+On the VM, use `docker compose run --rm --no-deps server node --import tsx scripts/server-load-test.ts --players=20,40 --seconds=8`
+to run that benchmark in a separate container. Run it when the live game is quiet, since the
+benchmark and live server share the VM's resources.
+
+The server simulates and sends patches at 20 Hz; clients retain smooth frame-rate rendering
+and interpolation. Positions and velocities use
+explicit float32 wire encoding while authoritative server physics retains full precision;
+animation uses one shared server clock instead of sending a clock for every player. Frequent
+collision corrections use compact value arrays, with object corrections still accepted for
+offline/debug encounters. WebSocket compression is enabled by default when negotiated by the
+client: level 1, four concurrent jobs, and a reused per-connection dictionary to compress repeated
+movement data. `SERVER_WS_CONTEXT_TAKEOVER=0` disables dictionary reuse and then applies a 512-byte
+threshold so small messages stay uncompressed. Set `SERVER_WS_COMPRESSION=0` and recreate the server
+to disable compression if the VM's diagnostic logs show CPU pressure. For a load-test comparison,
+prefix the local benchmark with `SERVER_WS_COMPRESSION=0` or `SERVER_WS_COMPRESSION=1`.
+Caddy also compresses static page/script/JSON responses with Zstandard or Gzip; this is separate
+from game WebSocket compression and does not change already-compressed model/audio assets.

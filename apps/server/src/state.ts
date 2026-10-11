@@ -20,13 +20,14 @@ export const RoundResult = schema({
 }, "RoundResult");
 export const Player = schema(
   {
-    x: t.number().default(0),
-    y: t.number().default(0),
-    z: t.number().default(0),
-    rotY: t.number().default(0),
-    vx: t.number().default(0),
-    vy: t.number().default(0),
-    vz: t.number().default(0),
+    // Explicit float32 removes the generic number tag; server values retain full precision.
+    x: t.float32().default(0),
+    y: t.float32().default(0),
+    z: t.float32().default(0),
+    rotY: t.float32().default(0),
+    vx: t.float32().default(0),
+    vy: t.float32().default(0),
+    vz: t.float32().default(0),
     anim: t.uint8().default(0),
     color: t.string().default("#ffffff"),
     character: t.uint8().default(0),
@@ -47,7 +48,8 @@ export const Player = schema(
     impactStrength: t.number().default(0),
     moodleSitUntil: t.number().default(0),
     moodleBoostUntil: t.number().default(0),
-    simTime: t.number().default(0),
+    // Remote animation uses RaceState.serverTime; keep this clock only for server gameplay.
+    simTime: t.number().default(0).noSync(),
     vehicleKind: t.int8().default(-1),
     attackReadyAt: t.number().default(0),
     droneReady: t.boolean().default(false),
@@ -82,13 +84,13 @@ export const Vehicle = schema(
     railDistance: t.number().default(0),
     railLane: t.number().default(0),
     railReverse: t.boolean().default(false),
-    pitch: t.number().default(0),
-    x: t.number().default(0),
-    y: t.number().default(0),
-    z: t.number().default(0),
-    rotY: t.number().default(0),
-    vx: t.number().default(0),
-    vz: t.number().default(0),
+    pitch: t.float32().default(0),
+    x: t.float32().default(0),
+    y: t.float32().default(0),
+    z: t.float32().default(0),
+    rotY: t.float32().default(0),
+    vx: t.float32().default(0),
+    vz: t.float32().default(0),
     capacity: t.uint8().default(1),
     driver: t.string().default(""),
     departureAt: t.number().default(0),
@@ -142,8 +144,8 @@ export const Npc = schema({
   limoUsed: t.boolean().default(false),
 }, "Npc");
 export const TrafficCar = schema({
-  x: t.number().default(0), y: t.number().default(0), z: t.number().default(0),
-  rotY: t.number().default(0), speed: t.number().default(0),
+  x: t.float32().default(0), y: t.float32().default(0), z: t.float32().default(0),
+  rotY: t.float32().default(0), speed: t.float32().default(0),
   kind: t.number().default(0), color: t.number().default(0),
 }, "TrafficCar");
 export const Bag = schema({x:t.number().default(0),y:t.number().default(0),z:t.number().default(0),vx:t.number().default(0),vy:t.number().default(0),vz:t.number().default(0),owner:t.string().default(''),thrower:t.string().default(''),flying:t.boolean().default(false),throwAt:t.number().default(0),releasedAt:t.number().default(0),spin:t.number().default(0)},'Bag');

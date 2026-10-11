@@ -18,6 +18,11 @@
     build:
       context: .
       dockerfile: apps/server/Dockerfile
+    environment:
+      SERVER_PERF_LOG: ${SERVER_PERF_LOG:-0}
+      SERVER_PERF_LOG_INTERVAL_MS: ${SERVER_PERF_LOG_INTERVAL_MS:-5000}
+      SERVER_WS_COMPRESSION: ${SERVER_WS_COMPRESSION:-1}
+      SERVER_WS_CONTEXT_TAKEOVER: ${SERVER_WS_CONTEXT_TAKEOVER:-1}
     restart: unless-stopped
 
 volumes:

@@ -35,13 +35,14 @@ try {
       if (joinedAll && s.phase === C.RoomPhase.Lobby && !s.members.get(room.sessionId)?.ready) room.send("ready", true);
       if (p && !ready) {
         C.snapshot(p, body);
+        body.simTime = s.serverTime;
         ready = true;
       }
     });
     room.onMessage<C.Impulse>("impulse", (hit) =>
       C.applyImpulse(body, hit, Date.now()),
     );
-    room.onMessage<C.PlayerCorrection>("playerCorrection", correction => Object.assign(body, correction));
+    room.onMessage<C.PlayerCorrectionMessage>("playerCorrection", correction => Object.assign(body, C.unpackPlayerCorrection(correction)));
     room.onMessage("bump", () => {});
     room.onMessage("pong", () => {});
     const input: C.Input = { x: 0, z: 0, sprint: false, jump: false };

@@ -34,7 +34,11 @@ export class ContactWorld {
     const entities = new Map<string, { x: number; y: number; z: number; radius?: number; dynamic?: boolean; ball?: boolean; vx?: number; vz?: number }>(players);
     // Wreck poses leave the track; the old rail-root cylinder no longer
     // represents visible geometry and must not remain as an invisible hazard.
-    for (const [id, v] of vehicles) if (!v.derailStartedAt) entities.set(`v:${id}`, { ...C.snapshot(v, C.createVehicle()), radius: C.vehicleRadius(v), ball: v.kind === 4, dynamic: !fixedVehicles.has(id) && (v.kind === 4 || (v.kind !== 1 && v.kind < 3 && !v.driver && !v.fallenUntil)) });
+    for (const [id, v] of vehicles) if (!v.derailStartedAt) entities.set(`v:${id}`, {
+      x: v.x, y: v.y, z: v.z, vx: v.vx, vz: v.vz,
+      radius: C.vehicleRadius(v), ball: v.kind === 4,
+      dynamic: !fixedVehicles.has(id) && (v.kind === 4 || (v.kind !== 1 && v.kind < 3 && !v.driver && !v.fallenUntil)),
+    });
     for (const [id, p] of entities) {
       let shape = this.shapes.get(id);
       if (shape && shape.parent()!.isDynamic() !== !!p.dynamic) {

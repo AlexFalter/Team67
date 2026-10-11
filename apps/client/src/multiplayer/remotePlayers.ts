@@ -52,7 +52,7 @@ export class RemotePlayers {
         jumpUntil: p.jumpUntil,
         knockdownUntil: p.knockdownUntil,
         impactStartedAt: p.impactStartedAt, impactX: p.impactX, impactZ: p.impactZ, impactStrength: p.impactStrength,
-        simTime: p.simTime,
+        simTime: state.serverTime,
         vehicleKind: p.vehicleKind,
         attackReadyAt: p.attackReadyAt,
         mateCount: p.mateCount,

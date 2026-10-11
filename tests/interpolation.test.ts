@@ -36,6 +36,7 @@ test("remote interpolation follows the delayed timeline and shortest angle, hold
   assert.equal(rendered.x, 5);
   assert.equal(rendered.y, 1);
   assert.equal(rendered.z, 2);
+  assert.equal(rendered.simTime, 1050, "remote animation follows the shared interpolated clock");
   assert.ok(Math.abs(rendered.rotY - Math.PI) < 1e-10);
   remotes.render(1200);
   assert.equal(rendered.x, 10, "hold latest snapshot without extrapolation");

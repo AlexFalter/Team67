@@ -7,6 +7,7 @@ export * from "./input.ts";
 export * from "./world.ts";
 export * from "./flatObstacles.ts";
 export * from "./snapshot.ts";
+export * from "./playerCorrection.ts";
 export * from "./mechanics.ts";
 export * from "./roomCode.ts";
 export * from "./room.ts";

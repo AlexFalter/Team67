@@ -69,7 +69,9 @@ test("clients share stationary look-directed punches, cooldown and recovery with
     a.send("move", [own.x, own.y, own.z, Math.PI / 2, 0, 0, 0, 0]); a.send("hit");
     await until(() => hits.length === 1 && b.state.players.get(b.sessionId)!.knockdownUntil > Date.now(), "punch");
     assert.equal(hits[0].durationMs, 1500);
-    assert.equal(own.attackReadyAt - hits[0].at!, 2000);
+    // Attack and victim clocks are sampled separately; tolerate time spent processing the hit.
+    const cooldown = own.attackReadyAt - hits[0].at!;
+    assert.ok(cooldown <= C.ATTACK_COOLDOWN_MS && cooldown >= C.ATTACK_COOLDOWN_MS - 20);
     const victim = b.state.players.get(b.sessionId)!;
     assert.equal(victim.impactStartedAt, hits[0].at);
     assert.equal(victim.impactX, hits[0].ix);
@@ -79,7 +81,7 @@ test("clients share stationary look-directed punches, cooldown and recovery with
     const deadline = b.state.players.get(b.sessionId)!.knockdownUntil;
     a.send("hit"); await delay(100); assert.equal(hits.length, 1);
     assert.equal(b.state.players.get(b.sessionId)!.knockdownUntil, deadline);
-    await until(() => b.state.players.get(b.sessionId)!.simTime >= deadline && b.state.players.get(b.sessionId)!.anim !== 3, "recovery without client input", 6500);
+    await until(() => b.state.serverTime >= deadline && b.state.players.get(b.sessionId)!.anim !== 3, "recovery without client input", 6500);
   });
 });
 

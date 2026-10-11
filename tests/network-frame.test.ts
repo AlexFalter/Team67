@@ -29,7 +29,7 @@ test("actual client frame keeps feature jump and look direction; one-shot action
 });
 
 test("actual client frame reports the current driven pose before vehicle actions", () => {
-  const { net, body, messages } = fixture(), anchor = C.zurichWorld.carts[0];
+  const { net, body, messages } = fixture(), anchor = C.publiBikeStation(C.zurichWorld).slots[0];
   Object.assign(body, anchor, { y: anchor.y + C.BIKE_SEAT_HEIGHT, vehicleId: "bike-1", vehicleKind: 2, seat: 0 });
   const x = body.x;
   net.frame(0.1, body, () => ({ ...C.IDLE_INPUT, x: 1, hit: true }));

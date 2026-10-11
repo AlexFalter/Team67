@@ -17,6 +17,7 @@
     "lint": "npm run lint -w @race/client",
     "start": "npm start -w @race/server",
     "bots": "tsx apps/server/src/bots.ts",
+    "perf:server": "node --import tsx scripts/server-load-test.ts",
     "test": "tsx --test tests/*.test.ts",
     "world:build": "tsx scripts/build-world.ts",
     "transit:build": "tsx scripts/build-transit.ts",

@@ -1,9 +1,10 @@
-import { defineServer, defineRoom, WebSocketTransport } from "colyseus";
+import { defineServer, defineRoom } from "colyseus";
 import { Encoder } from "@colyseus/schema";
 import express from "express";
 import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
 import { Race } from "./race.ts";
+import { createRaceTransport } from "./transport.ts";
 const production =
   process.argv.includes("--production") ||
   process.env.NODE_ENV === "production";
@@ -13,7 +14,7 @@ if (production && !existsSync(dist + "index.html"))
 // Traffic authoring sends bounded JSON networks larger than the default 4 KB message limit.
 Encoder.BUFFER_SIZE = 64 * 1024;
 const server = defineServer({
-  transport: new WebSocketTransport({ maxPayload: 256 * 1024 }),
+  transport: createRaceTransport(),
   rooms: { race: defineRoom(Race) },
   express: (app) => {
     if (production) app.use(express.static(dist));

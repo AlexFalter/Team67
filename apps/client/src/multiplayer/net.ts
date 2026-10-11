@@ -1,5 +1,6 @@
 import type { Selection } from "./lobby.ts";
-import type { Input, PlayerCorrection } from "@race/shared";
+import type { Input, PlayerCorrection, PlayerCorrectionMessage } from "@race/shared";
+import { unpackPlayerCorrection } from "@race/shared";
 import { Client, type Room } from "@colyseus/sdk";
 import type {
   Bump,
@@ -125,8 +126,8 @@ export class Network {
     this.room.onMessage<{ok:boolean;action:string;message:string;roundStartedAt:number}>('bagResult',data=>{if(data.roundStartedAt===this.room.state.startedAt)this.onBagResult?.(data);});
     this.room.onMessage<{ok:boolean;step:number;unlocked:boolean;reason?:string;roundStartedAt:number}>('emoteChallengeResult',data=>{if(data.roundStartedAt!==this.room.state.startedAt)return;if(data.ok&&data.unlocked)this.emoteUnlockRound=data.roundStartedAt;this.onEmoteChallengeResult?.(data);});
     this.room.onMessage<{id:number;passed:boolean;submitted?:boolean;course:string;roundStartedAt:number}>('moodleResult',data=>{if(data.roundStartedAt===this.room.state.startedAt)this.onMoodleResult?.(data);});
-    this.room.onMessage<PlayerCorrection>("playerCorrection", correction => {
-      Object.assign(body, correction);
+    this.room.onMessage<PlayerCorrectionMessage>("playerCorrection", correction => {
+      Object.assign(body, unpackPlayerCorrection(correction));
     });
     this.room.onMessage<PlayerCorrection>('respawned', correction => {
       respawn(body, zurichWorld); Object.assign(body, correction); body.anim = 0;

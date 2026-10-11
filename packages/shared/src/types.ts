@@ -42,6 +42,7 @@ export interface PlayerState {
   impactStrength?: number;
   moodleSitUntil?: number;
   moodleBoostUntil?: number;
+  // Local simulation/animation clock. Network renderers derive it from WorldState.serverTime.
   simTime: number;
   vehicleKind: number;
   attackReadyAt: number;

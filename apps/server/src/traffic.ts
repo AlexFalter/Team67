@@ -78,7 +78,11 @@ export class TrafficManager {
   }
   private touches(car: TrafficCarState, body: {x:number;y:number;z:number}, radius: number) {
     if (body.y > car.y + 1.5 || body.y + CAPSULE_HEIGHT < car.y) return false;
-    const dx=body.x-car.x, dz=body.z-car.z, fx=Math.sin(car.rotY), fz=Math.cos(car.rotY);
+    const dx=body.x-car.x, dz=body.z-car.z;
+    // Conservative enclosing circle rejects remote bodies before oriented-footprint maths.
+    const reach = Math.hypot(2.2, .95) + radius;
+    if (dx * dx + dz * dz > reach * reach) return false;
+    const fx=Math.sin(car.rotY), fz=Math.cos(car.rotY);
     const along=dx*fx+dz*fz, across=dx*fz-dz*fx;
     return Math.hypot(Math.max(0,Math.abs(along)-2.2),Math.max(0,Math.abs(across)-.95))<=radius;
   }
@@ -92,11 +96,11 @@ export class TrafficManager {
     const now = this.state.serverTime, forwardX = Math.sin(impactHeading), forwardZ = Math.cos(impactHeading);
     for (const [target, player] of this.state.players) {
       const vehicle = player.vehicleId ? this.state.vehicles.get(player.vehicleId) : undefined;
-      if ((player.vehicleId && (!vehicle || isPassengerVehicle(vehicle))) || !canHit(target) || now < player.knockdownUntil || now < player.invincibleUntil ||
+      if ((player.vehicleId && (!vehicle || isPassengerVehicle(vehicle))) || now < player.knockdownUntil || now < player.invincibleUntil ||
         now - (this.playerHits.get(target) ?? -Infinity) < PAIR_COOLDOWN_MS) continue;
       const body = vehicle ?? player, radius = vehicle ? vehicleRadius(vehicle) : CAPSULE_RADIUS;
       // Capsule versus the car's oriented footprint; don't hit nearby sidewalk pedestrians.
-      if (!this.touches(car,body,radius)) continue;
+      if (!this.touches(car,body,radius) || !canHit(target)) continue;
       this.playerHits.set(target, now);
       const force = Math.min(car.speed, 25) * CART_HIT_STRENGTH;
       hit(id, target, player.x, player.y + CAPSULE_HEIGHT / 2, player.z,
@@ -104,8 +108,10 @@ export class TrafficManager {
     }
   }
   private clear(pose: TrafficCarState, own?: string, extra = 0.3, obstacles: TrafficCarState[] = []) {
-    return ![...this.state.trafficCars].some(([id, car]) => id !== own && trafficOverlap(pose, car, extra)) &&
-      !obstacles.some(o => trafficOverlap(pose, o, extra));
+    for (const [id, car] of this.state.trafficCars)
+      if (id !== own && trafficOverlap(pose, car, extra)) return false;
+    for (const obstacle of obstacles) if (trafficOverlap(pose, obstacle, extra)) return false;
+    return true;
   }
   private remove(id: string) {
     const d = this.drivers.get(id);
