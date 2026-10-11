@@ -25,7 +25,7 @@ import { createColorGrade, mountGradePanel, type ColorGradeHandle } from "./colo
 
 export function MapViewer({ examPreview = false }: { examPreview?: boolean }) {
   const [examSession, setExamSession] = useState<ExamSession>(emptyExamSession);
-  const [playing, setPlaying] = useState(!(import.meta.env.DEV && new URLSearchParams(location.search).has("trafficEditor")));
+  const [playing, setPlaying] = useState(examPreview || !(import.meta.env.DEV && new URLSearchParams(location.search).has("trafficEditor")));
   const [resolution, setResolution] = useState<"performance" | "high">("high");
   return (
     <div className="map-viewer" data-playing={playing} data-exam-active={examSession.stage !== "world"}>
