@@ -84,7 +84,7 @@ export class MapGame {
     this.vehicles = new Vehicles(scene, this.net, hints);
     this.effects = new Effects(scene, bump => this.audio.bump(this.listener, bump));
     this.hud = new Hud(hud);
-    this.drowning = new Drowning(hud.parentElement ?? document.body);
+    this.drowning = new Drowning(hud.parentElement ?? document.body, () => this.net.room.send('respawn'));
     this.coordinates = new DeveloperCoordinates(canvas.parentElement!);
     this.publiBikes = new PubliBikeFeature(scene, camera, this.net, this.vehicles, this.local, canvas, () => this.controls.restoreGameplay());
     this.mate = new MateFeature(scene, camera, this.net, this.local, canvas);
@@ -104,16 +104,17 @@ export class MapGame {
     this.bus = new BattleBusIntro(scene, camera, this.net, canvas, () => this.view.sensitivity);
     this.ready = Promise.all([this.bus.ready, this.vehicles.publiReady, this.vehicles.transitReady, this.mate.ready, this.npcs.ready]).then(() => {});
     this.roomFlow = new RoomFlow(this.net, this.ready, () => this.bus.unlockAudio(), () => this.audio.effect("timer"));
-    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.trafficEditor?.active && !this.exam.active && !this.publiBikes.active && !this.mate.active && (!this.npcs.active || this.npcs.ridingVehicle), () => this.net.now()<this.derailUntil || !!this.maps?.active || (this.local.body.moodleSitUntil??0)>this.net.now(), () => this.net.now(), () => this.contextActions());
+    this.controls = new GameControls(canvas, this.local, this.view, () => this.net.canPlay && !this.trafficEditor?.active && !this.exam.active && !this.publiBikes.active && !this.mate.active && (!this.npcs.active || this.npcs.ridingVehicle), () => this.net.now()<this.derailUntil || !!this.maps?.active || (this.local.body.moodleSitUntil??0)>this.net.now(), () => this.net.now(), () => this.contextActions(), () => this.net.room.send('respawn'));
     this.maps = new RaceMap(this.net, () => ({ ...this.local.body, enabled: this.local.enabled }),
       () => [...this.npcs.mapMarkers(), { ...this.mate.machine.position, label: "El Tony Mate" }],
       () => !!this.net.canPlay && !this.trafficEditor?.active && !this.exam.active && !this.publiBikes.active && !this.mate.active && !this.npcs.active && this.net.now() >= this.derailUntil && !!document.querySelector<HTMLElement>("#pause")!.hidden,
       () => this.controls.suspendForMap(), () => void this.controls.resume());
     this.npcs.externalPhoneBusy=()=>this.exam.active||this.publiBikes.active||this.mate.active;
     this.npcs.onResume=()=>this.controls.resumeAfterInteraction();
-    Object.assign(this.local.body, zurichWorld.spawn);
+    const spawn = C.raceSpawnPoint(zurichWorld);
+    Object.assign(this.local.body, spawn);
     camera.near = 0.05;
-    camera.position.set(zurichWorld.spawn.x, zurichWorld.spawn.y + 1.6, zurichWorld.spawn.z);
+    camera.position.set(spawn.x, spawn.y + 1.6, spawn.z);
     this.menuScene = new MenuScene(scene, camera);
     scene.add(this.mesh, this.firstBody);
     this.mesh.visible = this.firstBody.visible = false;
@@ -181,10 +182,9 @@ export class MapGame {
       this.derailRun=riding.derailStartedAt;this.derailVehicle=this.local.body.vehicleId;this.derailUntil=riding.derailStartedAt+3200;
     }
     if (this.net.canPlay && !this.exam.active) {
-      // Water kills players on foot: 10 s timeout with the meme music, then respawn where the round started.
+      // Water kills players on foot: 10 s timeout with the meme music, then the same respawn as the Respawn button.
       const drowned = this.drowning.update(this.local.body, this.net.now(),
-        !this.publiBikes.active && !this.mate.active && !this.npcs.active && !this.npcs.ridingVehicle && this.net.now() >= this.derailUntil,
-        this.net.room?.state.members.get(this.net.room.sessionId)?.introSeat ?? -1);
+        !this.publiBikes.active && !this.mate.active && !this.npcs.active && !this.npcs.ridingVehicle && this.net.now() >= this.derailUntil);
       this.net.frame(dt, this.local.body, () => drowned || this.net.now()<this.derailUntil || this.npcs.ridingVehicle || (this.local.body.moodleSitUntil??0)>this.net.now()?IDLE_INPUT:this.local.controls(this.view.yaw));
       if (drowned) this.local.takeInteraction();
       else if ((this.local.body.moodleSitUntil??0)<=this.net.now() && this.net.now()>=this.derailUntil && this.local.takeInteraction() && !this.npcs.active && !this.npcs.interact() && !this.mate.interact() && !this.publiBikes.interact()) this.vehicles.interact(this.local.body);

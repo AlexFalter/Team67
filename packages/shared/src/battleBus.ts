@@ -38,16 +38,9 @@ export function battleBusDropoffs(world: MovementWorld, count: number): GroundPo
   return points;
 }
 
-const startPoints = new Map<MovementWorld, GroundPoint[]>();
-/**
- * Where a player starts the round: the drop-off point of their battle bus seat (the same spot the
- * server puts them on in arriveFromBus()). Drowned players respawn here too. Undefined without a seat.
- */
-export function roundStartPoint(world: MovementWorld, seat: number): GroundPoint | undefined {
-  if (seat < 0 || seat >= 40) return undefined;
-  let points = startPoints.get(world);
-  if (!points) startPoints.set(world, points = battleBusDropoffs(world, 40));
-  return points[seat];
+/** The race's common respawn is the first safe bus drop-off. */
+export function raceSpawnPoint(world: MovementWorld): GroundPoint {
+  return world.name === 'flat' ? { ...world.spawn } : battleBusDropoffs(world, 1)[0];
 }
 
 // The prototype's twelve seats, followed by standing places for larger existing rooms.

@@ -1,8 +1,8 @@
-import { BATTLE_BUS_HEADING, DROWN_RESPAWN_MS, inWater, roundStartPoint, spawnPoint, zurichWorld, type Body } from "@race/shared";
+import { DROWN_RESPAWN_MS, inWater, respawn, zurichWorld, type Body } from "@race/shared";
 
 // Walking into the lake or the river drowns you: a 10 s timeout with Future's "Let Me Know" meme
-// music, then a respawn on the spot the player started the round on (their battle bus drop-off). The server accepts that jump because the last reported
-// position was in the water (race.ts move()).
+// music, then the same respawn as the Respawn button: the race spawn (first battle bus drop-off).
+// The server does that respawn ('respawn' message in race.ts) and sends back the corrected position.
 const MUSIC = `${import.meta.env.BASE_URL}audio/let-me-know.mp3`;
 
 export class Drowning {
@@ -11,7 +11,7 @@ export class Drowning {
   private countdown: HTMLElement;
   private music = new Audio(MUSIC);
 
-  constructor(parent: HTMLElement = document.body) {
+  constructor(parent: HTMLElement = document.body, private requestRespawn: () => void = () => {}) {
     this.music.preload = "auto";
     this.music.volume = 0.9;
     this.overlay = document.createElement("div");
@@ -32,14 +32,14 @@ export class Drowning {
    * Call once per frame while the player is on foot in a running round. Starts the timeout when the
    * player enters the water and respawns them once it ends. Returns true while the player is dead.
    */
-  update(body: Body, now: number, canDrown: boolean, seat: number) {
+  update(body: Body, now: number, canDrown: boolean) {
     if (this.until) {
       if (now < this.until) {
         body.vx = body.vz = 0;
         this.countdown.textContent = `Respawning in ${Math.ceil((this.until - now) / 1000)}…`;
         return true;
       }
-      this.respawn(body, seat);
+      this.respawn(body);
       return false;
     }
     if (!canDrown || body.vehicleId || !inWater(zurichWorld, body.x, body.y, body.z)) return false;
@@ -58,13 +58,11 @@ export class Drowning {
     this.music.pause();
   }
 
-  private respawn(body: Body, seat: number) {
+  private respawn(body: Body) {
     this.cancel();
-    const start = roundStartPoint(zurichWorld, seat);
-    // Players who joined mid-round have no seat and started at the spawn, like the server's spawnPlayer().
-    Object.assign(body, start ?? spawnPoint(zurichWorld));
-    if (start) body.rotY = BATTLE_BUS_HEADING + Math.PI;
-    body.vx = body.vy = body.vz = 0;
+    // Move right away so the next frame does not drown again before the server's correction arrives.
+    respawn(body, zurichWorld);
+    this.requestRespawn();
   }
 
   dispose() {

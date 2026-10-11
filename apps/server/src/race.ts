@@ -92,6 +92,16 @@ export class Race extends Room<{ state: RaceState }> {
       if (client.sessionId === this.state.hostId) this.rounds.finish();
     });
     this.onMessage("move", (client, data: unknown) => this.move(client, data));
+    this.onMessage('respawn', client => {
+      const p = this.state.players.get(client.sessionId), now = Date.now();
+      if (!p || !this.rounds.canPlay(client.sessionId) || this.npcs.busy(client.sessionId) || p.moodleSitUntil > now) return;
+      const vehicleId = p.vehicleId;
+      this.vehicles.releaseForRespawn(client.sessionId);
+      if (vehicleId) this.publiBikes.park(vehicleId);
+      p.simTime = now; C.respawn(p, this.world); p.anim = 0;
+      this.lastMoves.set(client.sessionId, now);
+      client.send('respawned', this.correction(p));
+    });
     this.onMessage("cabinMove", (client, data: unknown) => {
       if (this.rounds.canPlay(client.sessionId)) this.vehicles.walkCabin(client.sessionId, data);
     });
@@ -240,17 +250,13 @@ export class Race extends Room<{ state: RaceState }> {
     const
       now = Date.now(),
       dt = Math.max(0.001, (now - (this.lastMoves.get(client.sessionId) ?? now)) / 1000);
-    // A player who fell off the map or drowned (see water.ts) may jump back to the spawn, or for a
-    // drowned player with a bus seat, to the same drop-off point they started the round on.
-    const start = C.roundStartPoint(this.world, this.state.members.get(client.sessionId)?.introSeat ?? -1);
+    const spawn = C.raceSpawnPoint(this.world);
     const respawn =
-      ((C.inWater(this.world, p.x, p.y, p.z) && start !== undefined &&
-        Math.hypot(data[0] - start.x, data[2] - start.z) < 0.2 && Math.abs(data[1] - start.y) < 0.2) ||
-      (p.y < (this.world.height(p.x, p.z, p.y) ?? this.world.spawn.y) - 8 || C.inWater(this.world, p.x, p.y, p.z)) &&
-      Math.abs(data[0] - this.world.spawn.x) <= C.SPAWN_SPREAD &&
-      Math.abs(data[2] - this.world.spawn.z) <= C.SPAWN_SPREAD &&
+      p.y < (this.world.height(p.x, p.z, p.y) ?? this.world.spawn.y) - 8 &&
+      Math.abs(data[0] - spawn.x) <= C.SPAWN_SPREAD &&
+      Math.abs(data[2] - spawn.z) <= C.SPAWN_SPREAD &&
       Math.abs(data[1] - (this.world.height(data[0], data[2], data[1]) ?? Infinity)) <
-        0.1);
+        0.1;
     if (
       !respawn &&
       Math.hypot(data[0] - p.x, data[2] - p.z) >

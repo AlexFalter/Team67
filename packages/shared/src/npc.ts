@@ -1,4 +1,3 @@
-import { CAPSULE_HEIGHT } from "./constants.ts";
 import layout from "./npc-layout.json" with { type: "json" };
 import type { GroundPoint, MovementWorld } from "./world.ts";
 import { polybahnPlatforms } from './transit.ts';
@@ -16,20 +15,6 @@ export function npcBounds(world: MovementWorld) {
     minZ:Math.max(world.bounds.minZ,Math.min(...points.map(p=>p.z))-55),
     maxZ:Math.min(world.bounds.maxZ,Math.max(...points.map(p=>p.z))+55) };
 }
-// Return just beyond the danger strip, preserving the player's location along the border.
-export function propertyReturnPoint(world: MovementWorld, position: GroundPoint): GroundPoint | undefined {
-  const b = npcBounds(world), safeMargin = 16;
-  const x = Math.max(b.minX + safeMargin, Math.min(b.maxX - safeMargin, position.x));
-  const z = Math.max(b.minZ + safeMargin, Math.min(b.maxZ - safeMargin, position.z));
-  for (let ring = 0; ring <= 6; ring++) for (let i = 0; i < (ring ? 16 : 1); i++) {
-    const angle = i / 16 * Math.PI * 2, px = x + Math.cos(angle) * ring, pz = z + Math.sin(angle) * ring;
-    if (Math.min(px-b.minX,b.maxX-px,pz-b.minZ,b.maxZ-pz) < 14) continue;
-    const y = world.height(px,pz);
-    if (y !== undefined && !world.blocked(px,y,pz,.5,CAPSULE_HEIGHT)) return {x:px,y,z:pz};
-  }
-  return undefined;
-}
-
 export type NpcTravelKind = "einstein" | "limousine" | "property";
 export interface NpcCommand {
   action: "solve" | "begin" | "finish" | "cancel";
@@ -44,6 +29,26 @@ export interface NpcResult {
   message: string;
   roundStartedAt: number;
   target?: GroundPoint;
+  facing?: number;
+}
+
+/** Face away from the closest edge after the boundary encounter. */
+export function propertyReturnFacing(world: MovementWorld, position: Pick<GroundPoint, 'x' | 'z'>): number {
+  const b = npcBounds(world);
+  const edges = [
+    { distance: position.x - b.minX, x: 1, z: 0 },
+    { distance: b.maxX - position.x, x: -1, z: 0 },
+    { distance: position.z - b.minZ, x: 0, z: 1 },
+    { distance: b.maxZ - position.z, x: 0, z: -1 },
+  ];
+  const edge = edges.reduce((nearest, next) => next.distance < nearest.distance ? next : nearest);
+  return Math.atan2(edge.x, edge.z);
+}
+
+export function approachingPropertyBoundary(world: MovementWorld, position: Pick<GroundPoint, 'x' | 'z'> & { vx: number; vz: number }): boolean {
+  const b = npcBounds(world), facing = propertyReturnFacing(world, position);
+  return Math.min(position.x-b.minX,b.maxX-position.x,position.z-b.minZ,b.maxZ-position.z) <= 12 &&
+    position.vx * Math.sin(facing) + position.vz * Math.cos(facing) < -.1;
 }
 export interface NpcState {
   ticketCount: number;

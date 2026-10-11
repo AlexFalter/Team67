@@ -222,7 +222,7 @@ main:has(.game-loading) > :is(header, footer) { display: none; }
 
 .interaction-instruction { width: max-content; max-width: 100%; margin: 0 auto; padding: 7px 12px; border: 1px solid #b4ed6766; border-radius: 3px; background: #102c3ded; color: #c2ed90; box-shadow: 0 3px 12px #0004; }
 
-/* Drowning timeout (drowning.ts): 10 s with the meme music, then respawn where the round started. */
+/* Drowning timeout (drowning.ts): 10 s with the meme music, then the same respawn as the Respawn button. */
 .drowned-overlay {
   position: fixed;
   inset: 0;
