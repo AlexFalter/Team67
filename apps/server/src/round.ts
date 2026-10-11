@@ -45,7 +45,7 @@ export class RoundManager {
     for (const [slot, [id, member]] of members.entries()) {
       member.introSeat = slot;
       member.thankedBusDriver = false;
-      this.scores.set(id, { name: member.name, hitsLanded: 0, hitsReceived: 0, examScore: 0, examCorrect: 0, examCompleted: false, examStartedAt: 0 });
+      this.scores.set(id, { name: member.name, hitsLanded: 0, hitsReceived: 0, examScore: 0, examCorrect: 0, examCompleted: false, examStartedAt: 0, distanceToEth: 0 });
     }
     this.state.phase = C.RoomPhase.Running;
     this.state.introStartedAt = now + (this.intro.leadMs ?? C.BATTLE_BUS_LEAD_MS);
@@ -98,6 +98,8 @@ export class RoundManager {
     this.state.phase = C.RoomPhase.Finished; this.state.finishedAt = now;
     for (const [id, score] of this.scores) {
       if (score.examStartedAt) score.examCompleted = true;
+      // Players who left have no position any more: count them from the bus drop-off, where they started.
+      else score.distanceToEth = Math.round(C.distanceToEth(this.state.players.get(id) ?? C.BATTLE_BUS_START));
       this.state.results.set(id, new RoundResult(score));
     }
   }
