@@ -109,7 +109,8 @@ export class MapGame {
     this.coordinates = new DeveloperCoordinates(canvas.parentElement!);
     this.collisions = new CollisionDebug(scene,this.net,canvas.parentElement!);
     this.publiBikes = new PubliBikeFeature(scene, camera, this.net, this.vehicles, this.local, canvas, () => this.controls.restoreGameplay());
-    this.mate = new MateFeature(scene, camera, this.net, this.local, canvas);
+    this.mate = new MateFeature(scene, camera, this.net, this.local, canvas,
+      () => this.controls.suspendForInteraction(), () => this.controls.resumeAfterInteraction());
     this.view = new PlayerView(camera, [map, this.mate.machine], zurichWorld);
     this.bags=new BagFeature(scene,camera,this.net,this.local,this.view,canvas.parentElement!,()=>this.net.canPlay&&!this.exam.active&&!this.publiBikes.active&&!this.mate.active&&!this.npcs?.active&&!this.emotes?.opened&&!this.maps?.active,()=>{if(this.npcs?.karambit?.occupiesHands())this.npcs.karambit.toggle();});
     // Camera shutter from mini-games-2 when a photo is taken.
