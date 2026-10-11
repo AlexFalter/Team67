@@ -229,7 +229,13 @@ export class OfflineRoom {
       const ok = enterSpectator(s, id, data, () => this.rounds.canPlay(id), () => { this.vehicles.releaseForRespawn(id); this.bikes.disconnect(id); this.bags.leave(id); this.football.leave(id); });
       this.emit('spectateResult', { ok, roundStartedAt: s.startedAt });
     });
-    register('examStart', data => this.rounds.beginExam(id, data));
+    register('examStart', data => {
+      if (!this.rounds.beginExam(id, data)) return;
+      const player = s.players.get(id), point = C.examSoundproofPosition(C.zurichWorld);
+      if (!player || !point) return;
+      player.examSheltered = true;
+      this.correct(point);
+    });
     register('examProgress', data => this.rounds.examProgress(id, data));
     register('debugTeleportToPolyterrasse', data => { this.correct(data === 'portal' ? { ...C.examPortalPosition, y: C.zurichWorld.height(C.examPortalPosition.x, C.examPortalPosition.z)! } : { ...C.examDebugPosition, y: C.zurichWorld.height(C.examDebugPosition.x, C.examDebugPosition.z)! }); });
     register('debugMapTeleport', data => {

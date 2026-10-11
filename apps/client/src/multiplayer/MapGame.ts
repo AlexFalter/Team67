@@ -321,7 +321,7 @@ export class MapGame {
     this.vehicles.render(renderTime, dt, "other"); this.remotes.render(renderTime, this.vehicles.items, dt);
     for (const [id, remote] of this.remotes.players) {
       this.mate.equip(remote.mesh, remote.rendered.mateFlavor ?? 2);
-      const npc=this.net.room?.state.npcs?.get(id);remote.mesh.visible = npc?.kind !== "limousine" || npc.parachuting===true;
+      const npc=this.net.room?.state.npcs?.get(id);remote.mesh.visible = !remote.rendered.examSheltered && (npc?.kind !== "limousine" || npc.parachuting===true);
       this.effects.trail(id, remote.rendered, now);
     }
     this.emotes.update(dt,this.mesh,this.remotes.players);

@@ -43,6 +43,7 @@ export class RemotePlayers {
         anim: p.anim,
         color: p.color,
         character: p.character,
+        examSheltered: p.examSheltered,
         vehicleId: p.vehicleId,
         seat: p.seat,
         cabinStanding: p.cabinStanding, cabinX: p.cabinX, cabinZ: p.cabinZ, cabinYaw: p.cabinYaw,
@@ -108,6 +109,7 @@ export class RemotePlayers {
       p.knockdownUntil = membership.knockdownUntil;
       p.impactStartedAt = membership.impactStartedAt; p.impactX = membership.impactX;
       p.impactZ = membership.impactZ; p.impactStrength = membership.impactStrength;
+      p.examSheltered = membership.examSheltered;
       const vehicle = vehicles?.get(p.vehicleId);
       if (vehicle && p.cabinStanding && vehicle.rendered.kind === POLYBAHN_KIND) {
         cabinPosition(vehicle.rendered, p);
@@ -119,6 +121,7 @@ export class RemotePlayers {
       pose(r.mesh, p, dt);
       alignCabinAvatar(r.mesh, p, vehicle?.rendered);
       r.mesh.position.y += limeTailwhipPose(vehicle?.rendered, t).height;
+      r.mesh.visible = !membership.examSheltered;
     }
   }
   dispose() { for (const r of this.players.values()) disposeAvatar(r.mesh); this.players.clear(); }

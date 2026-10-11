@@ -4,6 +4,7 @@ export interface PlayerState {
   emotesUnlocked?: boolean;
   emoteId?: string;
   emoteStartedAt?: number;
+  examSheltered?: boolean;
   x: number;
   y: number;
   z: number;
