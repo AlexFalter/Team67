@@ -68,5 +68,5 @@
 .phone-camera-live{width:100%;height:100%;object-fit:contain;display:block;background:#000}
 #phone-device{z-index:170}#phone-toggle,#phone-notification{pointer-events:auto}#game-phone:not(.open) #phone-device{pointer-events:none}
 
-.phone-moodle-setting{display:flex;align-items:center;gap:6px;background:#edf0f4;color:#234579;padding:8px;font:11px Arial}.moodle-penalty{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#152030ed;border:1px solid #db716a;border-radius:8px;padding:14px 20px;z-index:85;color:#fff;font:bold 14px Arial}#game-phone{pointer-events:none}#game-phone button,#game-phone.open #phone-device{pointer-events:auto}
+.phone-moodle-setting{display:flex;align-items:center;gap:6px;background:#edf0f4;color:#234579;padding:8px;font:11px Arial}#game-phone{pointer-events:none}#game-phone button,#game-phone.open #phone-device{pointer-events:auto}
 @media(max-width:600px){#game-phone{right:14px;bottom:110px}}

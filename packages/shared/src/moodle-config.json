@@ -4,8 +4,8 @@
     25,
     55
   ],
-  "sitOutSeconds": 7,
-  "rewardSeconds": 10,
+  "boostSeconds": 8,
+  "speedMultiplier": 1.5,
   "urgentAtSeconds": 10,
   "questions": [
     {

@@ -90,6 +90,20 @@
     "interview": {
       "interactionDistance": 2.8,
       "boardingDistance": 9
+    },
+    "cat": {
+      "interactionDistance": 3,
+      "strokesRequired": 5,
+      "strokeDistance": 0.2,
+      "maximumStrokeSpeed": 3,
+      "hurtSeconds": 15,
+      "hurtSpeedMultiplier": 0.7,
+      "meowVolume": 0.65,
+      "purrVolume": 0.55,
+      "minimumStrokeSeconds": 0.35,
+      "roughPetSeconds": 0.4,
+      "angryVolume": 0.8,
+      "biteReactionSeconds": 2.1
     }
   },
   "camera": {
