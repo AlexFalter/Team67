@@ -1,109 +1,89 @@
-# Zürich multiplayer prototype
+# Race to ETH
 
-The original Zürich map viewer and Colyseus prototype now run together. The workspace contains the integrated game. The existing React page hosts plain TypeScript gameplay modules and a single Three.js scene. Rapier handles relevant entity contacts; shared map queries keep terrain movement deterministic. No database or authentication system is required.
+Race from Zürich Hauptbahnhof to ETH before your exam starts, through a playable 3D reconstruction of the city. Take a scooter, PubliBike, Polybahn or tram; navigate encounters and distractions; then tackle the final exam minigames. Every player races for themselves.
+
+![Character selection and room menu](docs/images/menu.png)
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/gameplay_1.png" alt="Race to ETH gameplay, first view" width="100%"></td>
+    <td width="50%"><img src="docs/images/gameplay_2.png" alt="Race to ETH gameplay, second view" width="100%"></td>
+  </tr>
+</table>
 
 ## Run locally
 
-Use Node **22.12+** (Node 24 also works). From `Team67/`:
+Requires **Node.js 22.12+** and npm. Run from the repository root:
 
 ```sh
-npm install
+npm ci
 npm run dev
 ```
 
-Open **http://localhost:5173** in two tabs. Create a room with a code, then join that same code in another tab (up to 40 players). Choose CS Student Boy, CS Student Girl, Albert Einstein, or Rector Dissertori. Other players have a faint red outline and a name above their character. Players spawn on clear terrain near Hauptbahnhof, alongside three single-seat carts and a six-seat shuttle. The project contains only the game client, multiplayer server, and shared code.
+Open **http://localhost:5173**. Create a room, then join the same room code in another browser or tab. Choose characters; the host starts the round. Vite serves the client on **5173**, and Colyseus runs on **2567**.
 
-Enter your name (1-24 characters), choose a character, and create or join a room. Rooms follow **Lobby ? Running ? Finished**. In the room lobby, everyone must press **Ready** before the round starts; readiness can be cancelled while waiting. Joining an ongoing round opens a waiting screen instead of spawning a player.
+The exported map and game assets are included. No Blender installation, GIS download, database or API keys are needed to play.
 
-Rounds last **three minutes** by default (`ROUND_DURATION_MS` on the server). The host can also end the round from the game menu. At the end, every connected member sees the same results, sorted by hits landed, including players who left during the round. The host can return everyone to the lobby; waiting members can then ready up and play. If the host leaves, host duties pass to another connected member. Gameplay and vehicle claims are disabled outside a running round and for waiting members.
-
-Click **Click to play** to capture the cursor. Mouse / trackpad looks, **WASD** runs, **Shift** sprints, **Space** jumps, **C** slides while sprinting, **E** rides/exits, **F / click** punches. **F5 / V** cycles first-person, rear, and front views. **Esc** opens the quick menu (bob, sensitivity, leave). **Inspect map** from the lobby/menu leaves the room; **Join multiplayer** returns to the lobby.
-
-Carts are claimed exclusively by one player. Their driver can run over foot players. The shuttle starts its **10-second countdown** when the first passenger boards, follows a shared terrain route toward ETH, and automatically disembarks riders on arrival. Later boarders do not reset the countdown. An empty shuttle cancels its countdown; passengers cannot exit while it travels. Board again at ETH for the return trip. The route is roughly two minutes each way, rather than the old short flat-plane trip.
-
-## Commands
-
-Run these from `Team67/`:
-
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Colyseus on 2567 and Vite on 5173, both bound to the network |
-| `npm run build` | Regenerate shared map queries from the checked-in GLB, type-check, build `apps/client/dist` |
-| `npm start` | One Node process serves the built game and Colyseus on 2567 |
-| `npm run bots -- 30` | 30 headless players using native inputs (set ROOM_CODE to join a visible room) |
-| `npm test` | Shared collision, interpolation, live server, vehicle, and map regression checks |
-| `npm run check` | TypeScript checks across the workspace |
-| `npm run lint` | Frontend ESLint |
-| `npm run world:build` | Regenerate terrain/building queries and shuttle route, entirely offline |
-
-For UI development, run only `npm run dev:client -w @race/client` and open `/dev/ui` on the Vite URL. This development-only playground skips joining a room and the bus intro, spawns one player directly into Zürich and has no round or exam time limit. It makes no matchmaking or game WebSocket connection; gameplay managers run locally. Assets still load from Vite. Press Escape to release the cursor and expand **UI playground** for feature teleports, item/emote grants, a Moodle question, sample opponents/name tags, a bus-intro preview and encounter resets. Feature jumps collapse the controls; interaction screens hide them so they cannot cover the UI. Enter resumes play, E interacts, P opens the phone and M opens the teleport-enabled city map. The normal `/` route keeps multiplayer behavior.
-
-The shared `PixelPanel` component and `pixelPanel.css` tokens define the UI baseline: gray pixel boundaries and inset shadows, dark teal panels, the lobby's monospace headings and lime accents. This design carries through both lobbies, maps, the game menu, encounter dialogues, ticket and Mate interfaces, the phone and notifications, emotes, player tags and bus-intro overlays. The scoreboard shows five leaders and the performance display stays compact. Use the same component and tokens for subsequent UI work.
-
-`npm run dev` from `apps/client/` also starts both services. Use the root workspace install and lockfile. `npm run dev:client` inside `apps/client/` starts only Vite for work with an already running server. `vite preview` alone serves static files and does not provide the multiplayer service.
-
-## Environment and production
-
-| Variable | Used by | Meaning |
-| --- | --- | --- |
-| `VITE_COLYSEUS_URL` | Vite development client | Defaults to `ws://localhost:2567`; copy `apps/client/.env.example` to `apps/client/.env.local` to override |
-| `PORT` | Node server | Defaults to 2567 |
-| `COLYSEUS_URL` | Bots | Defaults to `ws://localhost:2567` |
-| `GAME_WORLD=flat` | Server/bots regression tests | Old flat prototype world; leave unset for the Zürich frontend |
+To run the production build locally:
 
 ```sh
 npm run build
 npm start
 ```
 
-Open **http://localhost:2567**. On another device on the same LAN, open `http://<server-LAN-IP>:2567` and allow that port through the host firewall. Production derives its WebSocket URL from the page's host and port, using `wss:` with HTTPS. No client environment override is required in production. For Vite development from another device, set `VITE_COLYSEUS_URL=ws://<server-LAN-IP>:2567` and restart Vite; otherwise its default points at that device's own localhost.
+Open **http://localhost:2567**; one Node process serves the built client and multiplayer connections.
 
-Docker Compose runs two services: `client` (Caddy) and `server` (Colyseus). For a server deployment, point a public DNS `A` record (and, if used, `AAAA` record) at the server, then allow inbound TCP ports **80** and **443** through its firewall. Caddy obtains and renews the TLS certificate, redirects HTTP to HTTPS, and proxies `/matchmake/*` and WebSocket upgrades to Colyseus over the private Docker network. The browser connects using HTTPS and secure WebSockets (`wss:`); the Colyseus port is not published publicly. Caddy's `/data` and `/config` are persisted in named Docker volumes so certificates survive container replacement.
+## Stack and layers
+
+| Layer | Implementation |
+| --- | --- |
+| Client · `apps/client` | React, TypeScript and Vite for menus; Three.js for rendering. One render loop drives gameplay modules; shared pixel panels keep the UI consistent. |
+| Server · `apps/server` | Node.js + Colyseus over WebSockets; Express serves the production client. Rapier handles entity contacts and loose-object physics. |
+| Shared · `packages/shared` | Movement, collision queries, routes and network contracts shared by client and server. |
+| Asset pipeline | Blender + Python for geometry and map repairs; meshopt-compressed glTF for delivery; TypeScript scripts generate shared world and transit data. |
+| Deployment | Docker Compose runs the server behind Caddy, which serves static files, proxies WebSockets and provides HTTPS. |
+
+## From city data to a playable world
+
+![The Zürich world being authored in Blender](docs/images/blender.png)
+
+The **1.6 × 1.9 km** map combines official city and cantonal datasets fetched through WFS:
+
+| Source | What it contributes |
+| --- | --- |
+| [Zürich 3D buildings](https://data.stadt-zuerich.ch/dataset/geo_bauten___kombinierte_darstellung_heute) | Real building footprints, heights and LoD2 roof geometry. |
+| [Zürich terrain TIN](https://data.stadt-zuerich.ch/dataset/geo_digitales_terrainmodell__tin_) | Elevation and the hillside between HB and ETH. |
+| [Cantonal land cover](https://data.stadt-zuerich.ch/dataset/ktzh_av_mopublic__bodenbedeckung__ogd_) | Road, pavement, water and other surface polygons, draped onto the terrain. |
+| [Cantonal individual trees, 2021/2022](https://data.stadt-zuerich.ch/dataset/ktzh_einzelbaeume_2021_2022__ogd_) | Tree positions and dimensions, rendered with reusable low-poly models. |
+
+1. **Align the data.** Clip sources to the map bounds and convert Swiss LV95 / EPSG:2056 coordinates to local metres. Graphics, collision and vehicles share one origin. OpenStreetMap-derived streets supply the separate 2D map overlay.
+2. **Make buildings recognizable.** Blender scripts retain real building geometry, fit windows and floors to façades, add shopfronts and roof thickness, and align roof-tile UVs. Custom HB and ETH models replace generic landmarks. Custom assets, such as lanterns and tram stations, add street-level detail and recognizable places to interact.
+3. **Build the visual style.** Theme JSON defines procedural pixel textures and palettes for façades, roofs, roads, foliage and signs. Three.js materials add building colours, lighting and shadows; a GLSL shader handles colour grading. Themes change without geometry re-exports.
+4. **Repair it for gameplay.** Scripted and hand-authored edits flatten bridges, fill ground holes, remove floating shelters and add walkable ramps. Custom geometry rebuilds Polybahn halls, its track corridor and Polyterrasse. Protected objects and removal collections preserve manual changes across rebuilds.
+5. **Export graphics and movement separately.** Static geometry uses roughly 200 m tiles; trees and props use instancing. Blender exports a 2 m ground/obstacle grid with 0.5 m detail patches. `world:build` generates shared collision queries; `transit:build` generates routes. Checked-in exports keep normal builds independent of GIS services.
+
+See the [map authoring guide](apps/client/assets-src/zurich/README.md) for rebuild order, tools and manual-edit safeguards. Source services, bounds and the recorded CC0 licence are in [map provenance](apps/client/public/maps/zurich/provenance.json). The 2D street overlay credits [OpenStreetMap contributors](https://www.openstreetmap.org/copyright).
+
+## Multiplayer
+
+Colyseus rooms manage the lobby, round and results; schema patches synchronize players and vehicles. Shared movement code runs locally for immediate response. Clients report positions for server validation; remote players interpolate on a delayed timeline to smooth network updates.
+
+The server owns timing, membership, inventories, encounters and results, and referees collisions. Atomic seat claims prevent double occupancy. Disconnects release vehicles and transfer host duties.
+
+## Development and deployment
+
+| Command / view | Purpose |
+| --- | --- |
+| `npm run check` | Type-check the workspace. |
+| `npm run lint` | Lint the client. |
+| `npm test` | Run gameplay, networking and map regression tests. |
+| `npm run world:build` / `npm run transit:build` | Regenerate shared data after map changes. |
+| `http://localhost:5173/dev/ui` | Development-only offline playground: instant entry, no time limit, UI and encounter shortcuts. Uses the same game modules; no multiplayer server required. |
+
+For public hosting, set `DOMAIN=game.example.com` in a root `.env`, point its DNS to the server and expose ports **80/443**, then run:
 
 ```sh
-printf 'DOMAIN=game.example.com\n' > .env
-docker compose up -d --build --remove-orphans
+docker compose up -d --build
 ```
 
-Replace `game.example.com` with the domain already pointed at the server. Open `https://game.example.com`; the first startup needs outbound internet access so Caddy can obtain the certificate. On later updates, pull the deployment branch and run `docker compose up -d --build --remove-orphans` again. `docker compose down` keeps the certificate volumes; `docker compose down -v` removes them. View logs with `docker compose logs -f client server`. Local `npm run dev` remains available over HTTP on localhost.
-
-The original hackathon template documents that the **portal proxy rejects WebSockets with 502**. Caddy routing cannot fix a proxy upstream of it. Use direct LAN access, an SSH tunnel, or a deployment endpoint that supports WebSockets; portal compatibility must be verified separately. Inspection mode still works without a multiplayer connection.
-
-## Architecture and authority
-
-- `apps/client/src/scene/MapViewer.tsx`: map loading, renderer, camera, lights, resizing, one animation loop, inspect/play lifecycle.
-- `apps/client/src/multiplayer/`: local movement/input, delayed remote interpolation, networking/clock sync, vehicles, particles/audio, and HUD. `MapGame.ts` wires these into the existing map scene.
-- `apps/server/src/`: Colyseus 0.18 server, schema 5 state, collision referee, atomic vehicle occupancy, shuttle schedule, and bots.
-- `packages/shared/src/`: constants, protocol types, capsule/cart collision math, movement, terrain and building queries, and route sampling.
-- `scripts/build-world.ts`: derives `zurich-world.json` from the existing GLB, with a source hash and deterministic placements/route.
-
-Networking follows main's client-owned movement: compact movement/vehicle reports at 20 Hz, server validation, ping/pong clock synchronization, and impulse messages with 20 Hz state patches. The feature's shared movement, camera, character rigs, and Rapier contacts are retained. Remote players/vehicles interpolate 100 ms behind estimated server time. Player contact only separates players; cone hits knock down for five seconds. Bikes fall/eject on impacts, heavy trams keep moving, and foot movement uses acceleration and momentum. The server owns occupancy, action cooldowns, transport schedules, and collision corrections. Banana dropping/throwing and peel slips are removed.
-
-The map keeps its original LV95 conversion: **X = E − 2683475**, **Y = elevation − 400**, **Z = 1248000 − N**, in metres. Shared terrain uses bilinear heights on a **2 m grid**, and buildings use a sampled roof/footprint obstruction mask. This is a deliberately approximate hackathon collision surface: it blocks ordinary buildings and follows hills, but does not model doors, tunnels, bridges, rooftop walking, water, or detailed wall geometry. The shuttle route avoids sampled building footprints; it is not an imported road network. The original 60 × 60 plane is only used in regression tests.
-
-The official GLB and source credit are preserved. Builds do not fetch GIS data. See [apps/client/README.md](apps/client/README.md) for provenance and explicit map re-import instructions. If the GLB changes, run `npm run world:build` and commit its generated JSON too.
-
-## Late for ETH mini-games prototype
-
-The complete modular single-player prototype is in [`mini-games/`](mini-games/README.md). Run it independently:
-
-```sh
-cd mini-games
-npm ci
-npm run dev
-```
-
-See its [module guide](mini-games/src/README.md), [feature export guide](mini-games/docs/feature-modules.md), and [map placement guide](mini-games/src/world/placements/README.md). Features include NPC encounters, bike and scooter interactions, ticket and Mate machines, phone tasks, and vehicle passenger systems. The multiplayer ports live in `apps/client/src/npcPrototype` and `apps/client/src/multiplayer`.
-
-At Central, press **E** in front of the Polybahn ticket machine. Swipe the card, scan the QR code with the phone, select the three trams, then collect the printed ticket. Each player has their own server-owned ticket; boarding validates one ticket and avoids the fare inspection for that ride. The private-property NPC intercepts players approaching the story boundary, including cart and bike drivers, and returns them to the safe spawn after the cutscene. Rail and shuttle passengers remain aboard. Client and server share the boundary around the current route, stations, and encounters.
-
-Dev mode is available under **Testing** before creating a room. Enable **Dev mode → Skip starting bus animation** to start everyone directly at the normal bus drop-off when the host starts the match. These preferences are saved on the browser and belong to the room creator; joining a room follows that room’s settings. Dev mode can also keep the intro enabled. The skip persists for subsequent rounds in the same room.
-
-Traffic starts populated on three fixed one-way tracks: HB traffic uses the left uphill lane, traffic from under the Polybahn carriage bridge uses the right uphill lane, and southern river traffic turns toward Polybahn. The tracks have no branching junctions and leave the uphill tram corridor clear. Development hosts can hand draw roads that snap to asphalt, batch-delete unwanted segments, and simulate traffic live before starting a round, adjust density or enable rush hour, and export/import JSON. See [the traffic guide](docs/traffic.md).
-### Michael Jackson and emotes
-
-Find Michael near the bridge, press **E**, and type back his two lines (`hee-hee` and `I wanna dance`) to unlock the emote wheel for the round. Press **B**, then click a dance or use **1–6**. Floss, Orange Justice, Take the L, Dance Moves, Dab, and The Robot are available. Moving stops the dance. Other players see the emote; nearby players hear the original Fortnite clips (the original Dab is silent). See the [emote feature guide](apps/client/src/multiplayer/emotes/README.md) for placement, server rules, and extension points.
-
-### Ersti bags
-
-Four bags lie on a small hill beside the bridge spawn. **E** picks one up; **Q** or click throws it. A player hit falls over, receives the bag, and can throw it back after recovering. Confirmed hits award **Bagged**. In a dev room, the host can enable **Spawn practice dummies** from the Escape menu. See [Ersti bag gameplay and modules](docs/ersti-bags.md).
+Caddy obtains the HTTPS certificate and routes matchmaking and WebSocket traffic to the private game server.
