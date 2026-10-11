@@ -3,7 +3,7 @@ import * as C from "@race/shared";
 import type { Network } from "./net.ts";
 import type { LocalPlayer } from "./localPlayer.ts";
 import { equipMateCan } from "./avatar.ts";
-import { loadMateModel } from "./mateModel.ts";
+import { loadMateModel, addMateLighting } from "./mateModel.ts";
 import { disposeMap } from "../maps/zurich/loadZurichMap.ts";
 import "./mate.css";
 
@@ -42,7 +42,7 @@ export class MateFeature {
         if (failure?.status === "rejected") throw failure.reason; this.abort.signal.throwIfAborted();
       }
       const [machine, ...cans] = results.map(r => (r as PromiseFulfilledResult<THREE.Group>).value);
-      this.machine.add(machine); this.cans = cans;
+      addMateLighting(machine); this.machine.add(machine); this.cans = cans;
       cans.forEach((can, i) => { can.position.y = -.145; can.visible = i === this.state?.selected; this.prize.add(can); });
     });
     const asset = (path: string) => `${import.meta.env.BASE_URL}assets/tony-mate/${path}`;

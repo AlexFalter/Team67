@@ -39,3 +39,32 @@ export async function loadMateModel(name: "mate-machine" | "mate-can-basic" | "m
   if (signal.aborted) { disposeMap(scene); signal.throwIfAborted(); }
   return batchMateModel(scene);
 }
+
+/** A neon yellow frame, soft halo and pavement spill make the cabinet easy to spot. */
+export function addMateLighting(model: THREE.Group) {
+  const materials = new Set<THREE.MeshStandardMaterial>();
+  model.traverse(node => {
+    if (!(node instanceof THREE.Mesh)) return;
+    for (const material of Array.isArray(node.material) ? node.material : [node.material]) if (material instanceof THREE.MeshStandardMaterial) materials.add(material);
+  });
+  for (const material of materials) {
+    if (material.name === 'Cool shelf lighting') material.emissiveIntensity = 2.4;
+    if (material.name === 'Warm gold lettering') { material.emissive.copy(material.color); material.emissiveIntensity = .65; }
+    if (material.name === 'Cobalt enamel') { material.emissive.copy(material.color); material.emissiveIntensity = .25; }
+  }
+  const glow = new THREE.Group(); glow.name = 'Mate neon yellow frame';
+  for (const [width, opacity] of [[.18, .07], [.10, .16], [.035, 1]]) {
+    const parts = [
+      new THREE.BoxGeometry(width, 2.72, .02).translate(-.97, 1.38, -.585),
+      new THREE.BoxGeometry(width, 2.72, .02).translate(.97, 1.38, -.585),
+      new THREE.BoxGeometry(1.94, width, .02).translate(0, 2.74, -.585),
+      new THREE.BoxGeometry(1.94, width, .02).translate(0, .02, -.585),
+    ];
+    const material = new THREE.MeshBasicMaterial({ color: '#faff37', transparent: opacity < 1, opacity, depthWrite: opacity === 1, toneMapped: false });
+    const frame = new THREE.Mesh(mergeGeometries(parts)!, material); frame.renderOrder = opacity < 1 ? 1 : 0;
+    glow.add(frame); parts.forEach(part => part.dispose());
+  }
+  const light = new THREE.PointLight('#f7ff60', 8, 6, 2); light.position.set(0, 1.2, -1); light.castShadow = false;
+  glow.add(light); model.add(glow);
+  return glow;
+}

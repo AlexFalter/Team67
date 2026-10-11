@@ -1,4 +1,4 @@
-import { LIME_KIND, LIME_BOOST_DURATION_MS, ATTACK_COOLDOWN_MS, SLIDE_MIN_SPEED, JUMP_FATIGUE_WALK_THRESHOLD, type Body } from "@race/shared";
+import { LIME_KIND, LIME_BOOST_DURATION_MS, ATTACK_COOLDOWN_MS, KARAMBIT_COOLDOWN_MS, SLIDE_MIN_SPEED, JUMP_FATIGUE_WALK_THRESHOLD, type Body } from "@race/shared";
 import type { LocalPlayer } from "./localPlayer.ts";
 
 export function actionAvailability(p: Body, sprinting: boolean, now: number) {
@@ -23,8 +23,8 @@ const icons = {
   bag: '<path d="M7 8V6a5 5 0 0 1 10 0v2M5 8h14l2 14H3zM8 13l4 5 4-5"/>',
   holster: '<path d="M6 11h7v7a3.5 3.5 0 0 1-7 0zM8 11V4h3v7M6 4h7M18 3v10m-3-3 3 3 3-3"/>',
   equip: '<path d="M6 13h7v5a3.5 3.5 0 0 1-7 0zM8 10V3h3v7M6 3h7M18 13V3m-3 3 3-3 3 3"/>',
-  knife: '<path d="M19 3c1 8-2 12-8 12l-3-3c4-1 7-4 11-9ZM8 12l-4 5 3 3 5-6"/><circle cx="5" cy="20" r="2"/>',
-  spin: '<path d="M20 9a8 8 0 0 0-14-4L3 8m0-5v5h5M4 15a8 8 0 0 0 14 4l3-3m0 5v-5h-5"/><path d="m10 15 4-6m-5 7 2 1"/>',
+  knife: '<path d="M8 14c-4-6 0-12 10-11-5 2-8 6-6 9l-4 2ZM8 14l-3 4m2-6 5 4"/><circle cx="4" cy="20" r="2"/>',
+  spin: '<path d="M4 10a8 8 0 0 1 14-5l2 3m0-5v5h-5M20 14a8 8 0 0 1-14 5l-2-3m0 5v-5h5"/>',
 
   computer: '<rect x="3" y="4" width="18" height="12" rx="1"/><path d="M8 20h8m-4-4v4"/>',
   scooter: '<circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M5 19h9l3-14h-4m4 0 2 14"/>',
@@ -40,6 +40,7 @@ export class ActionHud {
   private root = document.querySelector<HTMLElement>("#combat-actions")!;
   private punch = this.root.querySelector<HTMLButtonElement>("#punch-action")!;
   private punchIcon = this.punch.querySelector("svg")!.innerHTML;
+  private primary?: ContextAction;
   private punchLabel = document.createElement("small");
   private slide = this.root.querySelector<HTMLButtonElement>("#slide-action")!;
   private context = document.createElement("div");
@@ -68,8 +69,9 @@ export class ActionHud {
     this.boost.addEventListener("keyup", () => local.holdBoost(false), options);
     this.boost.addEventListener("blur", () => local.holdBoost(false), options);
     this.punch.addEventListener("click", () => {
-      const weapon = this.getWeapon();
-      if(weapon){if(weapon.enabled)weapon.run();}else if(actionAvailability(local.body,local.sprinting,now()).punch)local.punch();
+      if (this.primary) { if (this.primary.enabled) this.primary.run(); }
+      else if (this.getWeapon()) { const weapon = this.getWeapon()!; if (weapon.enabled) weapon.run(); }
+      else if (actionAvailability(local.body, local.sprinting, now()).punch) local.punch();
       focus();
     }, options);
     this.slide.addEventListener("click", () => {
@@ -87,7 +89,9 @@ export class ActionHud {
     this.boost.classList.toggle("boosting", this.local.sprinting && this.local.pushing && remaining > 0 && !p.limeBoostExhausted);
     this.boost.classList.toggle("exhausted", remaining === 0);
     this.boost.setAttribute("aria-label", `Shift to boost, ${Math.ceil(remaining * LIME_BOOST_DURATION_MS / 1000)} seconds available`);
-    const actions = this.getContext();
+    const allActions = this.getContext();
+    this.primary = allActions.find(action => action.key === "F");
+    const actions = allActions.filter(action => action !== this.primary);
     const interaction = actions.find(action => action.key === "E");
     const hint = this.instructions.querySelector<HTMLElement>(".interaction-instruction")!;
     hint.hidden = !interaction;
@@ -113,17 +117,17 @@ export class ActionHud {
       entry.button.disabled = !action.enabled; entry.button.removeAttribute("title");
       entry.button.setAttribute("aria-label", `${action.label} · ${action.key}`);
     });
-    const weapon = this.getWeapon();
+    const weapon = this.primary ? undefined : this.getWeapon();
     const punchSvg = this.punch.querySelector('svg')!;
     const isBag=weapon?.kind==='bag',verb=isBag?'Throw bag':'Slash';
-    const icon = weapon ? (isBag?'bag':'knife') : 'punch';
-    if(punchSvg.dataset.icon!==icon){punchSvg.innerHTML=weapon?icons[isBag?"bag":"knife"]:this.punchIcon;punchSvg.dataset.icon=icon;}
+    const icon = this.primary?.icon ?? (weapon ? (isBag?'bag':'knife') : 'punch');
+    if(punchSvg.dataset.icon!==icon){punchSvg.innerHTML=this.primary ? icons[this.primary.icon] : weapon?icons[isBag?"bag":"knife"]:this.punchIcon;punchSvg.dataset.icon=icon;}
     this.punch.parentElement!.querySelector('kbd')!.textContent=weapon?'Q':'F';
     this.punchLabel.hidden=!weapon;this.punchLabel.textContent=isBag?"Throw":"Slash";
-    this.punch.title=weapon?`${verb} · Q or click`:'Right hook · F or click';
+    this.punch.title=this.primary ? `${this.primary.label} · F or click` : weapon?`${verb} · Q or click`:'Right hook · F or click';
     const state = actionAvailability(this.local.body, this.local.sprinting, this.now());
     for (const [button, available, seconds, label] of [
-      [this.punch, (isBag?weapon!.enabled:state.punch && (!weapon || weapon.enabled)), isBag?0:state.punchSeconds, weapon ? `${verb} (Q / click)` : "Punch (F)"],
+      [this.punch, (this.primary ? this.primary.enabled : isBag?weapon!.enabled:state.punch && (!weapon || weapon.enabled)), this.primary ? Math.ceil(Math.max(0, p.knockdownUntil-this.now(), Math.min(KARAMBIT_COOLDOWN_MS,p.attackReadyAt-this.now()))/1000) : isBag?0:state.punchSeconds, this.primary ? `${this.primary.label} (F)` : weapon ? `${verb} (Q / click)` : "Punch (F)"],
       [this.slide, state.slide, state.slideSeconds, "Slide (C)"],
     ] as const) {
       button.disabled = !available;

@@ -230,6 +230,7 @@ export class VehicleManager {
       data[2] < bounds.minZ + C.vehicleRadius(v) ||
       data[2] > bounds.maxZ - C.vehicleRadius(v) ||
       y === undefined ||
+      C.bridgeCowSweepBlocked(v, data[1], data[2], C.vehicleRadius(v), C.CART_HIT_HEIGHT, now, this.world) ||
       this.world.blocked(
         data[1],
         y,

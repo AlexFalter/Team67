@@ -6,9 +6,9 @@ import * as C from "@race/shared";
 
 const BASE = `${(import.meta.env?.BASE_URL ?? "/")}audio/`;
 type Sample = "helicopter-rotor" | "bus-engine" | "car-engine" | "rail-running" | "vehicle-door" | "footstep-left"
-  | "footstep-right" | "collision-thud" | "bo3-medal-earned";
+  | "footstep-right" | "collision-thud" | "bo3-medal-earned" | "cow-moo";
 const SAMPLES: Sample[] = ["helicopter-rotor", "bus-engine", "car-engine", "rail-running", "vehicle-door", "footstep-left",
-  "footstep-right", "collision-thud", "bo3-medal-earned"];
+  "footstep-right", "collision-thud", "bo3-medal-earned", "cow-moo"];
 const STORAGE_KEY = "race-to-eth-sound-settings";
 export type EffectKind = "step" | "jump" | "land" | "collision" | "door" | "crash" | "canDrop" | "shutter" | "slide" | "timer";
 
@@ -93,7 +93,7 @@ export class GameAudio {
 
   private get running() { return this.context?.state === "running" && !this.paused && !document.hidden; }
 
-  private play(name: Sample, level: number, { cooldown = 0.6, key = name as string, rate = 1, out }: { cooldown?: number; key?: string; rate?: number; out?: AudioNode } = {}) {
+  private play(name: Sample, level: number, { cooldown = 0.6, key = name as string, rate = 1, out, disposeOut = false }: { cooldown?: number; key?: string; rate?: number; out?: AudioNode; disposeOut?: boolean } = {}) {
     const context = this.context, buffer = this.buffers.get(name);
     if (!context || !buffer || level <= 0.001) return;
     const now = context.currentTime;
@@ -103,8 +103,18 @@ export class GameAudio {
     source.buffer = buffer; source.playbackRate.value = rate; gain.gain.value = level;
     source.connect(gain); gain.connect(out ?? this.master!);
     this.shots.add(source);
-    source.onended = () => { this.shots.delete(source); source.disconnect(); gain.disconnect(); };
+    source.onended = () => { this.shots.delete(source); source.disconnect(); gain.disconnect(); if (disposeOut) out?.disconnect(); };
     source.start();
+  }
+
+  moo(id: number, distance: number) {
+    if (!this.settings.vehicleSounds || !this.running || distance >= 65 || !this.buffers.has("cow-moo")) return;
+    const level = .9 * Math.max(0, 1 - distance / 65);
+    if (level <= .001) return;
+    const filter = this.context!.createBiquadFilter();
+    filter.type = "lowpass"; filter.frequency.value = 4000; filter.Q.value = .5;
+    filter.connect(this.master!);
+    this.play("cow-moo", level, { key: `cow-${id}`, cooldown: 0, rate: .96 + (id % 7) * .012, out: filter, disposeOut: true });
   }
 
   /** One-shot movement/vehicle effects; mirrors vehicle-audio.js effect(). */

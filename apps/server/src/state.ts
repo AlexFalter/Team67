@@ -44,6 +44,7 @@ export const Player = schema(
     simTime: t.number().default(0),
     vehicleKind: t.int8().default(-1),
     attackReadyAt: t.number().default(0),
+    karambitOwned: t.boolean().default(false),
     bagId: t.string().default(""),
     emotesUnlocked: t.boolean().default(false),
     emoteId: t.string().default(""),

@@ -83,3 +83,23 @@ test('phone close explicitly returns capture to the ride without waiting for an 
  npc.features=[npc.limo];npc.travel={kind:'limousine'};npc.onResume=()=>{walkResumes++;};
  npc.syncLock();npc.resumeAfterPhone();assert.equal(captures,1);assert.equal(walkResumes,0);assert.equal(npc.local.enabled,false);
 }));
+
+test('automatic-spin Karambit uses F slash while blocking bags, vehicles and knockdowns',()=>fixture(npc=>{
+ let spins=0,slashes=0,toggles=0;
+ npc.karambit={owns:()=>true,occupiesHands:()=>true,inspect:()=>{spins++;},attack:()=>{slashes++;},toggle:()=>{toggles++;}};
+ npc.playerView={perspective:0};
+ npc.keydown(key('KeyF'));npc.keydown(key('KeyQ'));npc.keydown(key('Digit3'));
+ assert.deepEqual([spins,slashes,toggles],[0,1,1]);
+ for(const blocked of [{vehicleId:'bike'},{bagId:'bag'},{knockdownUntil:2000}]){
+  Object.assign(npc.local.body,createBody(),blocked);
+  npc.keydown(key('KeyF'));npc.keydown(key('KeyQ'));npc.keydown(key('Digit3'));
+  assert.deepEqual([spins,slashes,toggles],[0,1,1]);
+ }
+}));
+
+test('scooter handover receives E before the encounter input lock',()=>fixture(npc=>{
+ let collected=0;
+ npc.scooter={active:()=>true,keydown:(e:ReturnType<typeof key>)=>{if(e.code==='KeyE'){collected++;return true;}return false;}};
+ npc.features=[npc.scooter];const e=key('KeyE');npc.keydown(e);
+ assert.equal(collected,1);assert.equal(e.prevented,true);assert.equal(e.stopped,true);
+}));

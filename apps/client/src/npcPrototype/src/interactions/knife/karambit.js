@@ -30,12 +30,13 @@ export async function createKarambit(camera,{onStrike=()=>false}={}){
  root.traverse(o=>{if(o.isMesh){o.layers.set(0);o.material.depthTest=true;o.material.depthWrite=true;o.renderOrder=2200;o.frustumCulled=false;}});
  let owned=false,equipped=false,age=0,bobAge=0,phase='idle',spins=0,swings=0,hits=0,strikePending=false,attackVariant=0;
  function inspect(){if(!owned||!equipped||phase!=='idle')return false;phase='inspect';age=0;spins++;return true;}
- function attack(){if(!owned||!equipped||phase!=='idle')return false;phase='attack';age=0;attackVariant=swings%2;swings++;strikePending=true;return true;}
+ function attack(){if(!owned||!equipped||phase==='attack')return false;phase='attack';age=0;attackVariant=swings%2;swings++;strikePending=true;return true;}
  function give(){if(owned)return false;owned=equipped=true;inspect();return true;}
- function toggle(){if(!owned)return false;equipped=!equipped;phase='idle';age=0;return true;}
+ function toggle(){if(!owned)return false;equipped=!equipped;phase='idle';age=0;strikePending=false;if(equipped)inspect();return true;}
  function update(dt,visible,moving=false,sliding=false,movement={}){root.visible=owned&&equipped&&visible;if(!root.visible){if(phase==='attack'){phase='idle';strikePending=false;age=0;}return;}
   motionState=motion.update(dt,{speed:moving?6:0,...movement,sliding});
-  age+=dt;bobAge+=dt;root.position.set(.25,-.12,-.65);root.rotation.set(-.12,-.55,.3);grip.rotation.set(0,0,-.22);wrist.rotation.set(0,0,0);
+  age+=dt;bobAge+=dt;
+  if(phase==='idle'&&age>=.75)inspect();root.position.set(.25,-.12,-.65);root.rotation.set(-.12,-.55,.3);grip.rotation.set(0,0,-.22);wrist.rotation.set(0,0,0);
   if(phase==='inspect'){
    const wind=THREE.MathUtils.smoothstep(age,0,.23),returning=1-THREE.MathUtils.smoothstep(age,1.7,2.15),raise=wind*returning;
    root.position.x-=raise*.15;root.position.y+=raise*.13;root.position.z-=raise*.06;

@@ -13,7 +13,10 @@ export class NpcFeature {
   onResume?: () => void;
   onSuspend?: () => void;
   playerView?: import("../multiplayer/view.ts").PlayerView;
-  karambit?: { occupiesHands(): boolean; owns(): boolean; toggle(): boolean; inspect(): boolean; attack(): boolean; state(): {phase: string} };
+  karambit?: { occupiesHands(): boolean; owns(): boolean; toggle(): boolean; inspect(): boolean; attack(): boolean; state(): { phase: string } };
+  canUseKarambit(): boolean;
+  toggleKarambit(): void;
+  attackKarambit(): void;
   readonly ready: Promise<void>;
   readonly root: THREE.Group;
   readonly active: boolean;

@@ -11,6 +11,7 @@ export class LocalPlayer {
   private slide = false;
   private interaction = false;
   private hit = false;
+  private karambitHit = false;
   private input: Input = { x: 0, z: 0, sprint: false, jump: false };
   private abort = new AbortController();
   constructor() {
@@ -29,7 +30,7 @@ export class LocalPlayer {
     window.addEventListener("blur", () => this.clear(), { signal: this.abort.signal });
   }
   clear() {
-    this.boostHeld = false; this.keys.clear(); this.slide = this.jump = this.interaction = this.hit = false;
+    this.boostHeld = false; this.keys.clear(); this.slide = this.jump = this.interaction = this.hit = this.karambitHit = false;
   }
   /** Preserve the movement key that supplied a fresh cursor-capture gesture. */
   resumeMovement(keys: ReadonlySet<string>) {
@@ -38,7 +39,7 @@ export class LocalPlayer {
       if (["KeyW", "KeyA", "KeyS", "KeyD", "ShiftLeft", "ShiftRight"].includes(code)) this.keys.add(code);
   }
   dispose() { this.abort.abort(); this.enabled = false; this.clear(); }
-  punch() { if (this.enabled) this.hit = true; }
+  punch(karambit = false) { if (this.enabled) { this.hit = true; this.karambitHit = karambit; } }
   requestInteraction() { if (this.enabled) this.interaction = true; }
   requestSlide() { if (this.enabled) this.slide = true; }
   holdBoost(held: boolean) { this.boostHeld = held && this.enabled; }
@@ -54,6 +55,8 @@ export class LocalPlayer {
     this.input.jump = this.jump;
     this.jump = false;
     this.input.hit = this.hit;
+    this.input.karambit = this.hit && this.karambitHit;
+    this.karambitHit = false;
     this.hit = false;
     this.input.aim = this.enabled;
     this.input.facing = Math.atan2(-Math.sin(yaw), -Math.cos(yaw));

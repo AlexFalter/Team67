@@ -1,4 +1,5 @@
 export interface PlayerState {
+  karambitOwned?: boolean;
   bagId?: string;
   emotesUnlocked?: boolean;
   emoteId?: string;
@@ -142,6 +143,7 @@ export interface Input {
   jump: boolean;
   slide?: boolean;
   hit?: boolean;
+  karambit?: boolean;
   aim?: boolean;
   facing?: number;
 }
