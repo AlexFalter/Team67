@@ -4,6 +4,7 @@ import type { Body, Input, Impulse } from "./types.ts";
 import { resolveHouses } from "./flatObstacles.ts";
 import { flatWorld, type MovementWorld } from "./world.ts";
 import { createVehicle, stepCart, seatPosition } from "./vehicles.ts";
+import moodleConfig from './moodle-config.json' with {type:'json'};
 import { MATE_SPEED_MULTIPLIER } from "./mate.ts";
 import { bridgeCowSweepBlocked, resolveBridgeCows } from "./bridgeCows.ts";
 import { raceSpawnPoint } from "./battleBus.ts";
@@ -33,7 +34,7 @@ export function createBody(): Body {
     karambitOwned: false,
     limeBoostMs: C.LIME_BOOST_DURATION_MS, limeBoostExhausted: false,
     mateCount: 0,
-    mateBoostMs: 0, mateFlavor: 2, mateDrinkStartedAt: 0,
+    moodleBoostUntil: 0, mateBoostMs: 0, mateFlavor: 2, mateDrinkStartedAt: 0,
   };
 }
 export function respawn(p: Body, world: MovementWorld = flatWorld) {
@@ -131,7 +132,7 @@ export function stepMovement(p: Body, input: Input, dt: number, now: number, wor
   const slideJump = input.jump && now < (p.slideUntil ?? 0);
   if (input.jump) p.slideUntil = 0;
   const sliding = now < (p.slideUntil ?? 0);
-  const boost = p.mateBoostMs > 0 ? MATE_SPEED_MULTIPLIER : 1;
+  const boost = p.mateBoostMs > 0 ? MATE_SPEED_MULTIPLIER : (p.moodleBoostUntil ?? 0) > now ? moodleConfig.speedMultiplier : 1;
   const sprintSpeed = C.SPRINT_SPEED - (C.SPRINT_SPEED - C.WALK_SPEED) * Math.min(1, fatigue / C.JUMP_FATIGUE_WALK_THRESHOLD);
   const targetSpeed = (sprinting ? sprintSpeed : C.WALK_SPEED) * boost;
   const moving = !down && length > 0;

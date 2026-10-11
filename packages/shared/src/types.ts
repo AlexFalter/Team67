@@ -30,6 +30,7 @@ export interface PlayerState {
   impactZ?: number;
   impactStrength?: number;
   moodleSitUntil?: number;
+  moodleBoostUntil?: number;
   simTime: number;
   vehicleKind: number;
   attackReadyAt: number;

@@ -45,6 +45,7 @@ export const Player = schema(
     impactZ: t.number().default(0),
     impactStrength: t.number().default(0),
     moodleSitUntil: t.number().default(0),
+    moodleBoostUntil: t.number().default(0),
     simTime: t.number().default(0),
     vehicleKind: t.int8().default(-1),
     attackReadyAt: t.number().default(0),
