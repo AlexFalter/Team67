@@ -30,6 +30,7 @@ export interface PlayerState {
   impactZ?: number;
   impactStrength?: number;
   moodleSitUntil?: number;
+  moodleBoostUntil?: number;
   simTime: number;
   vehicleKind: number;
   attackReadyAt: number;
@@ -44,6 +45,7 @@ export interface WorldState {
   trafficDensity?: number;
   trafficSpawnInterval?: number;
   trafficSpeedMultiplier?: number;
+  footballs?: Map<string, import("./football.ts").FootballState>;
   bags?: Map<string, import("./bags.ts").BagState>;
   dummies?: Map<string, PlayerState>;
   debugDummies?: boolean;

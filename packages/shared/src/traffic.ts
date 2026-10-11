@@ -3,7 +3,7 @@ export interface TrafficPoint { x: number; y: number; z: number }
 export interface RoadNode extends TrafficPoint { id: string; spawn?: boolean; despawn?: boolean }
 export interface Road { id: string; from: string; to: string; oneWay?: boolean; lanes?: number; speed?: number; laneOffset?: number }
 export interface TrafficNetwork { version: 1; laneWidth: number; nodes: RoadNode[]; roads: Road[] }
-export interface TrafficCarState extends TrafficPoint { rotY: number; speed: number }
+export interface TrafficCarState extends TrafficPoint { rotY: number; speed: number; kind?: number; color?: number }
 export interface TrafficSettings { density: number; spawnInterval: number; speedMultiplier?: number; speedLimit?: number }
 export const DEFAULT_TRAFFIC_SETTINGS: TrafficSettings = { density: 60, spawnInterval: 2, speedMultiplier: 1 };
 export const MAX_TRAFFIC_CARS = 60;

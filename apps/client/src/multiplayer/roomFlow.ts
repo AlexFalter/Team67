@@ -88,7 +88,7 @@ export class RoomFlow {
       const item = document.createElement("li");
       const status = state.phase === RoomPhase.Lobby ? "IN LOBBY" : m.spectator ? "WAITING" : "PLAYING";
       const icon = document.createElement("span"); icon.className = "roster-avatar";
-      icon.textContent = ["CS", "SA", "AE"][m.character] ?? "CS";
+      icon.textContent = ["CS", "SA", "AE", "RD"][m.character] ?? "CS";
       const name = document.createElement("span"); name.className = "roster-player"; name.textContent = m.name;
       const detail = document.createElement("small");
       detail.textContent = [memberId === id ? "YOU" : "", memberId === state.hostId ? "HOST" : "", CHARACTERS[m.character]].filter(Boolean).join(" · ");

@@ -18,7 +18,7 @@ test('admin free roam survives the normal deadline and can still be explicitly f
 
 test('enabling Moodle starts a fresh interval and rewards do not alter the untimed deadline',()=>{
  const state=new RaceState();state.adminMode=true;state.endsAt=Number.MAX_SAFE_INTEGER;state.moodleEnabled=false;state.players.set('host',new Player());
- const moodle=new MoodleEvents(state,()=>{},()=>true,()=>0);
+ const moodle=new MoodleEvents(state,()=>{},()=>0);
  moodle.tick(1000);moodle.tick(100000);assert.equal(state.moodleDeadline,0);
  moodle.enabled(true);moodle.tick(100000);assert.equal(state.moodleDeadline,0);
  moodle.tick(125000);assert.ok(state.moodleDeadline>125000);

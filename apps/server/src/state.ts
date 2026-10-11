@@ -46,6 +46,7 @@ export const Player = schema(
     impactZ: t.number().default(0),
     impactStrength: t.number().default(0),
     moodleSitUntil: t.number().default(0),
+    moodleBoostUntil: t.number().default(0),
     simTime: t.number().default(0),
     vehicleKind: t.int8().default(-1),
     attackReadyAt: t.number().default(0),
@@ -131,9 +132,11 @@ export const Npc = schema({
 export const TrafficCar = schema({
   x: t.number().default(0), y: t.number().default(0), z: t.number().default(0),
   rotY: t.number().default(0), speed: t.number().default(0),
+  kind: t.number().default(0), color: t.number().default(0),
 }, "TrafficCar");
 export const Bag = schema({x:t.number().default(0),y:t.number().default(0),z:t.number().default(0),vx:t.number().default(0),vy:t.number().default(0),vz:t.number().default(0),owner:t.string().default(''),thrower:t.string().default(''),flying:t.boolean().default(false),throwAt:t.number().default(0),releasedAt:t.number().default(0),spin:t.number().default(0)},'Bag');
 export type Bag = SchemaType<typeof Bag>;
+export const Football = schema({x:t.number().default(0),y:t.number().default(0),z:t.number().default(0),vx:t.number().default(0),vy:t.number().default(0),vz:t.number().default(0),owner:t.string().default(''),kicker:t.string().default(''),flying:t.boolean().default(false)},'Football');
 export const RaceState = schema(
   {
     trafficCars: t.map(TrafficCar),
@@ -161,6 +164,7 @@ export const RaceState = schema(
     skipIntro: t.boolean().default(false),
     goldPubliBikes: t.boolean().default(true),
     railCrashProtection: t.boolean().default(false),
+    footballs: t.map(Football),
     bags: t.map(Bag),
     dummies: t.map(Player),
     debugDummies:t.boolean().default(false),

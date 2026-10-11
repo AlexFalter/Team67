@@ -1,3 +1,5 @@
+import {createCyclingKid} from './src/npcs/cycling-kid/cycling-kid.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {createFootballStand} from './src/npcs/football/football-stand.js';
 import {createTikiPerformer} from './src/npcs/tiki-performer/tiki-performer.js';
 import {animateHelicopter} from './src/npcs/interview/helicopter-model.js';
@@ -25,6 +27,7 @@ import {createScooterPhoto} from './src/interactions/photos/scooter-photo.js';
 import {createBridgeScooter} from './src/npcs/scooter/bridge-scooter.js';
 import {createPrivatePropertyEncounter} from './src/npcs/private-property/private-property.js';
 import {createEinsteinTeleporter} from './src/npcs/einstein/einstein-teleporter.js';
+import {createCatBench} from './src/npcs/cat/cat-bench.js';
 import {createTeleportTransition} from './src/npcs/einstein/teleport-transition.js';
 import {createPolybahnTicketMachine} from './src/interactions/tickets/polybahn-ticket-machine.js';
 import {createTicketProps} from './src/interactions/tickets/ticket-props.js';
@@ -41,7 +44,7 @@ export class NpcFeature {
  remoteLimos=new Map();
  skins=new Map();
  // Optional integration callbacks supplied by MapGame.
- onMedal=undefined;
+ onMedal=undefined;onFootballReward=undefined;
  onSuspend=undefined;onResume=undefined;externalPhoneBusy=undefined;playerView=undefined;
  saved=null;round=0;lastPlayable=false;pending=null;travel=null;lastPose=0;previousPoly=null;noticeUntil=0;
  constructor(scene,camera,net,local,vehicles,canvas,map,capture){
@@ -52,10 +55,9 @@ export class NpcFeature {
   this.message=document.createElement('section');this.message.id='npc-message';this.message.hidden=true;this.message.setAttribute('role','dialog');this.message.setAttribute('aria-modal','true');this.message.classList.add('rpg-dialogue-compact');this.message.innerHTML='<div class="rpg-dialogue-name">Jane Street</div><p></p><div class="rpg-dialogue-options"><button type="button"></button></div>';styleRPGDialogue(this.message);this.ui.append(this.message);
   this.message.querySelector('button').onclick=()=>{const kind=this.message.dataset.kind;this.message.hidden=true;if(kind==='invitation'){this.limo?.requestRide();}else if(kind==='rejection')this.limo?.readRejection();this.syncLock();};
   this.phoneSounds=createPhoneSounds();
-  this.phone=this.own(createPhone({uiRoot:this.ui,canOpen:()=>this.canOpenPhone,onOpen:()=>{this.limo?.pauseLook();this.syncLock();},onClose:()=>this.resumeAfterPhone(),onSound:kind=>this.phoneSounds.play(kind),onSubmit:(id,answer)=>this.net.room.send('moodleAnswer',{id,answer,roundStartedAt:this.net.room.state.startedAt}),onQuizResult:passed=>{if(!passed)this.phone.close();}}));
+  this.phone=this.own(createPhone({uiRoot:this.ui,canOpen:()=>this.canOpenPhone,onOpen:()=>{this.limo?.pauseLook();this.syncLock();},onClose:()=>this.resumeAfterPhone(),onSound:kind=>this.phoneSounds.play(kind),onSubmit:(id,answer)=>this.net.room.send('moodleAnswer',{id,answer,roundStartedAt:this.net.room.state.startedAt}),onQuizReward:id=>{if(this.net.canPlay)this.net.room.send('moodleBoost',{id,roundStartedAt:this.net.room.state.startedAt});}}));
   this.net.onMoodleResult=data=>this.phone.resolveQuiz(data);
   this.moodleSettings=document.createElement('label');this.moodleSettings.className='phone-moodle-setting';this.moodleSettings.innerHTML='<input type="checkbox" checked> Random Moodle quizzes';this.ui.querySelector('#phone-device .phone-screen').append(this.moodleSettings);this.moodleSettings.querySelector('input').onchange=e=>this.net.room.send('moodleSettings',e.target.checked);
-  this.moodlePenalty=document.createElement('aside');this.moodlePenalty.className='moodle-penalty';this.moodlePenalty.hidden=true;this.ui.append(this.moodlePenalty);
   window.addEventListener('keydown',e=>this.keydown(e),{capture:true,signal:this.abort.signal});
   canvas.addEventListener('click',e=>{if(!this.active&&this.local.enabled&&this.playerView?.perspective===0&&this.karambit?.occupiesHands()){this.attackKarambit();e.preventDefault();e.stopImmediatePropagation();}},{capture:true,signal:this.abort.signal});
   net.onLimePhotoRequired=id=>{this.limePhotoPending=id;this.syncLock();};
@@ -142,14 +144,26 @@ export class NpcFeature {
     onRejection:()=>{this.janeRejection=true;this.phone.receive({sender:'Jane Street',text:'Unfortunately, we have decided not to go through with your candidacy. Thank you for your interest in Jane Street.',color:'#173d73',actionLabel:'READ REJECTION ↗',onAction:()=>{this.janeRejection=false;this.phone.close();this.limo.readRejection();}});}}));
    this.limo.limo.rotation.reorder('YXZ');
    if(this.abort.signal.aborted){this.cleanupFeatures();return;}
+   const catLanding=C.einsteinDestination(C.zurichWorld);
    this.einstein=this.own(await createEinsteinTeleporter(this.root,world,solver,{camera,uiRoot,signal:this.abort.signal,
-    placement:{...placements.einstein,fixedActor:C.NPC_LAYOUT.einstein.position,fixedSite:C.NPC_LAYOUT.einstein.site,fixedApproach:C.NPC_LAYOUT.einstein.approach},
+    placement:{...placements.einstein,fixedActor:C.NPC_LAYOUT.einstein.position,fixedSite:C.NPC_LAYOUT.einstein.site,fixedApproach:C.NPC_LAYOUT.einstein.approach,destinations:catLanding?[{name:'Bench cat',point:[catLanding.x,catLanding.z]}]:[]},
     assetUrl:path=>`${import.meta.env.BASE_URL}models/npcs/${path.split('/').at(-1)}`,onOpen:()=>this.syncLock(),
     onTravel:()=>{if(this.pending)return false;this.send('begin','einstein');return true;}}));
    if(this.abort.signal.aborted){this.cleanupFeatures();return;}
    batchStaticNpc(this.einstein.actor);batchStaticNpc(this.einstein.portal);batchNpc(this.root);
    skinNpcRigs(this.root,this.skins);
-   this.football=this.own(createFootballStand(this.root,world,{camera:this.camera,placement:C.NPC_LAYOUT.football,uiRoot,onClose:()=>{this.syncLock();if(this.local.enabled)this.onResume?.();}}));
+   this.football=this.own(createFootballStand(this.root,world,{camera:this.camera,placement:C.NPC_LAYOUT.football,uiRoot,onReward:()=>this.onFootballReward?.(),onClose:()=>{this.syncLock();if(this.local.enabled)this.onResume?.();}}));
+   this.cat=this.own(createCatBench(this.root,world,solver,{camera:this.camera,placement:C.NPC_LAYOUT.cat,uiRoot,onClose:()=>{this.syncLock();if(this.local.enabled)this.onResume?.();}}));
+   await this.cat.ready;
+   if(this.cat.state().assetError)throw Error(this.cat.state().assetError);
+   if(this.abort.signal.aborted){this.cleanupFeatures();return;}
+   const bikeResponse=await fetch(`${import.meta.env.BASE_URL}models/publibike.glb`,{signal:this.abort.signal});
+   if(!bikeResponse.ok)throw Error(`Singing cyclist bike failed to load (${bikeResponse.status})`);
+   const {scene:singingBike}=await new GLTFLoader().parseAsync(await bikeResponse.arrayBuffer(),'');
+   if(this.abort.signal.aborted){disposeOwnedObject(singingBike);this.cleanupFeatures();return;}
+   singingBike.userData.wheels=['RearWheel','FrontWheel'].map(name=>singingBike.getObjectByName(name));
+   if(singingBike.userData.wheels.some(w=>!w)){disposeOwnedObject(singingBike);throw Error('Singing cyclist bike is missing wheel pivots');}
+   this.cyclist=this.own(createCyclingKid(this.root,world,solver,()=>singingBike,{position:C.NPC_LAYOUT.singingCyclist.position,uiRoot}));
    this.tiki=this.own(await createTikiPerformer(this.root,world,solver,{placement:C.NPC_LAYOUT.tikiPerformer,signal:this.abort.signal}));
    if(this.abort.signal.aborted){this.cleanupFeatures();return;}
    this.michael=this.own(await createMichaelJackson(this.root,world,solver,{placement:C.NPC_LAYOUT.michaelJackson,signal:this.abort.signal}));
@@ -187,13 +201,13 @@ export class NpcFeature {
    this.travel={kind:result.kind,target:new THREE.Vector3(result.target.x,result.target.y,result.target.z),source:pending.source.clone(),confirmed:false};
    if(result.kind==='einstein'){
     this.einstein.markTravel([result.target.x,result.target.z]);const sourceView={position:this.camera.position.clone(),rotation:this.camera.quaternion.clone()};
-    this.camera.position.copy(this.travel.target).add(new THREE.Vector3(0,1.6,0));this.camera.up.set(0,1,0);this.camera.rotation.set(0,this.local.body.rotY+Math.PI,0);
+    this.camera.position.copy(this.travel.target).add(new THREE.Vector3(0,1.6,0));this.camera.up.set(0,1,0);this.camera.rotation.set(0,(result.facing??this.local.body.rotY)+Math.PI,0);
     this.transition.start(this.travel.source,this.travel.target,sourceView);
    }else if(result.kind==='limousine'){this.limo.setLanding(this.travel.target);this.limo.interact(this.position);}
    else this.property.maybeStart(this.travel.source,true,this.travel.target,this.camera);
   }else if(result.action==='finish'){
    if(result.target)Object.assign(this.local.body,result.target,{vx:0,vy:0,vz:0,anim:0,grounded:true});this.travel=null;
-   if(result.kind==='property'&&Number.isFinite(result.facing)){this.local.body.rotY=result.facing;this.playerView.yaw=result.facing-Math.PI;this.playerView.pitch=0;this.local.clear();}
+   if(Number.isFinite(result.facing)){this.local.body.rotY=result.facing;this.playerView.yaw=result.facing-Math.PI;this.playerView.pitch=0;this.local.clear();}
   }
   this.syncLock();
  }
@@ -203,7 +217,9 @@ export class NpcFeature {
   if(this.finance&&!this.finance.state().used)add('Finance Guy',this.finance.actor.position);
   if(this.michael)add('Michael Jackson',this.michael.center);
   if(this.tiki)add('Tiki Tiki performer',this.tiki.center);
+  if(this.cyclist)add('Singing cyclist',this.cyclist.group.position);
   if(this.football)add('Tim Gio',this.football.actor.getWorldPosition(new THREE.Vector3()));
+  if(this.cat)add('Bench cat',this.cat.site);
   if(this.einstein)add('Albert Einstein',this.einstein.actor.position);
   if(this.limo&&!this.limo.state().solved)add('Jane Street laptop',this.limo.laptop.position);
   if(this.limo?.state().phase==='waiting'){const p=this.limo.state().pickup;add('Helicopter pilot',{x:p[0],z:p[2]});}
@@ -239,6 +255,7 @@ export class NpcFeature {
   if(pair){const person=this.nearbyPolyPassenger(pair);return person?{icon:'person',label:person===pair.kid?'Talk to 6–7 kid':'Talk to food enthusiast'}:null;}
   if(this.local.body.vehicleId)return null;
   const laptop=this.limo?.laptop.position,pickup=this.limo?.state().pickup;
+  if(this.cat?.near(this.position))return {icon:'person',label:'Pet the cat'};
   if(this.football?.near(this.position))return {icon:'person',label:'Talk to Tim Gio'};
   if(this.michaelChallenge?.near(this.position))return {icon:'person',label:'Talk to Michael Jackson'};
   if(this.limo?.state().phase==='waiting'&&this.position.distanceTo(new THREE.Vector3(...pickup))<9)return {icon:'cart',label:'Board your helicopter'};
@@ -266,7 +283,7 @@ export class NpcFeature {
   const pair=this.currentPoly();if(pair){const person=this.nearbyPolyPassenger(pair);if(!person)return false;this.polyCameraEye=capturePolybahnMenuEye(pair.car,this.camera,this.position);const handled=person.interact(this.position);this.syncLock();return handled;}
   if(this.local.body.vehicleId)return false;
   if(this.limo?.state().phase==='waiting'&&this.position.distanceTo(new THREE.Vector3(...this.limo.state().pickup))<9){this.send('begin','limousine');return true;}
-  const handled=this.football?.interact(this.position)||this.michaelChallenge?.interact(this.position)||this.ticketMachine?.interact(this.position)||this.einstein?.interact(this.position)||this.limo?.interact(this.position)||this.scooter?.interact(this.position);
+  const handled=this.cat?.interact(this.position)||this.football?.interact(this.position)||this.michaelChallenge?.interact(this.position)||this.ticketMachine?.interact(this.position)||this.einstein?.interact(this.position)||this.limo?.interact(this.position)||this.scooter?.interact(this.position);
   this.syncLock();return !!handled;
  }
  attachPoly(){
@@ -284,10 +301,12 @@ export class NpcFeature {
  update(dt,available){
   if(this.abort.signal.aborted)return;
   const playable=this.net.canPlay,state=this.net.room?.state;
+  const paused=document.querySelector('#pause')?.hidden===false;
+  this.cat?.tick(dt,playable&&!paused&&!this.phone.active());
+  this.local.movementMultiplier=this.cat?.speedMultiplier()??1;
   if((this.lastPlayable&&!playable)||state&&state.startedAt!==this.round){this.reset();this.round=state?.startedAt??0;}this.lastPlayable=playable;
   const phoneVisible=playable&&!this.externalPhoneBusy?.();this.ui.querySelector('#game-phone').hidden=!phoneVisible;if(!phoneVisible&&this.phone.active())this.phone.close();
   this.phone.update(dt,phoneVisible,{enabled:state?.moodleEnabled!==false});this.phone.syncQuiz({enabled:playable&&state?.moodleEnabled!==false,id:state?.moodleEventId,question:state?.moodleQuestionIndex,deadline:state?.moodleDeadline??0,now:this.net.now()});this.ui.querySelector('#phone-toggle').hidden=!playable;this.moodleSettings.hidden=state?.hostId!==this.net.room?.sessionId;this.moodleSettings.querySelector('input').checked=state?.moodleEnabled!==false;
-  const sitRemaining=((state?.players?.get(this.net.room.sessionId)?.moodleSitUntil??0)-this.net.now())/1000;this.moodlePenalty.hidden=sitRemaining<=0;if(sitRemaining>0){this.local.body.vx=this.local.body.vy=this.local.body.vz=0;this.local.clear();this.moodlePenalty.textContent=`SUBJECT FAILED · Existential crisis: ${Math.ceil(sitRemaining)}s`;}
   this.root.visible=playable;this.attachPoly();this.position.set(this.local.body.x,this.local.body.y,this.local.body.z);
   const pair=this.currentPoly();for(const [id,p] of this.poly){p.kid.update(dt,playable&&this.local.body.vehicleId===id,!!this.inspector?.active(),this.position);p.eater.update(dt,playable&&this.local.body.vehicleId===id,this.inspector?.active()||p.kid.active(),this.position);}
   if(!playable){this.hint.hidden=true;this.boundaryWarning.hidden=true;return;}
@@ -330,6 +349,8 @@ export class NpcFeature {
   this.limo?.update(dt,this.position,this.camera);this.inspector?.update(dt,this.camera);
   if(this.property?.update(dt,this.position,this.camera))this.send('finish','property');
   this.football?.update(dt,{listener:this.position,enabled:playable,muted:this.active&&!this.football.active(),paused:document.querySelector('#pause')?.hidden===false});
+  if(!paused&&!this.phone.active())this.cat?.update(dt);
+  this.cyclist?.update(dt,this.position,playable&&!paused&&!this.active);
   this.tiki?.update(dt,this.position,{active:playable,muted:this.active});
   this.michael?.update(dt,this.position,{active:playable,muted:this.active});this.michaelChallenge?.update();
   this.transition.update(dt);
@@ -353,7 +374,7 @@ export class NpcFeature {
   if(this.ticketRequest){this.ticketRequest.resolve(false);this.ticketRequest=null;}
   for(const car of this.remoteLimos.values())car.visible=false;
   this.janeRejection=false;this.limePhotoPending=null;this.limePhotoSubmitting=false;this.pending=null;this.travel=null;this.retryAt=0;this.previousPoly=null;this.lastStationPosition=null;this.inspected=false;this.boundaryWarning.hidden=true;this.message.hidden=true;
-  for(const feature of this.features)feature.reset?.();this.syncLock();
+  for(const feature of this.features)feature.reset?.();this.local.movementMultiplier=1;this.syncLock();
  }
  cleanupFeatures(){for(const car of this.remoteLimos.values())car.removeFromParent();this.remoteLimos.clear();for(const feature of this.features.splice(0))feature.dispose?.();this.poly.clear();this.skins.clear();}
  afterRender(){if(!this.abort.signal.aborted)drawPhoneCameraPreviews(this.canvas);}

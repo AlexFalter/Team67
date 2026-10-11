@@ -80,7 +80,7 @@ export async function loadBattleBusModel(signal: AbortSignal) {
     const geometry = object.geometry.clone().applyMatrix4(inverse.clone().multiply(object.matrixWorld));
     const materials = (Array.isArray(object.material) ? object.material : [object.material]).map((material: THREE.MeshStandardMaterial) => {
       const copy = material.clone(); copy.side = THREE.DoubleSide;
-      if (copy.name.includes("Tinted glazing")) { copy.transparent = true; copy.opacity = 0.25; copy.depthWrite = false; copy.metalness = 0; }
+      if (copy.name.includes("Tinted glazing")) { copy.transparent = true; copy.opacity = 0.6; copy.depthWrite = false; copy.metalness = 0; }
       return copy;
     });
     const exterior = new THREE.Mesh(hollowBusGeometry(geometry, [

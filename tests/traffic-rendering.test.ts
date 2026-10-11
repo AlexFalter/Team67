@@ -13,7 +13,7 @@ test('traffic interpolates server snapshots, wraps yaw, clamps and releases inst
   const body = scene.children[0] as THREE.InstancedMesh, wheels = scene.children[2] as THREE.InstancedMesh;
   const matrix = new THREE.Matrix4(); body.getMatrixAt(0, matrix);
   const position = new THREE.Vector3(), rotation = new THREE.Quaternion(); matrix.decompose(position, rotation, new THREE.Vector3());
-  assert.equal(position.x, 5); assert(Math.abs(position.y - 2.65) < 0.001); assert.equal(wheels.count, 4);
+  assert.equal(position.x, 5); assert(Math.abs(position.y - 2) < 0.001); assert.equal(wheels.count, 4);
   const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(rotation); assert(forward.z < -0.99);
   renderer.render(5000); body.getMatrixAt(0, matrix); assert.equal(new THREE.Vector3().setFromMatrixPosition(matrix).x, 10);
   renderer.patch({ serverTime: 1200, trafficCars: new Map() } as WorldState); renderer.render(1200); assert.equal(body.count, 0); assert.equal(wheels.count, 0);

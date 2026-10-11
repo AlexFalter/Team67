@@ -16,13 +16,14 @@ export function actionAvailability(p: Body, sprinting: boolean, now: number) {
   };
 }
 
-export interface ContextAction { icon: "emote" | "bag" | "knife" | "spin" | "holster" | "equip" | "person" | "polybahn" | "tram" | "bike" | "mate" | "cart" | "leave" | "computer" | "scooter"; label: string; key: string; enabled: boolean; run: () => void }
-export interface WeaponAction { kind?: "knife" | "bag"; enabled: boolean; run: () => void }
+export interface ContextAction { icon: "football" | "emote" | "bag" | "knife" | "spin" | "holster" | "equip" | "person" | "polybahn" | "tram" | "bike" | "mate" | "cart" | "leave" | "computer" | "scooter"; label: string; key: string; enabled: boolean; run: () => void }
+export interface WeaponAction { kind?: "knife" | "bag" | "football"; enabled: boolean; run: () => void }
 const icons = {
   emote: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3v5.5m0 7V21M4.2 7.5 9 10.3m6 3.4 4.8 2.8M4.2 16.5 9 13.7m6-3.4 4.8-2.8"/>',
   bag: '<path d="M7 8V6a5 5 0 0 1 10 0v2M5 8h14l2 14H3zM8 13l4 5 4-5"/>',
   holster: '<path d="M6 11h7v7a3.5 3.5 0 0 1-7 0zM8 11V4h3v7M6 4h7M18 3v10m-3-3 3 3 3-3"/>',
   equip: '<path d="M6 13h7v5a3.5 3.5 0 0 1-7 0zM8 10V3h3v7M6 3h7M18 13V3m-3 3 3-3 3 3"/>',
+  football: '<circle cx="12" cy="12" r="9"/><path d="m12 7 5 4-2 6H9l-2-6 5-4Zm0-4v4m8 0-3 4m1 8-3-2M6 19l3-2M4 7l3 4"/>',
   knife: '<path d="M8 14c-4-6 0-12 10-11-5 2-8 6-6 9l-4 2ZM8 14l-3 4m2-6 5 4"/><circle cx="4" cy="20" r="2"/>',
   spin: '<path d="M4 10a8 8 0 0 1 14-5l2 3m0-5v5h-5M20 14a8 8 0 0 1-14 5l-2-3m0 5v-5h5"/>',
 
@@ -119,15 +120,15 @@ export class ActionHud {
     });
     const weapon = this.primary ? undefined : this.getWeapon();
     const punchSvg = this.punch.querySelector('svg')!;
-    const isBag=weapon?.kind==='bag',verb=isBag?'Throw bag':'Slash';
-    const icon = this.primary?.icon ?? (weapon ? (isBag?'bag':'knife') : 'punch');
-    if(punchSvg.dataset.icon!==icon){punchSvg.innerHTML=this.primary ? icons[this.primary.icon] : weapon?icons[isBag?"bag":"knife"]:this.punchIcon;punchSvg.dataset.icon=icon;}
+    const isBag=weapon?.kind==='bag',isFootball=weapon?.kind==='football',verb=isBag?'Throw bag':isFootball?'Kick football':'Slash';
+    const icon = this.primary?.icon ?? (weapon ? (isBag?'bag':isFootball?'football':'knife') : 'punch');
+    if(punchSvg.dataset.icon!==icon){punchSvg.innerHTML=this.primary ? icons[this.primary.icon] : weapon?icons[isBag?"bag":isFootball?"football":"knife"]:this.punchIcon;punchSvg.dataset.icon=icon;}
     this.punch.parentElement!.querySelector('kbd')!.textContent=this.primary || weapon?'Q':'Click';
-    this.punchLabel.hidden=!weapon;this.punchLabel.textContent=isBag?"Throw":"Slash";
-    this.punch.title=this.primary ? `${this.primary.label} · Q or click` : weapon?`${verb} · Q or click`:'Right hook · click';
+    this.punchLabel.hidden=!weapon;this.punchLabel.textContent=isBag?"Throw":isFootball?"Kick":"Slash";
+    this.punch.title=this.primary ? `${this.primary.label} · Q or click` : weapon?`${verb} · Q or click`:'Right hook · Q or click';
     const state = actionAvailability(this.local.body, this.local.sprinting, this.now());
     for (const [button, available, seconds, label] of [
-      [this.punch, (this.primary ? this.primary.enabled : isBag?weapon!.enabled:state.punch && (!weapon || weapon.enabled)), this.primary ? Math.ceil(Math.max(0, p.knockdownUntil-this.now(), Math.min(KARAMBIT_COOLDOWN_MS,p.attackReadyAt-this.now()))/1000) : isBag?0:state.punchSeconds, this.primary ? `${this.primary.label} (Q / click)` : weapon ? `${verb} (Q / click)` : "Punch (click)"],
+      [this.punch, (this.primary ? this.primary.enabled : (isBag||isFootball)?weapon!.enabled:state.punch && (!weapon || weapon.enabled)), this.primary ? Math.ceil(Math.max(0, p.knockdownUntil-this.now(), Math.min(KARAMBIT_COOLDOWN_MS,p.attackReadyAt-this.now()))/1000) : (isBag||isFootball)?0:state.punchSeconds, this.primary ? `${this.primary.label} (Q / click)` : weapon ? `${verb} (Q / click)` : "Punch (click)"],
       [this.slide, state.slide, state.slideSeconds, "Slide (C)"],
     ] as const) {
       button.disabled = !available;

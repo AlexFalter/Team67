@@ -79,16 +79,16 @@ export function GameOverlay({ resolution, onResolutionChange }: {
       <a className="menu-credit" href="https://data.stadt-zuerich.ch/dataset/geo_bauten___kombinierte_darstellung_heute" target="_blank" rel="noreferrer">Source data: Stadt Zürich · CC0</a>
     </section>
     <section id="room-screen" hidden aria-label="Room" aria-live="polite">
-      <div className="room-heading"><p className="menu-kicker">MULTIPLAYER LOBBY</p><h2>Zürich HB → ETH HG</h2></div>
+      <div className="room-heading"><p className="menu-kicker">MULTIPLAYER LOBBY</p><h2>Race to ETH</h2></div>
       <div id="squad-labels" aria-hidden="true"></div>
       <div className="room-location"><span className="location-dot" aria-hidden="true"></span><div>POLYTERRASSE<span>ETH ZENTRUM / ZÜRICH</span></div></div>
-      <div className="room-card">
+      <PixelPanel className="room-card">
         <div className="room-card-top"><span>PRIVATE ROOM</span><span id="room-count"></span></div>
         <p className="eyebrow" id="room-code-label"></p>
-        <h1 id="room-title">Lobby</h1>
+        <h1 id="room-title">Room lobby</h1>
         <p id="room-message" role="status"></p>
         <ul id="room-roster" aria-label="Players in this room"></ul>
-        <button id="room-ready" hidden>Ready</button>
+        <button id="room-ready" hidden>Start match ↗</button>
         <div id="room-results-scroll" role="region" aria-label="Round results" tabIndex={0}>
           <table id="room-results" hidden>
             <caption>Round results</caption>
@@ -98,7 +98,7 @@ export function GameOverlay({ resolution, onResolutionChange }: {
         </div>
         <button id="room-restart" hidden>Return room to lobby</button>
         <button id="room-leave">Leave room</button>
-      </div>
+      </PixelPanel>
       <a className="menu-credit" href="https://data.stadt-zuerich.ch/dataset/geo_bauten___kombinierte_darstellung_heute" target="_blank" rel="noreferrer">Source data: Stadt Zürich · CC0</a>
     </section>
     <PixelPanel id="round-timer" hidden aria-live="off">

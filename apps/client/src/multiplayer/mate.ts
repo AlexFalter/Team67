@@ -136,9 +136,14 @@ export class MateFeature {
       if (image.getAttribute("src") !== source) { image.src = source; image.alt = `${flavor} Mate`; }
       this.inventory.querySelector("b")!.textContent = flavor;
     }
-    this.rush.hidden = !this.net.canPlay || p.mateBoostMs <= 0;
-    this.rush.textContent = p.mateBoostMs > 0 ? `Matee rush · 2× speed · ${Math.ceil(p.mateBoostMs / 1000)}s` : "";
-    this.effects.hidden = !this.net.canPlay || this.active || !!p.vehicleId || p.mateBoostMs <= 0;
+    const moodleMs = Math.max(0, (p.moodleBoostUntil ?? 0) - now);
+    const boostMs = Math.max(p.mateBoostMs, moodleMs);
+    this.rush.hidden = !this.net.canPlay || boostMs <= 0;
+    this.rush.textContent = [
+      p.mateBoostMs > 0 ? `Matee rush · 2× speed · ${Math.ceil(p.mateBoostMs / 1000)}s` : '',
+      moodleMs > 0 ? `Moodle boost · +50% speed · ${Math.ceil(moodleMs / 1000)}s` : '',
+    ].filter(Boolean).join(' | ');
+    this.effects.hidden = !this.net.canPlay || this.active || !!p.vehicleId || boostMs <= 0;
     if (!this.active || !state) return;
     this.modal.dataset.phase = state.phase;
     this.buttons.forEach((button, i) => {
