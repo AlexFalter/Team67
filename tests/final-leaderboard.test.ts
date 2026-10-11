@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as C from '../packages/shared/src/index.ts';
 import { Player, RaceState } from '../apps/server/src/state.ts';
 import { RoundManager } from '../apps/server/src/round.ts';
-import { rankedResults } from '../apps/client/src/multiplayer/roomFlow.ts';
+import { placeLabel, rankedResults } from '../apps/client/src/multiplayer/roomFlow.ts';
 
 test('final score: ETH arrivals are above 0 with exam points on top, the rest get 1000 minus their metres to ETH', () => {
   assert.equal(C.finalScore({ examStartedAt: 1, examScore: 0, distanceToEth: 0 }), C.ETH_ARRIVAL_POINTS);
@@ -45,4 +45,9 @@ test('the server records distance to ETH at the end and the leaderboard ranks ET
     ['far', 700],
     ['gone', 1000 - r('gone').distanceToEth],
   ]);
+});
+
+test('leaderboard places: medals for the podium, ordinals after', () => {
+  assert.deepEqual([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 40].map(placeLabel),
+    ['🥇 1st', '🥈 2nd', '🥉 3rd', '4th', '11th', '12th', '13th', '21st', '22nd', '23rd', '40th']);
 });

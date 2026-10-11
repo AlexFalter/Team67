@@ -92,7 +92,7 @@ export function GameOverlay({ resolution, onResolutionChange }: {
         <div id="room-results-scroll" role="region" aria-label="Round results" tabIndex={0}>
           <table id="room-results" hidden>
             <caption>Round results</caption>
-            <thead><tr><th scope="col">Player</th><th scope="col">Score</th><th scope="col">ETH</th><th scope="col">Hits landed</th><th scope="col">Hits received</th></tr></thead>
+            <thead><tr><th scope="col">Place</th><th scope="col">Player</th><th scope="col">Score</th><th scope="col">ETH</th><th scope="col">Hits landed</th><th scope="col">Hits received</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>

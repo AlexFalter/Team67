@@ -8,6 +8,14 @@ export function rankedResults(results: ReadonlyMap<string, RoundResult>) {
   return [...results].sort((a, b) => finalScore(b[1]) - finalScore(a[1]) || Number(b[1].examStartedAt > 0) - Number(a[1].examStartedAt > 0) || b[1].hitsLanded - a[1].hitsLanded || a[1].name.localeCompare(b[1].name));
 }
 
+/** Leaderboard place: medals for the podium, then 4th, 5th, … 11th, 12th, 13th, 21st, … */
+export function placeLabel(place: number) {
+  const medal = ["🥇 1st", "🥈 2nd", "🥉 3rd"][place - 1];
+  if (medal) return medal;
+  const tens = place % 100, ones = place % 10;
+  return `${place}${tens >= 11 && tens <= 13 ? "th" : ["th", "st", "nd", "rd"][ones] ?? "th"}`;
+}
+
 export class RoomFlow {
   private root = document.querySelector<HTMLElement>("#room-screen")!;
   private title = this.root.querySelector<HTMLElement>("#room-title")!;
@@ -93,11 +101,12 @@ export class RoomFlow {
     this.roster.replaceChildren(items);
     if (state.phase === RoomPhase.Finished) {
       const rows = document.createDocumentFragment();
-      for (const [, result] of rankedResults(state.results)) {
+      for (const [index, [, result]] of rankedResults(state.results).entries()) {
         const row = document.createElement("tr"), reached = result.examStartedAt > 0;
         row.dataset.eth = reached ? "reached" : "missed";
+        if (index < 3) row.dataset.podium = String(index + 1);
         const score = finalScore(result);
-        for (const value of [result.name, score > 0 ? `+${score}` : score < 0 ? `−${-score}` : "0",
+        for (const value of [placeLabel(index + 1), result.name, score > 0 ? `+${score}` : score < 0 ? `−${-score}` : "0",
           reached ? `At ETH · ${result.examScore} exam` : `${Math.round(result.distanceToEth)} m to go`, result.hitsLanded, result.hitsReceived]) {
           const cell = document.createElement("td"); cell.textContent = String(value); row.append(cell);
         }
