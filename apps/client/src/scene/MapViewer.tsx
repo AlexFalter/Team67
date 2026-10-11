@@ -18,6 +18,7 @@ import { ExamDebugButton } from "../exam/ExamDebugButton";
 import { emptyExamSession, type ExamSession } from "../exam/ExamSequence";
 import { activeTheme, applyRendererLook, sharpenMapTextures, themeLights } from "../maps/zurich/theme";
 import { createSky } from "../maps/zurich/sky";
+import { createColorGrade, mountGradePanel, type ColorGradeHandle } from "./colorGrade";
 
 export function MapViewer() {
   const [examSession, setExamSession] = useState<ExamSession>(emptyExamSession);
@@ -70,7 +71,9 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
     let resize: ResizeObserver | undefined,
       game: MapGame | undefined,
       sunlight: DirectionalLight | undefined,
-      disposeLook: (() => void) | undefined;
+      disposeLook: (() => void) | undefined,
+      grade: ColorGradeHandle | undefined,
+      disposeGradePanel: (() => void) | undefined;
     const scene = new Scene();
     const theme = activeTheme();
     scene.background = new Color(theme.sky);
@@ -138,7 +141,10 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
           playing ? 0.1 : 1,
           6000,
         );
-        if (playing) { game = new MapGame(scene, camera, canvas!, hud!, hints!, map, () => renderer!.render(scene, camera), onExamChange); gameRef.current = game; }
+        // colour grade after tone mapping (theme "grade", dev panel: G or ?grade)
+        grade = createColorGrade(renderer, scene, camera, { exposure: theme.lighting.exposure ?? 1, ...theme.grade });
+        disposeGradePanel = mountGradePanel(grade, abort.signal);
+        if (playing) { game = new MapGame(scene, camera, canvas!, hud!, hints!, map, () => grade!.render(), onExamChange); gameRef.current = game; }
         else {
           camera.position.set(650, 850, 900);
           controls = new OrbitControls(camera, canvas!);
@@ -157,6 +163,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
             : Math.min(window.devicePixelRatio, 1,
               Math.sqrt(1920 * 1080 / (Math.max(width, 1) * Math.max(height, 1))));
           renderer!.setDrawingBufferSize(Math.max(width, 1), Math.max(height, 1), density);
+          grade?.setSize(Math.max(width, 1), Math.max(height, 1), density);
           camera.aspect = Math.max(width, 1) / Math.max(height, 1);
           camera.updateProjectionMatrix();
         };
@@ -178,7 +185,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
             sun.target.updateMatrixWorld();
           }
           if (!game?.examScreenVisible) {
-            renderer!.render(scene, camera);
+            grade!.render();
             game?.afterRender();
           }
         });
@@ -211,6 +218,8 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
       sunlight?.shadow.dispose();
       scene.clear();
       disposeLook?.();
+      disposeGradePanel?.();
+      grade?.dispose();
       renderer?.dispose();
       renderer?.forceContextLoss();
     };
