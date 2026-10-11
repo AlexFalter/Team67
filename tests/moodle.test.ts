@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import * as C from '../packages/shared/src/index.ts';
 import {MoodleEvents} from '../apps/server/src/moodle.ts';
 import {RaceState,Player,RoomMember} from '../apps/server/src/state.ts';
+// @ts-expect-error Prototype phone feature is JavaScript.
+import {createPhoneQuizzes} from '../apps/client/src/npcPrototype/src/games/quizzes/phone-quizzes.js';
 function fixture(){const state=new RaceState();state.startedAt=123;state.endsAt=100000;for(const id of ['a','b']){state.players.set(id,new Player());state.members.set(id,new RoomMember());}const results:{id:string;passed:boolean}[]=[];const events=new MoodleEvents(state,(id,r)=>results.push({id,passed:r.passed}),()=>0);events.tick(1000);events.tick(26000);return {state,results,events};}
 test('correct answers reserve an eight-second boost that starts once the phone closes',()=>{
  const {state,events,results}=fixture();assert.equal(state.moodleDeadline,56000);const data={id:1,answer:1,roundStartedAt:123};
@@ -20,6 +22,33 @@ test('wrong and unanswered quizzes never stop players or penalize them after lea
  assert.equal(events.answer('b',{id:1,answer:0,roundStartedAt:123},27000),true);events.tick(56000);a.vehicleId='';events.tick(57000);
  for(const p of [a,b]){assert.equal(p.moodleSitUntil,0);assert.equal(p.moodleBoostUntil,0);}
  assert.equal(b.vx,5);assert.equal(b.vz,2);assert.equal(b.mateBoostMs,3000);assert.equal(state.endsAt,100000);assert.deepEqual(results,[{id:'b',passed:false},{id:'a',passed:false}]);
+});
+test('server distinguishes submitted wrong answers from missed deadlines, including late submissions',()=>{
+ const state=new RaceState();state.startedAt=123;
+ for(const id of ['wrong','missed','late'])state.players.set(id,new Player());
+ const results:{id:string;passed:boolean;submitted:boolean}[]=[];
+ const events=new MoodleEvents(state,(id,r)=>results.push({id,passed:r.passed,submitted:r.submitted}),()=>0);
+ events.tick(1000);events.tick(26000);
+ assert.equal(events.answer('wrong',{id:1,answer:0,roundStartedAt:123},27000),true);
+ assert.equal(events.answer('late',{id:1,answer:1,roundStartedAt:123},56000),false);
+ events.tick(56000);
+ assert.deepEqual(results,[{id:'wrong',passed:false,submitted:true},{id:'missed',passed:false,submitted:false},{id:'late',passed:false,submitted:false}]);
+});
+test('phone uses Unsubmitted for expired quizzes and Incorrect for accepted wrong answers',()=>{
+ for(const [passed,submitted,status] of [[false,false,'unsubmitted'],[false,true,'failed'],[true,true,'passed']] as const){
+  const rewards:boolean[]=[];
+  const quizzes=createPhoneQuizzes({notify:()=>{},changed:()=>{},onSubmit:()=>{},onResult:(reward:boolean)=>rewards.push(reward)});
+  quizzes.sync({enabled:true,id:1,deadline:30000,now:0,question:0});
+  quizzes.resolve({id:1,passed,submitted});
+  assert.equal(quizzes.state()[0].status,status);assert.deepEqual(rewards,[passed]);
+ }
+});
+test('offline phone also marks unanswered quizzes as Unsubmitted',()=>{
+ const quizzes=createPhoneQuizzes({notify:()=>{},changed:()=>{}});
+ quizzes.update(1000,{enabled:true,playing:true});
+ assert.equal(quizzes.state()[0].status,'active');
+ quizzes.update(31,{enabled:true,playing:true});
+ assert.equal(quizzes.state()[0].status,'unsubmitted');
 });
 test('Moodle grants fifty percent extra speed, expires on time and never multiplies the Mate boost',()=>{
  const run=(moodleUntil:number,mateMs=0,now=27000,sprint=false)=>{const p=C.createBody();p.moodleBoostUntil=moodleUntil;p.mateBoostMs=mateMs;

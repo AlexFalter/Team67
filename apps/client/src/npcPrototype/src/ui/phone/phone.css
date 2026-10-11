@@ -53,6 +53,7 @@
 #game-phone .moodle-submit:disabled { opacity: .45; cursor: default; }
 #game-phone .moodle-feedback { font-size: 13px; line-height: 1.6; padding: 12px; margin-top: 14px; border-left: 3px solid #e5a58c; background: #382c2d; }
 #game-phone .moodle-feedback.correct { background: #233c35; border-color: var(--ui-accent); }
+#game-phone .moodle-feedback.unsubmitted { background: #19333c; border-color: var(--ui-border); color: var(--ui-heading); }
 #game-phone.moodle-alert-active #phone-notification[data-kind=moodle] { --panel-border: #e5a58c; color: #fff0e6; background: #382c2d; }
 #game-phone.moodle-alert-active #phone-toggle { border-color: #e5a58c; }
 #game-phone .moodle-urgent { border-top: 3px solid #e5a58c; }

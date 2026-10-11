@@ -26,7 +26,7 @@ export class Network {
   private best = Infinity;
   private pending = new Set<number>();
   vehicleMove?: () => VehicleMove | undefined;
-  onMoodleResult?: (data:{id:number;passed:boolean;course:string;roundStartedAt:number})=>void;
+  onMoodleResult?: (data:{id:number;passed:boolean;submitted?:boolean;course:string;roundStartedAt:number})=>void;
   onLimePhotoRequired?: (vehicleId:string)=>void;
   onLimePhotoResult?: (ok:boolean)=>void;
   onCowHit?: (event:import("@race/shared").CowHitEvent)=>void;
@@ -124,7 +124,7 @@ export class Network {
     this.room.onMessage<{from:{x:number;y:number;z:number};target:{x:number;y:number;z:number};roundStartedAt:number}>('mapTeleportResult',data=>{if(data.roundStartedAt===this.room.state.startedAt)this.onMapTeleport?.(data);});
     this.room.onMessage<{ok:boolean;action:string;message:string;roundStartedAt:number}>('bagResult',data=>{if(data.roundStartedAt===this.room.state.startedAt)this.onBagResult?.(data);});
     this.room.onMessage<{ok:boolean;step:number;unlocked:boolean;reason?:string;roundStartedAt:number}>('emoteChallengeResult',data=>{if(data.roundStartedAt!==this.room.state.startedAt)return;if(data.ok&&data.unlocked)this.emoteUnlockRound=data.roundStartedAt;this.onEmoteChallengeResult?.(data);});
-    this.room.onMessage<{id:number;passed:boolean;course:string;roundStartedAt:number}>('moodleResult',data=>{if(data.roundStartedAt===this.room.state.startedAt)this.onMoodleResult?.(data);});
+    this.room.onMessage<{id:number;passed:boolean;submitted?:boolean;course:string;roundStartedAt:number}>('moodleResult',data=>{if(data.roundStartedAt===this.room.state.startedAt)this.onMoodleResult?.(data);});
     this.room.onMessage<PlayerCorrection>("playerCorrection", correction => {
       Object.assign(body, correction);
     });

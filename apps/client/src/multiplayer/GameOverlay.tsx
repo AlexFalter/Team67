@@ -136,6 +136,7 @@ export function GameOverlay({ resolution, onResolutionChange, offline = false }:
       </div>
     </section>
     <PixelPanel id="battle-bus-intro" hidden role="status" aria-live="polite"></PixelPanel>
+    <PixelPanel id="round-start-banner" hidden role="status" aria-live="polite">Run to ETH!</PixelPanel>
     <div id="activity-feed" hidden role="log" aria-live="polite" aria-label="Activity feed"></div>
     <div id="crosshair" hidden aria-hidden="true">+</div>
     <div id="combat-actions" hidden role="group" aria-label="Player actions">

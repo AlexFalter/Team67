@@ -19,6 +19,7 @@ export class BattleBusIntro {
   private abort = new AbortController();
   private model?: Awaited<ReturnType<typeof loadBattleBusModel>>;
   private overlay = document.querySelector<HTMLElement>("#battle-bus-intro")!;
+  private startBanner = document.querySelector<HTMLElement>("#round-start-banner")!;
   private audio = new Audio(`${import.meta.env.BASE_URL}audio/fortnite-battle-bus.mp3`);
   private audioStarted = 0;
   private body = C.createBody();
@@ -91,6 +92,8 @@ export class BattleBusIntro {
   }
   update(dt: number, local: THREE.Group, remotes: RemotePlayers) {
     const active = this.active, model = this.model, state = this.net.room?.state;
+    const sinceArrival = state ? this.net.now() - state.startedAt : -1;
+    this.startBanner.hidden = !this.net.canPlay || !state?.introComplete || sinceArrival < 0 || sinceArrival >= 5000;
     this.overlay.hidden = !active;
     if (active && this.rideRun !== state!.introStartedAt) {
       this.rideRun = state!.introStartedAt; this.ride.begin(this.rideRun); this.feed.clear(); this.canvas.focus();
@@ -168,6 +171,7 @@ export class BattleBusIntro {
     }
   }
   dispose() {
+    this.startBanner.hidden = true;
     this.abort.abort(); this.feed.dispose(); this.audio.pause(); this.audio.removeAttribute("src"); this.audio.load(); this.overlay.hidden = true;
     if (this.model) { disposeAvatar(this.model.driver); disposeMap(this.model.bus); this.model.bus.removeFromParent(); }
   }
