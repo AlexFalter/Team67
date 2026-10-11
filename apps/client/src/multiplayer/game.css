@@ -245,3 +245,31 @@ main:has(.game-loading) > :is(header, footer) { display: none; }
 @keyframes boost-shimmer { from { transform:translateX(-100%); } to { transform:translateX(100%); } }
 @media (prefers-reduced-motion:reduce) { #combat-actions .lime-boost.boosting::after { animation:none; } }
 @media (max-width:600px) { #combat-actions .lime-boost { right:auto; left:50%; transform:translateX(-50%); bottom:calc(100% + 56px); width:168px; height:36px; } }
+
+/* Drowning timeout (drowning.ts): 10 s with the meme music, then the same respawn as the Respawn button. */
+.drowned-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9; /* below the pause menu, lobby and room screen (z-index 10) */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgb(10 40 70 / 0.35), rgb(5 15 30 / 0.8));
+  color: #fff;
+  text-align: center;
+  animation: drowned-fade 0.6s ease-out;
+}
+.drowned-overlay[hidden] { display: none; }
+/* Esc menu open: the timeout keeps running (the world does), but the menu owns the screen. */
+body:has(:is(#pause, #lobby, #room-screen):not([hidden])) .drowned-overlay { display: none; }
+.drowned-overlay strong {
+  font-size: clamp(2.5rem, 9vw, 6rem);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow: 0 4px 0 #000, 0 0 24px rgb(80 180 255 / 0.6);
+}
+.drowned-overlay span { font-size: 1.1rem; opacity: 0.85; }
+@keyframes drowned-fade { from { opacity: 0; } to { opacity: 1; } }
