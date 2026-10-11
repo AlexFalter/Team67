@@ -184,10 +184,10 @@ export class PubliBikeFeature {
         ctx.strokeStyle = "#a82779"; ctx.lineWidth = 4; ctx.strokeRect(2, 2, 756, 180);
         ctx.fillStyle = "#ffffff12"; ctx.fillRect(4, 4, 752, 4); ctx.fillRect(4, 8, 4, 168);
         ctx.fillStyle = "#00000044"; ctx.fillRect(8, 176, 748, 4); ctx.fillRect(752, 8, 4, 168);
-        ctx.textAlign = "center"; ctx.fillStyle = "#c3d5cc";
+        ctx.textAlign = "center"; ctx.fillStyle = "#a82779";
         ctx.font = "bold 42px monospace"; ctx.fillText("PUBLIBIKE STATION", 380, 61);
         ctx.font = "28px monospace"; ctx.fillText(text, 380, 108);
-        ctx.fillStyle = "#dab8ed"; ctx.font = "24px monospace"; ctx.fillText("E TO SCAN · E TO RETURN", 380, 153);
+        ctx.font = "24px monospace"; ctx.fillText("E TO SCAN · E TO RETURN", 380, 153);
         (this.sign.material as THREE.SpriteMaterial).map!.needsUpdate = true;
       }
     }
