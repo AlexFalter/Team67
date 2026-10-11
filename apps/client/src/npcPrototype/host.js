@@ -61,6 +61,7 @@ export class NpcFeature {
    if(this.limePhotoPending&&!this.limePhoto?.active()){e.preventDefault();e.stopImmediatePropagation();return;}
    if(this.limo?.riding()&&this.limo.keydown(e)){e.preventDefault();e.stopImmediatePropagation();return;}
    if(!this.message.hidden){if(e.code==='Enter')this.message.querySelector('button').click();e.preventDefault();e.stopImmediatePropagation();return;}
+   if(this.scooter?.active()){this.scooter.keydown(e);this.syncLock();e.preventDefault();e.stopImmediatePropagation();return;}
    if(this.pending||this.travel||this.finance?.active()||this.inspector?.active()||this.property?.active()||this.scooter?.active()){e.preventDefault();e.stopImmediatePropagation();return;}
    for(const feature of this.features)if(feature.keydown?.(e)){e.stopImmediatePropagation();this.syncLock();break;}
   },{capture:true,signal:this.abort.signal});
@@ -99,7 +100,7 @@ export class NpcFeature {
    this.property=this.own(createPrivatePropertyEncounter(this.root,world,new THREE.Vector3(),0,solver,{uiRoot}));
    this.karambit=this.own(await createKarambit(camera,{uiRoot,onStrike:()=>this.strikeKnife()}));
    if(this.abort.signal.aborted){this.cleanupFeatures();return;}
-   this.scooter=this.own(createBridgeScooter(this.root,world,{placement:{...placements.scooterEncounter,...C.NPC_LAYOUT.scooter},shortArrival:true,uiRoot,knifeModel:this.karambit.grip,onCollect:()=>{this.karambit.give();if(this.playerView){this.playerView.perspective=0;this.playerView.pitch=0;}this.syncLock();this.notice('KARAMBIT DOPPLER · F: SPIN · 3: HOLSTER');}}));
+   this.scooter=this.own(createBridgeScooter(this.root,world,{placement:{...placements.scooterEncounter,...C.NPC_LAYOUT.scooter},parked:true,uiRoot,knifeModel:this.karambit.grip,onCollect:()=>{this.karambit.give();if(this.playerView){this.playerView.perspective=0;this.playerView.pitch=0;}this.syncLock();}}));
    this.knifeVictims=this.scooter.riders.map(rig=>({rig,knockdown:createNpcKnockdown(rig,world)}));
    this.own({reset:()=>this.knifeVictims.forEach(p=>p.knockdown.reset())});
    // A short fixed arrival is shared scenery; each client uses the round clock.
