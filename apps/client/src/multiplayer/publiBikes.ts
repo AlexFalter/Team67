@@ -6,6 +6,7 @@ import type { Network } from "./net.ts";
 import type { Vehicles } from "./vehicles.ts";
 import type { LocalPlayer } from "./localPlayer.ts";
 import { disposeMap } from "../maps/zurich/loadZurichMap.ts";
+import { randomUuid } from "./randomUuid.ts";
 
 export class PubliBikeFeature {
   private abort = new AbortController();
@@ -105,7 +106,7 @@ export class PubliBikeFeature {
       this.net.onVehicleResult?.({ ok: false, message: "This bike is occupied or being unlocked." });
       return true;
     }
-    this.request = { bikeId: id, requestId: crypto.randomUUID(), sent: false, grantedAt: 0, createdAt: this.net.now() };
+    this.request = { bikeId: id, requestId: randomUuid(), sent: false, grantedAt: 0, createdAt: this.net.now() };
     this.net.room.send("bikeScanBegin", { bikeId: id, requestId: this.request.requestId }); return true;
   }
   private result(result: C.BikeUnlockResult) {

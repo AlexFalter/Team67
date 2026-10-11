@@ -8,6 +8,7 @@ import { TrafficRoadSurface } from './trafficRoadSurface.ts';
 import type { TrafficPoint } from '@race/shared';
 import { TrafficRenderer } from './traffic.ts';
 import './trafficEditor.css';
+import { randomUuid } from './randomUuid.ts';
 
 /** Surface snapping is authoring-only; simulation consumes the independent JSON graph. */
 export class TrafficEditor {
@@ -106,7 +107,7 @@ export class TrafficEditor {
         this.sampleStroke(e);
         try {
           if (!this.editable()) return;
-          const network = addTrafficStroke(this.network, this.stroke, () => crypto.randomUUID().slice(0,8));
+          const network = addTrafficStroke(this.network, this.stroke, () => randomUuid().slice(0,8));
           this.undoStroke = structuredClone(this.network); this.network = this.surface!.placeLanes(network); this.publish();
           this.message(this.room ? 'Road drawn. Live traffic updates automatically.' : 'Road drawn. Reconnect the simulation to see cars.');
         } catch (error) { this.message(String(error)); }
@@ -316,7 +317,7 @@ export class TrafficEditor {
       if (id !== this.selected && !this.network.roads.some(r => (r.from === id && r.to === this.selected) || (r.to === id && r.from === this.selected))) {
         const a = this.network.nodes.find(n => n.id === this.selected)!, b = this.network.nodes.find(n => n.id === id)!;
         if (Math.hypot(b.x - a.x, b.z - a.z) < 15) { this.message('Roads need at least 15 metres between nodes.'); return; }
-        this.network.roads.push({ id: `road-${crypto.randomUUID().slice(0, 8)}`, from: this.selected, to: id, lanes: 1, speed: 8 });
+        this.network.roads.push({ id: `road-${randomUuid().slice(0, 8)}`, from: this.selected, to: id, lanes: 1, speed: 8 });
         this.selected = id; this.publish();
       }
       return;
@@ -324,7 +325,7 @@ export class TrafficEditor {
     const point = this.ray.intersectObject(this.map, true)[0]?.point;
     if (!point) return;
     if (mode === 'add') {
-      this.selected = `node-${crypto.randomUUID().slice(0, 8)}`;
+      this.selected = `node-${randomUuid().slice(0, 8)}`;
       this.network.nodes.push({ id: this.selected, x: point.x, y: point.y, z: point.z }); this.publish();
     } else if (mode === 'move') {
       const node = this.network.nodes.find(n => n.id === this.selected);
@@ -355,7 +356,7 @@ export class TrafficEditor {
       const url = import.meta.env.VITE_COLYSEUS_URL || `ws://${location.hostname}:2567`, client = new Client(url);
       const code = this.field<HTMLInputElement>('room').value.trim().toUpperCase();
       this.message('Connecting…');
-      const room = code ? await client.joinById<WorldState>(code, { name: 'Traffic editor' }) : await client.create<WorldState>('race', { name: 'Traffic editor', code: `TR-${crypto.randomUUID().slice(0, 6).toUpperCase()}`, devMode: true, skipIntro: true });
+      const room = code ? await client.joinById<WorldState>(code, { name: 'Traffic editor' }) : await client.create<WorldState>('race', { name: 'Traffic editor', code: `TR-${randomUuid().slice(0, 6).toUpperCase()}`, devMode: true, skipIntro: true });
       room.reconnection.enabled = false;
       if (!room.state.trafficNetwork) await new Promise<void>((resolve,reject) => {
         const complete = () => { if (!room.state.trafficNetwork) return; clearTimeout(timeout); room.onStateChange.remove(complete); resolve(); };
