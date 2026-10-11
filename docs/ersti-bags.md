@@ -1,10 +1,10 @@
 # Ersti bags and practice dummies
 
-Four VSETH Ersti bags are grouped around (-217.18, 8.05, 35.98), resting on the map terrain. The old added mound is disabled at this location. The world and first-person models, along with the Pickup
+Four VSETH Ersti bags now rest between the cows on Bahnhofbrücke, distributed along the bridge’s center. Their elevations follow the map terrain; the old bag location is removed. The world and first-person models, along with the Pickup
 and Throw Blender animations, are restored directly from `origin/mini-games-2`.
 Editable assets are in `assets/blender/ersti-bag.blend` and its build script.
 
-Press **E** to collect a bag. Aim with the camera, then press **Q** or click to throw.
+Walk or run over a loose bag to collect it automatically (within 0.9 m). **E** also remains available. Aim with the camera, then press **Q** or click to throw.
 A recipient is knocked down for three seconds and receives the bag in their hands;
 after recovering they can throw it back. Players carry one bag at a time. When the
 target already carries a bag, the incoming bag lands nearby for someone to collect.
