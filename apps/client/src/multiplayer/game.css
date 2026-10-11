@@ -145,6 +145,18 @@ button:disabled { cursor: wait; opacity: 0.6; }
 
 #lobby, #room-screen { align-items: safe center; }
 
+#room-screen[data-phase=Finished] { display: flex; padding: 24px; overflow: hidden; }
+#room-screen[data-phase=Finished] > .menu-credit { position: absolute; right: 24px; bottom: 6px; margin: 0; }
+#room-screen[data-phase=Finished] .room-card { display: flex; flex-direction: column; width: 560px; max-width: 100%; max-height: 100%; overflow-y: auto; }
+#room-screen[data-phase=Finished] .room-card > * { flex-shrink: 0; }
+#room-screen[data-phase=Finished] #room-results-scroll { flex-shrink: 1; }
+#room-results-scroll { min-height: 80px; max-height: min(45vh, 420px); margin: 20px 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-gutter: stable; }
+#room-results-scroll:has(#room-results[hidden]) { display: none; }
+#room-results-scroll:focus-visible { outline: 2px solid #d7f87a; outline-offset: 3px; }
+#room-results-scroll #room-results { table-layout: fixed; margin: 0; }
+#room-results th { position: sticky; top: 0; background: #122b35; }
+#room-results :is(th, td):first-child { width: 46%; }
+
 #publibike-scan { position:absolute; inset:0; z-index:15; display:grid; place-items:center; touch-action:none; background:#0007; }
 #publibike-scan[hidden], #publi-bike-battery[hidden] { display:none; }
 .bike-phone { width:min(340px,calc(100vw - 32px),calc((100dvh - 170px)*.75)); box-sizing:border-box; border:8px solid #171b26; border-radius:28px; color:#edf4fc; box-shadow:0 0 0 2px #697081,0 15px 60px #0008; overflow:hidden; background:#171b26; }

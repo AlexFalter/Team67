@@ -99,7 +99,7 @@ export class VehicleManager {
       this.reports.set(data as string, now);
       this.hitTimes.get(data as string)!.clear();
     } else if (C.isPassengerVehicle(v) && v.departureAt === 0) {
-      v.departureAt = now + (C.isRail(v) ? C.TRANSIT_BOARDING_MS : C.SHUTTLE_COUNTDOWN_MS);
+      v.departureAt = now + (v.kind === C.TRAM_KIND ? C.TRAM_BOARDING_MS : C.isRail(v) ? C.TRANSIT_BOARDING_MS : C.SHUTTLE_COUNTDOWN_MS);
       if (v.kind === C.POLYBAHN_KIND) for (const other of this.state.vehicles.values())
         if (other.kind === C.POLYBAHN_KIND) other.departureAt = v.departureAt;
     }

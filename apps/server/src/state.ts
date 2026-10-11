@@ -2,6 +2,7 @@ import { schema, t, type SchemaType } from "@colyseus/schema";
 import { RoomPhase, PUBLI_BIKE_BATTERY_MS } from "@race/shared";
 export const RoomMember = schema({
   introSeat: t.int8().default(-1),
+  thankedBusDriver: t.boolean().default(false),
   name: t.string().default(""),
   character: t.uint8().default(0),
   ready: t.boolean().default(false),

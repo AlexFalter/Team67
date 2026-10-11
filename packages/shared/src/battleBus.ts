@@ -14,6 +14,11 @@ export function inBattleBusIntro(state: Pick<WorldState, "phase" | "introComplet
   return state.phase === RoomPhase.Running && !state.introComplete;
 }
 
+export function battleBusThanksVisible(state: Pick<WorldState, "phase" | "introStartedAt" | "introComplete" | "startedAt" | "skipIntro">, now: number) {
+  return state.phase === RoomPhase.Running && !state.skipIntro && state.introStartedAt > 0 &&
+    (!state.introComplete || now < state.startedAt + 10000);
+}
+
 // Absolute server time, rather than accumulated frame time, also handles hidden tabs.
 export function battleBusElapsed(state: Pick<WorldState, "introStartedAt" | "startedAt">, now: number) {
   const duration = state.startedAt - state.introStartedAt;
