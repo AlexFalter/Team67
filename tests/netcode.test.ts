@@ -68,7 +68,8 @@ test("clients share stationary look-directed punches, cooldown and recovery with
     const own = a.state.players.get(a.sessionId)!, startX = own.x;
     a.send("move", [own.x, own.y, own.z, Math.PI / 2, 0, 0, 0, 0]); a.send("hit");
     await until(() => hits.length === 1 && b.state.players.get(b.sessionId)!.knockdownUntil > Date.now(), "punch");
-    assert.equal(hits[0].durationMs, C.ATTACK_KNOCKDOWN_MS);
+    assert.equal(hits[0].durationMs, 1500);
+    assert.equal(own.attackReadyAt - hits[0].at!, 2000);
     const victim = b.state.players.get(b.sessionId)!;
     assert.equal(victim.impactStartedAt, hits[0].at);
     assert.equal(victim.impactX, hits[0].ix);

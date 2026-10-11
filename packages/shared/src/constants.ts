@@ -49,7 +49,7 @@ export const CART_SPAWNS = [
 ];
 export const BIKE_SPEED = 15, BIKE_HIT_STRENGTH = 0.65;
 export const ATTACK_RANGE = 2.4, ATTACK_HALF_ANGLE = Math.PI / 4,
-  ATTACK_COOLDOWN_MS = 4000, ATTACK_KNOCKDOWN_MS = 1500;
+  ATTACK_COOLDOWN_MS = 2000, ATTACK_KNOCKDOWN_MS = 1500;
 export const SHUTTLE_STOPS = [
   { x: -12, z: 9 },
   { x: 12, z: 9 },

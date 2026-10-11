@@ -31,12 +31,12 @@ test('equipped Karambit spins repeatedly and a slash interrupts its spin', async
   } finally {if(previous)Object.defineProperty(globalThis,'document',previous);else Reflect.deleteProperty(globalThis,'document');}
 });
 
-test('predicted slash cooldown is one second and punches still take four',()=>{
+test('predicted slash cooldown is one second and punches take two',()=>{
   for(const karambit of [false,true]){
     const p=C.createBody();p.simTime=1000;
     C.stepPlayer(p,{...C.IDLE_INPUT,hit:true,karambit},1/60);
     const ready=p.attackReadyAt;
-    assert.ok(Math.abs(ready-p.simTime-(karambit?1000:4000))<1e-6);
+    assert.ok(Math.abs(ready-p.simTime-(karambit?1000:2000))<1e-6);
     p.simTime=ready-100;C.stepPlayer(p,{...C.IDLE_INPUT,hit:true,karambit},1/60);
     assert.equal(p.attackReadyAt,ready);
     p.simTime=ready;C.stepPlayer(p,{...C.IDLE_INPUT,hit:true,karambit},1/60);
@@ -50,12 +50,12 @@ test('server enforces the slash cooldown and refuses the faster rate without a c
   state.players.set('attacker',p);
   Object.defineProperty(room,'state',{value:state});
   Object.assign(room,{world:C.flatWorld,rounds:{canPlay:()=>true},npcs:{busy:()=>false}});
-  room.attack({sessionId:'attacker'},{karambit:true});assert.equal(p.attackReadyAt,5000,'unowned knives get the punch cooldown');
+  room.attack({sessionId:'attacker'},{karambit:true});assert.equal(p.attackReadyAt,3000,'unowned knives get the punch cooldown');
   p.karambitOwned=true;p.attackReadyAt=0;
   room.attack({sessionId:'attacker'},{karambit:true});assert.equal(p.attackReadyAt,2000);
   now=1999;room.attack({sessionId:'attacker'},{karambit:true});assert.equal(p.attackReadyAt,2000);
   now=2000;room.attack({sessionId:'attacker'},{karambit:true});assert.equal(p.attackReadyAt,3000);
-  now=3000;room.attack({sessionId:'attacker'});assert.equal(p.attackReadyAt,7000,'holstered punch keeps four seconds');
+  now=3000;room.attack({sessionId:'attacker'});assert.equal(p.attackReadyAt,5000,'holstered punch takes two seconds');
 });
 
 test('Karambit reward can only be claimed near the riders in the current world',()=>{
