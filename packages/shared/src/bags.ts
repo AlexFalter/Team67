@@ -4,7 +4,7 @@ export const BAG_HILL=layout.bagHill;
 export const BAG_SPEED=12, BAG_GRAVITY=9.81, BAG_THROW_RELEASE_MS=430;
 export interface BagState {x:number;y:number;z:number;vx:number;vy:number;vz:number;owner:string;thrower:string;flying:boolean;throwAt:number;releasedAt:number;spin:number}
 export function bagHillLift(x:number,z:number){const q=((x-BAG_HILL.center[0])**2+(z-BAG_HILL.center[1])**2)/BAG_HILL.radius**2;return q<1?BAG_HILL.height*(1-q)**2:0;}
-export function bagHomes(world:MovementWorld){const center=world.name==='flat'?[world.spawn.x+6,world.spawn.z]:BAG_HILL.center;return BAG_HILL.bagOffsets.map(([dx,dz])=>{const x=center[0]+dx,z=center[1]+dz;return {x,y:(world.height(x,z)??world.spawn.y)+.015,z};});}
+export function bagHomes(world:MovementWorld){const center=world.name==='flat'?[world.spawn.x+6,world.spawn.z]:BAG_HILL.center;const offsets=world.name==='flat'?[[-.75,-.5],[.6,-.5],[-.6,.6],[.7,.6]]:BAG_HILL.bagOffsets;return offsets.map(([dx,dz])=>{const x=center[0]+dx,z=center[1]+dz;return {x,y:(world.height(x,z)??world.spawn.y)+.015,z};});}
 // Swept sphere vs player capsule: closest point between projectile and the upright body's segment.
 export function bagHitsPlayer(from:{x:number;y:number;z:number},to:{x:number;y:number;z:number},p:{x:number;y:number;z:number}){
  const dx=to.x-from.x,dy=to.y-from.y,dz=to.z-from.z;

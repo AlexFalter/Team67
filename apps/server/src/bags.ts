@@ -46,6 +46,17 @@ export class BagManager {
     b.x=x;b.y=y;b.z=z;b.spin+=step*3.5;
    }
   }
+  // Pick up loose bags by walking over them. Ownership is granted once,
+  // by the server, with the same encounter and line-of-sight gates as E.
+  for(const [id,p] of this.state.players){
+   if(p.bagId||!this.eligible(id,now))continue;
+   for(const [bagId,b] of this.state.bags){
+    if(b.owner||b.flying||b.throwAt||Math.hypot(p.x-b.x,p.z-b.z)>.9||Math.abs(p.y-b.y)>1.5)continue;
+    if(b.thrower===id&&now-b.releasedAt<1000)continue;
+    if(!this.clearLine({x:p.x,y:p.y+1,z:p.z},{x:b.x,y:b.y+.25,z:b.z}))continue;
+    b.owner=id;b.thrower='';p.bagId=bagId;this.pickupAt.set(bagId,now);break;
+   }
+  }
  }
  private drop(id:string,b:Bag){const owner=this.state.players.get(b.owner)??this.state.dummies.get(b.owner);if(owner?.bagId===id)owner.bagId='';b.owner='';b.flying=false;b.throwAt=0;b.vx=b.vy=b.vz=0;b.y=(this.world.height(b.x,b.z)??this.world.spawn.y)+.015;this.pending.delete(id);}
  private home(id:string,b:Bag){const home=C.bagHomes(this.world)[Number(id.split('-').at(-1))-1];this.drop(id,b);if(home)Object.assign(b,home);b.thrower='';b.spin=0;}
