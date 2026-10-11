@@ -1,6 +1,6 @@
 # Lime scooter
 
-The playable Lime uses the shared vehicle kind `LIME_KIND` (7). Its two map spawns use `[x, y, z]` positions in `NPC_LAYOUT.lime.positions`: `[-58.78, 9.34, 57.53]` and `[-21.84, 8.32, 124.78]`. Their map placement lives in `packages/shared/src/npc-layout.json`, independently of its model and mini-game.
+The playable Lime uses the shared vehicle kind `LIME_KIND` (7). Its six map spawns use `[x, y, z]` positions in `NPC_LAYOUT.lime.positions`: `[-58.78, 9.34, 57.53]` `[-21.84, 8.32, 124.78]`, two on Bahnhofbrücke at `[-159, 8.28, 60]` and `[-156, 8.2925, 60.5]`, and two in the Haldenegg plaza at `[8.18, 21.9491, -131.57]` and `[10.18, 21.9791, -131.57]`. Lime scooters do not appear as question marks on either map. Their map placement lives in `packages/shared/src/npc-layout.json`, independently of its model and mini-game.
 
 The server vehicle manager grants two distinct riding positions, validates driver movement and promotes the rear passenger when the front rider leaves. It keeps the parked scooter reserved until its rider submits the parking photo. The last rider to get off must take the photo. Leaving the room releases the reservation; a new round creates fresh vehicle state. Photo submissions carry the round ID to reject stale requests.
 
