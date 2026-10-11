@@ -3,13 +3,23 @@
     build:
       context: .
       dockerfile: apps/client/Dockerfile
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in the .env file to the public server domain}
     ports:
-      - 80:8080
+      - "80:80"
+      - "443:443"
     depends_on:
       - server
     restart: unless-stopped
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
   server:
     build:
       context: .
       dockerfile: apps/server/Dockerfile
     restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

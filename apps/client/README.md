@@ -91,6 +91,6 @@ provenance alongside any bounds/origin changes.
 
 ## Deployment
 
-Root `docker-compose.yml` builds from the npm workspace root, serves this build via Caddy on 8080, and runs Colyseus as its second service. No Python backend or `/api` proxy is required. Matchmaking and WebSocket upgrade requests route to the multiplayer service. The root README documents the hackathon portal's WebSocket limitation; test a direct endpoint supporting WebSockets for multiplayer.
+Root `docker-compose.yml` builds from the npm workspace root, serves the build via Caddy on public ports 80/443, and runs Colyseus as its second service. Set `DOMAIN` in the root `.env` to the public DNS name. Caddy obtains TLS certificates and routes matchmaking and WebSocket upgrade requests to Colyseus over the private Docker network. No Python backend or `/api` proxy is required. The root README documents the hackathon portal's WebSocket limitation; test a direct endpoint supporting WebSockets for multiplayer.
 
 After changing/re-importing the map, run `npm run world:build` from the root and commit the generated shared JSON together with the GLB/provenance. Root production builds regenerate this data offline; they never contact GIS services.
