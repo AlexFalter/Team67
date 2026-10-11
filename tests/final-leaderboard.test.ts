@@ -5,10 +5,11 @@ import { Player, RaceState } from '../apps/server/src/state.ts';
 import { RoundManager } from '../apps/server/src/round.ts';
 import { rankedResults } from '../apps/client/src/multiplayer/roomFlow.ts';
 
-test('final score: ETH arrivals are above 0 with exam points on top, the rest lose their metres to ETH', () => {
+test('final score: ETH arrivals are above 0 with exam points on top, the rest get 100 minus their metres to ETH', () => {
   assert.equal(C.finalScore({ examStartedAt: 1, examScore: 0, distanceToEth: 0 }), C.ETH_ARRIVAL_POINTS);
   assert.equal(C.finalScore({ examStartedAt: 1, examScore: 650, distanceToEth: 0 }), C.ETH_ARRIVAL_POINTS + 650);
-  assert.equal(C.finalScore({ examStartedAt: 0, examScore: 0, distanceToEth: 412.4 }), -412);
+  assert.equal(C.finalScore({ examStartedAt: 0, examScore: 0, distanceToEth: 40.4 }), 60);
+  assert.equal(C.finalScore({ examStartedAt: 0, examScore: 0, distanceToEth: 412.4 }), -312);
 });
 
 test('the server records distance to ETH at the end and the leaderboard ranks ETH arrivals first', () => {
@@ -34,8 +35,8 @@ test('the server records distance to ETH at the end and the leaderboard ranks ET
   assert.deepEqual(rankedResults(state.results).map(([id, result]) => [id, C.finalScore(result)]), [
     ['exam', C.ETH_ARRIVAL_POINTS + 800],
     ['lazy', C.ETH_ARRIVAL_POINTS],
-    ['near', -50],
-    ['far', -300],
-    ['gone', -r('gone').distanceToEth],
+    ['near', 50],
+    ['far', -200],
+    ['gone', 100 - r('gone').distanceToEth],
   ]);
 });

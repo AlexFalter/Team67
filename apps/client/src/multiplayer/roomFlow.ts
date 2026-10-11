@@ -96,7 +96,7 @@ export class RoomFlow {
         const row = document.createElement("tr"), reached = result.examStartedAt > 0;
         row.dataset.eth = reached ? "reached" : "missed";
         const score = finalScore(result);
-        for (const value of [result.name, score > 0 ? `+${score}` : `−${-score}`,
+        for (const value of [result.name, score > 0 ? `+${score}` : score < 0 ? `−${-score}` : "0",
           reached ? `At ETH · ${result.examScore} exam` : `${Math.round(result.distanceToEth)} m to go`, result.hitsLanded, result.hitsReceived]) {
           const cell = document.createElement("td"); cell.textContent = String(value); row.append(cell);
         }
