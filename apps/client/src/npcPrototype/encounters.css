@@ -50,3 +50,9 @@ body.eater-conversation header,body.eater-conversation .mission,body.eater-conve
 .scooter-photo-key-hint { position:absolute; bottom:max(24px,env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); z-index:2; padding:12px 20px; border:1px solid #b4ed6770; border-radius:4px; background:#102c3df2; color:#c2ed90; font:600 14px ui-monospace,monospace; white-space:nowrap; pointer-events:none; box-shadow:0 3px 15px #0008; }
 .scooter-photo-key-hint kbd { font:inherit; color:#efffe6; }
 #scooter-photo:not([data-phase="framing"]) .scooter-photo-key-hint { display:none; }
+
+/* Tourist photo: "Space · Take photo" hint at the bottom, styled like the game's interaction hint (.interaction-instruction). */
+#tourist-photo .photo-key-hint{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:1;font-family:ui-monospace,monospace;text-shadow:0 1px 3px #000;pointer-events:none}
+#tourist-photo .photo-key-hint svg{width:15px;height:15px}
+#tourist-photo:not([data-phase="framing"]) .photo-key-hint{display:none}
+#tourist-photo .photo-key-hint.disabled{opacity:.45}
