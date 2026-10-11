@@ -391,7 +391,7 @@ export class VehicleManager {
     // Bikes fall against any solid object; heavy transport is never displaced.
     for (const [id, v] of this.state.vehicles) if (v.kind === 2 && now >= v.fallenUntil) {
       for (const [otherId, other] of this.state.vehicles) {
-        if (id === otherId || (intersects && !intersects(`v:${id}`, `v:${otherId}`))) continue;
+        if (id === otherId || other.derailStartedAt || (intersects && !intersects(`v:${id}`, `v:${otherId}`))) continue;
         const dx = other.x - v.x, dz = other.z - v.z, distance = Math.hypot(dx, dz);
         const closing = ((v.vx - other.vx) * dx + (v.vz - other.vz) * dz) / Math.max(distance, 0.001);
         if (distance <= C.vehicleRadius(v) + C.vehicleRadius(other) + 0.02 && closing >= C.CART_MIN_HIT_SPEED) {
@@ -406,7 +406,7 @@ export class VehicleManager {
   contacts(now: number, hit: Parameters<VehicleManager["tick"]>[1], intersects?: (a: string, b: string) => boolean) {
     this.bikeContacts(now, hit, intersects);
     for (const [id, v] of this.state.vehicles) if (v.driver) {
-      for (const [otherId, other] of this.state.vehicles) if (id !== otherId && (other.driver || C.isPassengerVehicle(other) || other.kind === 3) && (!intersects || intersects(`v:${id}`, `v:${otherId}`))) {
+      for (const [otherId, other] of this.state.vehicles) if (id !== otherId && !other.derailStartedAt && (other.driver || C.isPassengerVehicle(other) || other.kind === 3) && (!intersects || intersects(`v:${id}`, `v:${otherId}`))) {
         const dx = v.x - other.x, dz = v.z - other.z, distance = Math.hypot(dx, dz);
         const radius = C.vehicleRadius(v) + C.vehicleRadius(other);
         if (distance >= radius) continue;
@@ -420,6 +420,7 @@ export class VehicleManager {
     }
     for (const [id, v] of this.state.vehicles) {
       const cooldown = this.hitTimes.get(id)!;
+      if (v.derailStartedAt) continue;
       for (const [target, p] of this.state.players) {
         if (p.vehicleId || (intersects && !intersects(target, `v:${id}`))) continue;
         if (

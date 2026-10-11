@@ -5,6 +5,7 @@ import {TramExplosions} from '../apps/client/src/multiplayer/tramExplosions.ts';
 import * as C from '../packages/shared/src/index.ts';
 import {RaceState,Player} from '../apps/server/src/state.ts';
 import {VehicleManager} from '../apps/server/src/vehicles.ts';
+import {ContactWorld} from '../apps/server/src/physics.ts';
 import type {Client} from 'colyseus';
 import {withServer,until,type WireState} from './fixture.ts';
 
@@ -53,6 +54,40 @@ test('tram derails at the first route bend, shares wagon poses, safely releases 
 test('dev crash protection preserves a complete tram journey and Polybahn never derails',()=>{
  const {manager,v,state}=fixture(true);manager.tick(v.arrivalAt,()=>{});assert.equal(v.derailStartedAt,0);assert(!v.traveling);assert(v.railReverse);
  for(const id of ['polybahn-1','polybahn-2'])assert.equal(state.vehicles.get(id)!.derailStartedAt,0);
+});
+
+test('derailed tram removes its stale track collider and cannot hit or displace pedestrians and bikes',async()=>{
+ const {state,manager,v}=fixture();let now=v.tripStartedAt;
+ for(;!v.derailStartedAt&&now<v.arrivalAt;now+=50)manager.tick(now,()=>{});
+ manager.tick(v.derailStartedAt+8000,()=>{});
+ const impactVelocity=[v.vx,v.vz];
+ const world=await ContactWorld.create();
+ try {
+  const players=new Map<string,Player>();
+  for(const id of ['walker-a','walker-b']){
+   const p=new Player({...C.createBody(),x:v.x,y:v.y,z:v.z});state.players.set(id,p);players.set(id,p);
+  }
+  const derailStartedAt=v.derailStartedAt;
+  v.derailStartedAt=0;world.sync(players,new Map([['tram-1',v]]));
+  assert(world.intersects('walker-a','v:tram-1'),'the old rail-root collider overlaps walkers');
+  v.derailStartedAt=derailStartedAt;world.sync(players,new Map([['tram-1',v]]));
+  for(const id of players.keys())assert(!world.intersects(id,'v:tram-1'),'no invisible collider remains at the bend');
+  const before=[...players.values()].map(p=>[p.x,p.y,p.z]);let hits=0;
+  manager.contacts(now+9000,()=>{hits++;});
+  assert.equal(hits,0);assert.deepEqual([...players.values()].map(p=>[p.x,p.y,p.z]),before,'fallback contacts do not push walkers');
+  for(const id of players.keys())state.players.delete(id);
+  const bike=state.vehicles.get('bike-1') ?? [...state.vehicles.values()].find(other=>other.kind===2)!;
+  bike.x=v.x-.5;bike.y=v.y;bike.z=v.z;bike.vx=v.vx+20;bike.vz=v.vz;
+  manager.contacts(now+9000,()=>{hits++;});assert.equal(bike.fallenUntil,0,'the ghost wreck cannot crash a bike');
+  assert.deepEqual([v.vx,v.vz],impactVelocity,'shared wreck animation retains its impact velocity');
+  state.vehicles.delete([...state.vehicles].find(([,other])=>other===bike)![0]);
+  for(const [id,p] of players)state.players.set(id,p);
+  v.derailStartedAt=0;v.vx=10;v.vz=0;
+  for(const p of players.values()){p.x=v.x+.5;p.y=v.y;p.z=v.z;}
+  world.sync(players,new Map([['tram-1',v]]));
+  manager.contacts(now+10000,()=>{hits++;},(a,b)=>world.intersects(a,b));
+  assert.equal(hits,2,'a normally moving tram still hits both pedestrians');
+ }finally{world.dispose();}
 });
 test('room crash protection is shared and can only be enabled in dev mode', {timeout:20000},async()=>{
  await withServer(async(client,rooms)=>{

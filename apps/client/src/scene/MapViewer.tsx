@@ -246,7 +246,7 @@ function MapCanvas({ playing, resolution, onResolutionChange, examSession, onExa
       >
         {status}
       </div>
-      {playing && <ExamOverlay session={examSession} onSkip={() => gameRef.current?.skipExamTransition()}
+      {playing && <ExamOverlay session={examSession}
         onComplete={score => gameRef.current?.completeExam(score)} onExit={() => gameRef.current?.returnFromExam()} />}
       {playing && <ExamDebugButton enabled={examSession.canEnter && examSession.stage === "world"}
         onTeleport={enterPortal => gameRef.current?.debugTeleportToTerrace(enterPortal)} />}
